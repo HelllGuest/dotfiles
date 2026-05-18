@@ -1,0 +1,16 @@
+stow/ghostty/.config/ghostty/config
+stow/ghostty/.config/ghostty/theme.conf
+stow/fastfetch/.config/fastfetch/config.jsonc
+stow/zsh/.zshrc
+stow/zsh/.zsh-aliases
+stow/zsh/.zsh-exports
+stow/zsh/.zsh-functions
+stow/zsh/.zsh-plugins
+stow/starship/.config/starship.toml
+stow/nvim/.config/nvim/init.lua
+stow/nvim/.config/nvim/lua/plugins.lua
+stow/nvim/.config/nvim/lua/core.lua
+stow/nvim/.config/nvim/lua/config.lua
+stow/nvim/.config/nvim/lua/palette.lua
+stow/kitty/.config/kitty/kitty.conf
+stow/kitty/.config/kitty/current-theme.conf

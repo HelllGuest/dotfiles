@@ -1,0 +1,13 @@
+{
+  "name": "Base",
+  "background": "#1e222a",
+  "foreground": "#c0caf5",
+  "accent": "#7aa2f7",
+  "border_radius": "12px",
+  "blur_sigma": "30",
+  "starship": {
+    "success": "#9ece6a",
+    "error": "#f7768e",
+    "directory": "#7aa2f7"
+  }
+}

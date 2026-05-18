@@ -1,0 +1,37 @@
+# Logs
+*.log
+
+# Caches
+.cache/
+.nv/
+.lazy/
+
+# Node/Python dependencies
+node_modules/
+__pycache__/
+venv/
+
+# Neovim local files
+plugin/
+packer_compiled.lua
+lazy-lock.json
+# Generated configs in stow
+stow/nvim/.config/nvim/lua/palette.lua
+stow/starship/.config/starship.toml
+stow/kitty/.config/kitty/current-theme.conf
+stow/ghostty/.config/ghostty/theme.conf
+
+# Secrets (IMPORTANT)
+.env
+*.key
+*.pem
+secrets/
+.config/secrets/
+
+# Generated theming files
+theming/generated/*
+!theming/generated/.gitkeep
+
+# System/OS files
+.DS_Store
+Thumbs.db

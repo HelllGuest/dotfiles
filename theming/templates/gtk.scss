@@ -1,0 +1,11 @@
+// GTK Template
+$bg_color: {{background}};
+$fg_color: {{foreground}};
+$accent_color: {{accent}};
+
+@define-color accent_color #{$accent_color};
+@define-color accent_bg_color #{$accent_color};
+@define-color window_bg_color #{$bg_color};
+@define-color window_fg_color #{$fg_color};
+@define-color card_bg_color darken(#{$bg_color}, 2%);
+@define-color headerbar_bg_color #{$bg_color};

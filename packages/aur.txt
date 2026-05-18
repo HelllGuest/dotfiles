@@ -1,0 +1,5 @@
+bibata-cursor-theme
+visual-studio-code-bin
+matugen-bin
+throttled
+tp_smapi

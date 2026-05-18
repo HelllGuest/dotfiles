@@ -1,0 +1,3 @@
+# Ghostty configuration
+font-family = "JetBrains Mono Nerd Font"
+config-file = "theme.conf"

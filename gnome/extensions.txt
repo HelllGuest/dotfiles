@@ -1,0 +1,8 @@
+blur-my-shell@aunetx
+just-perfection-desktop@just-perfection
+tiling-assistant@leleat-on-github
+dash-to-dock@micxgx.gmail.com
+caffeine@patapon.info
+user-theme@gnome-shell-extensions.gcampax.github.com
+burn-my-windows@schneegans.github.com
+light-style@gnome-shell-extensions.gcampax.github.com

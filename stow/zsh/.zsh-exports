@@ -1,0 +1,10 @@
+# exports.zsh
+export EDITOR='nvim'
+export VISUAL='nvim'
+export PATH="$HOME/.local/bin:$PATH"
+
+# Disable Telemetry for various tools
+export DOTNET_CLI_TELEMETRY_OPTOUT=1
+export POWERSHELL_TELEMETRY_OPTOUT=1
+export AZURE_CORE_COLLECT_TELEMETRY=0
+export STACK_TELEMETRY=0

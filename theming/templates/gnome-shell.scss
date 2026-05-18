@@ -1,0 +1,25 @@
+// GNOME Shell Template
+$bg_color: {{background}};
+$fg_color: {{foreground}};
+$accent_color: {{accent}};
+$radius: {{border_radius}};
+$sigma: {{blur_sigma}};
+
+#panel {
+    background-color: rgba($bg_color, 0.65);
+    color: $fg_color;
+    font-weight: bold;
+    border-radius: $radius;
+
+    .panel-button:hover {
+        background-color: rgba($accent_color, 0.2);
+        box-shadow: inset 0 -2px 0 0 $accent_color;
+    }
+}
+
+.popup-menu {
+    background-color: $bg_color;
+    color: $fg_color;
+    border: 1px solid rgba($accent_color, 0.3);
+    border-radius: $radius;
+}
