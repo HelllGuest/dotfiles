@@ -3,10 +3,18 @@
 # Ensure directories exist
 mkdir -p ~/Pictures/wallpapers
 
-WALL=$(find ~/Pictures/wallpapers -type f | shuf -n 1)
+# Check repo first, then fallback to Pictures
+REPO_WALLS="$HOME/dotfiles/theming/wallpapers"
+PICTURE_WALLS="$HOME/Pictures/wallpapers"
+
+if [ -d "$REPO_WALLS" ] && [ "$(ls -A "$REPO_WALLS")" ]; then
+    WALL=$(find "$REPO_WALLS" -type f | shuf -n 1)
+else
+    WALL=$(find "$PICTURE_WALLS" -type f | shuf -n 1)
+fi
 
 if [ -z "$WALL" ]; then
-    echo "No wallpapers found in ~/Pictures/wallpapers"
+    echo "No wallpapers found in repo or ~/Pictures/wallpapers"
     exit 1
 fi
 

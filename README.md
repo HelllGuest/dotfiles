@@ -46,8 +46,17 @@ dotfiles/
 ├── profiles/        # Machine-specific tweaks (Desktop, Laptop, ThinkPad)
 ├── scripts/         # Automation: theme-switching, health checks, updates
 ├── packages/        # Tracked package lists (Pacman, AUR, Flatpak)
-└── gnome/           # GNOME settings (dconf) and extension lists
+├── gnome/           # GNOME settings (dconf) and extension lists
+└── docs/            # Installation guides and system documentation
 ```
+
+---
+
+## 📚 Documentation
+
+Detailed guides for setting up and maintaining the system:
+
+- **[Hardened Arch Linux + GNOME Guide](docs/hardened-arch-gnome.md):** A step-by-step guide for a security-focused installation on ThinkPad hardware.
 
 ---
 
