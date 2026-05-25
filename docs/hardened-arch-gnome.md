@@ -556,7 +556,7 @@ title   Arch Linux (Zen)
 linux   /vmlinuz-linux-zen
 initrd  /intel-ucode.img
 initrd  /initramfs-linux-zen.img
-options rd.luks.name=YOUR_UUID=cryptroot root=/dev/mapper/cryptroot rootflags=subvol=@ rw quiet loglevel=3 mem_sleep_default=deep apparmor=1 security=apparmor
+options rd.luks.name=YOUR_UUID=cryptroot root=/dev/mapper/cryptroot rootflags=subvol=@ rw quiet loglevel=3 mem_sleep_default=deep apparmor=1 security=apparmor intel_iommu=on
 ```
 
 ---
@@ -574,7 +574,7 @@ title   Arch Linux (LTS)
 linux   /vmlinuz-linux-lts
 initrd  /intel-ucode.img
 initrd  /initramfs-linux-lts.img
-options rd.luks.name=YOUR_UUID=cryptroot root=/dev/mapper/cryptroot rootflags=subvol=@ rw quiet loglevel=3 mem_sleep_default=deep apparmor=1 security=apparmor
+options rd.luks.name=YOUR_UUID=cryptroot root=/dev/mapper/cryptroot rootflags=subvol=@ rw quiet loglevel=3 mem_sleep_default=deep apparmor=1 security=apparmor intel_iommu=on
 ```
 
 ---
@@ -614,6 +614,22 @@ systemctl enable earlyoom.service
 
 ---
 
+# Verify GDM Wayland Session
+
+GDM may default to X11. Force Wayland:
+
+```bash
+nano /etc/gdm/custom.conf
+```
+
+Ensure uncommented:
+
+```text
+WaylandEnable=true
+```
+
+---
+
 # PHASE 11 — ZRAM
 
 Create:
@@ -631,6 +647,8 @@ compression-algorithm = zstd
 swap-priority = 100
 fs-type = swap
 ```
+
+**Note on vm.swappiness:** With zram enabled and `vm.swappiness = 100`, the system aggressively uses compressed memory. This is intentional for battery efficiency but may cause performance lag under extreme memory pressure. Monitor with `zramctl` and adjust if needed.
 
 ---
 
@@ -676,6 +694,17 @@ Configure UFW:
 ufw default deny incoming
 ufw default allow outgoing
 ufw enable
+```
+
+Default behavior:
+
+* **deny incoming** — All inbound connections rejected unless explicitly allowed
+* **allow outgoing** — All outbound connections permitted
+
+Add SSH rule (if needed):
+
+```bash
+ufw allow ssh
 ```
 
 Enable:
@@ -906,7 +935,7 @@ nano /etc/kernel/cmdline
 Contents (single line):
 
 ```text
-rd.luks.name=YOUR_UUID=cryptroot root=/dev/mapper/cryptroot rootflags=subvol=@ rw quiet loglevel=3 mem_sleep_default=deep apparmor=1 security=apparmor
+rd.luks.name=YOUR_UUID=cryptroot root=/dev/mapper/cryptroot rootflags=subvol=@ rw quiet loglevel=3 mem_sleep_default=deep apparmor=1 security=apparmor intel_iommu=on
 ```
 
 ---
@@ -925,10 +954,16 @@ Contents:
 PRESETS=('default' 'fallback')
 
 default_uki="/boot/EFI/Linux/arch-linux-zen.efi"
-default_options="--splash /usr/share/systemd/bootctl/splash-arch.bmp"
+default_options=""
 
 fallback_uki="/boot/EFI/Linux/arch-linux-zen-fallback.efi"
 fallback_options="-S autodetect"
+```
+
+**Note:** The splash image option is removed. If `/usr/share/systemd/bootctl/splash-arch.bmp` exists on your system, you may add:
+
+```ini
+default_options="--splash /usr/share/systemd/bootctl/splash-arch.bmp"
 ```
 
 ---
@@ -947,10 +982,16 @@ Contents:
 PRESETS=('default' 'fallback')
 
 default_uki="/boot/EFI/Linux/arch-linux-lts.efi"
-default_options="--splash /usr/share/systemd/bootctl/splash-arch.bmp"
+default_options=""
 
 fallback_uki="/boot/EFI/Linux/arch-linux-lts-fallback.efi"
 fallback_options="-S autodetect"
+```
+
+**Note:** The splash image option is removed. If `/usr/share/systemd/bootctl/splash-arch.bmp` exists on your system, you may add:
+
+```ini
+default_options="--splash /usr/share/systemd/bootctl/splash-arch.bmp"
 ```
 
 ---
@@ -964,7 +1005,31 @@ mkinitcpio -P
 
 ---
 
-# PHASE 22 — SECURE BOOT WITH SBCTL
+# PHASE 22 — APPARMOR VERIFICATION & ENFORCEMENT
+
+Verify AppArmor profiles are loaded:
+
+```bash
+aa-status
+```
+
+Expected output shows profiles in **enforce** or **complain** mode.
+
+If profiles are in **complain** mode, move them to **enforce**:
+
+```bash
+aa-enforce /etc/apparmor.d/*
+```
+
+Apply AppArmor:
+
+```bash
+systemctl restart apparmor
+```
+
+---
+
+# PHASE 23 — SECURE BOOT WITH SBCTL
 
 Install:
 
@@ -1051,7 +1116,7 @@ Security → Secure Boot → Enabled
 
 ---
 
-# PHASE 23 — EXIT INSTALLER
+# PHASE 24 — EXIT INSTALLER
 
 Exit chroot:
 
@@ -1081,7 +1146,7 @@ Remove installation USB.
 
 ---
 
-# PHASE 24 — OPTIONAL AUR HELPER
+# PHASE 25 — OPTIONAL AUR HELPER
 
 Install prerequisites:
 
@@ -1099,7 +1164,7 @@ makepkg -si
 
 ---
 
-# PHASE 25 — MAINTENANCE
+# PHASE 26 — MAINTENANCE
 
 Check updates:
 
@@ -1116,7 +1181,7 @@ sudo pacman -Rns $(pacman -Qtdq)
 
 ---
 
-# PHASE 26 — VERIFICATION
+# PHASE 27 — VERIFICATION
 
 Verify Wayland:
 
@@ -1151,6 +1216,18 @@ s2idle [deep]
 ```bash
 aa-status
 ```
+
+Ensure profiles are in **enforce** mode.
+
+---
+
+# Verify IOMMU
+
+```bash
+dmesg | grep -i iommu
+```
+
+Expected output shows IOMMU entries confirming Intel VT-d is active.
 
 ---
 
@@ -1197,3 +1274,14 @@ Expected:
 ```text
 Secure Boot: enabled
 ```
+
+---
+
+# Verify GDM Wayland
+
+```bash
+sudo systemctl status gdm
+journalctl -u gdm -n 20
+```
+
+Look for "Wayland" in output to confirm session type.
