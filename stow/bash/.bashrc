@@ -11,12 +11,12 @@ fi
 # 2. Modern Bash Settings
 shopt -s autocd cdspell histappend cmdhist
 
-# 3. Aliases
-alias ls='ls --color=auto'
-alias grep='grep --color=auto'
-alias v='nvim'
+HISTFILE=~/.bash_history
+HISTSIZE=50000
+HISTFILESIZE=50000
+HISTCONTROL=ignoredups:erasedups
 
-# Load shared exports and functions if they exist
+# 3. Shared config (aliases, exports, functions)
 [ -f ~/.shell-exports ] && . ~/.shell-exports
 [ -f ~/.shell-aliases ] && . ~/.shell-aliases
 [ -f ~/.shell-functions ] && . ~/.shell-functions

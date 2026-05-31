@@ -17,7 +17,6 @@ packer_compiled.lua
 lazy-lock.json
 # Generated configs in stow
 stow/nvim/.config/nvim/lua/palette.lua
-stow/starship/.config/starship.toml
 stow/kitty/.config/kitty/current-theme.conf
 stow/ghostty/.config/ghostty/theme.conf
 
@@ -35,3 +34,30 @@ theming/generated/*
 # System/OS files
 .DS_Store
 Thumbs.db
+
+# Repo-root convenience symlinks (stow targets live in stow/)
+/.bashrc
+/.shell-aliases
+/.shell-exports
+/.shell-functions
+
+# Accidental initramfs/UKI extract artifacts (never commit)
+/bin
+/sbin
+/lib
+/lib64
+/usr
+/var
+/etc
+/dev
+/proc
+/run
+/sys
+/new_root
+/kernel
+/init
+/init_functions
+/buildconfig
+/early_cpio
+/config
+/VERSION

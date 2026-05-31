@@ -21,6 +21,7 @@
   "nord14": "#A3BE8C",
   "nord15": "#B48EAD",
   "wallpaper": "theming/wallpapers/nord-city.png",
+  "crampack_palette": "mellow",
   "starship": {
     "success": "#A3BE8C",
     "error": "#BF616A",

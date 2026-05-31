@@ -8,12 +8,13 @@ function backup() {
     cp "$1" "$1.bak"
 }
 
-# OSC 7: Tell the terminal about the current working directory
-# This allows new tabs/windows to open in the same directory
-function _update_terminal_cwd() {
-    printf "\033]7;file://%s%s\a" "$HOST" "$PWD"
-}
+# OSC 7: Tell the terminal about the current working directory (zsh only)
+if [[ -n "$ZSH_VERSION" ]]; then
+    function _update_terminal_cwd() {
+        printf "\033]7;file://%s%s\a" "$HOST" "$PWD"
+    }
 
-autoload -Uz add-zsh-hook
-add-zsh-hook chpwd _update_terminal_cwd
-_update_terminal_cwd
+    autoload -Uz add-zsh-hook
+    add-zsh-hook chpwd _update_terminal_cwd
+    _update_terminal_cwd
+fi

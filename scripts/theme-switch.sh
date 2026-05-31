@@ -59,33 +59,26 @@ process_template() {
         -e "s/{{starship.error}}/$SS_ERROR/g" \
         -e "s/{{starship.directory}}/$SS_DIR/g" \
         "$template" > "${output}.tmp"
-    
-    case "$template" in
-        *.scss)
-            if command -v sass >/dev/null 2>&1; then
-                sass "${output}.tmp" "${output}.css"
-                echo "Compiled $output.css"
-            else
-                mv "${output}.tmp" "${output}.scss"
-                echo "sass not found, kept as scss."
-            fi
-            ;;
-        *.toml)
-            mv "${output}.tmp" "${output}.toml"
-            echo "Generated $output.toml"
-            ;;
-    esac
+
+    if command -v sass >/dev/null 2>&1; then
+        sass "${output}.tmp" "${output}.css"
+        echo "Compiled $output.css"
+    else
+        mv "${output}.tmp" "${output}.scss"
+        echo "sass not found, kept as scss."
+    fi
 }
 
 process_template "theming/templates/gtk.scss" "theming/generated/gtk"
-process_template "theming/templates/starship.toml" "theming/generated/starship"
 
-# Update Starship Config
+# Update Starship (Crampack preset palette)
+CRAMPACK_PALETTE=$(echo "$MERGED_PALETTE" | jq -r '.crampack_palette // "mellow"')
 SS_CFG="stow/starship/.config/starship.toml"
 if [ -f "$SS_CFG" ]; then
-    cp theming/generated/starship.toml "$SS_CFG"
+    sed -i "s/^palette = \".*\"/palette = \"$CRAMPACK_PALETTE\"/" "$SS_CFG"
+    cp "$SS_CFG" "$HOME/.config/starship.toml" 2>/dev/null || true
+    echo "Updated Starship Crampack palette: $CRAMPACK_PALETTE"
 fi
-cp theming/generated/starship.toml "$HOME/.config/starship.toml" 2>/dev/null || true
 
 # 3. Update Wallpaper
 if [ -n "$WALLPAPER" ] && [ -f "$WALLPAPER" ]; then

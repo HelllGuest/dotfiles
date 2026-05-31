@@ -30,6 +30,8 @@ This guide prioritizes:
 * laptop battery longevity
 * developer workflows
 
+> **Dotfiles:** After completing this guide, continue with [PHASE 27 — Dotfiles Setup](#phase-27--dotfiles-setup) or jump to the [dotfiles README](../README.md) for shell, theming, and maintenance.
+
 ---
 
 # PHASE 1 — BIOS / UEFI CONFIGURATION
@@ -466,8 +468,9 @@ passwd
 # Create User
 
 ```bash
-useradd -m -G wheel -s /bin/bash yourusername
+useradd -m -G wheel -s /bin/zsh yourusername
 passwd yourusername
+chsh -s /bin/zsh yourusername
 ```
 
 Enable sudo:
@@ -631,6 +634,22 @@ WaylandEnable=true
 ---
 
 # PHASE 11 — ZRAM
+
+**Option A — Dotfiles (recommended after cloning this repo):**
+
+```bash
+cd ~/dotfiles
+sudo stow -d stow -t / zram
+```
+
+If stow reports a conflict, remove the existing plain file first (only when content matches `stow/zram/etc/systemd/zram-generator.conf`):
+
+```bash
+sudo rm /etc/systemd/zram-generator.conf
+sudo stow -d ~/dotfiles/stow -t / zram
+```
+
+**Option B — Manual:**
 
 Create:
 
@@ -838,10 +857,14 @@ systemctl --user enable --now podman.socket
 
 Configure Docker compatibility:
 
+The dotfiles repo sets this in `~/.shell-exports`. If not using dotfiles yet:
+
 ```bash
-echo 'export DOCKER_HOST="unix://$XDG_RUNTIME_DIR/podman/podman.sock"' >> ~/.bashrc
-source ~/.bashrc
+mkdir -p ~/.config/secrets
+echo 'export DOCKER_HOST="unix://$XDG_RUNTIME_DIR/podman/podman.sock"' >> ~/.config/secrets/env
 ```
+
+Or append to `~/.shell-exports` after running `./stow-only.sh`.
 
 ---
 
@@ -1181,7 +1204,57 @@ sudo pacman -Rns $(pacman -Qtdq)
 
 ---
 
-# PHASE 27 — VERIFICATION
+---
+
+# PHASE 27 — DOTFILES SETUP
+
+Clone and install the Nord Cyberdeck dotfiles:
+
+```bash
+git clone https://github.com/helllguest/dotfiles.git ~/dotfiles
+cd ~/dotfiles
+./install.sh
+```
+
+This will:
+
+* Install packages from `packages/pacman.txt` (Zsh plugins, terminals, theming tools)
+* Stow configs to `$HOME` (Zsh, Bash, Neovim, Kitty, Ghostty, Starship, etc.)
+* Stow `zram` config to `/etc/systemd/` (requires sudo)
+* Apply the hostname profile (e.g. `profiles/thinkpad-x1.sh` on a ThinkPad X1)
+* Restore GNOME settings from `gnome/dconf-settings.ini`
+* Run privacy hardening and health checks
+
+Config-only (no package install, no root):
+
+```bash
+./stow-only.sh
+exec zsh
+```
+
+Install AUR packages listed in `packages/aur.txt` (requires an AUR helper):
+
+```bash
+yay -S --needed - < packages/aur.txt
+```
+
+Install Flatpaks:
+
+```bash
+flatpak install -y $(grep -v '^#' packages/flatpak.txt)
+```
+
+Apply a theme:
+
+```bash
+ts zukitwo    # or: ts nord / ts tokyo-night
+```
+
+See [README.md](../README.md) for shell setup, theming, and maintenance commands.
+
+---
+
+# PHASE 28 — VERIFICATION
 
 Verify Wayland:
 

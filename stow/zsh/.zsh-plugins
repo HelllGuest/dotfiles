@@ -3,31 +3,22 @@
 # 1. Path setup
 fpath=(/usr/share/zsh/site-functions $fpath)
 
-# 2. Load completions
-autoload -Uz compinit
-if [ "$(date +'%j')" != "$(stat -c '%y' ~/.zcompdump 2>/dev/null | date +'%j')" ]; then
-  compinit
-else
-  compinit -C
-fi
+# 2. History
+HISTFILE=~/.zsh_history
+HISTSIZE=50000
+SAVEHIST=50000
+setopt EXTENDED_HISTORY INC_APPEND_HISTORY SHARE_HISTORY HIST_IGNORE_ALL_DUPS HIST_REDUCE_BLANKS
 
-# 3. Completion Styling
-zstyle ':completion:*' menu select
-zstyle ':completion:*' list-colors "${(@s.:.)LS_COLORS}"
-zstyle ':completion:*' matcher-list 'm:{a-zA-Z}={A-Za-z}' 'r:|[._-]=* r:|=*' 'l:|=* r:|=*'
-zstyle ':completion:*' special-dirs true
-zstyle ':completion:*' verbose yes
-zstyle ':completion:*' group-name ''
-zstyle ':completion:*:descriptions' format '%B%d%b'
-zstyle ':completion:*:messages' format '%d'
-zstyle ':completion:*:warnings' format 'No matches for: %d'
-zstyle ':completion:*' use-cache on
-zstyle ':completion:*' cache-path "$HOME/.zcompcache"
+# 3. Real-time autocomplete (lists completions as you type; Tab to insert)
+[ -f /usr/share/zsh/plugins/zsh-autocomplete/zsh-autocomplete.plugin.zsh ] && \
+    source /usr/share/zsh/plugins/zsh-autocomplete/zsh-autocomplete.plugin.zsh
 
-# Fuzzy matching for mistyped filenames
-zstyle ':completion:*' completer _complete _match _approximate
-zstyle ':completion:*:approximate:*' max-errors 1 numeric
+# 4. Inline suggestions from history + completions (accept with → or End)
+ZSH_AUTOSUGGEST_STRATEGY=(history completion)
+ZSH_AUTOSUGGEST_HIGHLIGHT_STYLE='fg=240'
 
-# 4. Load Plugins (Order matters: syntax-highlighting should be last)
-[ -f /usr/share/zsh/plugins/zsh-autosuggestions/zsh-autosuggestions.zsh ] && source /usr/share/zsh/plugins/zsh-autosuggestions/zsh-autosuggestions.zsh
-[ -f /usr/share/zsh/plugins/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh ] && source /usr/share/zsh/plugins/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh
+# 5. Load Plugins (syntax-highlighting must be last)
+[ -f /usr/share/zsh/plugins/zsh-autosuggestions/zsh-autosuggestions.zsh ] && \
+    source /usr/share/zsh/plugins/zsh-autosuggestions/zsh-autosuggestions.zsh
+[ -f /usr/share/zsh/plugins/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh ] && \
+    source /usr/share/zsh/plugins/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh

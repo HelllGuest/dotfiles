@@ -1,9 +1,0 @@
-# Starship Template
-format = "$all"
-
-[character]
-success_symbol = "[➜]({{starship.success}} bold)"
-error_symbol = "[➜]({{starship.error}} bold)"
-
-[directory]
-style = "bold {{starship.directory}}"

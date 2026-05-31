@@ -1,5 +1,27 @@
 # Changelog
 
+## [1.10.1] - 2026-05-31
+- Fix i915 tuning for UKI/initramfs: kernel cmdline params and materialize modprobe.d symlinks.
+
+## [1.10.0] - 2026-05-31
+- ThinkPad X1 Yoga Gen 5 tuning: i915, kernel cmdline, Wayland env, sleep/logind.
+- Switched power stack to `thermald` + `power-profiles-daemon` (TLP removed).
+- Added `intel-media-driver`, VA-API, and system config stow package.
+
+## [1.9.1] - 2026-05-31
+- Expanded `install-fonts.sh` with 15 top Nerd Font packages for terminals and Crampack Starship.
+
+## [1.9.0] - 2026-05-31
+- Added **Crampack** Starship preset (Nerd Font standard) with palette sync via `ts`/`tt`.
+- Added `scripts/install-starship-crampack.sh` and upstream one-liner support.
+- Removed legacy `theming/templates/starship.toml` generator.
+
+## [1.8.0] - 2026-05-31
+- Enabled **zsh-autocomplete** for real-time, no-Tab completion menu.
+- Fixed Zsh history persistence (50k lines) and Bash shared-function guard.
+- Enhanced **zsh-autosuggestions** with history + completion strategies.
+- Updated all documentation: README, CONTRIBUTING, keybindings, hardened guide.
+
 ## [1.7.1] - 2026-05-31
 - Aligned GNOME dconf snapshot with live system (Default shell theme, wallpaper, battery display).
 - Added wallpaper to Zukitwo palette; fixed stow to target `$HOME` in install scripts.

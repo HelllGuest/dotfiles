@@ -5,6 +5,7 @@
   "foreground": "#eeeeee",
   "accent": "#4a79c7",
   "wallpaper": "theming/wallpapers/nord-city.png",
+  "crampack_palette": "blaze",
   "starship": {
     "success": "#73d216",
     "error": "#cc0000",

@@ -1,41 +1,77 @@
 #!/bin/bash
-
 # profiles/thinkpad-x1.sh
-# Specific optimizations for Lenovo ThinkPad hardware
+# ThinkPad X1 Yoga Gen 5 — Comet Lake-U, Intel UHD, convertible
 
-echo "Applying ThinkPad-specific optimizations..."
+echo "Applying ThinkPad X1 Yoga Gen 5 optimizations..."
 
-# 1. Thermal & Throttling (Fix for Intel MSR lock)
+# 1. MSR throttling fix (AUR: throttled)
 if command -v throttled >/dev/null 2>&1; then
-    echo "Enabling throttled service..."
-    sudo systemctl enable --now throttled
+    echo "Enabling throttled..."
+    sudo systemctl enable --now throttled || true
 fi
 
-# 2. Fan Control
-if [ -f "/etc/thinkfan.conf" ]; then
+# 2. DPTF thermal management (may exit on ThinkPads with DYTC — throttled covers MSR)
+if command -v thermald >/dev/null 2>&1; then
+    echo "Enabling thermald..."
+    sudo systemctl unmask thermald 2>/dev/null || true
+    sudo systemctl enable thermald 2>/dev/null || true
+    if ! sudo systemctl start thermald 2>/dev/null; then
+        echo "Note: thermald unsupported with thinkpad_acpi DYTC on this model; throttled remains primary."
+    fi
+fi
+
+# 3. GNOME power profiles (conflicts with TLP — do not run both)
+if systemctl is-active --quiet tlp 2>/dev/null; then
+    echo "Disabling TLP (use power-profiles-daemon with GNOME)..."
+    sudo systemctl disable --now tlp || true
+fi
+if command -v powerprofilesctl >/dev/null 2>&1; then
+    echo "Enabling power-profiles-daemon..."
+    sudo systemctl unmask power-profiles-daemon 2>/dev/null || true
+    sudo systemctl enable --now power-profiles-daemon || true
+fi
+
+# 4. Tablet mode: auto-rotate + on-screen keyboard
+if pacman -Q iio-sensor-proxy >/dev/null 2>&1; then
+    echo "Enabling iio-sensor-proxy..."
+    sudo systemctl enable --now iio-sensor-proxy || true
+fi
+
+# 5. Fan control (optional — requires /etc/thinkfan.conf)
+if [ -f /etc/thinkfan.conf ] && command -v thinkfan >/dev/null 2>&1; then
     echo "Enabling thinkfan..."
-    # Note: Requires manual config of /etc/thinkfan.conf
-    sudo systemctl enable --now thinkfan
+    sudo systemctl enable --now thinkfan || true
 fi
 
-# 3. Power Management (Battery Thresholds)
-if command -v tlp >/dev/null 2>&1; then
-    echo "Configuring TLP..."
-    sudo systemctl enable --now tlp
-    # Example battery thresholds (Start charging at 75%, stop at 80%)
-    # sudo tlp setcharge 75 80
-fi
-
-# 4. Firmware updates
+# 6. Firmware updates
 if command -v fwupdmgr >/dev/null 2>&1; then
     echo "Refreshing firmware metadata..."
-    sudo fwupdmgr get-updates || true
+    sudo fwupdmgr refresh || true
 fi
 
-# 5. Thunderbolt
+# 7. Thunderbolt
 if command -v boltctl >/dev/null 2>&1; then
-    echo "Enabling bolt (Thunderbolt management)..."
-    sudo systemctl enable --now bolt
+    echo "Enabling bolt..."
+    sudo systemctl enable --now bolt || true
 fi
 
-echo "ThinkPad optimizations applied."
+# 8. Materialize modprobe.d files (stow symlinks break in initramfs)
+for conf in /etc/modprobe.d/i915.conf; do
+    if [ -L "$conf" ]; then
+        echo "Materializing $conf for mkinitcpio..."
+        target=$(readlink -f "$conf")
+        tmp=$(mktemp)
+        cp "$target" "$tmp"
+        sudo cp "$tmp" "$conf"
+        rm -f "$tmp"
+    fi
+done
+
+# 9. Rebuild UKI/initramfs when kernel cmdline changed
+if [ -f /etc/kernel/cmdline ] && command -v mkinitcpio >/dev/null 2>&1; then
+    echo "Rebuilding initramfs/UKI for new kernel cmdline..."
+    sudo mkinitcpio -P || true
+fi
+
+echo "ThinkPad X1 Yoga optimizations applied."
+echo "Reboot recommended for i915 module options and mem_sleep_default=s2idle."

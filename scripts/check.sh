@@ -30,6 +30,12 @@ for link in "${CHECK_LINKS[@]}"; do
 done
 
 # 3. Check for fonts
+NERD_FONT_COUNT=$(fc-list : family | grep -ci 'Nerd Font' || true)
+if [ "$NERD_FONT_COUNT" -gt 0 ]; then
+    echo "✓ Nerd Fonts installed ($NERD_FONT_COUNT families)"
+else
+    echo "✗ Nerd Fonts missing — run scripts/install-fonts.sh"
+fi
 if fc-list : family | grep -qi "JetBrainsMono"; then
     echo "✓ JetBrainsMono Nerd Font is installed"
 else
