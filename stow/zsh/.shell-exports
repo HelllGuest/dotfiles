@@ -1,39 +1,74 @@
-# exports.zsh
+# exports — shared zsh/bash environment
+
+export XDG_CONFIG_HOME="${XDG_CONFIG_HOME:-$HOME/.config}"
+export XDG_DATA_HOME="${XDG_DATA_HOME:-$HOME/.local/share}"
+export XDG_CACHE_HOME="${XDG_CACHE_HOME:-$HOME/.cache}"
+export XDG_STATE_HOME="${XDG_STATE_HOME:-$HOME/.local/state}"
+
 export EDITOR='nvim'
 export VISUAL='nvim'
-export PAGER='less'
-export LESS='-RF --mouse --wheel-lines=3'
-export PATH="$HOME/.local/bin:$PATH"
+export GPG_TTY=$(tty)
+export LESSHISTFILE=-
+
+if command -v bat >/dev/null 2>&1; then
+    export PAGER='bat --paging=always'
+    export MANPAGER='sh -c "col -bx | bat --language=man --style=plain"'
+    export MANROFF_OPT='-c'
+else
+    export PAGER='less'
+    export LESS='-RF --mouse --wheel-lines=3'
+fi
+
+# Wayland (also in /etc/environment.d on ThinkPad profile)
+export MOZ_ENABLE_WAYLAND=1
+export ELECTRON_OZONE_PLATFORM_HINT=wayland
+export QT_QPA_PLATFORM=wayland
+export SDL_VIDEODRIVER=wayland
+export LIBVA_DRIVER_NAME=iHD
+
+# PATH
+_prepend_path() { [[ ":$PATH:" != *":$1:"* ]] && export PATH="$1:$PATH"; }
+if [[ -n "${ZSH_VERSION:-}" ]]; then
+    typeset -U path 2>/dev/null || true
+fi
+_prepend_path "$HOME/.local/bin"
+_prepend_path "$HOME/.cargo/bin"
+_prepend_path "$HOME/go/bin"
+_prepend_path "${PNPM_HOME:-$HOME/.local/share/pnpm}"
+_prepend_path "$HOME/.npm-global/bin"
 
 # Android SDK
 export ANDROID_HOME="$HOME/Android/Sdk"
-export PATH="$ANDROID_HOME/platform-tools:$PATH"
-export PATH="$ANDROID_HOME/emulator:$PATH"
-export PATH="$ANDROID_HOME/cmdline-tools/latest/bin:$PATH"
-export PATH="$ANDROID_HOME/tools/bin:$PATH"
+_prepend_path "$ANDROID_HOME/platform-tools"
+_prepend_path "$ANDROID_HOME/emulator"
+_prepend_path "$ANDROID_HOME/cmdline-tools/latest/bin"
+_prepend_path "$ANDROID_HOME/tools/bin"
 
-# Disable Telemetry for various tools
+# Go
+export GOPATH="$HOME/go"
+export GOBIN="$HOME/go/bin"
+
+# Rust
+[[ -f "$HOME/.cargo/env" ]] && source "$HOME/.cargo/env"
+
+# Podman docker socket
+export DOCKER_HOST="unix://${XDG_RUNTIME_DIR}/podman/podman.sock"
+
+# Disable Telemetry
 export DOTNET_CLI_TELEMETRY_OPTOUT=1
 export POWERSHELL_TELEMETRY_OPTOUT=1
 export AZURE_CORE_COLLECT_TELEMETRY=0
 export STACK_TELEMETRY=0
-export DOCKER_HOST="unix://$XDG_RUNTIME_DIR/podman/podman.sock"
-export PATH="$HOME/.npm-global/bin:$PATH"
-export PATH="$HOME/.cargo/bin:$PATH"
-
-# Ultimate Telemetry Opt-Outs
-export DO_NOT_TRACK=1                   # Generic standard (Gatsby, Next.js, etc.)
-export NEXT_TELEMETRY_DISABLED=1        # Next.js
-export GATSBY_TELEMETRY_DISABLED=1      # Gatsby
-export ASTRO_TELEMETRY_DISABLED=1       # Astro
-export STRIPE_CLI_TELEMETRY_OPTOUT=1    # Stripe CLI
-export NUXT_TELEMETRY_DISABLED=1        # Nuxt.js
-export ANGULAR_DISABLE_CLI_PROMPTS=1    # Angular
-export HOMEBREW_NO_ANALYTICS=1          # Homebrew
-export VUE_CLI_TELEMETRY_OPTOUT=1       # Vue CLI
-export SAM_CLI_TELEMETRY=0              # AWS SAM
-export AZURE_CORE_COLLECT_TELEMETRY=0   # Azure CLI
-export STACK_TELEMETRY=0                # Haskell Stack
-export CHECKPOINT_DISABLE=1             # HashiCorp (Terraform, Packer)
-export ANTHROPIC_TELEMETRY=false        # Claude CLI
-export GOOGLE_API_USE_CLIENT_CERTIFICATE=false # Random Google SDK noise
+export DO_NOT_TRACK=1
+export NEXT_TELEMETRY_DISABLED=1
+export GATSBY_TELEMETRY_DISABLED=1
+export ASTRO_TELEMETRY_DISABLED=1
+export STRIPE_CLI_TELEMETRY_OPTOUT=1
+export NUXT_TELEMETRY_DISABLED=1
+export ANGULAR_DISABLE_CLI_PROMPTS=1
+export HOMEBREW_NO_ANALYTICS=1
+export VUE_CLI_TELEMETRY_OPTOUT=1
+export SAM_CLI_TELEMETRY=0
+export CHECKPOINT_DISABLE=1
+export ANTHROPIC_TELEMETRY=false
+export GOOGLE_API_USE_CLIENT_CERTIFICATE=false

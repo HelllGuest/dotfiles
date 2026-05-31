@@ -1,8 +1,9 @@
 blur-my-shell@aunetx
-just-perfection-desktop@just-perfection
-tiling-assistant@leleat-on-github
-dash-to-dock@micxgx.gmail.com
 caffeine@patapon.info
+appindicatorsupport@rgcjonas.gmail.com
+tactile@lundal.io
+just-perfection-desktop@just-perfection
 user-theme@gnome-shell-extensions.gcampax.github.com
-burn-my-windows@schneegans.github.com
-light-style@gnome-shell-extensions.gcampax.github.com
+Vitals@CoreCoding.com
+gestureImprovements@gestures
+nightthemeswitcher@romainvigier.fr

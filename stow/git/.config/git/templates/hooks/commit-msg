@@ -1,0 +1,36 @@
+#!/usr/bin/env bash
+# Enforces Conventional Commits — skip merge/fixup/squash
+
+COMMIT_MSG_FILE="$1"
+FIRST_LINE=$(grep -v '^#' "$COMMIT_MSG_FILE" | head -1)
+
+if echo "$FIRST_LINE" | grep -qE "^(Merge|Revert|fixup!|squash!)"; then
+  exit 0
+fi
+
+if [[ -z "${FIRST_LINE// /}" ]]; then
+  exit 0
+fi
+
+PATTERN="^(feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert)(\(.+\))?(!)?: .{1,100}$"
+
+if ! echo "$FIRST_LINE" | grep -qE "$PATTERN"; then
+  echo ""
+  echo "  ✗ Commit message does not follow Conventional Commits format."
+  echo ""
+  echo "  Format:  type(scope)!: description"
+  echo "  Example: feat(auth): add JWT refresh token rotation"
+  echo ""
+  echo "  Types: feat fix docs style refactor perf test build ci chore revert"
+  echo ""
+  echo "  Your message: $FIRST_LINE"
+  echo ""
+  exit 1
+fi
+
+DESC=$(echo "$FIRST_LINE" | sed 's/^[^:]*: //')
+if echo "$DESC" | grep -qE "^[A-Z]"; then
+  echo "  ⚠ Warning: description should start lowercase (got: '$DESC')"
+fi
+
+exit 0

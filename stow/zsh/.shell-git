@@ -1,0 +1,34 @@
+# git.sh — extended git helpers (zsh + bash)
+
+# forgit (zsh via zinit; bash via AUR package if installed)
+export FORGIT_NO_ALIASES=1
+export FORGIT_LOG_GRAPH_ENABLE=true
+export FORGIT_COPY_CMD='wl-copy'
+
+if [[ -n "${ZSH_VERSION:-}" ]]; then
+    : # forgit loaded via zinit in .zsh-plugins
+elif [[ -f /usr/share/zsh/site-functions/forgit.plugin.zsh ]]; then
+    # shellcheck disable=SC1091
+    source /usr/share/zsh/site-functions/forgit.plugin.zsh
+fi
+
+_forgit_ready() {
+    whence forgit::add &>/dev/null 2>&1 || declare -f forgit::add &>/dev/null 2>&1
+}
+
+if _forgit_ready; then
+    alias gfga='forgit::add'
+    alias gfgd='forgit::diff'
+    alias gfglo='forgit::log'
+    alias gfgclean='forgit::clean'
+    alias gfgrb='forgit::rebase'
+    alias gfgst='forgit::stash show'
+    alias gfgco='forgit::checkout::file'
+    alias gfgcob='forgit::checkout::branch'
+    alias gfgcoc='forgit::checkout::commit'
+fi
+
+# Dotfiles repo helper
+dot() {
+    git --git-dir="$HOME/dotfiles/.git" --work-tree="$HOME/dotfiles" "$@"
+}

@@ -1,5 +1,38 @@
 # Changelog
 
+## [1.16.0] - 2026-05-31
+- GNOME session: workspaces, touchpad, keyboard repeat, night light (Dubai), power/lid rules.
+- Extensions: Blur My Shell, Just Perfection, Tactile, Vitals, Gesture Improvements, Night Theme Switcher.
+- Catppuccin GTK day/night stack; `gnome/dconf/user.conf` + `extensions.conf`.
+- X1 Yoga tablet mode handler (`yoga-tablet-mode.service`) via iio-sensor-proxy + lid state.
+
+## [1.15.0] - 2026-05-31
+- Full Lazy.nvim stack: blink.cmp, Mason LSP, conform, treesitter, telescope, flash, ufo, noice, DAP, neotest.
+- Modular layout under `lua/config/` and `lua/plugins/`; `scripts/nvim-setup.sh` for headless plugin/parser sync.
+- Catppuccin colorscheme + palette.lua overlay; vim-kitty-navigator for kitty split navigation.
+
+## [1.14.0] - 2026-05-31
+- Global git config: rebase stack, rerere, histogram diff, delta side-by-side, URL shorthands.
+- Global gitignore, conditional work/dev includes, commit hooks (Conventional Commits, branch prefix, pre-push).
+- `scripts/git-setup.sh` for identity, GPG/SSH signing, hooks, and maintenance timer; delta colors synced via `theme-switch.sh`.
+
+## [1.13.0] - 2026-05-31
+- GDM login screen: Wayland-only, greeter dconf (no user list, fingerprint-ready), solid palette bg.
+- Systemd GDM override (OOM, VA-API iHD, restart) and Intel udev Wayland rule for 8086:9b41.
+- `scripts/gdm-setup.sh` and optional `scripts/fingerprint-setup.sh`; GDM bg synced via `theme-switch.sh`.
+- Skipped fragile gnome-shell.css patching (GNOME 50 path changes).
+
+## [1.12.0] - 2026-05-31
+- Production kitty/ghostty configs: performance tuning, splits, quick terminal, paste protection.
+- Full 16-color terminal themes synced via `theme-switch.sh`.
+- Added GNOME Console setup script and Super+Return → kitty.
+
+## [1.11.0] - 2026-05-31
+- Integrated dev shell stack from external config: zinit, atuin, fzf-tab, forgit.
+- Added modern CLI aliases (eza, bat, rg, fd, etc.) and fzf git/file helpers.
+- Enhanced Crampack Starship with git metrics, runtimes, battery, cmd duration.
+- Added `stow/atuin/` and `.shell-git`; optional ble.sh for bash.
+
 ## [1.10.1] - 2026-05-31
 - Fix i915 tuning for UKI/initramfs: kernel cmdline params and materialize modprobe.d symlinks.
 

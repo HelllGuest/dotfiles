@@ -1,11 +1,17 @@
 # .zshrc
+
+[[ $- != *i* ]] && return
+
 source ~/.shell-exports
+source ~/.zsh-plugins
 source ~/.shell-aliases
 source ~/.shell-functions
-source ~/.zsh-plugins
+source ~/.shell-git
 
-# Source secrets if they exist
 [ -f ~/.config/secrets/env ] && source ~/.config/secrets/env
 
-# Starship prompt
-eval "$(starship init zsh)"
+if command -v starship >/dev/null 2>&1; then
+    eval "$(starship init zsh)"
+fi
+
+[[ -f ~/.zshrc.local ]] && source ~/.zshrc.local

@@ -28,25 +28,44 @@ Zsh is the primary shell. Bash is fully supported for scripts and fallback sessi
 
 Both `~/.zshrc` and `~/.bashrc` source these files.
 
-### Zsh plugins (`.zsh-plugins`)
+### Zsh stack (`.zsh-plugins` via **zinit**)
 
-| Plugin | Role |
-|--------|------|
-| **zsh-autocomplete** | Real-time completion menu as you type (no Tab required) |
-| **zsh-autosuggestions** | Ghost-text suggestions from history and completions |
-| **zsh-syntax-highlighting** | Command syntax colors (loaded last) |
+| Tool | Role |
+|------|------|
+| **zinit** (turbo) | Plugin manager, deferred load |
+| **fast-syntax-highlighting** | Syntax colors (Wayland-safe) |
+| **zsh-autosuggestions** | Inline history suggestions |
+| **zsh-completions** | Extended completion database |
+| **fzf-tab** | fzf completion picker with previews |
+| **autopair** | Auto-close brackets/quotes |
+| **you-should-use** | Alias usage hints |
+| **forgit** | fzf git UI |
 
-**Key bindings (Zsh):**
+**History:** **atuin** replaces `Ctrl+R` (sqlite, fuzzy, session filter on ↑). Config: `stow/atuin/.config/atuin/config.toml`.
 
-| Key | Action |
-|-----|--------|
-| Type | Show completions automatically |
-| `Tab` | Insert top completion |
-| `↑` / `↓` | History / completion menu navigation |
-| `→` or `End` | Accept ghost suggestion |
-| `Ctrl+R` | Incremental history search |
+**Shared files:** `.shell-{exports,aliases,functions,git}` sourced by both Zsh and Bash.
 
-History: 50,000 lines in `~/.zsh_history` with shared sessions across terminals.
+### Bash stack
+
+- **ble.sh** (optional AUR) — syntax highlighting and autosuggestions for bash
+- Same **fzf**, **zoxide**, **atuin**, **direnv**, **starship** as zsh
+
+### Key functions
+
+| Command | Action |
+|---------|--------|
+| `fe` | Fuzzy file → nvim |
+| `rge <pat>` | ripgrep → jump to line in nvim |
+| `gai` / `gshow` / `gco` | Interactive git add / log / branch checkout |
+| `fcd` | Fuzzy directory jump |
+| `Ctrl+R` | atuin history search |
+| `Ctrl+T` / `Alt+C` | fzf file / directory picker |
+
+Modern aliases (when installed): `eza`, `bat`, `rg`, `fd`, `dust`, `duf`, `delta`, etc.
+
+### Zsh plugins (legacy note)
+
+Pacman `zsh-autocomplete` removed in v1.11 — replaced by zinit + fzf-tab.
 
 ### Starship (Crampack)
 
@@ -167,17 +186,29 @@ The health check (`scripts/check.sh`) validates these during installation:
 
 **Core:** `stow`, `zsh`, `starship`, `neovim`, `rclone`, `jq`, `dart-sass`, `zram-generator`
 
-**Zsh plugins:** `zsh-autocomplete`, `zsh-autosuggestions`, `zsh-syntax-highlighting`
+**Zsh:** zinit bootstraps on first launch; plugins load via `.zsh-plugins`
 
-**Shell:** `bash-completion`
+**Shell tools:** `atuin`, `fzf`, `fd`, `ripgrep`, `bat`, `eza`, `zoxide`, `direnv`, `git-delta`
 
-**Terminals:** `kitty`, `ghostty`
+**Optional AUR:** `blesh-git`, `curlie`, `forgit`
+
+**Terminals:** `kitty` (primary), `ghostty`, `gnome-console` (kgx quick terminal)
+
+Run `scripts/gnome-console-setup.sh` for Console dconf + Super+Return → kitty.
+
+**GDM:** `scripts/gdm-setup.sh` deploys Wayland login screen config to `/etc` (requires sudo). Optional fingerprint: `scripts/fingerprint-setup.sh`. Restart GDM or reboot to see greeter changes.
+
+**Git:** `stow/git/` + `scripts/git-setup.sh` — delta pager, rebase defaults, global ignore, optional hooks and signing. URL shorthands: `git clone gh:user/repo`.
+
+**Neovim:** `scripts/nvim-setup.sh` — Lazy.nvim plugins, Treesitter parsers, Mason LSP on first launch. Leader = Space.
+
+**GNOME session:** `scripts/gnome-session-setup.sh` — dconf profile, extensions, Catppuccin day/night, X1 Yoga tablet handler. Super+1–4 workspaces, Super+T Tactile.
 
 **Fonts:** Run `scripts/install-fonts.sh` for top Nerd Fonts (JetBrains Mono, Meslo, FiraCode, Cascadia, Iosevka, etc.)
 
 **Theming:** `papirus-icon-theme`; AUR `zukitwo-themes-git` for GTK theme
 
-**GNOME extensions:** `user-theme`, `blur-my-shell`, `open-bar` (see `gnome/extensions.txt`)
+**GNOME extensions:** blur-my-shell, caffeine, tactile, vitals, gesture-improvements, nightthemeswitcher (see `gnome/extensions.txt`, AUR in `packages/aur.txt`)
 
 ---
 

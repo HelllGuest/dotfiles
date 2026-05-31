@@ -1,0 +1,30 @@
+# atuin — shell history manager (shared zsh/bash)
+
+dialect = "uk"
+auto_sync = false
+update_check = false
+search_mode = "fuzzy"
+filter_mode = "global"
+filter_mode_shell_up_arrow = "session"
+
+style = "compact"
+show_preview = true
+max_preview_height = 4
+show_help = false
+invert = false
+exit_mode = "return-query"
+
+keymap_mode = "emacs"
+
+history_filter = [
+  "^ls",
+  "^ll",
+  "^la",
+  "^cd",
+  "^pwd",
+  "^clear",
+  "^cl$",
+  "^q$",
+  "^exit$",
+  "^history",
+]

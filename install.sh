@@ -46,6 +46,8 @@ for dir in */; do
         else
             echo "Skipping $dir (requires GNU Stow + sudo)."
         fi
+    elif [ "$dir" = "gdm" ]; then
+        echo "Skipping gdm (handled by scripts/gdm-setup.sh)."
     elif [ "$STOW_CMD" == "stow" ]; then
         stow -R -t "$HOME" "$dir"
     else
@@ -54,10 +56,37 @@ for dir in */; do
 done
 cd ..
 
-# 3. Restore GNOME settings
-if [ -f "gnome/dconf-settings.ini" ]; then
-    echo "Restoring GNOME settings..."
+# 2.1 Import shell history into atuin
+if command -v atuin >/dev/null 2>&1; then
+    atuin import auto 2>/dev/null && echo "Atuin history imported." || true
+fi
+
+# 3. Restore GNOME session (dconf + extensions + tablet handler)
+if [ -f "scripts/gnome-session-setup.sh" ]; then
+    bash scripts/gnome-session-setup.sh || echo "GNOME session setup skipped."
+elif [ -f "gnome/dconf-settings.ini" ]; then
+    echo "Restoring GNOME settings (legacy ini)..."
     dconf load /org/gnome/ < gnome/dconf-settings.ini
+fi
+
+# 3.0 GNOME Console (kgx app settings only — shortcuts in gnome/dconf/user.conf)
+if [ -f "scripts/gnome-console-setup.sh" ]; then
+    SKIP_GNOME_MEDIA_KEYS=1 bash scripts/gnome-console-setup.sh || echo "GNOME Console setup skipped."
+fi
+
+# 3.2 GDM login screen (Wayland, greeter dconf, udev)
+if [ -f "scripts/gdm-setup.sh" ]; then
+    bash scripts/gdm-setup.sh || echo "GDM setup skipped."
+fi
+
+# 3.3 Git global config (interactive: identity, hooks, signing)
+if [ -f "scripts/git-setup.sh" ]; then
+    bash scripts/git-setup.sh || echo "Git setup skipped."
+fi
+
+# 3.4 Neovim (lazy.nvim, treesitter parsers)
+if [ -f "scripts/nvim-setup.sh" ]; then
+    bash scripts/nvim-setup.sh || echo "Neovim setup skipped."
 fi
 
 # 4. Set initial wallpaper

@@ -15,26 +15,37 @@ Defined in `stow/zsh/.shell-aliases` (shared by Zsh and Bash):
 | `v` | `nvim` |
 | `as` | `flatpak run com.google.AndroidStudio` |
 | `ff` | `fastfetch` |
-| `ls` | `ls --color=auto` |
-| `grep` | `grep --color=auto` |
+
+Modern CLI aliases (when installed): `eza`, `bat`, `rg`, `fd`, etc.
+
+---
+
+## Zsh / Bash productivity
+
+| Key / Command | Action |
+|---------------|--------|
+| `Ctrl+R` | **atuin** fuzzy history search |
+| `Ctrl+T` | fzf file picker |
+| `Alt+C` | fzf directory jump |
+| `fe` | Fuzzy open file in nvim |
+| `rge <pat>` | Ripgrep + open match in nvim |
+| `gai` / `gshow` / `gco` | Interactive git add / log / branch checkout |
+| `fcd` | Fuzzy cd with tree preview |
+
+Zsh also uses **fzf-tab** and **forgit** (`gfga`, `gfglo`, etc.).
 
 ---
 
 ## Zsh Key Bindings
 
-Configured in `stow/zsh/.zsh-plugins` via **zsh-autocomplete** and **zsh-autosuggestions**:
+Configured in `stow/zsh/.zsh-plugins` via **zinit** plugins:
 
 | Key | Action |
 |-----|--------|
-| *(type)* | Show completion menu automatically |
-| `Tab` | Insert top completion |
-| `Shift+Tab` | Expand word / previous completion |
-| `↑` / `↓` | Navigate history or completion menu |
-| `Alt+↑` / `Alt+↓` | Switch completion / history sections |
-| `→` or `End` | Accept full ghost suggestion |
-| `Ctrl+R` | Incremental history search |
-| `Ctrl+S` | Forward history / menu search |
-| `PgUp` / `PgDn` | Scroll completion menu |
+| `Tab` / fzf-tab | Completion picker with previews |
+| `↑` / `↓` | Prefix history search |
+| `→` or `End` | Accept ghost suggestion |
+| `Ctrl+R` | atuin history (replaces default) |
 
 ---
 
@@ -48,7 +59,7 @@ Configured in `stow/bash/.inputrc`:
 | `Shift+Tab` | Reverse menu-complete |
 | `↑` / `↓` | Prefix history search (match typed text) |
 
-Command completion requires `Tab` (no real-time menu in Bash).
+Optional **ble.sh** adds syntax highlighting and autosuggestions.
 
 ---
 
@@ -63,36 +74,65 @@ tt               # Cycle to next palette
 
 ---
 
-## GNOME Defaults
+## Terminal (Kitty)
 
-Standard GNOME 50 shortcuts apply. Common ones:
+Primary terminal — **Super+Return** or `kitty`.
+
+| Shortcut | Action |
+|----------|--------|
+| `Ctrl+Shift+T` | New tab (cwd) |
+| `Ctrl+Shift+Enter` | New window (cwd) |
+| `Ctrl+Shift+\` | Vertical split |
+| `Ctrl+Shift+-` | Horizontal split |
+| `Ctrl+H/J/K/L` | Navigate splits (vim-style) |
+| `Ctrl+Shift+H` | Scrollback in bat |
+| `Ctrl+Shift+G` | Last command output only |
+| `Ctrl+Shift+E` | URL hints |
+| `Ctrl+Shift+P` then `F` | Path hints |
+| `Ctrl+Shift+P` then `W` | Word hints |
+
+Dev workspace:
+
+```bash
+kitty --session ~/.config/kitty/sessions/dev.conf
+```
+
+Colors sync via `ts` / `tt` → `current-theme.conf`.
+
+---
+
+## Terminal (Ghostty)
+
+| Shortcut | Action |
+|----------|--------|
+| `Ctrl+`` ` | Quick drop-down terminal (top, 40%) |
+| `Ctrl+Shift+D` / `E` | Vertical / horizontal split |
+| `Ctrl+Shift+I` | Inspector |
+| `Ctrl+Shift+H/J/K/L` | Split navigation |
+
+Multiline paste protection enabled. Colors sync via `theme.conf`.
+
+---
+
+## GNOME Console (kgx)
+
+Quick throwaway terminal — `kgx`. Tuned by `scripts/gnome-console-setup.sh` (100k scrollback, night theme, 5% transparency).
+
+---
+
+## GNOME Defaults
 
 | Shortcut | Action |
 |----------|--------|
 | `Super` | Activities overview |
 | `Super+Tab` | Switch applications |
-| `Super+\`` | Switch windows of same app |
 | `Super+L` | Lock screen |
 | `Super+Shift+S` | Screenshot (region) |
-| `Ctrl+Alt+T` | New terminal (if bound in Settings → Keyboard) |
-
-Export or restore custom GNOME keybindings:
+| `Super+Return` | **kitty** (via custom binding) |
 
 ```bash
-~/dotfiles/scripts/backup-gsettings.sh    # backup all GNOME settings
-~/dotfiles/scripts/restore-gsettings.sh   # restore from gnome/dconf-settings.ini
+~/dotfiles/scripts/backup-gsettings.sh
+~/dotfiles/scripts/restore-gsettings.sh
 ```
 
----
-
-## Terminal (Kitty)
-
-From `stow/kitty/.config/kitty/kitty.conf`:
-
-| Shortcut | Action |
-|----------|--------|
-| `Ctrl+Shift+T` | New tab in current directory |
-| `Ctrl+Shift+Enter` | New window in current directory |
-| `Ctrl+Shift+T` (kitty_mod) | Same via kitty modifier |
-
-OSC 7 CWD reporting is enabled in both Zsh and Bash so new tabs open in the same directory.
+OSC 7 CWD reporting is enabled in Zsh and Bash so new tabs open in the same directory.

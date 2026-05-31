@@ -1,24 +1,109 @@
-# .zsh-plugins
+# .zsh-plugins — zinit stack + tool hooks
 
-# 1. Path setup
 fpath=(/usr/share/zsh/site-functions $fpath)
 
-# 2. History
-HISTFILE=~/.zsh_history
-HISTSIZE=50000
-SAVEHIST=50000
-setopt EXTENDED_HISTORY INC_APPEND_HISTORY SHARE_HISTORY HIST_IGNORE_ALL_DUPS HIST_REDUCE_BLANKS
+# ── Zinit ───────────────────────────────────────────────────
+ZINIT_HOME="${XDG_DATA_HOME:-$HOME/.local/share}/zinit/zinit.git"
+if [[ ! -d "$ZINIT_HOME" ]]; then
+    mkdir -p "$(dirname "$ZINIT_HOME")"
+    git clone https://github.com/zdharma-continuum/zinit.git "$ZINIT_HOME"
+fi
+# shellcheck disable=SC1091
+source "${ZINIT_HOME}/zinit.zsh"
 
-# 3. Real-time autocomplete (lists completions as you type; Tab to insert)
-[ -f /usr/share/zsh/plugins/zsh-autocomplete/zsh-autocomplete.plugin.zsh ] && \
-    source /usr/share/zsh/plugins/zsh-autocomplete/zsh-autocomplete.plugin.zsh
+zinit wait lucid light-mode for \
+  atload"_zsh_autosuggest_start" \
+    zsh-users/zsh-autosuggestions \
+  blockf atpull'zinit creinstall -q .' \
+    zsh-users/zsh-completions \
+  atinit"ZINIT[COMPINIT_OPTS]=-C; zicompinit; zicdreplay" \
+    zdharma-continuum/fast-syntax-highlighting \
+  pick"autopair.zsh" \
+    hlissner/zsh-autopair
 
-# 4. Inline suggestions from history + completions (accept with → or End)
-ZSH_AUTOSUGGEST_STRATEGY=(history completion)
-ZSH_AUTOSUGGEST_HIGHLIGHT_STYLE='fg=240'
+zinit wait lucid for \
+  Aloxaf/fzf-tab \
+  MichaelAquilina/zsh-you-should-use \
+  wfxr/forgit \
+  djui/alias-tips
 
-# 5. Load Plugins (syntax-highlighting must be last)
-[ -f /usr/share/zsh/plugins/zsh-autosuggestions/zsh-autosuggestions.zsh ] && \
-    source /usr/share/zsh/plugins/zsh-autosuggestions/zsh-autosuggestions.zsh
-[ -f /usr/share/zsh/plugins/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh ] && \
-    source /usr/share/zsh/plugins/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh
+# ── Completion ──────────────────────────────────────────────
+autoload -Uz compinit
+if [[ -n ${ZDOTDIR:-$HOME}/.zcompdump(#qN.mh+24) ]]; then
+    compinit
+else
+    compinit -C
+fi
+
+zstyle ':completion:*' menu select
+zstyle ':completion:*' matcher-list 'm:{a-z}={A-Z}' 'r:|=*' 'l:|=* r:|=*'
+zstyle ':completion:*' list-colors "${(s.:.)LS_COLORS}"
+zstyle ':completion:*:descriptions' format '[%d]'
+zstyle ':completion:*:git-checkout:*' sort false
+zstyle ':fzf-tab:complete:cd:*' fzf-preview 'eza --tree --level=2 --color=always $realpath 2>/dev/null || ls -la $realpath'
+zstyle ':fzf-tab:complete:*:*' fzf-preview 'bat --color=always --style=numbers --line-range=:50 $realpath 2>/dev/null || eza --color=always $realpath 2>/dev/null || ls -la $realpath'
+zstyle ':fzf-tab:*' switch-group ',' '.'
+
+# ── History (file backup; atuin is primary search) ────────────
+HISTFILE="${XDG_STATE_HOME:-$HOME/.local/state}/zsh/history"
+HISTSIZE=100000
+SAVEHIST=100000
+mkdir -p "$(dirname "$HISTFILE")"
+
+setopt HIST_IGNORE_ALL_DUPS HIST_FIND_NO_DUPS HIST_IGNORE_SPACE
+setopt HIST_SAVE_NO_DUPS SHARE_HISTORY HIST_REDUCE_BLANKS EXTENDED_HISTORY
+
+if command -v atuin >/dev/null 2>&1; then
+    eval "$(atuin init zsh --disable-up-arrow)"
+fi
+
+# ── Options ─────────────────────────────────────────────────
+setopt AUTO_CD AUTO_PUSHD PUSHD_IGNORE_DUPS PUSHD_SILENT
+setopt CORRECT INTERACTIVE_COMMENTS GLOB_DOTS EXTENDED_GLOB NO_BEEP COMBINING_CHARS
+
+# ── Key bindings ────────────────────────────────────────────
+bindkey -e
+bindkey '^[[A' history-search-backward
+bindkey '^[[B' history-search-forward
+bindkey '^[^[[C' forward-word
+bindkey '^[^[[D' backward-word
+bindkey '^[[H' beginning-of-line
+bindkey '^[[F' end-of-line
+bindkey '^[[3~' delete-char
+bindkey '^[[1;5C' forward-word
+bindkey '^[[1;5D' backward-word
+
+# ── fzf ─────────────────────────────────────────────────────
+if command -v fzf >/dev/null 2>&1; then
+    source <(fzf --zsh)
+    export FZF_DEFAULT_COMMAND='fd --type f --hidden --follow --exclude .git'
+    export FZF_CTRL_T_COMMAND="$FZF_DEFAULT_COMMAND"
+    export FZF_ALT_C_COMMAND='fd --type d --hidden --follow --exclude .git'
+    export FZF_DEFAULT_OPTS='
+      --height=40%
+      --layout=reverse
+      --border=rounded
+      --preview-window=right:55%:wrap
+      --bind=ctrl-y:copy-selection
+      --bind=ctrl-f:preview-page-down
+      --bind=ctrl-b:preview-page-up
+    '
+fi
+
+# ── zoxide ──────────────────────────────────────────────────
+if command -v zoxide >/dev/null 2>&1; then
+    eval "$(zoxide init zsh --cmd cd)"
+fi
+
+# ── direnv ──────────────────────────────────────────────────
+if command -v direnv >/dev/null 2>&1; then
+    eval "$(direnv hook zsh)"
+fi
+
+# ── fnm / uv ────────────────────────────────────────────────
+if command -v fnm >/dev/null 2>&1; then
+    eval "$(fnm env --use-on-cd --shell zsh)"
+fi
+if command -v uv >/dev/null 2>&1; then
+    eval "$(uv generate-shell-completion zsh)"
+fi

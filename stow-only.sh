@@ -20,7 +20,7 @@ fi
 cd stow
 for dir in */; do
     dir=${dir%/}
-    if [ "$dir" = "zram" ] || [ "$dir" = "system" ]; then
+    if [ "$dir" = "zram" ] || [ "$dir" = "system" ] || [ "$dir" = "gdm" ]; then
         echo "Skipping $dir (requires root; use install.sh)."
         continue
     fi

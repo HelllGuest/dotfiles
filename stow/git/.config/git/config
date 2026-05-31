@@ -1,0 +1,181 @@
+# ~/.config/git/config — global git configuration (identity set by scripts/git-setup.sh)
+
+[user]
+	# name and email configured by git-setup.sh
+
+[core]
+	editor     = nvim
+	pager      = delta
+	whitespace = fix,-indent-with-non-tab,trailing-space,cr-at-eol
+	excludesFile = ~/.config/git/ignore
+	fsmonitor    = true
+	untrackedCache = true
+	autocrlf = input
+	eol      = lf
+	safecrlf = warn
+	abbrev = 12
+
+[init]
+	defaultBranch = main
+	templateDir = ~/.config/git/templates
+
+[commit]
+	verbose = true
+
+[tag]
+	sort = -version:refname
+
+[pull]
+	rebase = true
+
+[push]
+	default         = current
+	autoSetupRemote = true
+	followTags      = true
+
+[fetch]
+	prune     = true
+	pruneTags = true
+	parallel  = 0
+
+[merge]
+	tool          = nvim
+	conflictstyle = zdiff3
+	ff            = false
+
+[mergetool "nvim"]
+	cmd = nvim -d $LOCAL $REMOTE $MERGED -c '$wincmd w' -c 'wincmd J'
+
+[rebase]
+	autoStash          = true
+	autoSquash         = true
+	updateRefs         = true
+	abbreviateCommands = true
+
+[rerere]
+	enabled    = true
+	autoupdate = true
+
+[diff]
+	tool           = delta
+	algorithm      = histogram
+	colorMoved     = default
+	colorMovedWS   = allow-indentation-change
+	mnemonicPrefix = true
+	renames        = copies
+
+[difftool "delta"]
+	cmd = delta $LOCAL $REMOTE
+
+[delta]
+	navigate              = true
+	light                 = false
+	side-by-side          = true
+	line-numbers          = true
+	syntax-theme          = Monokai Extended
+	file-style            = bold yellow ul
+	file-decoration-style = none
+	hunk-header-style     = file line-number syntax
+	hunk-header-decoration-style = blue box
+	zero-style            = dim syntax
+	blame-code-style      = syntax
+	blame-separator-format = "{n:^5} "
+	hyperlinks            = true
+	hyperlinks-file-link-format = "file://{path}"
+	width = 216
+
+[interactive]
+	diffFilter = delta --color-only --features=interactive
+
+[log]
+	abbrevCommit = true
+	date         = iso
+	follow       = true
+	decorate     = full
+
+[format]
+	pretty = %C(bold blue)%h%C(reset) %C(bold green)(%ar)%C(reset) %C(white)%s%C(reset) %C(dim white)— %an%C(reset)%C(bold yellow)%d%C(reset)
+
+[branch]
+	sort = -committerdate
+
+[status]
+	showUntrackedFiles = all
+	submoduleSummary   = true
+	branch             = true
+
+[color]
+	ui     = auto
+	branch = auto
+	diff   = auto
+	status = auto
+
+[color "branch"]
+	current  = yellow bold
+	local    = green bold
+	remote   = cyan bold
+	upstream = magenta bold
+
+[color "diff"]
+	meta       = yellow bold
+	frag       = magenta bold
+	func       = 146 bold
+	commit     = yellow bold
+	old        = red bold
+	new        = green bold
+	whitespace = red reverse
+
+[color "status"]
+	added     = green bold
+	changed   = yellow bold
+	untracked = cyan bold
+	branch    = magenta bold
+
+[url "git@github.com:"]
+	insteadOf = gh:
+	insteadOf = github:
+
+[url "git@gitlab.com:"]
+	insteadOf = gl:
+	insteadOf = gitlab:
+
+[maintenance]
+	auto     = false
+	strategy = incremental
+
+[credential]
+	helper = /usr/lib/git-core/git-credential-libsecret
+
+[help]
+	autocorrect = prompt
+
+[advice]
+	addEmptyPathspec   = false
+	pushNonFastForward = false
+	statusHints      = false
+	skippedCherryPicks = false
+	detachedHead     = false
+
+[transfer]
+	fsckObjects = true
+
+[receive]
+	fsckObjects = true
+
+[pack]
+	threads = 4
+
+[gc]
+	auto = 256
+
+[submodule]
+	recurse = true
+
+[include]
+	path = ~/.config/git/delta-theme.conf
+
+[includeIf "gitdir:~/work/"]
+	path = ~/.config/git/work.conf
+
+[includeIf "gitdir:~/dev/"]
+	path = ~/.config/git/personal.conf

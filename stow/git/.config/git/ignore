@@ -1,0 +1,132 @@
+# Global gitignore — never commit these anywhere
+
+# OS
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# Editor
+.vscode/
+!.vscode/extensions.json
+!.vscode/settings.json
+!.vscode/launch.json
+.idea/
+*.swp
+*.swo
+*~
+.netrwhist
+Session.vim
+.nvim.lua
+
+# Shell / direnv
+.direnv/
+.envrc.local
+.env
+.env.*
+!.env.example
+!.env.template
+
+# Logs / temp
+*.log
+*.pid
+*.seed
+*.pid.lock
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+.pnpm-store/
+
+# Node
+node_modules/
+.npm/
+.node_repl_history
+.yarn/cache
+.yarn/unplugged
+.yarn/install-state.gz
+.pnp.*
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyo
+.Python
+.venv/
+venv/
+env/
+.env/
+pip-log.txt
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.hypothesis/
+*.egg-info/
+dist/
+build/
+*.egg
+
+# Rust
+target/
+Cargo.lock.bak
+
+# Go
+vendor/
+*.test
+*.out
+
+# Build outputs
+dist/
+out/
+.output/
+.next/
+.nuxt/
+.astro/
+.cache/
+.turbo/
+.vercel/
+.netlify/
+
+# Secrets
+*.pem
+*.key
+*.cert
+*.p12
+*.pfx
+id_rsa
+id_ed25519
+*.secret
+secrets.yml
+secrets.yaml
+
+# Docker
+.docker/
+
+# Terraform
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfvars
+!*.tfvars.example
+.terraformrc
+terraform.rc
+
+# Coverage
+coverage/
+*.lcov
+.nyc_output/
+
+# Misc
+*.bak
+*.orig
+*.patch
+*.rej
+tags
+TAGS
+.tags
+ctags

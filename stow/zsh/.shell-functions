@@ -1,19 +1,163 @@
-# functions.zsh
-# Custom shell functions
-function mkcd() {
-    mkdir -p "$1" && cd "$1"
+# functions — shared zsh/bash
+
+_has() { command -v "$1" >/dev/null 2>&1; }
+
+# Allow functions to replace aliases (zsh)
+if [[ -n "${ZSH_VERSION:-}" ]]; then
+    unalias gco 2>/dev/null || true
+fi
+
+mkcd() { mkdir -p "$1" && cd "$1" || return; }
+
+backup() { cp "$1" "$1.bak"; }
+
+cdls() { cd "$@" && ls -la; }
+
+fcd() {
+    _has fzf && _has fd || return 1
+    local dir
+    dir=$(fd --type d --hidden --follow --exclude .git 2>/dev/null | \
+        fzf --preview 'eza --tree --level=2 --color=always {} 2>/dev/null || ls -la {}')
+    [[ -n "$dir" ]] && cd "$dir"
 }
 
-function backup() {
-    cp "$1" "$1.bak"
+ex() {
+    if [[ -f "$1" ]]; then
+        case "$1" in
+            *.tar.bz2) tar xjf "$1" ;;
+            *.tar.gz)  tar xzf "$1" ;;
+            *.tar.xz)  tar xJf "$1" ;;
+            *.tar.zst) tar --zstd -xf "$1" ;;
+            *.tar)     tar xf "$1" ;;
+            *.bz2)     bunzip2 "$1" ;;
+            *.gz)      gunzip "$1" ;;
+            *.xz)      unxz "$1" ;;
+            *.zst)     zstd -d "$1" ;;
+            *.zip)     unzip "$1" ;;
+            *.7z)      7z x "$1" ;;
+            *.rar)     unrar x "$1" ;;
+            *)         echo "'$1' cannot be extracted" ;;
+        esac
+    else
+        echo "'$1' is not a file"
+    fi
 }
 
-# OSC 7: Tell the terminal about the current working directory (zsh only)
-if [[ -n "$ZSH_VERSION" ]]; then
-    function _update_terminal_cwd() {
-        printf "\033]7;file://%s%s\a" "$HOST" "$PWD"
+fe() {
+    _has fzf && _has fd || return 1
+    local file
+    file=$(fd --type f --hidden --follow --exclude .git \
+        | fzf --preview 'bat --color=always --style=numbers --line-range=:100 {} 2>/dev/null || head -100 {}')
+    [[ -n "$file" ]] && "${EDITOR:-nvim}" "$file"
+}
+
+rge() {
+    _has fzf && _has rg || return 1
+    local file line result
+    result=$(rg --line-number --no-heading --color=always "$@" \
+        | fzf --ansi --delimiter=: \
+              --preview 'bat --color=always --style=numbers --highlight-line {2} {1} 2>/dev/null' \
+              --preview-window 'right:55%:+{2}+3/3')
+    [[ -z "$result" ]] && return
+    file=$(echo "$result" | cut -d: -f1)
+    line=$(echo "$result" | cut -d: -f2)
+    "${EDITOR:-nvim}" +"$line" "$file"
+}
+
+gco() {
+    if [[ -n "$1" ]]; then
+        git checkout "$@"
+        return
+    fi
+    _has fzf || { git checkout; return; }
+    local branch
+    branch=$(git branch --all --color=always \
+        | grep -v HEAD \
+        | fzf --ansi --preview 'git log --oneline --graph --color=always $(echo {} | sed s/remotes.origin.//) 2>/dev/null | head -20')
+    [[ -n "$branch" ]] && git checkout "$(echo "$branch" | sed 's/remotes\/origin\///' | tr -d '* ')"
+}
+
+gai() {
+    _has fzf || { git add -i; return; }
+    git -c color.status=always status --short \
+        | fzf --multi --ansi --preview 'git diff --color=always HEAD -- {2}' \
+        | awk '{print $2}' \
+        | xargs -r git add
+    git status -sb
+}
+
+gshow() {
+    _has fzf || { git log "$@"; return; }
+    git log --graph --color=always --format="%C(auto)%h%d %s %C(dim white)%ar" "$@" \
+        | fzf --ansi --no-sort --reverse \
+              --preview 'echo {} | grep -o "[a-f0-9]\{7\}" | head -1 | xargs git show --color=always'
+}
+
+gcl() {
+    git clone "$1" && cd "$(basename "$1" .git)"
+}
+
+mkproj() {
+    local name="${1:?Usage: mkproj <name>}"
+    mkdir -p "$name"/{src,tests,docs}
+    cd "$name" || return
+    git init
+    echo "# $name" > README.md
+    touch .gitignore
+}
+
+venv() {
+    local dir
+    for dir in .venv venv env .env; do
+        if [[ -d "$dir" ]]; then
+            # shellcheck disable=SC1090
+            source "$dir/bin/activate"
+            echo "Activated: $dir"
+            return
+        fi
+    done
+    echo "No venv found. Create with: uv venv"
+}
+
+dexec() {
+    _has fzf && _has docker || return 1
+    local container shell="${1:-bash}"
+    container=$(docker ps --format '{{.Names}}\t{{.Image}}\t{{.Status}}' \
+        | fzf --preview 'docker inspect {1} 2>/dev/null | head -40' \
+        | awk '{print $1}')
+    [[ -n "$container" ]] && docker exec -it "$container" "$shell"
+}
+
+fkill() {
+    _has fzf || return 1
+    local pid
+    pid=$(ps -ef | sed 1d | fzf --multi | awk '{print $2}')
+    [[ -n "$pid" ]] && echo "$pid" | xargs kill "${1:--15}"
+}
+
+bat_status() {
+    local cap status
+    cap=$(cat /sys/class/power_supply/BAT0/capacity 2>/dev/null)
+    status=$(cat /sys/class/power_supply/BAT0/status 2>/dev/null)
+    echo "Battery: ${cap}% [${status}]"
+}
+
+tmp() {
+    local dir
+    dir=$(mktemp -d)
+    echo "→ $dir"
+    cd "$dir" || return
+}
+
+httpcheck() {
+    curl -o /dev/null -s -w "HTTP %{http_code} — %{time_total}s — %{url_effective}\n" "$1"
+}
+
+# OSC 7: terminal CWD reporting (zsh only)
+if [[ -n "${ZSH_VERSION:-}" ]]; then
+    _update_terminal_cwd() {
+        printf '\033]7;file://%s%s\a' "$HOST" "$PWD"
     }
-
     autoload -Uz add-zsh-hook
     add-zsh-hook chpwd _update_terminal_cwd
     _update_terminal_cwd

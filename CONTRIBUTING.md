@@ -20,12 +20,9 @@ Thank you for helping improve this setup. Follow these guidelines to keep the re
 
 - **Shared settings** go in `.shell-exports`, `.shell-aliases`, or `.shell-functions`.
 - **Zsh-only** code must be guarded with `[[ -n "$ZSH_VERSION" ]]` in shared files.
-- **Plugin load order in `.zsh-plugins`:**
-  1. `zsh-autocomplete` (provides `compinit` — do not call `compinit` separately)
-  2. Set `ZSH_AUTOSUGGEST_*` variables
-  3. `zsh-autosuggestions`
-  4. `zsh-syntax-highlighting` (always last)
+- **Plugin load order in `.zsh-plugins`:** managed by **zinit** (see README shell section).
 - Do not reintroduce `.zsh-aliases` / `.zsh-exports` — use the `.shell-*` naming scheme.
+- **atuin** config lives in `stow/atuin/`; run `atuin import auto` after first install.
 
 ### Stow
 
