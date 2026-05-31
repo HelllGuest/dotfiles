@@ -20,11 +20,15 @@ fi
 cd stow
 for dir in */; do
     dir=${dir%/}
+    if [ "$dir" = "zram" ]; then
+        echo "Skipping $dir (requires root; use install.sh)."
+        continue
+    fi
     echo "Processing $dir..."
     if [ "$STOW_CMD" == "stow" ]; then
-        stow -R "$dir"
+        stow -R -t "$HOME" "$dir"
     else
-        "../$STOW_CMD" "$dir"
+        "../$STOW_CMD" "$dir" "$HOME"
     fi
 done
 cd ..

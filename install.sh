@@ -40,10 +40,16 @@ cd stow
 for dir in */; do
     dir=${dir%/}
     echo "Processing $dir..."
-    if [ "$STOW_CMD" == "stow" ]; then
-        stow -R "$dir"
+    if [ "$dir" = "zram" ]; then
+        if [ "$STOW_CMD" == "stow" ]; then
+            sudo stow -R -t / "$dir" || echo "zram stow failed (sudo required)."
+        else
+            echo "Skipping zram (requires GNU Stow + sudo)."
+        fi
+    elif [ "$STOW_CMD" == "stow" ]; then
+        stow -R -t "$HOME" "$dir"
     else
-        $STOW_CMD "$dir"
+        $STOW_CMD "$dir" "$HOME"
     fi
 done
 cd ..

@@ -1,7 +1,7 @@
 # .zshrc
-source ~/.zsh-exports
-source ~/.zsh-aliases
-source ~/.zsh-functions
+source ~/.shell-exports
+source ~/.shell-aliases
+source ~/.shell-functions
 source ~/.zsh-plugins
 
 # Source secrets if they exist

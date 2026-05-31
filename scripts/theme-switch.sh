@@ -77,7 +77,6 @@ process_template() {
     esac
 }
 
-process_template "theming/templates/gnome-shell.scss" "theming/generated/gnome-shell"
 process_template "theming/templates/gtk.scss" "theming/generated/gtk"
 process_template "theming/templates/starship.toml" "theming/generated/starship"
 
@@ -145,28 +144,35 @@ return M
 EOF
 echo "Updated Neovim palette."
 
-# 5. Reload GNOME Shell Theme
-THEME_DIR="$HOME/.local/share/themes/Generated-Theme/gnome-shell"
-mkdir -p "$THEME_DIR"
-cp theming/generated/gnome-shell.css "$THEME_DIR/gnome-shell.css" 2>/dev/null || true
-
-# 6. Apply GTK 3.0 & 4.0 Styles
+# 5. Apply GTK 3.0 & 4.0 Styles
 mkdir -p "$HOME/.config/gtk-3.0" "$HOME/.config/gtk-4.0"
 cp theming/generated/gtk.css "$HOME/.config/gtk-3.0/gtk.css"
 cp theming/generated/gtk.css "$HOME/.config/gtk-4.0/gtk.css"
 
-# 7. Set Icon Theme
+# 6. Set Icon and GTK3 Theme
 if gsettings get org.gnome.desktop.interface icon-theme | grep -qv "Papirus-Dark"; then
     echo "Setting icon theme to Papirus-Dark..."
     gsettings set org.gnome.desktop.interface icon-theme "Papirus-Dark"
 fi
 
-# Toggle the theme to force a reload if it's already active
-CURRENT_THEME=$(gsettings get org.gnome.shell.extensions.user-theme name)
-if [ "$CURRENT_THEME" == "'Generated-Theme'" ]; then
+# Set GTK3 theme for non-libadwaita apps
+gsettings set org.gnome.desktop.interface gtk-theme "Zukitwo-dark"
+
+# 7. Update Flatpak Theme (if present)
+if command -v flatpak >/dev/null 2>&1; then
+    echo "Syncing theme to Flatpak..."
+    # Give flatpaks access to local themes and force dark mode env
+    flatpak override --user --env=GTK_THEME=Adwaita-dark
+    # BleachBit specific fix if it's still stubborn
+    flatpak override --user --env=GTK_THEME=Adwaita-dark org.bleachbit.BleachBit
+fi
+
+# Revert GNOME Shell theme to Default if it was set to Generated-Theme
+CURRENT_SHELL_THEME=$(gsettings get org.gnome.shell.extensions.user-theme name)
+if [ "$CURRENT_SHELL_THEME" == "'Generated-Theme'" ]; then
     gsettings set org.gnome.shell.extensions.user-theme name "Default"
 fi
-gsettings set org.gnome.shell.extensions.user-theme name "Generated-Theme"
+gsettings set org.gnome.desktop.interface color-scheme 'prefer-dark'
 
 # Save current theme state
 echo "$PALETTE_NAME" > "theming/generated/current_theme.txt"

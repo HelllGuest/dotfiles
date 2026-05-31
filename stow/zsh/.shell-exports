@@ -1,0 +1,39 @@
+# exports.zsh
+export EDITOR='nvim'
+export VISUAL='nvim'
+export PAGER='less'
+export LESS='-RF --mouse --wheel-lines=3'
+export PATH="$HOME/.local/bin:$PATH"
+
+# Android SDK
+export ANDROID_HOME="$HOME/Android/Sdk"
+export PATH="$ANDROID_HOME/platform-tools:$PATH"
+export PATH="$ANDROID_HOME/emulator:$PATH"
+export PATH="$ANDROID_HOME/cmdline-tools/latest/bin:$PATH"
+export PATH="$ANDROID_HOME/tools/bin:$PATH"
+
+# Disable Telemetry for various tools
+export DOTNET_CLI_TELEMETRY_OPTOUT=1
+export POWERSHELL_TELEMETRY_OPTOUT=1
+export AZURE_CORE_COLLECT_TELEMETRY=0
+export STACK_TELEMETRY=0
+export DOCKER_HOST="unix://$XDG_RUNTIME_DIR/podman/podman.sock"
+export PATH="$HOME/.npm-global/bin:$PATH"
+export PATH="$HOME/.cargo/bin:$PATH"
+
+# Ultimate Telemetry Opt-Outs
+export DO_NOT_TRACK=1                   # Generic standard (Gatsby, Next.js, etc.)
+export NEXT_TELEMETRY_DISABLED=1        # Next.js
+export GATSBY_TELEMETRY_DISABLED=1      # Gatsby
+export ASTRO_TELEMETRY_DISABLED=1       # Astro
+export STRIPE_CLI_TELEMETRY_OPTOUT=1    # Stripe CLI
+export NUXT_TELEMETRY_DISABLED=1        # Nuxt.js
+export ANGULAR_DISABLE_CLI_PROMPTS=1    # Angular
+export HOMEBREW_NO_ANALYTICS=1          # Homebrew
+export VUE_CLI_TELEMETRY_OPTOUT=1       # Vue CLI
+export SAM_CLI_TELEMETRY=0              # AWS SAM
+export AZURE_CORE_COLLECT_TELEMETRY=0   # Azure CLI
+export STACK_TELEMETRY=0                # Haskell Stack
+export CHECKPOINT_DISABLE=1             # HashiCorp (Terraform, Packer)
+export ANTHROPIC_TELEMETRY=false        # Claude CLI
+export GOOGLE_API_USE_CLIENT_CERTIFICATE=false # Random Google SDK noise

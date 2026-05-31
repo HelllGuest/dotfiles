@@ -1,0 +1,19 @@
+# functions.zsh
+# Custom shell functions
+function mkcd() {
+    mkdir -p "$1" && cd "$1"
+}
+
+function backup() {
+    cp "$1" "$1.bak"
+}
+
+# OSC 7: Tell the terminal about the current working directory
+# This allows new tabs/windows to open in the same directory
+function _update_terminal_cwd() {
+    printf "\033]7;file://%s%s\a" "$HOST" "$PWD"
+}
+
+autoload -Uz add-zsh-hook
+add-zsh-hook chpwd _update_terminal_cwd
+_update_terminal_cwd

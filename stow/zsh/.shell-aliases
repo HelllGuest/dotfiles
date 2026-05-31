@@ -2,6 +2,7 @@
 alias ls='ls --color=auto'
 alias grep='grep --color=auto'
 alias v='nvim'
+alias as='flatpak run com.google.AndroidStudio'
 alias ff='fastfetch'
 alias ts='~/dotfiles/scripts/theme-switch.sh'
 alias tt='~/dotfiles/scripts/theme-toggle.sh'

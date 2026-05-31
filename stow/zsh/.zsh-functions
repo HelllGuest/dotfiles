@@ -1,9 +1,0 @@
-# functions.zsh
-# Custom shell functions
-function mkcd() {
-    mkdir -p "$1" && cd "$1"
-}
-
-function backup() {
-    cp "$1" "$1.bak"
-}

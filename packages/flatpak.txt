@@ -1,1 +1,2 @@
 # Add flatpaks here
+com.google.AndroidStudio

@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# profiles/thinkpad.sh
+# profiles/thinkpad-x1.sh
 # Specific optimizations for Lenovo ThinkPad hardware
 
 echo "Applying ThinkPad-specific optimizations..."

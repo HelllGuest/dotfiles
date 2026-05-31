@@ -1,0 +1,13 @@
+{
+  "extends": "theming/palettes/base.json",
+  "name": "Zukitwo",
+  "background": "#2b2e30",
+  "foreground": "#eeeeee",
+  "accent": "#4a79c7",
+  "wallpaper": "theming/wallpapers/nord-city.png",
+  "starship": {
+    "success": "#73d216",
+    "error": "#cc0000",
+    "directory": "#4a79c7"
+  }
+}

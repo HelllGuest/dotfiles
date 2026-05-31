@@ -6,10 +6,10 @@ A clean, modular, and programmable dotfiles ecosystem optimized for **Arch Linux
 
 ## 🚀 Key Features
 
-- **Dynamic Theming Engine:** A palette-driven system (`JSON` + `SCSS`) that synchronizes colors across GNOME Shell, GTK 3/4, Terminals, Starship, and Neovim.
+- **Dynamic Theming Engine:** A palette-driven system (`JSON` + `SCSS`) that synchronizes colors across GTK 3/4, Terminals, Starship, and Neovim.
 - **Privacy Hardened:** Telemetry, usage reporting, and "phoning home" are disabled system-wide (GNOME, VS Code, .NET, etc.).
 - **ThinkPad Optimized:** Intelligent hardware detection with specific tweaks for thermal management (`throttled`), fan control (`thinkfan`), and battery thresholds.
-- **Elite-Tier Terminal:** Kitty & Ghostty integration with a modular Zsh setup and a dynamically themed Starship prompt.
+- **Elite-Tier Terminal:** Kitty & Ghostty integration with modular Zsh and Bash setups and a dynamically themed Starship prompt.
 - **Neovim (Lazy.nvim):** A modular Lua configuration that imports your system-wide palette on the fly.
 
 ---
@@ -22,6 +22,7 @@ Switch your entire system's aesthetic with a single command or hotkey.
 ```bash
 ts nord          # Apply the Nord palette
 ts tokyo-night   # Apply Tokyo Night palette
+ts zukitwo       # Apply Zukitwo palette
 ```
 
 ### Toggle Themes
@@ -31,9 +32,9 @@ tt              # Cycle through all available palettes
 
 ### How it works
 1. **Source:** Pick a palette from `theming/palettes/`.
-2. **Compile:** `dart-sass` compiles SCSS templates into CSS for GNOME and GTK.
+2. **Compile:** `dart-sass` compiles SCSS templates into CSS for GTK.
 3. **Propagate:** Updates terminal configs, generates a Neovim Lua palette, and sets the wallpaper.
-4. **Refresh:** Instantly reloads the GNOME Shell theme without logging out.
+4. **Consistency:** All apps and terminals stay in sync with the selected palette.
 
 ---
 
@@ -77,8 +78,8 @@ If you've already installed the packages and just want to apply the symlinks.
 ### 3. Dependencies
 The system will run a health check during installation, but you'll primarily need:
 - `stow` (or the included `minimal-stow` fallback)
-- `zsh`, `starship`, `neovim`
-- `jq`, `dart-sass`
+- `zsh`, `starship`, `neovim`, `rclone`
+- `jq`, `dart-sass`, `zram-generator`
 - `gnome-shell-extensions` (specifically `user-theme`, `blur-my-shell`, `open-bar`)
 
 ---

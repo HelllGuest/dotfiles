@@ -1,0 +1,25 @@
+# .inputrc - Readline configuration
+# This affects Bash and other console apps using the readline library
+
+# 1. Completion Settings
+set completion-ignore-case on
+set show-all-if-ambiguous on
+set mark-directories on
+set mark-symlinked-directories on
+set completion-query-items 100
+set visible-stats on
+
+# 2. Appearance
+set colored-stats on
+set colored-completion-prefix on
+
+# 3. Tab behavior
+# Tab once to show list, Tab again to cycle (like Zsh)
+# Note: Bash 4.3+ supports menu-complete
+"\t": menu-complete
+"\e[Z": menu-complete-backward
+
+# 4. History search
+# Use Up/Down arrows to search through history based on current prefix
+"\e[A": history-search-backward
+"\e[B": history-search-forward

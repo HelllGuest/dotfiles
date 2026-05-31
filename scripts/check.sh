@@ -13,13 +13,20 @@ for bin in "${REQUIRED_BINARIES[@]}"; do
 done
 
 # 2. Check for symlinks
-CHECK_LINKS=("$HOME/.zshrc" "$HOME/.config/starship.toml" "$HOME/.config/nvim/init.lua")
-for link in "${CHECK_LINKS[@]}"; do
-    if [ -L "$link" ]; then
-        echo "✓ Symlink exists: $link"
+check_link() {
+    local path=$1
+    if [ -L "$path" ]; then
+        echo "✓ Symlink exists: $path"
+    elif [ -L "$(dirname "$path")" ] && [ -f "$path" ]; then
+        echo "✓ Stowed via $(dirname "$path") -> $(readlink "$(dirname "$path")")"
     else
-        echo "✗ Symlink missing: $link"
+        echo "✗ Symlink missing: $path"
     fi
+}
+
+CHECK_LINKS=("$HOME/.zshrc" "$HOME/.bashrc" "$HOME/.config/starship.toml" "$HOME/.config/nvim/init.lua" "$HOME/.config/fastfetch/config.jsonc")
+for link in "${CHECK_LINKS[@]}"; do
+    check_link "$link"
 done
 
 # 3. Check for fonts
