@@ -19,7 +19,7 @@ DEFAULT_PROFILE=$(dconf read /org/gnome/terminal/legacy/profiles:/default 2>/dev
 if [[ -n "$DEFAULT_PROFILE" ]]; then
     P="${PROFILE_PATH}:${DEFAULT_PROFILE}"
     dconf write "${P}/use-system-font" false
-    dconf write "${P}/font" "'JetBrains Mono Nerd Font 11'"
+    dconf write "${P}/font" "'JetBrainsMono Nerd Font 11'"
     dconf write "${P}/use-transparent-background" true
     dconf write "${P}/background-transparency-percent" 5
     dconf write "${P}/scrollback-unlimited" true

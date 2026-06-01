@@ -19,7 +19,7 @@ return {
       local parsers = {
         "astro", "bash", "css", "dockerfile", "fish",
         "gitcommit", "gitignore", "go", "gomod", "gosum",
-        "html", "javascript", "jsdoc", "json", "jsonc",
+        "html", "javascript", "jsdoc", "json",
         "lua", "luadoc", "make", "markdown", "markdown_inline",
         "python", "regex", "rust", "sql", "toml",
         "tsx", "typescript", "vim", "vimdoc", "yaml",

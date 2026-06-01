@@ -104,6 +104,10 @@ if [ -f "scripts/check.sh" ]; then
     bash scripts/check.sh
 fi
 
+if [ -f "scripts/validate-configs.sh" ]; then
+    bash scripts/validate-configs.sh || echo "Config validation reported issues."
+fi
+
 # 7. Privacy Hardening
 if [ -f "scripts/privacy-hardener.sh" ]; then
     bash scripts/privacy-hardener.sh

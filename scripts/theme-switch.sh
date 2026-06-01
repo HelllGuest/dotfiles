@@ -166,6 +166,7 @@ selection-background = $(strip_hash "$T_ACCENT")
 selection-foreground = $(strip_hash "$T_BG")
 cursor-color = $(strip_hash "$T_CURSOR")
 cursor-text = $(strip_hash "$T_BG")
+palette-generate = true
 palette = 0=#$(strip_hash "$T_BLACK")
 palette = 1=#$(strip_hash "$T_RED")
 palette = 2=#$(strip_hash "$T_GREEN")

@@ -1,5 +1,7 @@
 #!/bin/bash
 
+REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+
 echo "Running health check..."
 
 # 1. Check for required binaries
@@ -81,8 +83,8 @@ if command -v delta >/dev/null 2>&1; then
 else
     echo "✗ delta is missing"
 fi
-if git config --global user.email >/dev/null 2>&1; then
-    echo "✓ Git identity: $(git config --global user.name) <$(git config --global user.email)>"
+if git config --get user.email >/dev/null 2>&1; then
+    echo "✓ Git identity: $(git config --get user.name) <$(git config --get user.email)>"
 else
     echo "✗ Git identity not set"
 fi
@@ -110,6 +112,11 @@ if [ "$ENABLED_EXT" -ge 5 ] 2>/dev/null; then
     echo "✓ GNOME extensions enabled ($ENABLED_EXT)"
 else
     echo "✗ Few GNOME extensions enabled (run scripts/gnome-session-setup.sh)"
+fi
+
+echo "--- Config validation ---"
+if [ -f "$REPO_ROOT/scripts/validate-configs.sh" ]; then
+    bash "$REPO_ROOT/scripts/validate-configs.sh" 2>/dev/null || echo "⚠ Run scripts/validate-configs.sh for details"
 fi
 
 echo "Health check finished."

@@ -21,6 +21,7 @@ stow/gnome-session/.config/gnome-session/scripts/tablet-mode-handler.sh
 stow/gnome-session/.config/systemd/user/yoga-tablet-mode.service
 stow/kitty/.config/kitty/current-theme.conf
 stow/kitty/.config/kitty/kitty.conf
+stow/kitty/.config/kitty/sessions/dev.conf
 stow/nvim/.config/nvim/init.lua
 stow/nvim/.config/nvim/lazy-lock.json
 stow/nvim/.config/nvim/lua/config/autocmds.lua
