@@ -1,0 +1,18 @@
+[Unit]
+Description=Purge stale /tmp/semgrep-* scan archives (SecureCoder leak guard)
+Documentation=https://github.com/helllguest/dotfiles
+# The Antigravity IDE "SecureCoder" extension (securecoder.scannerBackend=semgrep)
+# writes scan archives to /tmp/semgrep-*.zip and never removes them. They pile up
+# (observed: 245 files / 6.1 GiB in under a day) and exhaust the 6.2 GiB tmpfs
+# quota on /tmp, which crashes GTK apps (e.g. zen) with "Disk quota exceeded".
+# A plain tmpfiles.d rule cannot help here: its age-based cleanup only applies to
+# d/D/e/v/q/Q/C/x/X lines and acts on directory *contents*, not on individual
+# files matched by a glob. Hence this timer-driven purge instead.
+ConditionPathIsDirectory=/tmp
+
+[Service]
+Type=oneshot
+# Delete only semgrep archives older than 60 min so in-progress scans are safe.
+ExecStart=/usr/bin/find /tmp -maxdepth 1 -type f -name semgrep-* -mmin +60 -delete
+Nice=10
+IOSchedulingClass=idle

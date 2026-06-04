@@ -1,0 +1,11 @@
+[Unit]
+Description=Periodically purge stale /tmp/semgrep-* scan archives
+Documentation=https://github.com/helllguest/dotfiles
+
+[Timer]
+OnBootSec=5min
+OnUnitActiveSec=30min
+Persistent=true
+
+[Install]
+WantedBy=timers.target
