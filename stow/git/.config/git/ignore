@@ -130,3 +130,5 @@ tags
 TAGS
 .tags
 ctags
+
+**/.claude/settings.local.json

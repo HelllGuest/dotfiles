@@ -85,5 +85,20 @@ if [[ "$TERM" != "linux" && "$TERM" != "dumb" ]]; then
     PROMPT_COMMAND="_update_terminal_cwd${PROMPT_COMMAND:+; $PROMPT_COMMAND}"
 fi
 
+# Long-command desktop notification (core defined in ~/.shell-functions).
+# Registered after atuin/ble.sh so we extend their bash-preexec arrays when
+# present; otherwise fall back to a DEBUG trap + PROMPT_COMMAND.
+if declare -F _cmd_notify_end >/dev/null 2>&1; then
+    _cmd_notify_bp_pre()  { _cmd_notify_start "$1"; }
+    _cmd_notify_bp_post() { _cmd_notify_end; }
+    if [[ -n "${preexec_functions+x}" || -n "${precmd_functions+x}" ]]; then
+        preexec_functions+=(_cmd_notify_bp_pre)
+        precmd_functions+=(_cmd_notify_bp_post)
+    else
+        trap '_cmd_notify_start "$BASH_COMMAND"' DEBUG
+        PROMPT_COMMAND="_cmd_notify_end${PROMPT_COMMAND:+; $PROMPT_COMMAND}"
+    fi
+fi
+
 [ -f ~/.config/secrets/env ] && source ~/.config/secrets/env
 [[ -f ~/.bashrc.local ]] && source ~/.bashrc.local

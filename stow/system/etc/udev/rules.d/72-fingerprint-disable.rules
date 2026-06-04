@@ -1,0 +1,9 @@
+# Synaptics Prometheus fingerprint reader (06cb:00bd) — hard-disabled at the USB port.
+# No fingers enrolled; device bounced on every resume/autosuspend -> xHC reset spam + drain.
+# On enumeration, deauthorize the device AND power off its parent root-hub port
+# (usb1 port 9 on 00:14.0). Port stays off across suspend/resume; rule re-applies at boot.
+# To re-enable: delete this file, `sudo udevadm control --reload`,
+#   `echo 0 | sudo tee /sys/bus/usb/devices/usb1/1-0:1.0/usb1-port9/disable`, then reboot.
+ACTION=="add", SUBSYSTEM=="usb", ATTR{idVendor}=="06cb", ATTR{idProduct}=="00bd", \
+  ATTR{authorized}="0", \
+  RUN+="/bin/sh -c 'echo 1 > /sys/bus/usb/devices/usb1/1-0:1.0/usb1-port9/disable'"

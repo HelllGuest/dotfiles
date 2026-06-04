@@ -162,3 +162,49 @@ if [[ -n "${ZSH_VERSION:-}" ]]; then
     add-zsh-hook chpwd _update_terminal_cwd
     _update_terminal_cwd
 fi
+
+# ── Long-command desktop notification (terminal-agnostic) ──────────────
+# Fires notify-send when an interactive command runs longer than
+# CMD_NOTIFY_THRESHOLD seconds. Hooks the shell (not the emulator), so it
+# works identically in ghostty, kitty and GNOME Console. Skipped on plain
+# TTYs / SSH sessions with no display. Override the threshold by exporting
+# CMD_NOTIFY_THRESHOLD (seconds) before the shell starts.
+: "${CMD_NOTIFY_THRESHOLD:=10}"
+
+_cmd_notify_supported() {
+    _has notify-send || return 1
+    [[ -n "${WAYLAND_DISPLAY:-}${DISPLAY:-}" ]] || return 1
+    return 0
+}
+
+_cmd_notify_start() {
+    _cmd_notify_cmd="$1"
+    _cmd_notify_t0=$SECONDS
+}
+
+_cmd_notify_end() {
+    local ret=$?
+    [[ -z "${_cmd_notify_t0:-}" ]] && return
+    local elapsed=$(( SECONDS - _cmd_notify_t0 ))
+    unset _cmd_notify_t0
+    (( elapsed < CMD_NOTIFY_THRESHOLD )) && return
+    _cmd_notify_supported || return
+    local cmd="${_cmd_notify_cmd:-command}" icon urgency title
+    if (( ret == 0 )); then
+        icon=dialog-information; urgency=normal;   title="✓ done (${elapsed}s)"
+    else
+        icon=dialog-error;       urgency=critical; title="✗ failed [${ret}] (${elapsed}s)"
+    fi
+    notify-send --app-name=shell --urgency="$urgency" --icon="$icon" \
+        "$title" "$cmd" 2>/dev/null
+}
+
+# zsh: register via native hooks (order-independent, no DEBUG-trap conflicts)
+if [[ -n "${ZSH_VERSION:-}" ]]; then
+    _cmd_notify_preexec() { _cmd_notify_start "$1"; }
+    _cmd_notify_precmd()  { _cmd_notify_end; }
+    add-zsh-hook preexec _cmd_notify_preexec
+    add-zsh-hook precmd  _cmd_notify_precmd
+fi
+# bash registration lives at the end of ~/.bashrc (after atuin/ble.sh set up
+# their preexec/precmd arrays) — see .bashrc.

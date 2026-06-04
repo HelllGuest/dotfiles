@@ -39,11 +39,10 @@ clipboard-trim-trailing-spaces = true
 clipboard-paste-protection = true
 clipboard-paste-bracketed-safe = true
 link-url = true
-gtk-prefer-dark-theme = true
 class = com.mitchellh.ghostty
 
 quick-terminal-position = top
-quick-terminal-size = 40
+quick-terminal-size = 40%
 quick-terminal-animation-duration = 0.2
 
 keybind = ctrl+shift+c=copy_to_clipboard
@@ -66,6 +65,6 @@ keybind = ctrl+shift+page_up=scroll_page_up
 keybind = ctrl+shift+page_down=scroll_page_down
 keybind = ctrl+shift+comma=reload_config
 keybind = ctrl+shift+i=inspector:toggle
-keybind = ctrl+grave=toggle_quick_terminal
+keybind = global:ctrl+backquote=toggle_quick_terminal
 
 config-file = ?theme.conf

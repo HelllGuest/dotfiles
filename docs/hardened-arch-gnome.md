@@ -69,6 +69,12 @@ Your system supports proper deep sleep:
 s2idle [deep]
 ```
 
+Deep sleep (S3) is selected two ways in this repo: the `mem_sleep_default=deep`
+kernel cmdline param (PHASE 9/21), and `stow/system/etc/systemd/sleep.conf.d/`
+(`SuspendState=mem` + `MemorySleepMode=deep`). Either forces S3 over s2idle for
+lower standby drain. Confirm after resume with `journalctl -b | grep "suspend entry"`
+→ expect `PM: suspend entry (deep)`.
+
 ---
 
 ## Security → Virtualization
@@ -732,6 +738,42 @@ Enable:
 systemctl enable ufw.service
 ```
 
+## Waydroid internet (NAT masquerade)
+
+Waydroid bridges the container on `waydroid0` (`192.168.240.1/24`) but provides
+no outbound NAT, so containers have no return path and no internet. Masquerade
+the container subnet and allow its DHCP/DNS to the host:
+
+```bash
+# host-side DHCP (67) + DNS (53) for the container's dnsmasq
+ufw allow 53/udp
+ufw allow 67/udp
+```
+
+Persist the NAT rule by adding a `*nat` table block to the **top** of
+`/etc/ufw/before.rules` (tracked at `stow/system/etc/ufw/before.rules`):
+
+```
+*nat
+:POSTROUTING ACCEPT [0:0]
+-A POSTROUTING -s 192.168.240.0/24 -j MASQUERADE
+COMMIT
+```
+
+Source-based (no `-o <iface>`) so it works for both wifi (`wlp0s20f3`) and VPN
+(`proton0`) egress. Deploy by **copying** (firewall stays root-owned, not a
+`$HOME` symlink) and reload:
+
+```bash
+install -m 644 -o root -g root \
+  stow/system/etc/ufw/before.rules /etc/ufw/before.rules
+ufw reload
+iptables -t nat -L POSTROUTING -n -v   # verify MASQUERADE present
+```
+
+`DEFAULT_FORWARD_POLICY="ACCEPT"` in `/etc/default/ufw` is required for
+forwarding (default on this system).
+
 ---
 
 # PHASE 14 — THINKPAD OPTIMIZATION
@@ -740,9 +782,7 @@ Install:
 
 ```bash
 pacman -S \
-tlp \
-tlp-rdw \
-thermald \
+power-profiles-daemon \
 powertop \
 sof-firmware \
 alsa-ucm-conf \
@@ -753,27 +793,29 @@ iio-sensor-proxy
 Enable:
 
 ```bash
-systemctl enable --now tlp
-systemctl enable --now thermald
+systemctl enable --now power-profiles-daemon
 systemctl enable --now iio-sensor-proxy
 ```
+
+**Power stack note:** this system uses **power-profiles-daemon (PPD)** only.
+
+* **TLP is *not* used** — it conflicts with PPD (`PLATFORM_PROFILE.../CPU_ENERGY_PERF_POLICY... not set because power-profiles-daemon is running`). Do not install `tlp`/`tlp-rdw`.
+* **thermald is *not* used** — on the X1 it self-exits every boot (`[dytc_lapmode] present: Thermald can't run on this platform`); thermal is firmware-managed (Intel DPTF). Leave it uninstalled/disabled.
 
 ---
 
 # Configure Battery Thresholds
 
-Edit:
+Without TLP, set ThinkPad charge thresholds via the `thinkpad_acpi` sysfs
+interface:
 
 ```bash
-nano /etc/tlp.conf
+echo 70 | tee /sys/class/power_supply/BAT0/charge_control_start_threshold
+echo 80 | tee /sys/class/power_supply/BAT0/charge_control_end_threshold
 ```
 
-Set:
-
-```ini
-START_CHARGE_THRESH_BAT0=70
-STOP_CHARGE_THRESH_BAT0=80
-```
+Persist across reboots with a small systemd unit or udev rule (sysfs values
+reset on boot), e.g. a `oneshot` service that writes both files.
 
 ---
 
@@ -782,6 +824,13 @@ STOP_CHARGE_THRESH_BAT0=80
 ```bash
 fprintd-enroll
 ```
+
+**If you do not use the fingerprint reader:** the Synaptics Prometheus sensor
+(`06cb:00bd`) bounces on every resume (`xHC error in resume`, repeated
+`usb 1-9: reset`) and wastes idle power. The dotfiles ship
+`stow/system/etc/udev/rules.d/72-fingerprint-disable.rules`, which powers off
+its root-hub port on enumeration. Re-enable by deleting that rule,
+`sudo udevadm control --reload`, clearing the port `disable` flag, then reboot.
 
 ---
 
@@ -1331,7 +1380,8 @@ systemctl status earlyoom
 # Verify Battery Thresholds
 
 ```bash
-tlp-stat -b
+cat /sys/class/power_supply/BAT0/charge_control_start_threshold
+cat /sys/class/power_supply/BAT0/charge_control_end_threshold
 ```
 
 ---
