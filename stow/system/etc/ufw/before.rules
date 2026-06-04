@@ -8,15 +8,10 @@
 #   ufw-before-forward
 #
 
-# NAT table rules
-# waydroid internet: masquerade the container subnet (192.168.240.0/24) out
-# whatever the active egress is (wifi wlp0s20f3 or VPN proton0). Source-based
-# so it survives iface/VPN changes. Without this the container has no return
-# path and gets no internet.
-*nat
-:POSTROUTING ACCEPT [0:0]
--A POSTROUTING -s 192.168.240.0/24 -j MASQUERADE
-COMMIT
+# NOTE: the waydroid NAT masquerade (192.168.240.0/24) is intentionally NOT here.
+# ufw cannot idempotently manage rules in the built-in nat POSTROUTING chain on the
+# nf_tables backend (it appends a duplicate on every `ufw reload`). It is applied
+# instead by the idempotent waydroid-nat.service unit. See that unit for details.
 
 # Don't delete these required lines, otherwise there will be errors
 *filter

@@ -1,0 +1,20 @@
+[Unit]
+Description=Idempotent waydroid NAT masquerade (192.168.240.0/24)
+Documentation=https://github.com/helllguest/dotfiles
+# ufw cannot manage rules in the built-in nat POSTROUTING chain idempotently on the
+# nf_tables backend: every `ufw reload` appends another copy that is never flushed,
+# so the rule accumulates. We therefore keep the masquerade out of ufw before.rules
+# and add it here with check-before-add (-C || -A), which is exact-once and survives
+# ufw reloads. waydroid does not add this rule itself; without it the container has
+# no return path and no internet.
+After=ufw.service waydroid-container.service network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/bin/sh -c '/usr/bin/iptables -t nat -C POSTROUTING -s 192.168.240.0/24 -j MASQUERADE 2>/dev/null || /usr/bin/iptables -t nat -A POSTROUTING -s 192.168.240.0/24 -j MASQUERADE'
+ExecStop=/bin/sh -c 'while /usr/bin/iptables -t nat -C POSTROUTING -s 192.168.240.0/24 -j MASQUERADE 2>/dev/null; do /usr/bin/iptables -t nat -D POSTROUTING -s 192.168.240.0/24 -j MASQUERADE; done'
+
+[Install]
+WantedBy=multi-user.target
