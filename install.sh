@@ -40,7 +40,9 @@ cd stow
 for dir in */; do
     dir=${dir%/}
     echo "Processing $dir..."
-    if [ "$dir" = "zram" ] || [ "$dir" = "system" ]; then
+    if [ "$dir" = "zram" ]; then
+        echo "Skipping zram stow (use scripts/zram-setup.sh — /etc must not symlink into \$HOME)."
+    elif [ "$dir" = "system" ]; then
         if [ "$STOW_CMD" == "stow" ]; then
             sudo stow -R -t / "$dir" || echo "$dir stow failed (sudo required)."
         else
@@ -59,6 +61,11 @@ cd ..
 # 2.1 Import shell history into atuin
 if command -v atuin >/dev/null 2>&1; then
     atuin import auto 2>/dev/null && echo "Atuin history imported." || true
+fi
+
+# 2.2 Materialize zram config (early-boot safe; not a $HOME symlink)
+if [ -f "scripts/zram-setup.sh" ]; then
+    bash scripts/zram-setup.sh || echo "zram setup skipped."
 fi
 
 # 3. Restore GNOME session (dconf + extensions + tablet handler)

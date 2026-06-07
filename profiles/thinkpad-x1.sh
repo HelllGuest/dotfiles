@@ -25,6 +25,14 @@ if systemctl is-active --quiet tlp 2>/dev/null; then
     echo "Disabling TLP (use power-profiles-daemon with GNOME)..."
     sudo systemctl disable --now tlp || true
 fi
+if pacman -Q tlp-rdw >/dev/null 2>&1; then
+    echo "Removing tlp-rdw (NM hooks invoke tlp without tlp.service; spams journal)..."
+    sudo pacman -Rns --noconfirm tlp-rdw || true
+fi
+if pacman -Q tlp >/dev/null 2>&1; then
+    echo "Removing tlp (power-profiles-daemon is primary on GNOME)..."
+    sudo pacman -Rns --noconfirm tlp || true
+fi
 if command -v powerprofilesctl >/dev/null 2>&1; then
     echo "Enabling power-profiles-daemon..."
     sudo systemctl unmask power-profiles-daemon 2>/dev/null || true
@@ -55,7 +63,14 @@ if command -v boltctl >/dev/null 2>&1; then
     sudo systemctl enable --now bolt || true
 fi
 
-# 8. Materialize modprobe.d files (stow symlinks break in initramfs)
+# 8. Materialize zram-generator.conf (stow symlink into $HOME breaks at early boot)
+if [ -f "${BASH_SOURCE[0]%/*}/../scripts/zram-setup.sh" ]; then
+    bash "${BASH_SOURCE[0]%/*}/../scripts/zram-setup.sh" || true
+elif [ -f "$HOME/dotfiles/scripts/zram-setup.sh" ]; then
+    bash "$HOME/dotfiles/scripts/zram-setup.sh" || true
+fi
+
+# 9. Materialize modprobe.d files (stow symlinks break in initramfs)
 for conf in /etc/modprobe.d/i915.conf; do
     if [ -L "$conf" ]; then
         echo "Materializing $conf for mkinitcpio..."
@@ -67,7 +82,21 @@ for conf in /etc/modprobe.d/i915.conf; do
     fi
 done
 
-# 9. Rebuild UKI/initramfs when kernel cmdline changed
+# 10. Desktop RDP: user daemon has creds; system daemon steals :3389 with none set
+if systemctl is-enabled --quiet gnome-remote-desktop.service 2>/dev/null; then
+    echo "Disabling system gnome-remote-desktop (use user-session RDP)..."
+    sudo systemctl disable --now gnome-remote-desktop.service || true
+fi
+
+# 11. TPM access for gnome-remote-desktop system credentials
+if id gnome-remote-desktop >/dev/null 2>&1; then
+    if ! id gnome-remote-desktop | grep -q '\btss\b'; then
+        echo "Adding gnome-remote-desktop to tss group (TPM credential store)..."
+        sudo usermod -aG tss gnome-remote-desktop || true
+    fi
+fi
+
+# 12. Rebuild UKI/initramfs when kernel cmdline changed
 if [ -f /etc/kernel/cmdline ] && command -v mkinitcpio >/dev/null 2>&1; then
     echo "Rebuilding initramfs/UKI for new kernel cmdline..."
     sudo mkinitcpio -P || true

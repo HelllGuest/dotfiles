@@ -65,6 +65,7 @@ keybind = ctrl+shift+page_up=scroll_page_up
 keybind = ctrl+shift+page_down=scroll_page_down
 keybind = ctrl+shift+comma=reload_config
 keybind = ctrl+shift+i=inspector:toggle
-keybind = global:ctrl+backquote=toggle_quick_terminal
+# global: prefix registers via GNOME GlobalShortcutsProvider — crashes gnome-control-center on GNOME 50
+keybind = ctrl+backquote=toggle_quick_terminal
 
 config-file = ?theme.conf
