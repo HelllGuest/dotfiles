@@ -44,6 +44,7 @@ sudo systemctl enable --now iio-sensor-proxy.service 2>/dev/null || true
 mkdir -p "$HOME/.config"
 cd "$STOW_DIR"
 stow -R -t "$HOME" gnome-session
+stow -R -t "$HOME" proton-vpn 2>/dev/null || stow -t "$HOME" proton-vpn
 chmod +x "$HOME/.config/gnome-session/scripts/tablet-mode-handler.sh"
 
 if [[ -f "$REPO_ROOT/gnome/dconf/user.conf" ]]; then
@@ -58,6 +59,18 @@ fi
 if [[ -f "$REPO_ROOT/gnome/dconf/extensions.conf" ]]; then
   echo "→ Applying extension dconf..."
   dconf load / < "$REPO_ROOT/gnome/dconf/extensions.conf" || true
+fi
+
+mkdir -p "$HOME/.local/bin"
+chmod +x "$REPO_ROOT/scripts/night-theme-hook.sh"
+ln -sf "$REPO_ROOT/scripts/night-theme-hook.sh" "$HOME/.local/bin/night-theme-hook"
+
+if command -v gnome-extensions >/dev/null 2>&1 \
+  && gnome-extensions list --enabled 2>/dev/null | grep -q 'nightthemeswitcher@romainvigier.fr'; then
+  echo "→ Syncing Catppuccin GTK theme to current day/night state..."
+  bash "$REPO_ROOT/scripts/night-theme-hook.sh" sync || true
+  gnome-extensions disable nightthemeswitcher@romainvigier.fr >/dev/null 2>&1 || true
+  gnome-extensions enable nightthemeswitcher@romainvigier.fr >/dev/null 2>&1 || true
 fi
 
 if command -v papirus-folders >/dev/null 2>&1; then

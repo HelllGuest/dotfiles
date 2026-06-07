@@ -14,8 +14,9 @@ if command -v gsettings >/dev/null 2>&1; then
     # Disable automatic update checks in GNOME Software
     gsettings set org.gnome.Software download-updates false
     
-    # Disable location services (often phones home)
-    gsettings set org.gnome.system.location enabled false
+    # Location: static GeoClue (/etc/geolocation via scripts/location-setup.sh) returns
+    # fixed Dubai coords without IP/WiFi lookup — safe to leave enabled for NTS/Night Light.
+    # Do NOT disable org.gnome.system.location here; run location-setup.sh instead.
 else
     echo "gsettings not found. Skipping GNOME hardening."
 fi

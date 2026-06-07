@@ -1,0 +1,13 @@
+// Allow jondoe to run vpn-location-sync via pkexec without repeated password prompts.
+polkit.addRule(function(action, subject) {
+    if (action.id !== "org.freedesktop.policykit.exec")
+        return;
+    if (subject.user !== "jondoe")
+        return;
+    const program = action.lookup("program");
+    if (program === "/usr/local/bin/vpn-location-sync" ||
+        program === "/home/jondoe/.local/bin/vpn-location-sync" ||
+        program === "/home/jondoe/dotfiles/scripts/vpn-location-sync.sh") {
+        return polkit.Result.YES;
+    }
+});

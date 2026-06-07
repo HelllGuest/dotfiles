@@ -271,7 +271,10 @@ CURRENT_SHELL_THEME=$(gsettings get org.gnome.shell.extensions.user-theme name)
 if [ "$CURRENT_SHELL_THEME" == "'Generated-Theme'" ]; then
     gsettings set org.gnome.shell.extensions.user-theme name "Default"
 fi
-gsettings set org.gnome.desktop.interface color-scheme 'prefer-dark'
+# Leave color-scheme to Night Theme Switcher when active (v82 toggles prefer-light/dark).
+if ! gnome-extensions list --enabled 2>/dev/null | grep -q 'nightthemeswitcher@romainvigier.fr'; then
+    gsettings set org.gnome.desktop.interface color-scheme 'prefer-dark'
+fi
 
 # Save current theme state
 echo "$PALETTE_NAME" > "theming/generated/current_theme.txt"

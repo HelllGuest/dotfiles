@@ -7,3 +7,4 @@ user-theme@gnome-shell-extensions.gcampax.github.com
 Vitals@CoreCoding.com
 gestureImprovements@gestures
 nightthemeswitcher@romainvigier.fr
+proton-vpn@helllguest

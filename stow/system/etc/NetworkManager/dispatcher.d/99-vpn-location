@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+# NetworkManager dispatcher — sync GeoClue static location with Proton VPN exit.
+# Installed from dotfiles; calls vpn-location-sync.sh on proton0 up/down.
+
+VPN_IF="proton0"
+SCRIPT="/usr/local/bin/vpn-location-sync"
+
+interface="$1"
+action="$2"
+
+[[ "$interface" == "$VPN_IF" ]] || exit 0
+[[ -x "$SCRIPT" ]] || exit 0
+
+exec "$SCRIPT" "$action"

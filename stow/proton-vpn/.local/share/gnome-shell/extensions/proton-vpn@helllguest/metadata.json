@@ -1,0 +1,14 @@
+{
+  "description": "Proton VPN indicator for the top panel.\n\nShows the connected server name and protocol. The menu offers connect, reconnect, disconnect, copy server IP, pinned servers (from the Proton VPN app config), spoofed GeoClue location status, manual location sync, and opening the official app.\n\nThis extension is not affiliated, funded or in any way associated with Proton VPN.",
+  "name": "Proton VPN Indicator",
+  "shell-version": [
+    "46",
+    "47",
+    "48",
+    "49",
+    "50"
+  ],
+  "url": "https://github.com/helllguest/proton-vpn-indicator",
+  "uuid": "proton-vpn@helllguest",
+  "version": 1
+}
