@@ -5,6 +5,7 @@
 
 
 import Gio from 'gi://Gio';
+import GioUnix from 'gi://GioUnix';
 import GLib from 'gi://GLib';
 import GObject from 'gi://GObject';
 import NM from 'gi://NM';
@@ -59,6 +60,30 @@ function readJsonFile(path) {
     } catch {
         return null;
     }
+}
+
+function launchDesktopApp(desktopId) {
+    try {
+        const app = Shell.AppSystem.get_default().lookup_app(desktopId);
+        if (app) {
+            app.activate();
+            return true;
+        }
+    } catch (error) {
+        console.error('Proton VPN extension:', error);
+    }
+
+    try {
+        const appInfo = GioUnix.DesktopAppInfo.new(desktopId);
+        if (appInfo) {
+            appInfo.launch([], global.create_app_launch_context(0, -1));
+            return true;
+        }
+    } catch (error) {
+        console.error('Proton VPN extension:', error);
+    }
+
+    return false;
 }
 
 function dbusNameHasOwner(name) {
@@ -419,7 +444,7 @@ const ProtonVPNButton = GObject.registerClass(
 
             Main.notify(
                 'Proton VPN',
-                'No saved connection found. Opening the app.',
+                'No VPN profile yet. Open the app once to download servers, then retry Connect.',
             );
             this._openApp();
         }
@@ -575,43 +600,38 @@ const ProtonVPNButton = GObject.registerClass(
             });
 
             if (dbusNameHasOwner(APPLICATION_ID)) {
-                try {
-                    Gio.DBus.session.call_sync(
-                        APPLICATION_ID,
-                        APP_DBUS_PATH,
-                        'org.freedesktop.Application',
-                        'Activate',
-                        new GLib.Variant('(a{sv})', [{}]),
-                        null,
-                        Gio.DBusCallFlags.NONE,
-                        -1,
-                    );
-                    return;
-                } catch (error) {
-                    console.error('Proton VPN extension:', error);
+                for (const iface of [
+                    ['org.gtk.Application', 'Activate'],
+                    ['org.freedesktop.Application', 'Activate'],
+                ]) {
+                    try {
+                        Gio.DBus.session.call_sync(
+                            APPLICATION_ID,
+                            APP_DBUS_PATH,
+                            iface[0],
+                            iface[1],
+                            new GLib.Variant('(a{sv})', [{}]),
+                            null,
+                            Gio.DBusCallFlags.NONE,
+                            -1,
+                        );
+                        return;
+                    } catch (error) {
+                        console.error('Proton VPN extension:', error);
+                    }
                 }
             }
 
             for (const id of DESKTOP_IDS) {
-                const appInfo = Gio.DesktopAppInfo.new(id);
-                if (appInfo) {
-                    appInfo.launch([], global.create_app_launch_context(0, -1));
+                if (launchDesktopApp(id))
                     return;
-                }
-            }
-
-            for (const id of DESKTOP_IDS) {
-                const app = Shell.AppSystem.get_default().lookup_app(id);
-                if (app) {
-                    app.activate();
-                    return;
-                }
             }
 
             try {
                 Gio.Subprocess.new(
                     ['/usr/bin/protonvpn-app'],
-                    Gio.SubprocessFlags.NONE,
+                    Gio.SubprocessFlags.STDOUT_SILENCE
+                    | Gio.SubprocessFlags.STDERR_SILENCE,
                 );
             } catch (error) {
                 console.error('Proton VPN extension:', error);
