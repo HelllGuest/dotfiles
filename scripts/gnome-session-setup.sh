@@ -17,12 +17,9 @@ AUR_PKGS=(
   catppuccin-gtk-theme-latte
   catppuccin-cursors-mocha-dark
   gnome-shell-extension-blur-my-shell
-  gnome-shell-extension-caffeine
   gnome-shell-extension-appindicator
-  gnome-shell-extension-tactile
   gnome-shell-extension-just-perfection-desktop
   gnome-shell-extension-vitals
-  gnome-shell-extension-gesture-improvements
   gnome-shell-extension-nightthemeswitcher
   papirus-folders-git
 )
@@ -85,4 +82,4 @@ fc-cache -fv &>/dev/null || true
 echo ""
 echo "✓ GNOME session configured."
 echo "  Log out/in (or restart GNOME Shell) to reload extensions."
-echo "  Super+1-4 workspaces | Super+T Tactile | Super+Return kitty"
+echo "  Super+1-4 workspaces | Super+Return kitty"

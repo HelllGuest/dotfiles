@@ -202,13 +202,13 @@ Run `scripts/gnome-console-setup.sh` for Console dconf + Super+Return → kitty.
 
 **Neovim:** `scripts/nvim-setup.sh` — Lazy.nvim plugins, Treesitter parsers, Mason LSP on first launch. Leader = Space.
 
-**GNOME session:** `scripts/gnome-session-setup.sh` — dconf profile, extensions, Catppuccin day/night, X1 Yoga tablet handler. Super+1–4 workspaces, Super+T Tactile.
+**GNOME session:** `scripts/gnome-session-setup.sh` — dconf profile, extensions, Catppuccin day/night, X1 Yoga tablet handler. Super+1–4 workspaces.
 
 **Fonts:** Run `scripts/install-fonts.sh` for top Nerd Fonts (JetBrains Mono, Meslo, FiraCode, Cascadia, Iosevka, etc.)
 
 **Theming:** `papirus-icon-theme`; AUR `zukitwo-themes-git` for GTK theme
 
-**GNOME extensions:** blur-my-shell, caffeine, tactile, vitals, gesture-improvements, nightthemeswitcher (see `gnome/extensions.txt`, AUR in `packages/aur.txt`)
+**GNOME extensions:** blur-my-shell, vitals, nightthemeswitcher (see `gnome/extensions.txt`, AUR in `packages/aur.txt`)
 
 ---
 
