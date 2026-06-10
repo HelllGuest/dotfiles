@@ -7,7 +7,7 @@ echo "--- Session ---"
 echo "XDG_SESSION_TYPE=${XDG_SESSION_TYPE:-unknown}"
 
 echo "--- Power ---"
-for svc in throttled power-profiles-daemon tlp thermald iio-sensor-proxy; do
+for svc in power-profiles-daemon iio-sensor-proxy bolt; do
     printf "  %-24s %s\n" "$svc" "$(systemctl is-active "$svc" 2>/dev/null || echo unknown)"
 done
 

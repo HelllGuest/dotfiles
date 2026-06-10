@@ -10,8 +10,8 @@ This guide builds a modern Arch Linux workstation with:
 * LUKS2 full-disk encryption
 * Btrfs subvolumes
 * GNOME on Wayland
-* linux-zen primary kernel
-* linux-lts fallback kernel
+* linux-lts primary kernel
+* linux-hardened fallback kernel
 * AppArmor
 * zram compressed swap
 * UFW firewall
@@ -257,7 +257,12 @@ btrfs subvolume create /mnt/@home
 btrfs subvolume create /mnt/@snapshots
 btrfs subvolume create /mnt/@var_log
 btrfs subvolume create /mnt/@var_cache
+btrfs subvolume create /mnt/@tmp
 ```
+
+`@tmp` keeps `/tmp` on disk (not tmpfs) so heavy builds can't fill a RAM-capped
+`/tmp` or trigger OOM, and `nodatacow` avoids CoW churn on temp files. As a
+separate subvolume it is excluded from `@` snapshots automatically.
 
 Unmount:
 
@@ -322,6 +327,25 @@ mount -o noatime,compress=zstd:3,subvol=@var_cache \
 
 ---
 
+## Tmp (disk-backed, nodatacow)
+
+```bash
+mkdir -p /mnt/tmp
+
+mount -o noatime,nodatacow,nosuid,nodev,subvol=@tmp \
+/dev/mapper/cryptroot /mnt/tmp
+
+chmod 1777 /mnt/tmp
+```
+
+`nodatacow` excludes compression by design (don't add `compress` here). After
+`genfstab`, edit the `/tmp` line so it carries `nodatacow,nosuid,nodev,nofail`
+(add `nofail` — a `/tmp` mount failure then falls back to the dir on `@` instead
+of dropping boot to emergency). Because an fstab `/tmp` entry exists, systemd uses
+it instead of the default tmpfs `tmp.mount` — no masking required.
+
+---
+
 ## EFI Partition
 
 ```bash
@@ -358,10 +382,10 @@ Install base packages:
 pacstrap -K /mnt \
 base \
 base-devel \
-linux-zen \
-linux-zen-headers \
 linux-lts \
 linux-lts-headers \
+linux-hardened \
+linux-hardened-headers \
 linux-firmware \
 intel-ucode \
 btrfs-progs \
@@ -534,7 +558,7 @@ nano /boot/loader/loader.conf
 Contents:
 
 ```text
-default arch-zen.conf
+default arch-lts.conf
 timeout 3
 editor no
 console-mode max
@@ -552,19 +576,19 @@ Copy UUID.
 
 ---
 
-# Create Zen Boot Entry
+# Create Hardened Boot Entry (fallback)
 
 ```bash
-nano /boot/loader/entries/arch-zen.conf
+nano /boot/loader/entries/arch-hardened.conf
 ```
 
 Contents:
 
 ```text
-title   Arch Linux (Zen)
-linux   /vmlinuz-linux-zen
+title   Arch Linux (Hardened)
+linux   /vmlinuz-linux-hardened
 initrd  /intel-ucode.img
-initrd  /initramfs-linux-zen.img
+initrd  /initramfs-linux-hardened.img
 options rd.luks.name=YOUR_UUID=cryptroot root=/dev/mapper/cryptroot rootflags=subvol=@ rw quiet loglevel=3 mem_sleep_default=deep apparmor=1 security=apparmor intel_iommu=on
 ```
 
@@ -592,18 +616,34 @@ options rd.luks.name=YOUR_UUID=cryptroot root=/dev/mapper/cryptroot rootflags=su
 
 Install packages:
 
+Minimal GNOME — **not** the full `gnome` meta-package (which pulls ~60 pkgs: games, maps, weather, music, contacts, tour). Curated essentials + a few utils; install the rest via Flatpak (Phase 16).
+
 ```bash
 pacman -S \
-gnome \
+gnome-shell \
+gnome-session \
 gdm \
+gnome-control-center \
+gnome-keyring \
+gnome-backgrounds \
+nautilus \
+gnome-console \
+gnome-text-editor \
+gnome-system-monitor \
+gnome-calculator \
+loupe \
+evince \
+gnome-disk-utility \
+xdg-user-dirs-gtk \
+xdg-desktop-portal \
+xdg-desktop-portal-gnome \
+polkit \
 apparmor \
 ufw \
 zram-generator \
 flatpak \
 fwupd \
 bolt \
-xdg-desktop-portal \
-xdg-desktop-portal-gnome \
 pipewire \
 pipewire-pulse \
 wireplumber \
@@ -708,6 +748,30 @@ Apply:
 ```bash
 sysctl --system
 ```
+
+---
+
+## User namespaces (required for Flatpak / Podman under linux-hardened)
+
+`linux-hardened` ships `kernel.unprivileged_userns_clone = 0`, which breaks the
+Flatpak sandbox, rootless Podman, Chromium/Firefox sandboxes, and GNOME
+thumbnailers. `linux-lts` has no such key. Create one drop-in that works on both:
+
+```bash
+nano /etc/sysctl.d/99-userns.conf
+```
+
+```ini
+# Leading '-' = ignore-if-absent. This knob is a downstream patch carried by
+# linux-hardened (default 0) but NOT by mainline linux-lts, so the '-' makes the
+# line set it under hardened and silently no-op under LTS (no `sysctl --system` error).
+-kernel.unprivileged_userns_clone = 1
+```
+
+> Tradeoff: re-enabling userns relaxes part of what `linux-hardened` buys. Since
+> `linux-lts` is the daily driver, this only applies when you deliberately boot
+> the Hardened entry. For maximum lockdown, remove this file and run
+> Flatpak/Podman only under LTS.
 
 ---
 
@@ -1012,23 +1076,26 @@ rd.luks.name=YOUR_UUID=cryptroot root=/dev/mapper/cryptroot rootflags=subvol=@ r
 
 ---
 
-# Configure linux-zen UKI Preset
+# Configure linux-hardened UKI Preset (fallback)
 
 Edit:
 
 ```bash
-nano /etc/mkinitcpio.d/linux-zen.preset
+nano /etc/mkinitcpio.d/linux-hardened.preset
 ```
 
 Contents:
 
 ```ini
+ALL_config="/etc/mkinitcpio.conf"
+ALL_kver="/boot/vmlinuz-linux-hardened"
+
 PRESETS=('default' 'fallback')
 
-default_uki="/boot/EFI/Linux/arch-linux-zen.efi"
+default_uki="/boot/EFI/Linux/arch-linux-hardened.efi"
 default_options=""
 
-fallback_uki="/boot/EFI/Linux/arch-linux-zen-fallback.efi"
+fallback_uki="/boot/EFI/Linux/arch-linux-hardened-fallback.efi"
 fallback_options="-S autodetect"
 ```
 
@@ -1051,6 +1118,10 @@ nano /etc/mkinitcpio.d/linux-lts.preset
 Contents:
 
 ```ini
+# ALL_kver is REQUIRED — mkinitcpio reads the kernel version from this vmlinuz.
+ALL_config="/etc/mkinitcpio.conf"
+ALL_kver="/boot/vmlinuz-linux-lts"
+
 PRESETS=('default' 'fallback')
 
 default_uki="/boot/EFI/Linux/arch-linux-lts.efi"
@@ -1073,6 +1144,16 @@ default_options="--splash /usr/share/systemd/bootctl/splash-arch.bmp"
 ```bash
 mkdir -p /boot/EFI/Linux
 mkinitcpio -P
+```
+
+systemd-boot auto-discovers UKIs in `/boot/EFI/Linux/`. Set LTS as the default boot target:
+
+```bash
+nano /boot/loader/loader.conf
+```
+
+```text
+default arch-linux-lts.efi
 ```
 
 ---
@@ -1150,11 +1231,18 @@ sbctl enroll-keys -m
 # Sign UKIs
 
 ```bash
-sbctl sign -s /boot/EFI/Linux/arch-linux-zen.efi
-sbctl sign -s /boot/EFI/Linux/arch-linux-zen-fallback.efi
-
 sbctl sign -s /boot/EFI/Linux/arch-linux-lts.efi
 sbctl sign -s /boot/EFI/Linux/arch-linux-lts-fallback.efi
+
+sbctl sign -s /boot/EFI/Linux/arch-linux-hardened.efi
+sbctl sign -s /boot/EFI/Linux/arch-linux-hardened-fallback.efi
+```
+
+`-s` saves each path to the sbctl db, so the `zz-sbctl` pacman hook auto-resigns
+both kernels on every update:
+
+```bash
+ls /usr/share/libalpm/hooks/ | grep -i sbctl   # expect zz-sbctl.hook
 ```
 
 Verify signatures:
@@ -1172,8 +1260,8 @@ Only remove old loader entries AFTER confirming UKIs boot correctly.
 If UKIs work properly:
 
 ```bash
-rm /boot/loader/entries/arch-zen.conf
 rm /boot/loader/entries/arch-lts.conf
+rm /boot/loader/entries/arch-hardened.conf
 ```
 
 ---

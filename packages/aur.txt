@@ -12,7 +12,5 @@ gnome-shell-extension-nightthemeswitcher
 gnome-shell-extension-vitals
 matugen-bin
 papirus-folders-git
-throttled
-tp_smapi
 visual-studio-code-bin
 zukitwo-themes-git

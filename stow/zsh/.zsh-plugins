@@ -2,6 +2,13 @@
 
 fpath=(/usr/share/zsh/site-functions $fpath)
 
+# ── Autosuggest: history + live completion engine (richer autocomplete) ──
+# Set before zsh-autosuggestions loads (deferred via zinit atload below).
+ZSH_AUTOSUGGEST_STRATEGY=(history completion)   # suggest from completion, not just history
+ZSH_AUTOSUGGEST_BUFFER_MAX_SIZE=20              # skip suggestions on huge buffers (perf)
+ZSH_AUTOSUGGEST_MANUAL_REBIND=1                 # faster line redraw
+ZSH_AUTOSUGGEST_HISTORY_IGNORE='?(#c100,)'      # never resurface 100+ char lines (secrets)
+
 # ── Zinit ───────────────────────────────────────────────────
 ZINIT_HOME="${XDG_DATA_HOME:-$HOME/.local/share}/zinit/zinit.git"
 if [[ ! -d "$ZINIT_HOME" ]]; then
@@ -29,10 +36,12 @@ zinit wait lucid for \
 
 # ── Completion ──────────────────────────────────────────────
 autoload -Uz compinit
+# -i: ignore insecure (group/world-writable) fpath dirs instead of prompting (hardening).
+# Daily full regen runs the security check; -C path reuses dump for speed.
 if [[ -n ${ZDOTDIR:-$HOME}/.zcompdump(#qN.mh+24) ]]; then
-    compinit
+    compinit -i
 else
-    compinit -C
+    compinit -C -i
 fi
 
 zstyle ':completion:*' menu select
@@ -40,6 +49,17 @@ zstyle ':completion:*' matcher-list 'm:{a-z}={A-Z}' 'r:|=*' 'l:|=* r:|=*'
 zstyle ':completion:*' list-colors "${(s.:.)LS_COLORS}"
 zstyle ':completion:*:descriptions' format '[%d]'
 zstyle ':completion:*:git-checkout:*' sort false
+# completion cache (faster repeat completions)
+zstyle ':completion:*' use-cache on
+zstyle ':completion:*' cache-path "${XDG_CACHE_HOME:-$HOME/.cache}/zsh/zcompcache"
+# completer chain: exact → case-insensitive → fuzzy (typo-tolerant autocomplete)
+zstyle ':completion:*' completer _extensions _complete _match _approximate
+zstyle ':completion:*:approximate:*' max-errors 1 numeric
+zstyle ':completion:*' group-name ''
+zstyle ':completion:*' special-dirs true
+zstyle ':completion:*' squeeze-slashes true
+zstyle ':completion:*:*:*:*:processes' command 'ps -u $USER -o pid,user,comm -w'
+zstyle ':completion:*:warnings' format '%F{red}no matches%f'
 zstyle ':fzf-tab:complete:cd:*' fzf-preview 'eza --tree --level=2 --color=always $realpath 2>/dev/null || ls -la $realpath'
 zstyle ':fzf-tab:complete:*:*' fzf-preview 'bat --color=always --style=numbers --line-range=:50 $realpath 2>/dev/null || eza --color=always $realpath 2>/dev/null || ls -la $realpath'
 zstyle ':fzf-tab:*' switch-group ',' '.'
@@ -49,6 +69,7 @@ HISTFILE="${XDG_STATE_HOME:-$HOME/.local/state}/zsh/history"
 HISTSIZE=100000
 SAVEHIST=100000
 mkdir -p "$(dirname "$HISTFILE")"
+mkdir -p "${XDG_CACHE_HOME:-$HOME/.cache}/zsh"   # completion cache dir
 
 setopt HIST_IGNORE_ALL_DUPS HIST_FIND_NO_DUPS HIST_IGNORE_SPACE
 setopt HIST_SAVE_NO_DUPS SHARE_HISTORY HIST_REDUCE_BLANKS EXTENDED_HISTORY
@@ -60,6 +81,20 @@ fi
 # ── Options ─────────────────────────────────────────────────
 setopt AUTO_CD AUTO_PUSHD PUSHD_IGNORE_DUPS PUSHD_SILENT
 setopt CORRECT INTERACTIVE_COMMENTS GLOB_DOTS EXTENDED_GLOB NO_BEEP COMBINING_CHARS
+
+# ── Hardening ───────────────────────────────────────────────
+umask 077                  # new files owner-only (use 027 if you need group-read)
+setopt NO_CLOBBER          # '>' won't overwrite existing file — use '>|' to force
+setopt RM_STAR_WAIT        # 10s pause before 'rm *' / 'rm dir/*'
+setopt HIST_VERIFY         # expand '!!'/'!$' onto the line, don't auto-run
+setopt HIST_FCNTL_LOCK     # safe history file locking (zsh 5.4+)
+setopt HIST_EXPIRE_DUPS_FIRST
+unsetopt FLOW_CONTROL      # free ^S/^Q for keybindings, not XON/XOFF
+# keep secrets out of saved history (space-prefix still works via HIST_IGNORE_SPACE)
+HISTORY_IGNORE='(*--password*|*--token*|*API_KEY*|*_TOKEN*|*SECRET*|*PASSWORD*|* -p [!-]*)'
+# tighten perms on history + secrets each session (best-effort)
+[[ -f "$HISTFILE" ]] && chmod 600 "$HISTFILE" 2>/dev/null
+[[ -f ~/.config/secrets/env ]] && chmod 600 ~/.config/secrets/env 2>/dev/null
 
 # ── Key bindings ────────────────────────────────────────────
 bindkey -e

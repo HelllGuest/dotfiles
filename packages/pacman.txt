@@ -52,7 +52,6 @@ tree-sitter-cli
 stow
 swappy
 swww
-thermald
 tmux
 wl-clipboard
 yazi

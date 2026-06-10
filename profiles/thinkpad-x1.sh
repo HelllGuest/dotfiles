@@ -4,21 +4,11 @@
 
 echo "Applying ThinkPad X1 Yoga Gen 5 optimizations..."
 
-# 1. MSR throttling fix (AUR: throttled)
-if command -v throttled >/dev/null 2>&1; then
-    echo "Enabling throttled..."
-    sudo systemctl enable --now throttled || true
-fi
-
-# 2. DPTF thermal management (may exit on ThinkPads with DYTC — throttled covers MSR)
-if command -v thermald >/dev/null 2>&1; then
-    echo "Enabling thermald..."
-    sudo systemctl unmask thermald 2>/dev/null || true
-    sudo systemctl enable thermald 2>/dev/null || true
-    if ! sudo systemctl start thermald 2>/dev/null; then
-        echo "Note: thermald unsupported with thinkpad_acpi DYTC on this model; throttled remains primary."
-    fi
-fi
+# 1-2. Thermal/power: Comet Lake (10th gen) is firmware-managed (Intel DPTF) +
+#       power-profiles-daemon. No MSR/undervolt tool: 'throttled' is obsolete here
+#       (CPU undervolt has been locked since 10th gen via the Plundervolt microcode
+#       mitigation), and thermald self-exits on ThinkPads with thinkpad_acpi DYTC.
+#       Thermal is handled by firmware; PPD (section 3) handles power profiles.
 
 # 3. GNOME power profiles (conflicts with TLP — do not run both)
 if systemctl is-active --quiet tlp 2>/dev/null; then
@@ -109,4 +99,4 @@ if command -v systemctl >/dev/null 2>&1; then
 fi
 
 echo "ThinkPad X1 Yoga optimizations applied."
-echo "Reboot recommended for i915 module options and mem_sleep_default=s2idle."
+echo "Reboot recommended for i915 module options and the mem_sleep_default kernel param."
