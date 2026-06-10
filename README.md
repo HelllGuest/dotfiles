@@ -151,12 +151,26 @@ dotfiles/
 | [README.md](README.md) | Overview, shell setup, theming, installation |
 | [CHANGELOG.md](CHANGELOG.md) | Version history |
 | [CONTRIBUTING.md](CONTRIBUTING.md) | Contribution guidelines |
-| [docs/hardened-arch-gnome.md](docs/hardened-arch-gnome.md) | Full Arch + GNOME install guide (ThinkPad X1) |
+| [docs/hardened-arch-gnome.md](docs/hardened-arch-gnome.md) | Full Arch + GNOME install guide (ThinkPad X1) — automated by `scripts/arch-install.sh` |
 | [gnome/keybindings.md](gnome/keybindings.md) | Shell aliases and useful shortcuts |
 
 ---
 
 ## 📦 Installation & Setup
+
+### 0. Bare-metal Arch install (from the ISO)
+For a fresh machine, the automated installer builds the whole hardened base —
+LUKS2 (argon2id) + Btrfs subvolumes (incl. disk-backed `@tmp`) + `linux-lts`
+(primary) / `linux-hardened` (fallback) Unified Kernel Images + systemd-boot +
+`sbctl` Secure Boot + minimal GNOME — before you clone these dotfiles:
+```bash
+# from the Arch ISO (UEFI, as root). AUTO wipe, or MANUAL with EFI optional/reuse.
+bash <(curl -fsSL https://raw.githubusercontent.com/HelllGuest/dotfiles/main/scripts/arch-install.sh)
+```
+It mirrors [docs/hardened-arch-gnome.md](docs/hardened-arch-gnome.md). Dry-run it
+safely in a UEFI VM first — `scripts/arch-install-vmtest.sh` (OVMF qemu, serves the
+installer over loopback, nothing on your host touched). Then continue with **1. Full
+Bootstrap** below to apply the dotfiles.
 
 ### 1. Full Bootstrap (Recommended)
 Installs packages, applies symlinks to `$HOME` and `/etc`, restores GNOME settings, and runs health checks.
@@ -230,6 +244,7 @@ We take a "quiet by default" approach:
 | Health check | `~/dotfiles/scripts/check.sh` |
 | Post-update sync | `~/dotfiles/scripts/post-update.sh` |
 | Backup GNOME | `~/dotfiles/scripts/backup-gsettings.sh` |
+| Move /tmp to disk | `sudo ~/dotfiles/scripts/tmp-to-disk.sh` then reboot (off RAM-capped tmpfs → btrfs `@tmp`) |
 | Switch theme | `ts <palette>` or `tt` |
 | Reload shell | `exec zsh` |
 

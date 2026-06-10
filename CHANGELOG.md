@@ -1,5 +1,15 @@
 # Changelog
 
+## [1.19.0] - 2026-06-10
+- Installer: added `scripts/arch-install.sh` — curl-able, hardened bare-metal Arch installer implementing `docs/hardened-arch-gnome.md` end-to-end: LUKS2 (argon2id) + Btrfs (`@ @home @snapshots @var_log @var_cache @tmp`) + `linux-lts` primary / `linux-hardened` fallback Unified Kernel Images + systemd-boot + `sbctl` Secure Boot + minimal GNOME. AUTO whole-disk or MANUAL partitioning with EFI optional/reuse (multiboot-safe). Reads prompts from `/dev/tty`; passwords never written to disk. VM-validated end-to-end (boots to GNOME).
+- Installer: `scripts/arch-install-vmtest.sh` — UEFI/OVMF qemu harness that serves the installer over loopback and boots the Arch ISO against a blank virtual disk (host untouched); `hostfwd 2222→22` for SSH.
+- Kernels: switched primary from `linux-zen` to `linux-lts` (stability) with `linux-hardened` as fallback; dropped zen. UKI presets carry the required `ALL_kver` (without it `mkinitcpio -P` builds no UKIs).
+- `/tmp`: `scripts/tmp-to-disk.sh` moves `/tmp` off the RAM-capped tmpfs onto a dedicated btrfs `@tmp` subvolume (`nodatacow`, excluded from snapshots); added `@tmp` to the install guide.
+- GNOME: install guide uses a curated minimal set instead of the full `gnome` meta-package.
+- ThinkPad: removed obsolete `throttled` and `tp_smapi` (AUR) and `thermald` (pacman) — on 10th-gen Comet Lake the CPU undervolt is locked (Plundervolt microcode), `tp_smapi` is pre-2011 only, and thermal is firmware-managed (DPTF/DYTC). Profile no longer enables them.
+- Zsh: hardening (`umask 077`, `NO_CLOBBER`, `RM_STAR_WAIT`, `HIST_VERIFY`, `HISTORY_IGNORE` secret filter, `compinit -i`) + richer autocomplete (autosuggest `history+completion` strategy, fuzzy `_approximate` completer, completion cache).
+- Hardening: install adds a `kernel.unprivileged_userns_clone` sysctl (leading-`-`/ignore-if-absent) so Flatpak/Podman/browser sandboxes work under `linux-hardened`.
+
 ## [1.18.0] - 2026-06-02
 - Waydroid: enabled container internet via NAT masquerade of the `192.168.240.0/24` subnet; persisted as a `*nat` block in tracked `stow/system/etc/ufw/before.rules` (source-based, survives wifi/VPN iface changes). Host-side `ufw allow 53/udp` + `67/udp` for the container's dnsmasq/DHCP.
 - Starship: raised `command_timeout` 500 → 1300 ms to stop "git timed out" warnings when `git_metrics` runs `git diff` during fsmonitor warm-up.

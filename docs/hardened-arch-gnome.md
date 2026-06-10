@@ -30,6 +30,12 @@ This guide prioritizes:
 * laptop battery longevity
 * developer workflows
 
+> **Automated:** This guide is implemented end-to-end by [`scripts/arch-install.sh`](../scripts/arch-install.sh) — run it from the Arch ISO instead of the manual phases:
+> ```bash
+> bash <(curl -fsSL https://raw.githubusercontent.com/HelllGuest/dotfiles/main/scripts/arch-install.sh)
+> ```
+> Dry-run first in a UEFI VM with [`scripts/arch-install-vmtest.sh`](../scripts/arch-install-vmtest.sh). The manual phases below remain the reference for what it does and for customizing.
+
 > **Dotfiles:** After completing this guide, continue with [PHASE 27 — Dotfiles Setup](#phase-27--dotfiles-setup) or jump to the [dotfiles README](../README.md) for shell, theming, and maintenance.
 
 ---
