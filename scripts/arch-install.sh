@@ -364,9 +364,11 @@ fi
 
 # minimal GNOME (optional)
 if [[ ${DESKTOP^^} != N* ]]; then
-  say "installing minimal GNOME"
+  say "installing minimal GNOME + browsers + VPN + software center"
   # sof-firmware+alsa-ucm-conf: Comet Lake speakers/mic. iio-sensor-proxy: tablet
   # auto-rotate. fprintd: fingerprint. iio/fprintd are D-Bus-activated — do NOT enable.
+  # brave: Chromium-based browser. zen: Firefox-based browser. proton-vpn-gui: VPN client.
+  # gnome-software: software center for Flatpak apps.
   # Non-fatal: a network hiccup here must not abort an otherwise-bootable base system.
   if pacman -S --noconfirm --needed --disable-download-timeout \
     gnome-shell gnome-session gdm gnome-control-center gnome-keyring \
@@ -375,7 +377,8 @@ if [[ ${DESKTOP^^} != N* ]]; then
     xdg-user-dirs-gtk xdg-desktop-portal xdg-desktop-portal-gnome polkit \
     flatpak fwupd bolt pipewire pipewire-pulse wireplumber earlyoom \
     power-profiles-daemon \
-    sof-firmware alsa-ucm-conf iio-sensor-proxy fprintd
+    sof-firmware alsa-ucm-conf iio-sensor-proxy fprintd \
+    brave zen-browser proton-vpn-gui gnome-software
   then
     systemctl enable gdm bolt.service earlyoom.service power-profiles-daemon
     mkdir -p /etc/gdm
