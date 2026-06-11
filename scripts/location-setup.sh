@@ -43,7 +43,7 @@ if [[ -f "$POLKIT_RULE" ]]; then
 fi
 
 echo "→ Stowing Proton VPN panel extension (proton-vpn@helllguest)..."
-cd "$STOW_DIR"
+cd "$STOW_DIR" || exit 1
 stow -R -t "$HOME" proton-vpn 2>/dev/null || stow -t "$HOME" proton-vpn
 
 echo "→ Syncing location (VPN exit if connected, else home)..."
@@ -58,6 +58,11 @@ if command -v gnome-extensions >/dev/null 2>&1; then
   echo "→ Enabling Proton VPN panel extension..."
   gnome-extensions enable proton-vpn@helllguest 2>/dev/null || \
     echo "  ⚠ enable after GNOME Shell restart if needed"
+fi
+
+if [[ -f "$REPO_ROOT/scripts/network-dns-setup.sh" ]]; then
+  echo "→ Applying trusted DNS on active NetworkManager connection..."
+  bash "$REPO_ROOT/scripts/network-dns-setup.sh" || true
 fi
 
 echo ""

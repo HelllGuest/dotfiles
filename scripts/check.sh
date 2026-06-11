@@ -147,6 +147,13 @@ else
     echo "✗ Few GNOME extensions enabled (run scripts/gnome-session-setup.sh)"
 fi
 
+echo "--- Proton VPN ---"
+if [ -f "$REPO_ROOT/scripts/proton-connectivity-check.sh" ]; then
+    bash "$REPO_ROOT/scripts/proton-connectivity-check.sh" 2>/dev/null || echo "⚠ Proton API unreachable (run scripts/proton-connectivity-check.sh)"
+else
+    echo "✗ proton-connectivity-check.sh missing"
+fi
+
 echo "--- Config validation ---"
 if [ -f "$REPO_ROOT/scripts/validate-configs.sh" ]; then
     bash "$REPO_ROOT/scripts/validate-configs.sh" 2>/dev/null || echo "⚠ Run scripts/validate-configs.sh for details"
