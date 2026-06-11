@@ -16,18 +16,20 @@ return {
       "HiPhish/rainbow-delimiters.nvim",
     },
     config = function()
-      require("nvim-treesitter.configs").setup({
-        ensure_installed = {
-          "astro", "bash", "css", "dockerfile", "fish",
-          "gitcommit", "gitignore", "go", "gomod", "gosum",
-          "html", "javascript", "jsdoc", "json",
-          "lua", "luadoc", "make", "markdown", "markdown_inline",
-          "python", "regex", "rust", "sql", "toml",
-          "tsx", "typescript", "vim", "vimdoc", "yaml",
-        },
+      local parsers = {
+        "astro", "bash", "css", "dockerfile", "fish",
+        "gitcommit", "gitignore", "go", "gomod", "gosum",
+        "html", "javascript", "jsdoc", "json",
+        "lua", "luadoc", "make", "markdown", "markdown_inline",
+        "python", "regex", "rust", "sql", "toml",
+        "tsx", "typescript", "vim", "vimdoc", "yaml",
+      }
+      require("nvim-treesitter").setup({
         highlight = { enable = true },
-        indent    = { enable = true },
       })
+      if vim.fn.argc() == 0 then
+        require("nvim-treesitter").install(parsers)
+      end
     end,
   },
 

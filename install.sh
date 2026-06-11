@@ -22,7 +22,14 @@ if [ -f "packages/pacman.txt" ]; then
     sudo pacman -S --needed --noconfirm - < packages/pacman.txt || echo "Sudo failed. Skipping package installation."
 fi
 
-# 1.1 Install Fonts
+# 1.1 Install Flatpaks
+if [ -f "packages/flatpak.txt" ] && command -v flatpak >/dev/null 2>&1; then
+    echo "Installing flatpak packages..."
+    flatpak remote-add --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo || true
+    grep -v '^#' packages/flatpak.txt | xargs flatpak install --system --noconfirm flathub || echo "Flatpak install failed."
+fi
+
+# 1.2 Install Fonts
 if [ -f "scripts/install-fonts.sh" ]; then
     bash scripts/install-fonts.sh || echo "Font installation failed. Skipping."
 fi

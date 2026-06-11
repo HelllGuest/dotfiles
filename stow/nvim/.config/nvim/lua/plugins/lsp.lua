@@ -47,7 +47,7 @@ return {
     },
     config = function(_, opts)
       require("mason").setup(opts)
-      if not vim.fn.stdout_isatty() then
+      if #vim.api.nvim_list_uis() == 0 then
         return
       end
       local mr = require("mason-registry")

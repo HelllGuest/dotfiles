@@ -384,11 +384,6 @@ if [[ ${DESKTOP^^} != N* ]]; then
     mkdir -p /etc/gdm
     printf '[daemon]\nWaylandEnable=true\n' > /etc/gdm/custom.conf
     flatpak remote-add --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo || true
-    # Install browsers/VPN via Flatpak (not in official repos)
-    flatpak install --system --noconfirm flathub \
-      com.brave.Browser \
-      io.github.zen_browser.zen \
-      com.protonvpn.www || true
   else
     say "WARN: GNOME install incomplete (network?) — base system is fine. Finish post-boot:"
     say "      pacman -S gnome-shell gdm && systemctl enable gdm"
