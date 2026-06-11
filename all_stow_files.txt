@@ -49,7 +49,6 @@ stow/system/etc/udev/rules.d/72-fingerprint-disable.rules
 stow/system/etc/ufw/before.rules
 stow/tmp-cleanup/.config/systemd/user/tmp-semgrep-cleanup.service
 stow/tmp-cleanup/.config/systemd/user/tmp-semgrep-cleanup.timer
-stow/zen/.var/app/io.github.zen_browser.zen/.zen/user.js
 stow/zram/etc/systemd/zram-generator.conf
 stow/zsh/.shell-aliases
 stow/zsh/.shell-exports

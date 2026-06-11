@@ -178,10 +178,16 @@ udevadm settle 2>/dev/null || true
 mount -t vfat "$EFI_PART" /mnt/boot                # explicit type: don't rely on auto-detect
 esp_mb=$(df -Pm /mnt/boot | awk 'NR==2{print $2}'); esp_mb=${esp_mb:-0}
 (( esp_mb >= 1024 )) || warn "ESP is ${esp_mb}MB — dual-kernel UKIs want >=1024MB; install may fill it"
-# defensive: drop leftover Arch boot files from a prior failed install so pacstrap
-# won't hit 'conflicting files' (safe on a reused/shared ESP — Arch-specific names only)
+# defensive: drop leftover Arch boot files from a prior install so pacstrap won't hit
+# 'conflicting files' (Arch-specific names only — other /EFI/* loaders stay intact)
+say "cleaning prior Arch boot artifacts on ESP"
 rm -f /mnt/boot/intel-ucode.img /mnt/boot/amd-ucode.img \
-      /mnt/boot/vmlinuz-linux* /mnt/boot/initramfs-linux* 2>/dev/null || true
+      /mnt/boot/vmlinuz-linux* /mnt/boot/initramfs-linux* \
+      /mnt/boot/EFI/Linux/arch-linux*.efi 2>/dev/null || true
+if [[ -d /mnt/boot/loader/entries ]]; then
+  find /mnt/boot/loader/entries -maxdepth 1 -type f \
+    \( -name 'arch*.conf' -o -name 'linux-*.conf' \) -delete 2>/dev/null || true
+fi
 ok "filesystems mounted (ESP ${esp_mb}MB)"
 
 # ── 6. base install ─────────────────────────────────────────
@@ -257,6 +263,15 @@ mkdir -p /etc/kernel
 echo "rd.luks.name=${LUKS_UUID}=cryptroot root=/dev/mapper/cryptroot rootflags=subvol=@ rw quiet loglevel=3 mem_sleep_default=deep apparmor=1 security=apparmor intel_iommu=on" > /etc/kernel/cmdline
 
 # UKI presets: linux-lts (primary) + linux-hardened (fallback)
+# reuse ESP: clear stale UKIs + loader entries before rebuild (multiboot-safe names)
+if [[ ${FORMAT_EFI:-1} == 0 ]]; then
+  say "reuse ESP — removing old Arch UKIs and loader entries"
+  rm -f /boot/EFI/Linux/arch-linux*.efi 2>/dev/null || true
+  if [[ -d /boot/loader/entries ]]; then
+    find /boot/loader/entries -maxdepth 1 -type f \
+      \( -name 'arch*.conf' -o -name 'linux-*.conf' \) -delete 2>/dev/null || true
+  fi
+fi
 mkdir -p /boot/EFI/Linux
 cat > /etc/mkinitcpio.d/linux-lts.preset <<EOF
 # ALL_kver is REQUIRED — mkinitcpio reads the kernel version from this vmlinuz.
@@ -367,7 +382,7 @@ if [[ ${DESKTOP^^} != N* ]]; then
   say "installing minimal GNOME + browsers + VPN + software center"
   # sof-firmware+alsa-ucm-conf: Comet Lake speakers/mic. iio-sensor-proxy: tablet
   # auto-rotate. fprintd: fingerprint. iio/fprintd are D-Bus-activated — do NOT enable.
-  # brave, zen, proton-vpn: installed via Flatpak (not in official repos).
+  # browsers + proton-vpn: installed via Flatpak (not in official repos).
   # gnome-software: software center for Flatpak apps.
   # Non-fatal: a network hiccup here must not abort an otherwise-bootable base system.
   if pacman -S --noconfirm --needed --disable-download-timeout \
@@ -387,6 +402,8 @@ if [[ ${DESKTOP^^} != N* ]]; then
     flatpak install --system -y flathub \
       com.brave.Browser \
       io.github.zen_browser.zen \
+      com.google.Chrome \
+      io.gitlab.librewolf-community \
       com.protonvpn.www || true
   else
     say "WARN: GNOME install incomplete (network?) — base system is fine. Finish post-boot:"

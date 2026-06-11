@@ -933,6 +933,8 @@ Install apps:
 # Browsers
 flatpak install flathub com.brave.Browser
 flatpak install flathub io.github.zen_browser.zen
+flatpak install flathub com.google.Chrome
+flatpak install flathub io.gitlab.librewolf-community
 
 # VPN
 flatpak install flathub com.protonvpn.www
@@ -1158,6 +1160,18 @@ default arch-linux-lts.efi
 
 ---
 
+## ESP reuse / multiboot
+
+When using [`scripts/arch-install.sh`](../scripts/arch-install.sh) in **MANUAL** mode with **reuse existing ESP**, the installer removes **Arch-only** boot artifacts before rebuilding (Windows and other `/EFI/*` loaders stay intact):
+
+* `/EFI/Linux/arch-linux*.efi`
+* legacy `vmlinuz-linux*` / `initramfs-linux*` on the ESP root
+* stale systemd-boot entries (`arch*.conf`, `linux-*.conf`)
+
+`bootctl install` replaces the systemd-boot binary; existing `/EFI/Microsoft/` entries remain for dual-boot.
+
+---
+
 # PHASE 22 — APPARMOR VERIFICATION & ENFORCEMENT
 
 Verify AppArmor profiles are loaded:
@@ -1184,7 +1198,9 @@ systemctl restart apparmor
 
 # PHASE 23 — SECURE BOOT WITH SBCTL
 
-Install:
+> **Automated:** [`scripts/arch-install.sh`](../scripts/arch-install.sh) installs `sbctl` during `pacstrap`, runs `create-keys`, signs the full boot chain (UKIs + systemd-boot), and can run `enroll-keys -m` during install when firmware is in Setup Mode and you answer yes to the prompt. **Enrollment after first boot** (below) is the usual path.
+
+Install (manual path):
 
 ```bash
 pacman -S sbctl
@@ -1196,13 +1212,7 @@ Check status:
 sbctl status
 ```
 
-System should be in:
-
-```text
-Setup Mode
-```
-
-If not:
+Before enrolling custom keys, firmware should be in **Setup Mode**. If not:
 
 * enter BIOS
 * clear Secure Boot keys
@@ -1218,28 +1228,20 @@ sbctl create-keys
 
 ---
 
-# Enroll Keys
+# Sign boot chain
 
-```bash
-sbctl enroll-keys -m
-```
-
-`-m` also imports Microsoft keys for broader firmware/device compatibility.
-
----
-
-# Sign UKIs
+Sign UKIs **and** systemd-boot (`-s` saves each path to the sbctl db):
 
 ```bash
 sbctl sign -s /boot/EFI/Linux/arch-linux-lts.efi
 sbctl sign -s /boot/EFI/Linux/arch-linux-lts-fallback.efi
-
 sbctl sign -s /boot/EFI/Linux/arch-linux-hardened.efi
 sbctl sign -s /boot/EFI/Linux/arch-linux-hardened-fallback.efi
+sbctl sign -s /boot/EFI/systemd/systemd-bootx64.efi
+sbctl sign -s /boot/EFI/BOOT/BOOTX64.EFI
 ```
 
-`-s` saves each path to the sbctl db, so the `zz-sbctl` pacman hook auto-resigns
-both kernels on every update:
+The `zz-sbctl` pacman hook auto-resigns saved paths on kernel package updates:
 
 ```bash
 ls /usr/share/libalpm/hooks/ | grep -i sbctl   # expect zz-sbctl.hook
@@ -1253,6 +1255,49 @@ sbctl verify
 
 ---
 
+# Enroll keys and enable Secure Boot
+
+Boot successfully with Secure Boot **disabled** in BIOS first. Then:
+
+```bash
+sbctl enroll-keys -m
+```
+
+`-m` imports Microsoft keys so Windows still boots on a shared ESP.
+
+Return to BIOS:
+
+```text
+Security → Secure Boot → Enabled
+```
+
+Confirm:
+
+```bash
+sbctl status    # Secure Boot: enabled
+sbctl verify
+bootctl status  # Measured UKI: yes (when SB active)
+```
+
+---
+
+# Re-sign after manual UKI rebuilds
+
+`mkinitcpio -P` (for example after editing `/etc/kernel/cmdline`) does **not** run the pacman hook. Re-sign UKIs:
+
+```bash
+sudo mkinitcpio -P
+for f in /boot/EFI/Linux/arch-linux-lts.efi /boot/EFI/Linux/arch-linux-lts-fallback.efi \
+         /boot/EFI/Linux/arch-linux-hardened.efi /boot/EFI/Linux/arch-linux-hardened-fallback.efi; do
+  [[ -f $f ]] && sudo sbctl sign -s "$f"
+done
+sudo sbctl verify
+```
+
+`profiles/thinkpad-x1.sh` (via `./install.sh`) performs this automatically when `/etc/sbctl/keys` exists.
+
+---
+
 # IMPORTANT
 
 Only remove old loader entries AFTER confirming UKIs boot correctly.
@@ -1262,16 +1307,6 @@ If UKIs work properly:
 ```bash
 rm /boot/loader/entries/arch-lts.conf
 rm /boot/loader/entries/arch-hardened.conf
-```
-
----
-
-# Re-enable Secure Boot
-
-Return to BIOS:
-
-```text
-Security → Secure Boot → Enabled
 ```
 
 ---
@@ -1355,9 +1390,11 @@ cd ~/dotfiles
 
 `./install.sh` (run from a GNOME session) will:
 
-* Apply the hostname profile (e.g. `profiles/thinkpad-x1.sh` on a ThinkPad X1)
+* Apply a machine profile: `profiles/$(hostname).sh` if present, otherwise `scripts/detect-profile.sh` (ThinkPad X1 → `thinkpad-x1.sh`; hybrid GPU → also `nvidia.sh`)
+* On ThinkPad X1, re-sign UKIs after `mkinitcpio -P` when Secure Boot keys exist (`/etc/sbctl/keys`)
 * Install packages from `packages/pacman.txt` (kernels, shells, terminals, CLI tools)
-* Install Flatpaks from `packages/flatpak.txt` (Brave, Zen, Proton VPN, Android Studio)
+* Install Flatpaks from `packages/flatpak.txt` (Brave, Zen, Chrome, LibreWolf, Proton VPN, Android Studio)
+* Deploy browser telemetry policies via `scripts/browser-hardening.sh` (Chrome/Brave `/etc` policies; Zen `user.js` into each `~/.var/app/io.github.zen_browser.zen/.zen/<profile>/` after first launch; LibreWolf upstream defaults)
 * Install AUR packages from `packages/aur.txt` (bootstraps `paru` if no helper exists)
 * Stow configs to `$HOME` and `/etc` (`system/`; skips `zram` symlink and `gdm`)
 * Materialize `zram-generator.conf` via `scripts/zram-setup.sh`
@@ -1471,6 +1508,8 @@ cat /sys/class/power_supply/BAT0/charge_control_end_threshold
 
 ```bash
 sbctl status
+sbctl verify
+bootctl status | grep -E 'Secure Boot|Measured UKI'
 ```
 
 Expected:
@@ -1478,6 +1517,10 @@ Expected:
 ```text
 Secure Boot: enabled
 ```
+
+All signed binaries should pass `sbctl verify`. With SB enabled, `bootctl status` should show `Measured UKI: yes`.
+
+If you rebuilt UKIs manually, re-sign before enabling SB or after `mkinitcpio -P` (see [Phase 23](#phase-23--secure-boot-with-sbctl)).
 
 ---
 

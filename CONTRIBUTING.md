@@ -36,9 +36,11 @@ Thank you for helping improve this setup. Follow these guidelines to keep the re
 
 ### Machine profiles (`profiles/`)
 
-- Name profiles after the hostname: `profiles/$(hostname).sh` (e.g. `thinkpad-x1.sh`).
-- `install.sh` sources the matching profile automatically.
-- `profiles/laptop.sh` can delegate to hardware-specific profiles.
+- Optional hostname override: `profiles/$(hostname).sh` (e.g. `thinkpad-x1.sh`).
+- If no hostname match, `scripts/detect-profile.sh` picks from DMI + chassis + `lspci` (ThinkPad X1, laptop, desktop, NVIDIA).
+- `install.sh` sources the primary profile, then `nvidia.sh` on hybrid-GPU machines when it was not already primary.
+- `profiles/laptop.sh` delegates to `thinkpad-x1.sh` only on X1 models.
+- `profiles/thinkpad-x1.sh` runs `mkinitcpio -P` when kernel cmdline changes; re-sign UKIs with `sbctl sign -s` when `/etc/sbctl/keys` exists (pacman hook does not run on manual rebuilds).
 
 ### Packages (`packages/`)
 
@@ -60,6 +62,7 @@ Thank you for helping improve this setup. Follow these guidelines to keep the re
 | New shell feature / plugin | `README.md`, `CHANGELOG.md` |
 | New stow package | `README.md`, `all_stow_files.txt`, `CHANGELOG.md` |
 | Install script behavior | `README.md`, `docs/hardened-arch-gnome.md` |
+| Profile / Secure Boot behavior | `README.md`, `docs/hardened-arch-gnome.md` (Phases 23, 27, 28), `CHANGELOG.md` |
 | Package list change | `CHANGELOG.md` |
 | GNOME / shortcut change | `gnome/keybindings.md`, `CHANGELOG.md` |
 

@@ -1,0 +1,20 @@
+{
+  "MetricsReportingEnabled": false,
+  "SafeBrowsingExtendedReportingEnabled": false,
+  "UserFeedbackAllowed": false,
+  "BrowserSignin": 0,
+  "SyncDisabled": true,
+  "SpellcheckServiceEnabled": false,
+  "SearchSuggestEnabled": false,
+  "AlternateErrorPagesEnabled": false,
+  "NetworkPredictionOptions": 2,
+  "DnsOverHttpsMode": "off",
+  "UrlKeyedAnonymizedDataCollectionEnabled": false,
+  "ChromeVariations": 2,
+  "DefaultBrowserSettingEnabled": false,
+  "AutofillAddressEnabled": false,
+  "AutofillCreditCardEnabled": false,
+  "PasswordManagerEnabled": false,
+  "PromotionalTabsEnabled": false,
+  "BackgroundModeEnabled": false
+}

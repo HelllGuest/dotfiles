@@ -90,6 +90,15 @@ fi
 if [ -f /etc/kernel/cmdline ] && command -v mkinitcpio >/dev/null 2>&1; then
     echo "Rebuilding initramfs/UKI for new kernel cmdline..."
     sudo mkinitcpio -P || true
+    # mkinitcpio -P does not trigger the pacman zz-sbctl hook — re-sign UKIs when SB is set up
+    if command -v sbctl >/dev/null 2>&1 && [ -d /etc/sbctl/keys ]; then
+        echo "Re-signing UKIs for Secure Boot..."
+        for f in /boot/EFI/Linux/arch-linux-lts.efi /boot/EFI/Linux/arch-linux-lts-fallback.efi \
+                 /boot/EFI/Linux/arch-linux-hardened.efi /boot/EFI/Linux/arch-linux-hardened-fallback.efi; do
+            [ -f "$f" ] && sudo sbctl sign -s "$f" || true
+        done
+        sudo sbctl verify 2>/dev/null || echo "WARN: sbctl verify failed — run: sudo sbctl sign -s /boot/EFI/Linux/arch-linux-lts.efi"
+    fi
 fi
 
 # 13. Tablet mode handler (X1 Yoga)

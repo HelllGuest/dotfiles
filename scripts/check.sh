@@ -154,7 +154,7 @@ fi
 
 echo "--- Flatpaks ---"
 if command -v flatpak >/dev/null 2>&1; then
-    for app in com.brave.Browser io.github.zen_browser.zen com.protonvpn.www; do
+    for app in com.brave.Browser io.github.zen_browser.zen com.google.Chrome io.gitlab.librewolf-community com.protonvpn.www; do
         if flatpak list --app 2>/dev/null | grep -q "$app"; then
             echo "✓ $app installed"
         else
@@ -163,6 +163,26 @@ if command -v flatpak >/dev/null 2>&1; then
     done
 else
     echo "✗ flatpak not installed"
+fi
+
+echo "--- Browser policies ---"
+for policy in /etc/opt/chrome/policies/managed/00-privacy.json /etc/brave/policies/managed/00-privacy.json; do
+    if [[ -f "$policy" ]]; then
+        echo "✓ $policy"
+    else
+        echo "✗ $policy missing (run scripts/browser-hardening.sh)"
+    fi
+done
+if [[ -f /etc/firefox/policies/policies.json ]]; then
+    echo "✓ /etc/firefox/policies/policies.json (Zen/Firefox)"
+else
+    echo "✗ /etc/firefox/policies/policies.json missing (run scripts/browser-hardening.sh)"
+fi
+zen_root="$HOME/.var/app/io.github.zen_browser.zen/.zen"
+if compgen -G "$zen_root"/*/user.js >/dev/null 2>&1; then
+    echo "✓ Zen user.js deployed in profile(s)"
+elif flatpak list --app 2>/dev/null | grep -q io.github.zen_browser.zen; then
+    echo "✗ Zen user.js missing — launch Zen once, then run scripts/browser-hardening.sh"
 fi
 
 echo "--- Proton VPN ---"

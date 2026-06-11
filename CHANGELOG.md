@@ -1,6 +1,11 @@
 # Changelog
 
 ## [Unreleased]
+- Browsers: added Google Chrome and LibreWolf flatpaks; `scripts/browser-hardening.sh` deploys managed policies for Chrome/Brave (`browsers/policies/*.json`); Zen prefs via `browsers/zen/user.js` into each profile dir (fixes invalid `.zen/user.js` stow path) plus `/etc/firefox/policies/policies.json`; LibreWolf relies on upstream hardening.
+- ThinkPad X1 profile: re-sign UKIs with `sbctl` after `mkinitcpio -P` when Secure Boot keys exist (pacman hook does not run on manual rebuilds).
+- Docs: Secure Boot (Phase 23), ESP multiboot cleanup, profile detection, and UKI re-sign flow synced across `README.md`, `CONTRIBUTING.md`, and `docs/hardened-arch-gnome.md`.
+- Install: hardware-based profile detection (`scripts/detect-profile.sh`) when `profiles/$(hostname).sh` is missing; hybrid laptops also get `nvidia.sh`. `laptop.sh` delegates to `thinkpad-x1.sh` only on X1 models.
+- Installer: on ESP reuse, `arch-install.sh` now removes stale Arch UKIs (`/EFI/Linux/arch-linux*.efi`), legacy `vmlinuz`/`initramfs` on the ESP, and old systemd-boot entries (`arch*.conf`, `linux-*.conf`) before rebuilding — multiboot-safe (Windows/other `/EFI/*` untouched).
 - Docs: aligned README, CONTRIBUTING, and `docs/hardened-arch-gnome.md` Phase 27 with current `install.sh` flow (flatpak/AUR auto, `user.conf`, zram materialize, GNOME session requirement); fixed stale VS Code flatpak, battery-threshold, and stow-only claims.
 - Install: fixed flatpak installs (`-y` not `--noconfirm`); added `install-flatpaks.sh`, `install-aur.sh`, `bootstrap-aur.sh` (auto paru); wired location setup into `install.sh`.
 - Packages: `pacman.txt` syncs `linux-lts`/`linux-hardened`, `starship`, `flatpak`; dropped `linux-zen` and `python-pywal`.

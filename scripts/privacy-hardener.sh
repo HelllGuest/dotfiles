@@ -21,9 +21,9 @@ else
     echo "gsettings not found. Skipping GNOME hardening."
 fi
 
-# 2. Environment Variables to disable telemetry for common tools
-# See stow/zsh/.shell-exports
-# DOTNET_CLI_TELEMETRY_OPTOUT=1
-# POWERSHELL_TELEMETRY_OPTOUT=1
+# 2. Browser telemetry (Chrome/Brave managed policies; Zen user.js; LibreWolf upstream)
+if [ -f "$(dirname "$0")/browser-hardening.sh" ]; then
+    bash "$(dirname "$0")/browser-hardening.sh" || true
+fi
 
 echo "Privacy hardening complete."

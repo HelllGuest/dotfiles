@@ -7,7 +7,7 @@ A clean, modular, and programmable dotfiles ecosystem optimized for **Arch Linux
 ## 🚀 Key Features
 
 - **Privacy Hardened:** Telemetry, usage reporting, and "phoning home" are disabled system-wide (GNOME, VS Code, .NET, etc.).
-- **ThinkPad Optimized:** Hostname-based machine profiles (e.g. `thinkpad-x1.sh`) with power-profiles-daemon, tablet auto-rotate, and S3 deep-sleep tuning (thermal is firmware-managed). Battery charge thresholds are documented in `docs/hardened-arch-gnome.md` (manual `thinkpad_acpi` sysfs).
+- **ThinkPad Optimized:** Hostname or hardware-detected profiles (e.g. `thinkpad-x1.sh`) with power-profiles-daemon, tablet auto-rotate, UKI re-signing for Secure Boot, and S3 deep-sleep tuning (thermal is firmware-managed). Battery charge thresholds are documented in `docs/hardened-arch-gnome.md` (manual `thinkpad_acpi` sysfs).
 - **Elite-Tier Terminal:** Kitty & Ghostty with shared Zsh/Bash configs, real-time autocomplete, [Crampack](https://github.com/Noktomezo/CrampackForStarship) Starship prompt.
 - **Neovim (Lazy.nvim):** A modular Lua configuration.
 
@@ -100,8 +100,8 @@ dotfiles/
 │   ├── kitty/ ghostty/ # Terminals
 │   ├── nvim/        # Neovim (Lazy.nvim)
 │   ├── starship/    # Starship prompt
-│   └── fastfetch/ proton-vpn/ tmp-cleanup/ zen/ …
-├── profiles/        # Hostname-based tweaks (e.g. thinkpad-x1.sh)
+│   └── fastfetch/ proton-vpn/ tmp-cleanup/ …  (browsers/ for Chrome/Brave/Zen policies)
+├── profiles/        # Hostname or hardware-detected tweaks (e.g. thinkpad-x1.sh)
 ├── scripts/         # Health checks, installers
 ├── packages/        # Tracked package lists (Pacman, AUR, Flatpak)
 ├── gnome/           # GNOME settings (dconf) and extension lists
@@ -144,7 +144,7 @@ Installs packages, applies symlinks to `$HOME` and `/etc`, restores GNOME settin
 ./install.sh
 ```
 
-Machine profiles are applied automatically when `profiles/$(hostname).sh` exists (e.g. `thinkpad-x1.sh` for the X1 Yoga Gen 5).
+Machine profiles run first in `./install.sh`: `profiles/$(hostname).sh` if it exists, otherwise `scripts/detect-profile.sh` picks from hardware (ThinkPad X1 → `thinkpad-x1.sh`, other ThinkPads/laptops → `laptop.sh`, discrete NVIDIA → also `nvidia.sh`).
 
 ThinkPad-specific system configs (`i915`, kernel cmdline, Wayland env) live in `stow/system/` and are applied with `./install.sh`. After tuning, run `scripts/thinkpad-health.sh` and **reboot**.
 
@@ -157,6 +157,14 @@ scripts/arch-install.sh          # LUKS + Btrfs(@tmp) + UKI(lts/hardened) + syst
 → reboot, remove ISO
 ```
 
+**Stage A½ — enable Secure Boot (optional, after first boot works with SB disabled in BIOS):**
+```text
+BIOS → clear Secure Boot keys → Setup Mode
+sudo sbctl enroll-keys -m          # -m keeps Microsoft keys (Windows on shared ESP)
+BIOS → Secure Boot → Enabled
+sbctl status && sbctl verify
+```
+
 **Stage B — first boot (log into GNOME, open terminal, then):**
 ```text
 git clone https://github.com/HelllGuest/dotfiles.git ~/dotfiles
@@ -167,13 +175,13 @@ scripts/thinkpad-health.sh → reboot
 
 **What `./install.sh` runs, in order:**
 ```text
-profiles/$(hostname).sh → pacman < packages/pacman.txt
+profiles/$(hostname).sh or detect-profile.sh → pacman < packages/pacman.txt
 → install-flatpaks.sh → install-aur.sh (bootstraps paru if needed) → install-fonts.sh
 → stow (/etc system + $HOME, skips zram & gdm) → atuin import → zram-setup.sh
 → gnome-session-setup.sh (dconf + ext enable) → location-setup.sh
 → gnome-console-setup.sh → gdm-setup.sh
 → git-setup.sh (interactive) → nvim-setup.sh
-→ install-extensions.sh → check.sh → validate-configs.sh → privacy-hardener.sh
+→ install-extensions.sh → check.sh → validate-configs.sh → privacy-hardener.sh (incl. browser-hardening.sh)
 ```
 
 > `scripts/tmp-to-disk.sh` is **not** part of this flow — `arch-install.sh` already
@@ -204,7 +212,7 @@ Key runtime dependencies (most surfaced by `scripts/check.sh`):
 
 **AUR** (via `install-aur.sh`, bootstraps `paru` if needed): `blesh-git`, `curlie`, `forgit`, GNOME shell extensions, `visual-studio-code-bin`
 
-**Flatpaks** (via `install-flatpaks.sh`): Brave, Zen, Proton VPN, Android Studio
+**Flatpaks** (via `install-flatpaks.sh`): Brave, Zen, Google Chrome, LibreWolf, Proton VPN, Android Studio. Browser telemetry debloat: `scripts/browser-hardening.sh` (Chrome/Brave `/etc` policies; Zen `user.js` per profile + `/etc/firefox/policies`; LibreWolf upstream-hardened). Launch Zen once before re-running hardening if profiles are new.
 
 **Terminals:** `kitty` (primary), `ghostty`, `gnome-console` (kgx quick terminal)
 
@@ -238,6 +246,7 @@ We take a "quiet by default" approach:
 |------|---------|
 | Full update | `sudo pacman -Syu && ./install.sh && bash scripts/post-update.sh` |
 | Health check | `~/dotfiles/scripts/check.sh` |
+| Secure Boot | `sbctl status && sbctl verify` (after `enroll-keys -m`; re-sign UKIs if you ran `mkinitcpio -P` manually) |
 | Post-update sync | `~/dotfiles/scripts/post-update.sh` |
 | Backup GNOME | `~/dotfiles/scripts/backup-gsettings.sh` |
 | Move /tmp to disk | `sudo ~/dotfiles/scripts/tmp-to-disk.sh` then reboot (off RAM-capped tmpfs → btrfs `@tmp`) |
