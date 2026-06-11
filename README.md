@@ -8,7 +8,7 @@ A clean, modular, and programmable dotfiles ecosystem optimized for **Arch Linux
 
 - **Dynamic Theming Engine:** A palette-driven system (`JSON` + `SCSS`) that synchronizes colors across GTK 3/4, Terminals, Starship, and Neovim.
 - **Privacy Hardened:** Telemetry, usage reporting, and "phoning home" are disabled system-wide (GNOME, VS Code, .NET, etc.).
-- **ThinkPad Optimized:** Hostname-based machine profiles (e.g. `thinkpad-x1.sh`) with thermal, fan, and battery tweaks.
+- **ThinkPad Optimized:** Hostname-based machine profiles (e.g. `thinkpad-x1.sh`) with power-profiles-daemon, battery charge thresholds, tablet auto-rotate, and S3 deep-sleep tuning (thermal is firmware-managed).
 - **Elite-Tier Terminal:** Kitty & Ghostty with shared Zsh/Bash configs, real-time autocomplete, [Crampack](https://github.com/Noktomezo/CrampackForStarship) Starship prompt, and dynamic theming.
 - **Neovim (Lazy.nvim):** A modular Lua configuration that imports your system-wide palette on the fly.
 
@@ -41,7 +41,7 @@ Both `~/.zshrc` and `~/.bashrc` source these files.
 | **you-should-use** | Alias usage hints |
 | **forgit** | fzf git UI |
 
-**History:** **atuin** replaces `Ctrl+R` (sqlite, fuzzy, session filter on ↑). Config: `stow/atuin/.config/atuin/config.toml`.
+**History:** **atuin** powers `Ctrl+R` (sqlite, fuzzy). `↑`/`↓` stay on zsh prefix history-search (atuin up-arrow disabled). Config: `stow/atuin/.config/atuin/config.toml`.
 
 **Shared files:** `.shell-{exports,aliases,functions,git}` sourced by both Zsh and Bash.
 
@@ -125,15 +125,18 @@ GNOME Shell uses the **Default** theme; GTK, terminals, and Neovim follow the ac
 
 ```text
 dotfiles/
-├── stow/
+├── stow/            # GNU Stow packages (symlinked to $HOME, or / for system/)
 │   ├── bash/        # .bashrc, .inputrc
 │   ├── zsh/         # .zshrc, .zsh-plugins, .shell-*
+│   ├── system/      # /etc configs (i915, sleep, UFW, udev) — root stow
 │   ├── zram/        # /etc/systemd/zram-generator.conf (requires root stow)
-│   ├── kitty/       # Kitty terminal
-│   ├── ghostty/     # Ghostty terminal
+│   ├── git/         # Git config, delta, ignore
+│   ├── atuin/       # Shell history (sqlite)
+│   ├── gnome-session/ # GNOME user services (tablet handler, etc.)
+│   ├── kitty/ ghostty/ # Terminals
 │   ├── nvim/        # Neovim (Lazy.nvim)
 │   ├── starship/    # Starship prompt
-│   └── fastfetch/   # System info display
+│   └── fastfetch/ proton-vpn/ tmp-cleanup/ zen/ …
 ├── theming/         # Palettes, templates, and generated theme files
 ├── profiles/        # Hostname-based tweaks (e.g. thinkpad-x1.sh)
 ├── scripts/         # Theme switching, health checks, installers
@@ -229,7 +232,7 @@ sudo stow -d ~/dotfiles/stow -t / zram
 ```
 
 ### 4. Dependencies
-The health check (`scripts/check.sh`) validates these during installation:
+Key runtime dependencies (most surfaced by `scripts/check.sh`):
 
 **Core:** `stow`, `zsh`, `starship`, `neovim`, `rclone`, `jq`, `dart-sass`, `zram-generator`
 
