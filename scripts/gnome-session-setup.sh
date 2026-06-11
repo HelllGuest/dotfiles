@@ -39,7 +39,7 @@ fi
 sudo systemctl enable --now iio-sensor-proxy.service 2>/dev/null || true
 
 mkdir -p "$HOME/.config"
-cd "$STOW_DIR"
+cd "$STOW_DIR" || exit 1
 stow -R -t "$HOME" gnome-session
 stow -R -t "$HOME" proton-vpn 2>/dev/null || stow -t "$HOME" proton-vpn
 chmod +x "$HOME/.config/gnome-session/scripts/tablet-mode-handler.sh"

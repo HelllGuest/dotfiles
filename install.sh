@@ -36,7 +36,7 @@ if ! command -v stow >/dev/null 2>&1; then
 fi
 
 echo "Applying dotfiles..."
-cd stow
+cd stow || exit 1
 for dir in */; do
     dir=${dir%/}
     echo "Processing $dir..."
@@ -56,7 +56,7 @@ for dir in */; do
         $STOW_CMD "$dir" "$HOME"
     fi
 done
-cd ..
+cd .. || exit 1
 
 # 2.1 Import shell history into atuin
 if command -v atuin >/dev/null 2>&1; then

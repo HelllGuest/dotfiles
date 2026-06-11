@@ -182,6 +182,39 @@ Machine profiles are applied automatically when `profiles/$(hostname).sh` exists
 
 ThinkPad-specific system configs (`i915`, kernel cmdline, Wayland env) live in `stow/system/` and are applied with `./install.sh`. After tuning, run `scripts/thinkpad-health.sh` and **reboot**.
 
+#### Script execution order (fresh machine)
+
+**Stage A — from the Arch ISO (bare metal):**
+```text
+scripts/arch-install-vmtest.sh   # optional: dry-run the installer in a UEFI VM
+scripts/arch-install.sh          # LUKS + Btrfs(@tmp) + UKI(lts/hardened) + systemd-boot + sbctl + minimal GNOME
+→ reboot, remove ISO
+```
+
+**Stage B — first boot (GDM login → terminal):**
+```text
+git clone https://github.com/HelllGuest/dotfiles.git ~/dotfiles
+cd ~/dotfiles && ./install.sh        # orchestrates everything below
+yay -S --needed - < packages/aur.txt # AUR (manual)
+flatpak install -y $(grep -v '^#' packages/flatpak.txt)
+ts <theme> && scripts/install-starship-crampack.sh
+exec zsh
+scripts/thinkpad-health.sh → reboot
+```
+
+**What `./install.sh` runs, in order:**
+```text
+profiles/$(hostname).sh → pacman < packages/pacman.txt → install-fonts.sh
+→ stow (/etc system + $HOME, skips zram & gdm) → zram-setup.sh
+→ gnome-session-setup.sh → gnome-console-setup.sh → gdm-setup.sh
+→ git-setup.sh (interactive) → nvim-setup.sh → wallpaper.sh
+→ install-extensions.sh → check.sh → validate-configs.sh → privacy-hardener.sh
+```
+
+> `scripts/tmp-to-disk.sh` is **not** part of this flow — `arch-install.sh` already
+> puts `/tmp` on a disk-backed `@tmp` subvolume. It's only for retrofitting an
+> **existing** machine that still has tmpfs `/tmp`.
+
 ### 2. Config Only (No Root)
 Applies user-level symlinks only. Skips `zram` (requires sudo).
 ```bash

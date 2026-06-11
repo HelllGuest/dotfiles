@@ -17,7 +17,7 @@ if ! command -v stow >/dev/null 2>&1; then
     chmod +x scripts/minimal-stow.sh
 fi
 
-cd stow
+cd stow || exit 1
 for dir in */; do
     dir=${dir%/}
     if [ "$dir" = "zram" ] || [ "$dir" = "system" ] || [ "$dir" = "gdm" ]; then
@@ -31,6 +31,6 @@ for dir in */; do
         "../$STOW_CMD" "$dir" "$HOME"
     fi
 done
-cd ..
+cd .. || exit 1
 
 echo "Symlinks applied successfully!"

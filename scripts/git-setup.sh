@@ -20,7 +20,7 @@ if [[ ! -f /usr/lib/git-core/git-credential-libsecret ]]; then
 fi
 
 mkdir -p "$HOME/.config"
-cd "$STOW_DIR"
+cd "$STOW_DIR" || exit 1
 
 # Replace plain files that block stow (e.g. prior manual git config)
 for f in config ignore delta-theme.conf work.conf personal.conf; do

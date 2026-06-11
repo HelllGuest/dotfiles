@@ -26,7 +26,7 @@ sudo pacman -S --needed --noconfirm git gcc make ripgrep fd tree-sitter-cli 2>/d
   pacman -S --needed --noconfirm git gcc make ripgrep fd tree-sitter-cli 2>/dev/null || true
 
 mkdir -p "$HOME/.config"
-cd "$STOW_DIR"
+cd "$STOW_DIR" || exit 1
 if command -v stow >/dev/null 2>&1; then
   stow -R -t "$HOME" nvim
 else
