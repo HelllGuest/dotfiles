@@ -92,7 +92,7 @@ if [ -f /etc/kernel/cmdline ] && command -v mkinitcpio >/dev/null 2>&1; then
     sudo mkinitcpio -P || true
 fi
 
-# 4. Tablet mode handler (X1 Yoga)
+# 13. Tablet mode handler (X1 Yoga)
 if command -v systemctl >/dev/null 2>&1; then
     echo "Enabling yoga-tablet-mode user service..."
     systemctl --user enable --now yoga-tablet-mode.service 2>/dev/null || true

@@ -50,6 +50,7 @@ echo "→ Reloading udev and systemd..."
 sudo udevadm control --reload-rules
 sudo udevadm trigger --subsystem-match=drm
 sudo systemctl daemon-reload
+sudo systemctl enable gdm.service 2>/dev/null || true
 
 if grep -q 'WaylandEnable=true' /etc/gdm/custom.conf 2>/dev/null; then
     echo "✓ WaylandEnable=true"

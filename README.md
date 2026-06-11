@@ -7,7 +7,7 @@ A clean, modular, and programmable dotfiles ecosystem optimized for **Arch Linux
 ## 🚀 Key Features
 
 - **Privacy Hardened:** Telemetry, usage reporting, and "phoning home" are disabled system-wide (GNOME, VS Code, .NET, etc.).
-- **ThinkPad Optimized:** Hostname-based machine profiles (e.g. `thinkpad-x1.sh`) with power-profiles-daemon, battery charge thresholds, tablet auto-rotate, and S3 deep-sleep tuning (thermal is firmware-managed).
+- **ThinkPad Optimized:** Hostname-based machine profiles (e.g. `thinkpad-x1.sh`) with power-profiles-daemon, tablet auto-rotate, and S3 deep-sleep tuning (thermal is firmware-managed). Battery charge thresholds are documented in `docs/hardened-arch-gnome.md` (manual `thinkpad_acpi` sysfs).
 - **Elite-Tier Terminal:** Kitty & Ghostty with shared Zsh/Bash configs, real-time autocomplete, [Crampack](https://github.com/Noktomezo/CrampackForStarship) Starship prompt.
 - **Neovim (Lazy.nvim):** A modular Lua configuration.
 
@@ -22,7 +22,7 @@ Zsh is the primary shell. Bash is fully supported for scripts and fallback sessi
 | File | Purpose |
 |------|---------|
 | `.shell-exports` | Environment variables (editor, pager, Android SDK, telemetry opt-outs) |
-| `.shell-aliases` | Shared aliases (`ts`, `tt`, `v`, `as`, etc.) |
+| `.shell-aliases` | Shared aliases (`v`, `as`, `ff`, etc.) |
 | `.shell-functions` | Shared functions (`mkcd`, `backup`); zsh-only OSC 7 CWD hook |
 
 Both `~/.zshrc` and `~/.bashrc` source these files.
@@ -78,7 +78,7 @@ Presets: `1` Standard · `2` Plain text · `3` Emoji · `4` Full text
 
 ### Bash (`.bashrc` + `.inputrc`)
 
-- **bash-completion** for commands (Tab; lazy-loaded per command)
+- **bash-completion** for commands (Tab; loaded at shell startup)
 - **Prefix history search** on `↑` / `↓` via `.inputrc`
 - **Menu-complete** on Tab
 - Same shared exports, aliases, and functions as Zsh
@@ -157,23 +157,22 @@ scripts/arch-install.sh          # LUKS + Btrfs(@tmp) + UKI(lts/hardened) + syst
 → reboot, remove ISO
 ```
 
-**Stage B — first boot (GDM login → terminal):**
+**Stage B — first boot (log into GNOME, open terminal, then):**
 ```text
 git clone https://github.com/HelllGuest/dotfiles.git ~/dotfiles
-cd ~/dotfiles && ./install.sh        # orchestrates everything below
-yay -S --needed - < packages/aur.txt # AUR (manual)
-flatpak install -y $(grep -v '^#' packages/flatpak.txt)
-ts <theme> && scripts/install-starship-crampack.sh
+cd ~/dotfiles && ./install.sh        # requires GNOME session for dconf/extensions
 exec zsh
 scripts/thinkpad-health.sh → reboot
 ```
 
 **What `./install.sh` runs, in order:**
 ```text
-profiles/$(hostname).sh → pacman < packages/pacman.txt → install-fonts.sh
-→ stow (/etc system + $HOME, skips zram & gdm) → zram-setup.sh
-→ gnome-session-setup.sh → gnome-console-setup.sh → gdm-setup.sh
-→ git-setup.sh (interactive) → nvim-setup.sh → wallpaper.sh
+profiles/$(hostname).sh → pacman < packages/pacman.txt
+→ install-flatpaks.sh → install-aur.sh (bootstraps paru if needed) → install-fonts.sh
+→ stow (/etc system + $HOME, skips zram & gdm) → atuin import → zram-setup.sh
+→ gnome-session-setup.sh (dconf + ext enable) → location-setup.sh
+→ gnome-console-setup.sh → gdm-setup.sh
+→ git-setup.sh (interactive) → nvim-setup.sh
 → install-extensions.sh → check.sh → validate-configs.sh → privacy-hardener.sh
 ```
 
@@ -182,7 +181,7 @@ profiles/$(hostname).sh → pacman < packages/pacman.txt → install-fonts.sh
 > **existing** machine that still has tmpfs `/tmp`.
 
 ### 2. Config Only (No Root)
-Applies user-level symlinks only. Skips `zram` (requires sudo).
+Applies user-level symlinks only. Skips `zram`, `system`, and `gdm` (require root — use `install.sh`).
 ```bash
 ./stow-only.sh
 ```
@@ -197,19 +196,21 @@ sudo stow -d ~/dotfiles/stow -t / zram
 ### 4. Dependencies
 Key runtime dependencies (most surfaced by `scripts/check.sh`):
 
-**Core:** `stow`, `zsh`, `starship`, `neovim`, `rclone`, `jq`, `dart-sass`, `zram-generator`
+**Core:** `stow`, `zsh`, `starship`, `neovim`, `flatpak`, `rclone`, `jq`, `dart-sass`, `zram-generator`
 
 **Zsh:** zinit bootstraps on first launch; plugins load via `.zsh-plugins`
 
 **Shell tools:** `atuin`, `fzf`, `fd`, `ripgrep`, `bat`, `eza`, `zoxide`, `direnv`, `git-delta`
 
-**Optional AUR:** `blesh-git`, `curlie`, `forgit`
+**AUR** (via `install-aur.sh`, bootstraps `paru` if needed): `blesh-git`, `curlie`, `forgit`, GNOME shell extensions, `visual-studio-code-bin`
+
+**Flatpaks** (via `install-flatpaks.sh`): Brave, Zen, Proton VPN, Android Studio
 
 **Terminals:** `kitty` (primary), `ghostty`, `gnome-console` (kgx quick terminal)
 
-Run `scripts/gnome-console-setup.sh` for Console dconf + Super+Return → kitty.
+Run `scripts/gnome-console-setup.sh` for Console dconf (scrollback, theme). **Super+Return → kitty** is set in `gnome/dconf/user.conf`.
 
-**GDM:** `scripts/gdm-setup.sh` deploys Wayland login screen config to `/etc` (requires sudo). Optional fingerprint: `scripts/fingerprint-setup.sh`. Restart GDM or reboot to see greeter changes.
+**GDM:** `scripts/gdm-setup.sh` copies greeter config to `/etc` (not stow — GDM cannot read `$HOME`), enables Wayland, compiles greeter dconf, and enables `gdm.service`. Greeter changes appear after **reboot** (or `sudo systemctl restart gdm`, which logs you out). Optional fingerprint: `scripts/fingerprint-setup.sh`.
 
 **Git:** `stow/git/` + `scripts/git-setup.sh` — delta pager, rebase defaults, global ignore, optional hooks and signing. URL shorthands: `git clone gh:user/repo`.
 
@@ -227,7 +228,7 @@ We take a "quiet by default" approach:
 - **GNOME Debloated:** Uses `gnome-shell` instead of the full `gnome` meta-package where possible.
 - **Zero Telemetry:** VS Code, GNOME usage stats, and technical reporting are disabled.
 - **Opt-Out Defaults:** Global environment variables in `.shell-exports` disable telemetry for development tools.
-- **Local Themes:** All CSS and palettes are generated and stored locally.
+- **Starship prompt:** Crampack preset in `stow/starship/` (optional: `scripts/install-starship-crampack.sh` to refresh from upstream).
 
 ---
 
@@ -240,7 +241,7 @@ We take a "quiet by default" approach:
 | Post-update sync | `~/dotfiles/scripts/post-update.sh` |
 | Backup GNOME | `~/dotfiles/scripts/backup-gsettings.sh` |
 | Move /tmp to disk | `sudo ~/dotfiles/scripts/tmp-to-disk.sh` then reboot (off RAM-capped tmpfs → btrfs `@tmp`) |
-| Switch theme | `ts <palette>` or `tt` |
+| Starship preset | `scripts/install-starship-crampack.sh` |
 | Reload shell | `exec zsh` |
 
 ---

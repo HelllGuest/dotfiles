@@ -5,13 +5,8 @@ set -euo pipefail
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 EXT_FILE="$REPO_ROOT/gnome/extensions.txt"
 
-if ! command -v dconf >/dev/null 2>&1; then
-    echo "dconf not found. Install it first."
-    exit 1
-fi
-
 if ! command -v gnome-extensions >/dev/null 2>&1; then
-    echo "gnome-extensions not found."
+    echo "gnome-extensions not found — install gnome-shell-extensions and run from a GNOME session." >&2
     exit 1
 fi
 

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # arch-install.sh — hardened Arch Linux installer (helllguest stack)
 #
-#   bash <(curl -fsSL https://raw.githubusercontent.com/helllguest/dotfiles/main/scripts/arch-install.sh)
+#   bash <(curl -fsSL https://raw.githubusercontent.com/HelllGuest/dotfiles/main/scripts/arch-install.sh)
 #   # ^ preferred: keeps stdin on the terminal so pacstrap prompts work.
 #   # 'curl ... | bash' also works for the script's own prompts (read from /dev/tty).
 #
@@ -127,7 +127,7 @@ HOSTNAME="$(ask 'hostname: ' thinkpad-x1)"
 TIMEZONE="$(ask 'timezone (Region/City): ' America/New_York)"
 LOCALE="$(ask 'locale: ' en_US.UTF-8)"
 KEYMAP="$(ask 'console keymap: ' us)"
-USERNAME="$(ask 'username: ' jondoe)"
+USERNAME="$(ask 'username: ')"
 while :; do
   USER_PASS="$(ask_secret "password for $USERNAME: ")"
   USER_PASS2="$(ask_secret 'repeat: ')"
@@ -384,6 +384,10 @@ if [[ ${DESKTOP^^} != N* ]]; then
     mkdir -p /etc/gdm
     printf '[daemon]\nWaylandEnable=true\n' > /etc/gdm/custom.conf
     flatpak remote-add --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo || true
+    flatpak install --system -y flathub \
+      com.brave.Browser \
+      io.github.zen_browser.zen \
+      com.protonvpn.www || true
   else
     say "WARN: GNOME install incomplete (network?) — base system is fine. Finish post-boot:"
     say "      pacman -S gnome-shell gdm && systemctl enable gdm"
@@ -435,7 +439,7 @@ ${cG}╔════════════════════════
      unsigned Linux loaders won't boot under SB until you 'sbctl sign' them.
  • linux-hardened + Flatpak/Podman: userns sysctl already set (99-userns.conf).
  • Dotfiles (next):
-     ${cY}git clone https://github.com/helllguest/dotfiles.git ~/dotfiles${c0}
+     ${cY}git clone https://github.com/HelllGuest/dotfiles.git ~/dotfiles${c0}
      ${cY}cd ~/dotfiles && ./install.sh${c0}
  • First login is via GDM (Wayland). Verify: ${cY}~/dotfiles/scripts/check.sh${c0}
 EOF

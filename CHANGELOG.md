@@ -1,5 +1,15 @@
 # Changelog
 
+## [Unreleased]
+- Docs: aligned README, CONTRIBUTING, and `docs/hardened-arch-gnome.md` Phase 27 with current `install.sh` flow (flatpak/AUR auto, `user.conf`, zram materialize, GNOME session requirement); fixed stale VS Code flatpak, battery-threshold, and stow-only claims.
+- Install: fixed flatpak installs (`-y` not `--noconfirm`); added `install-flatpaks.sh`, `install-aur.sh`, `bootstrap-aur.sh` (auto paru); wired location setup into `install.sh`.
+- Packages: `pacman.txt` syncs `linux-lts`/`linux-hardened`, `starship`, `flatpak`; dropped `linux-zen` and `python-pywal`.
+- Starship: restored Crampack palette definitions removed during theming refactor.
+- Zen: stow path fixed for Flatpak (`~/.var/app/io.github.zen_browser.zen/.zen/`).
+- GNOME: deduplicated AUR extension installs; `install-extensions.sh` no longer fails headless sessions.
+- VPN: polkit rule uses `wheel` group; `proton-connectivity-check.sh` detects Flatpak app; removed hardcoded `jondoe` from `vpn-location-sync.sh`.
+- Health: `check.sh` verifies flatpaks, bash/shell symlinks; no duplicate `validate-configs` run.
+
 ## [1.19.0] - 2026-06-10
 - Installer: added `scripts/arch-install.sh` — curl-able, hardened bare-metal Arch installer implementing `docs/hardened-arch-gnome.md` end-to-end: LUKS2 (argon2id) + Btrfs (`@ @home @snapshots @var_log @var_cache @tmp`) + `linux-lts` primary / `linux-hardened` fallback Unified Kernel Images + systemd-boot + `sbctl` Secure Boot + minimal GNOME. AUTO whole-disk or MANUAL partitioning with EFI optional/reuse (multiboot-safe). Reads prompts from `/dev/tty`; passwords never written to disk. VM-validated end-to-end (boots to GNOME).
 - Installer: `scripts/arch-install-vmtest.sh` — UEFI/OVMF qemu harness that serves the installer over loopback and boots the Arch ISO against a blank virtual disk (host untouched); `hostfwd 2222→22` for SSH.

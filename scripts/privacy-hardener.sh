@@ -15,14 +15,14 @@ if command -v gsettings >/dev/null 2>&1; then
     gsettings set org.gnome.Software download-updates false
     
     # Location: static GeoClue (/etc/geolocation via scripts/location-setup.sh) returns
-    # fixed Dubai coords without IP/WiFi lookup — safe to leave enabled for NTS/Night Light.
+    # fixed Dubai coords without IP/WiFi lookup — safe to leave enabled for Night Light.
     # Do NOT disable org.gnome.system.location here; run location-setup.sh instead.
 else
     echo "gsettings not found. Skipping GNOME hardening."
 fi
 
 # 2. Environment Variables to disable telemetry for common tools
-# Adding these to stow/zsh/.zsh-exports
+# See stow/zsh/.shell-exports
 # DOTNET_CLI_TELEMETRY_OPTOUT=1
 # POWERSHELL_TELEMETRY_OPTOUT=1
 

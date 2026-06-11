@@ -68,11 +68,15 @@ else
 fi
 rm -f "$CURL_ERR_FILE"
 
-echo "--- Proton services ---"
-if systemctl is-active proton.VPN.service >/dev/null 2>&1; then
-    pass "proton.VPN.service active"
+echo "--- Proton app ---"
+if flatpak list --app 2>/dev/null | grep -q 'com.protonvpn.www'; then
+    pass "Proton VPN flatpak installed (com.protonvpn.www)"
+elif command -v protonvpn-app >/dev/null 2>&1; then
+    pass "protonvpn-app in PATH"
+elif systemctl is-active proton.VPN.service >/dev/null 2>&1; then
+    pass "proton.VPN.service active (native/AUR)"
 else
-    fail "proton.VPN.service not active — sudo systemctl start proton.VPN.service"
+    info "Proton VPN app not detected — run: bash scripts/install-flatpaks.sh"
 fi
 
 CACHE_DIR="${HOME}/.cache/Proton/VPN"

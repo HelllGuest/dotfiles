@@ -42,10 +42,6 @@ if [[ -f "$POLKIT_RULE" ]]; then
   sudo install -m 0644 -o root -g root "$POLKIT_RULE" /etc/polkit-1/rules.d/50-vpn-location-sync.rules
 fi
 
-echo "→ Stowing Proton VPN panel extension (proton-vpn@helllguest)..."
-cd "$STOW_DIR" || exit 1
-stow -R -t "$HOME" proton-vpn 2>/dev/null || stow -t "$HOME" proton-vpn
-
 echo "→ Syncing location (VPN exit if connected, else home)..."
 sudo /usr/local/bin/vpn-location-sync sync
 

@@ -47,7 +47,7 @@ Thank you for helping improve this setup. Follow these guidelines to keep the re
 
 ### GNOME (`gnome/`)
 
-- Export live settings: `./scripts/backup-gsettings.sh > gnome/dconf-settings.ini`
+- Export live settings: `./scripts/backup-gsettings.sh` (writes `gnome/dconf-settings.ini`)
 - Ensure `user-theme` is `Default` (not `Generated-Theme`).
 - Avoid machine-specific paths unless intentionally updating the reference snapshot.
 
@@ -60,7 +60,6 @@ Thank you for helping improve this setup. Follow these guidelines to keep the re
 | New shell feature / plugin | `README.md`, `CHANGELOG.md` |
 | New stow package | `README.md`, `all_stow_files.txt`, `CHANGELOG.md` |
 | Install script behavior | `README.md`, `docs/hardened-arch-gnome.md` |
-| New palette | `README.md`, `CHANGELOG.md` |
 | Package list change | `CHANGELOG.md` |
 | GNOME / shortcut change | `gnome/keybindings.md`, `CHANGELOG.md` |
 

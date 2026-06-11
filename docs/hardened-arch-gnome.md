@@ -937,16 +937,11 @@ flatpak install flathub io.github.zen_browser.zen
 # VPN
 flatpak install flathub com.protonvpn.www
 
-# IDEs / Utilities
-flatpak install flathub com.visualstudio.code
-flatpak install flathub org.gnome.Software
+# IDE (Android Studio is in packages/flatpak.txt; VS Code is AUR visual-studio-code-bin)
+flatpak install flathub com.google.AndroidStudio
 ```
 
-Optional scoped filesystem access:
-
-```bash
-flatpak override --filesystem=~/Projects com.visualstudio.code
-```
+> After dotfiles install, `./install.sh` installs all apps in `packages/flatpak.txt` and `packages/aur.txt` automatically.
 
 ---
 
@@ -1350,40 +1345,37 @@ sudo pacman -Rns $(pacman -Qtdq)
 
 # PHASE 27 — DOTFILES SETUP
 
-Clone and install the Nord Cyberdeck dotfiles:
+Log into GNOME, open a terminal, then clone and install:
 
 ```bash
-git clone https://github.com/helllguest/dotfiles.git ~/dotfiles
+git clone https://github.com/HelllGuest/dotfiles.git ~/dotfiles
 cd ~/dotfiles
 ./install.sh
 ```
 
-This will:
+`./install.sh` (run from a GNOME session) will:
 
-* Install packages from `packages/pacman.txt` (Zsh plugins, terminals, CLI tools)
-* Stow configs to `$HOME` (Zsh, Bash, Neovim, Kitty, Ghostty, Starship, etc.)
-* Stow `zram` config to `/etc/systemd/` (requires sudo)
 * Apply the hostname profile (e.g. `profiles/thinkpad-x1.sh` on a ThinkPad X1)
-* Restore GNOME settings from `gnome/dconf-settings.ini`
-* Run privacy hardening and health checks
+* Install packages from `packages/pacman.txt` (kernels, shells, terminals, CLI tools)
+* Install Flatpaks from `packages/flatpak.txt` (Brave, Zen, Proton VPN, Android Studio)
+* Install AUR packages from `packages/aur.txt` (bootstraps `paru` if no helper exists)
+* Stow configs to `$HOME` and `/etc` (`system/`; skips `zram` symlink and `gdm`)
+* Materialize `zram-generator.conf` via `scripts/zram-setup.sh`
+* Apply GNOME session dconf from `gnome/dconf/user.conf`, enable extensions, location spoofing
+* Configure GDM, Git, Neovim, and run health checks + privacy hardening
 
-Config-only (no package install, no root):
+Config-only (no package install; skips `zram`, `system`, and `gdm`):
 
 ```bash
 ./stow-only.sh
 exec zsh
 ```
 
-Install AUR packages listed in `packages/aur.txt` (requires an AUR helper):
+To install or refresh Flatpaks/AUR packages without a full reinstall:
 
 ```bash
-yay -S --needed - < packages/aur.txt
-```
-
-Install Flatpaks:
-
-```bash
-flatpak install -y $(grep -v '^#' packages/flatpak.txt)
+bash scripts/install-flatpaks.sh
+bash scripts/install-aur.sh
 ```
 
 

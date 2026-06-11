@@ -4,5 +4,4 @@ forgit
 gnome-shell-extension-appindicator
 gnome-shell-extension-just-perfection-desktop
 gnome-shell-extension-vitals
-matugen-bin
 visual-studio-code-bin

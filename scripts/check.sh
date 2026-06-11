@@ -42,7 +42,7 @@ check_link() {
     fi
 }
 
-CHECK_LINKS=("$HOME/.zshrc" "$HOME/.bashrc" "$HOME/.shell-git" "$HOME/.config/starship.toml" "$HOME/.config/atuin/config.toml" "$HOME/.config/nvim/init.lua" "$HOME/.config/fastfetch/config.jsonc")
+CHECK_LINKS=("$HOME/.zshrc" "$HOME/.bashrc" "$HOME/.inputrc" "$HOME/.shell-exports" "$HOME/.shell-aliases" "$HOME/.shell-git" "$HOME/.config/starship.toml" "$HOME/.config/atuin/config.toml" "$HOME/.config/nvim/init.lua" "$HOME/.config/fastfetch/config.jsonc")
 for link in "${CHECK_LINKS[@]}"; do
     check_link "$link"
 done
@@ -61,6 +61,11 @@ else
 fi
 
 echo "--- GDM login screen ---"
+if systemctl is-enabled gdm.service >/dev/null 2>&1; then
+    echo "✓ gdm.service enabled"
+else
+    echo "✗ gdm.service not enabled (run scripts/gdm-setup.sh)"
+fi
 if grep -q 'WaylandEnable=true' /etc/gdm/custom.conf 2>/dev/null; then
     echo "✓ GDM WaylandEnable=true"
 else
@@ -141,10 +146,23 @@ else
     echo "✗ Tablet mode handler missing"
 fi
 ENABLED_EXT=$(gnome-extensions list --enabled 2>/dev/null | wc -l || echo 0)
-if [ "$ENABLED_EXT" -ge 5 ] 2>/dev/null; then
+if [ "$ENABLED_EXT" -ge 4 ] 2>/dev/null; then
     echo "✓ GNOME extensions enabled ($ENABLED_EXT)"
 else
-    echo "✗ Few GNOME extensions enabled (run scripts/gnome-session-setup.sh)"
+    echo "✗ Few GNOME extensions enabled ($ENABLED_EXT/4 — run scripts/gnome-session-setup.sh)"
+fi
+
+echo "--- Flatpaks ---"
+if command -v flatpak >/dev/null 2>&1; then
+    for app in com.brave.Browser io.github.zen_browser.zen com.protonvpn.www; do
+        if flatpak list --app 2>/dev/null | grep -q "$app"; then
+            echo "✓ $app installed"
+        else
+            echo "✗ $app missing (run scripts/install-flatpaks.sh)"
+        fi
+    done
+else
+    echo "✗ flatpak not installed"
 fi
 
 echo "--- Proton VPN ---"
@@ -152,11 +170,6 @@ if [ -f "$REPO_ROOT/scripts/proton-connectivity-check.sh" ]; then
     bash "$REPO_ROOT/scripts/proton-connectivity-check.sh" 2>/dev/null || echo "⚠ Proton API unreachable (run scripts/proton-connectivity-check.sh)"
 else
     echo "✗ proton-connectivity-check.sh missing"
-fi
-
-echo "--- Config validation ---"
-if [ -f "$REPO_ROOT/scripts/validate-configs.sh" ]; then
-    bash "$REPO_ROOT/scripts/validate-configs.sh" 2>/dev/null || echo "⚠ Run scripts/validate-configs.sh for details"
 fi
 
 echo "Health check finished."

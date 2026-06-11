@@ -12,24 +12,6 @@ PAC_PKGS=(gnome-shell-extensions gnome-tweaks iio-sensor-proxy inter-font)
 sudo pacman -S --needed --noconfirm "${PAC_PKGS[@]}" 2>/dev/null || \
   pacman -S --needed --noconfirm "${PAC_PKGS[@]}" 2>/dev/null || true
 
-AUR_PKGS=(
-  gnome-shell-extension-appindicator
-  gnome-shell-extension-just-perfection-desktop
-  gnome-shell-extension-vitals
-)
-
-if command -v paru >/dev/null 2>&1; then
-  for pkg in "${AUR_PKGS[@]}"; do
-    pacman -Qi "$pkg" &>/dev/null 2>&1 || paru -S --needed --noconfirm "$pkg" || true
-  done
-elif command -v yay >/dev/null 2>&1; then
-  for pkg in "${AUR_PKGS[@]}"; do
-    pacman -Qi "$pkg" &>/dev/null 2>&1 || yay -S --needed --noconfirm "$pkg" || true
-  done
-else
-  echo "  ⚠ No AUR helper — install extensions manually (see packages/aur.txt)"
-fi
-
 sudo systemctl enable --now iio-sensor-proxy.service 2>/dev/null || true
 
 mkdir -p "$HOME/.config"

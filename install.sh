@@ -1,6 +1,8 @@
 #!/bin/bash
 
 # Arch GNOME Rice Installer
+# Run from a GNOME session terminal after first login (Stage B in README).
+# dconf, extension enable, and gsettings steps need an active user session.
 
 # Ensure we are in the repo root
 cd "$(dirname "$0")"
@@ -23,10 +25,15 @@ if [ -f "packages/pacman.txt" ]; then
 fi
 
 # 1.1 Install Flatpaks
-if [ -f "packages/flatpak.txt" ] && command -v flatpak >/dev/null 2>&1; then
+if [ -f "scripts/install-flatpaks.sh" ]; then
     echo "Installing flatpak packages..."
-    flatpak remote-add --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo || true
-    grep -v '^#' packages/flatpak.txt | xargs flatpak install --system --noconfirm flathub || echo "Flatpak install failed."
+    bash scripts/install-flatpaks.sh || echo "Flatpak install failed."
+fi
+
+# 1.15 Install AUR packages (optional — requires yay/paru)
+if [ -f "scripts/install-aur.sh" ]; then
+    echo "Installing AUR packages..."
+    bash scripts/install-aur.sh || echo "AUR install failed or skipped."
 fi
 
 # 1.2 Install Fonts
@@ -78,7 +85,13 @@ fi
 # 3. Restore GNOME session (dconf + extensions + tablet handler)
 if [ -f "scripts/gnome-session-setup.sh" ]; then
     bash scripts/gnome-session-setup.sh || echo "GNOME session setup skipped."
-elif [ -f "gnome/dconf-settings.ini" ]; then
+fi
+
+if [ -f "scripts/location-setup.sh" ]; then
+    bash scripts/location-setup.sh || echo "Location setup skipped."
+fi
+
+if [ -f "gnome/dconf-settings.ini" ] && [ ! -f "scripts/gnome-session-setup.sh" ]; then
     echo "Restoring GNOME settings (legacy ini)..."
     dconf load /org/gnome/ < gnome/dconf-settings.ini
 fi
@@ -105,7 +118,7 @@ fi
 
 # 5. Install GNOME Extensions
 if [ -f "scripts/install-extensions.sh" ]; then
-    bash scripts/install-extensions.sh
+    bash scripts/install-extensions.sh || echo "Extension enable skipped."
 fi
 
 # 6. Final Health Check

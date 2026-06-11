@@ -43,29 +43,6 @@ restart_geoclue() {
     log "geoclue restarted"
 }
 
-refresh_night_theme_switcher() {
-    local uid bus runtime
-    uid="$(id -u jondoe 2>/dev/null || echo "")"
-    [[ -z "$uid" ]] && return 0
-    runtime="/run/user/$uid"
-    bus="unix:path=$runtime/bus"
-    [[ -S "$runtime/bus" ]] || return 0
-    if ! runuser -u jondoe -- gnome-extensions list --enabled 2>/dev/null \
-        | grep -q 'nightthemeswitcher@romainvigier.fr'; then
-        return 0
-    fi
-    runuser -u jondoe -- env \
-        XDG_RUNTIME_DIR="$runtime" \
-        DBUS_SESSION_BUS_ADDRESS="$bus" \
-        gnome-extensions disable nightthemeswitcher@romainvigier.fr >/dev/null 2>&1 || true
-    sleep 1
-    runuser -u jondoe -- env \
-        XDG_RUNTIME_DIR="$runtime" \
-        DBUS_SESSION_BUS_ADDRESS="$bus" \
-        gnome-extensions enable nightthemeswitcher@romainvigier.fr >/dev/null 2>&1 || true
-    log "Night Theme Switcher refreshed"
-}
-
 fetch_vpn_coords() {
     local json="" lat lon city country
     # Prefer lookup bound to the VPN iface so we never touch the real egress.
@@ -112,7 +89,6 @@ apply_sync() {
         restore_home_location
     fi
     restart_geoclue
-    refresh_night_theme_switcher
 }
 
 case "$ACTION" in
@@ -122,7 +98,6 @@ case "$ACTION" in
     down|pre-down|vpn-down)
         restore_home_location
         restart_geoclue
-        refresh_night_theme_switcher
         ;;
     *)
         log "unknown action '$ACTION', running sync"
