@@ -17,7 +17,7 @@ return {
       }
       return {
         options = {
-          theme                = "catppuccin",
+          theme                = "auto",
           globalstatus         = true,
           disabled_filetypes   = { statusline = { "dashboard", "alpha" } },
           component_separators = { left = "", right = "" },
@@ -184,8 +184,8 @@ return {
     "folke/which-key.nvim",
     event = "VeryLazy",
     opts = {
+      preset = "modern",
       plugins = { spelling = true },
-      defaults = {},
       spec = {
         { "<leader>b",  group = "buffers",   icon = { icon = "󰓩", color = "cyan" } },
         { "<leader>c",  group = "code",      icon = { icon = "", color = "orange" } },

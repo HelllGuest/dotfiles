@@ -6,8 +6,6 @@ _has() { command -v "$1" >/dev/null 2>&1; }
 alias v='nvim'
 alias as='flatpak run com.google.AndroidStudio'
 alias ff='fastfetch'
-alias ts='~/dotfiles/scripts/theme-switch.sh'
-alias tt='~/dotfiles/scripts/theme-toggle.sh'
 
 # ── Safer defaults ──────────────────────────────────────────
 alias cp='cp -iv'

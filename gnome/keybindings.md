@@ -10,8 +10,6 @@ Defined in `stow/zsh/.shell-aliases` (shared by Zsh and Bash):
 
 | Alias | Command |
 |-------|---------|
-| `ts` | `~/dotfiles/scripts/theme-switch.sh` — apply a theme palette |
-| `tt` | `~/dotfiles/scripts/theme-toggle.sh` — cycle palettes |
 | `v` | `nvim` |
 | `as` | `flatpak run com.google.AndroidStudio` |
 | `ff` | `fastfetch` |
@@ -63,17 +61,6 @@ Optional **ble.sh** adds syntax highlighting and autosuggestions.
 
 ---
 
-## Theme Commands
-
-```bash
-ts nord          # Nord palette
-ts tokyo-night   # Tokyo Night palette
-ts zukitwo       # Zukitwo palette
-tt               # Cycle to next palette
-```
-
----
-
 ## Terminal (Kitty)
 
 Primary terminal — **Super+Return** or `kitty`.
@@ -97,8 +84,6 @@ Dev workspace:
 kitty --session ~/.config/kitty/sessions/dev.conf
 ```
 
-Colors sync via `ts` / `tt` → `current-theme.conf`.
-
 ---
 
 ## Terminal (Ghostty)
@@ -110,7 +95,7 @@ Colors sync via `ts` / `tt` → `current-theme.conf`.
 | `Ctrl+Shift+I` | Inspector |
 | `Ctrl+Shift+H/J/K/L` | Split navigation |
 
-Multiline paste protection enabled. Colors sync via `theme.conf`.
+Multiline paste protection enabled.
 
 ---
 

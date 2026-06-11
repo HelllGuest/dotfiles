@@ -96,11 +96,6 @@ if [ -f "scripts/nvim-setup.sh" ]; then
     bash scripts/nvim-setup.sh || echo "Neovim setup skipped."
 fi
 
-# 4. Set initial wallpaper
-if [ -f "scripts/wallpaper.sh" ]; then
-    bash scripts/wallpaper.sh
-fi
-
 # 5. Install GNOME Extensions
 if [ -f "scripts/install-extensions.sh" ]; then
     bash scripts/install-extensions.sh

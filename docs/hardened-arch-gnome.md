@@ -36,7 +36,7 @@ This guide prioritizes:
 > ```
 > Dry-run first in a UEFI VM with [`scripts/arch-install-vmtest.sh`](../scripts/arch-install-vmtest.sh). The manual phases below remain the reference for what it does and for customizing.
 
-> **Dotfiles:** After completing this guide, continue with [PHASE 27 — Dotfiles Setup](#phase-27--dotfiles-setup) or jump to the [dotfiles README](../README.md) for shell, theming, and maintenance.
+> **Dotfiles:** After completing this guide, continue with [PHASE 27 — Dotfiles Setup](#phase-27--dotfiles-setup) or jump to the [dotfiles README](../README.md) for shell and maintenance.
 
 ---
 
@@ -623,7 +623,6 @@ options rd.luks.name=YOUR_UUID=cryptroot root=/dev/mapper/cryptroot rootflags=su
 Install packages:
 
 Minimal GNOME — **not** the full `gnome` meta-package (which pulls ~60 pkgs: games, maps, weather, music, contacts, tour). Curated essentials + a few utils; install the rest via Flatpak (Phase 16).
-
 ```bash
 pacman -S \
 gnome-shell \
@@ -644,16 +643,19 @@ xdg-user-dirs-gtk \
 xdg-desktop-portal \
 xdg-desktop-portal-gnome \
 polkit \
-apparmor \
-ufw \
-zram-generator \
 flatpak \
 fwupd \
 bolt \
 pipewire \
 pipewire-pulse \
 wireplumber \
-earlyoom
+earlyoom \
+power-profiles-daemon \
+sof-firmware \
+alsa-ucm-conf \
+iio-sensor-proxy \
+fprintd \
+gnome-software
 ```
 
 Enable services:
@@ -820,26 +822,15 @@ ufw allow 53/udp
 ufw allow 67/udp
 ```
 
-Persist the NAT rule by adding a `*nat` table block to the **top** of
-`/etc/ufw/before.rules` (tracked at `stow/system/etc/ufw/before.rules`):
-
-```
-*nat
-:POSTROUTING ACCEPT [0:0]
--A POSTROUTING -s 192.168.240.0/24 -j MASQUERADE
-COMMIT
-```
-
-Source-based (no `-o <iface>`) so it works for both wifi (`wlp0s20f3`) and VPN
-(`proton0`) egress. Deploy by **copying** (firewall stays root-owned, not a
-`$HOME` symlink) and reload:
+Deploy the idempotent `waydroid-nat.service` unit (tracked at `stow/system/etc/systemd/system/waydroid-nat.service`):
 
 ```bash
-install -m 644 -o root -g root \
-  stow/system/etc/ufw/before.rules /etc/ufw/before.rules
-ufw reload
-iptables -t nat -L POSTROUTING -n -v   # verify MASQUERADE present
+sudo install -m 644 stow/system/etc/systemd/system/waydroid-nat.service /etc/systemd/system/waydroid-nat.service
+sudo systemctl daemon-reload
+sudo systemctl enable --now waydroid-nat.service
 ```
+
+This service ensures the masquerade rule is added exactly once and survives `ufw reload` cycles.
 
 `DEFAULT_FORWARD_POLICY="ACCEPT"` in `/etc/default/ufw` is required for
 forwarding (default on this system).
@@ -939,8 +930,16 @@ https://flathub.org/repo/flathub.flatpakrepo
 Install apps:
 
 ```bash
+# Browsers
+flatpak install flathub com.brave.Browser
+flatpak install flathub io.github.zen_browser.zen
+
+# VPN
+flatpak install flathub com.protonvpn.www
+
+# IDEs / Utilities
 flatpak install flathub com.visualstudio.code
-flatpak install flathub org.mozilla.firefox
+flatpak install flathub org.gnome.Software
 ```
 
 Optional scoped filesystem access:
@@ -1361,7 +1360,7 @@ cd ~/dotfiles
 
 This will:
 
-* Install packages from `packages/pacman.txt` (Zsh plugins, terminals, theming tools)
+* Install packages from `packages/pacman.txt` (Zsh plugins, terminals, CLI tools)
 * Stow configs to `$HOME` (Zsh, Bash, Neovim, Kitty, Ghostty, Starship, etc.)
 * Stow `zram` config to `/etc/systemd/` (requires sudo)
 * Apply the hostname profile (e.g. `profiles/thinkpad-x1.sh` on a ThinkPad X1)
@@ -1387,13 +1386,9 @@ Install Flatpaks:
 flatpak install -y $(grep -v '^#' packages/flatpak.txt)
 ```
 
-Apply a theme:
 
-```bash
-ts zukitwo    # or: ts nord / ts tokyo-night
-```
 
-See [README.md](../README.md) for shell setup, theming, and maintenance commands.
+See [README.md](../README.md) for shell setup and maintenance commands.
 
 ---
 

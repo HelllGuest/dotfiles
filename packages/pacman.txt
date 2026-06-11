@@ -22,6 +22,7 @@ gdm
 gnome-console
 gnome-shell
 gnome-shell-extensions
+gnome-software
 gnome-tweaks
 gping
 grim
@@ -39,7 +40,6 @@ linux-zen-headers
 man-db
 man-pages
 neovim
-papirus-icon-theme
 playerctl
 power-profiles-daemon
 procs

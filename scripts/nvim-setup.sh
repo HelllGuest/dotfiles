@@ -34,11 +34,6 @@ else
   exit 1
 fi
 
-PALETTE="$REPO_ROOT/stow/nvim/.config/nvim/lua/palette.lua"
-if [[ ! -f "$PALETTE" && -f "$REPO_ROOT/scripts/theme-switch.sh" ]]; then
-  bash "$REPO_ROOT/scripts/theme-switch.sh" zukitwo >/dev/null 2>&1 || true
-fi
-
 echo "→ Installing plugins (headless)..."
 nvim --headless "+Lazy! sync" +qa 2>&1 | tail -8 || {
   echo "Lazy sync failed — run: nvim" >&2

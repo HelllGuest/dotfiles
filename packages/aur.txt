@@ -1,16 +1,8 @@
-bibata-cursor-theme
 blesh-git
-catppuccin-cursors-mocha-dark
-catppuccin-gtk-theme-latte
-catppuccin-gtk-theme-mocha
 curlie
 forgit
 gnome-shell-extension-appindicator
-gnome-shell-extension-blur-my-shell
 gnome-shell-extension-just-perfection-desktop
-gnome-shell-extension-nightthemeswitcher
 gnome-shell-extension-vitals
 matugen-bin
-papirus-folders-git
 visual-studio-code-bin
-zukitwo-themes-git

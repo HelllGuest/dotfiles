@@ -23,7 +23,7 @@ mkdir -p "$HOME/.config"
 cd "$STOW_DIR" || exit 1
 
 # Replace plain files that block stow (e.g. prior manual git config)
-for f in config ignore delta-theme.conf work.conf personal.conf; do
+for f in config ignore work.conf personal.conf; do
   target="$HOME/.config/git/$f"
   if [[ -f "$target" && ! -L "$target" ]]; then
     cp -a "$target" "${target}.bak.$(date +%Y%m%d)" 2>/dev/null || true
@@ -138,13 +138,6 @@ if [[ -d "$REPO_ROOT/.git" ]]; then
   (cd "$REPO_ROOT" && git maintenance start 2>/dev/null) && \
     echo "  ✓ git maintenance timer registered for dotfiles" || \
     echo "  ⚠ git maintenance start skipped"
-fi
-
-if [[ -f "$REPO_ROOT/theming/generated/current_theme.txt" ]]; then
-  bash "$REPO_ROOT/scripts/theme-switch.sh" "$(cat "$REPO_ROOT/theming/generated/current_theme.txt")" \
-    2>/dev/null | grep -i delta || true
-elif [[ -f "$REPO_ROOT/scripts/theme-switch.sh" ]]; then
-  bash "$REPO_ROOT/scripts/theme-switch.sh" zukitwo 2>/dev/null | tail -3 || true
 fi
 
 echo ""

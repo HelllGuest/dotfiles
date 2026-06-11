@@ -18,7 +18,7 @@ require("config.autocmds")
 
 require("lazy").setup("plugins", {
   defaults = { lazy = true },
-  install = { colorscheme = { "catppuccin" } },
+  install = { colorscheme = { "habamax" } },
   checker = { enabled = true, notify = false },
   change_detection = { notify = false },
   performance = {

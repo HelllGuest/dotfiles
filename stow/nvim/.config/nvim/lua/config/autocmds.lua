@@ -114,13 +114,6 @@ au("BufWritePre", {
   end,
 })
 
-local function apply_palette_highlights()
-  local ok, palette = pcall(require, "palette")
-  if ok and palette.accent and palette.background then
-    vim.api.nvim_set_hl(0, "Search", { bg = palette.accent, fg = palette.background })
-  end
-end
-
 au({ "UIEnter", "ColorScheme" }, {
   group = ag("kitty_bg_fix", { clear = true }),
   callback = function()
@@ -129,6 +122,5 @@ au({ "UIEnter", "ColorScheme" }, {
       vim.cmd("highlight Normal ctermbg=NONE guibg=NONE")
       vim.cmd("highlight NormalNC ctermbg=NONE guibg=NONE")
     end
-    apply_palette_highlights()
   end,
 })

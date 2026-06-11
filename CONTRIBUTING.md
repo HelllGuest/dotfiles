@@ -40,14 +40,6 @@ Thank you for helping improve this setup. Follow these guidelines to keep the re
 - `install.sh` sources the matching profile automatically.
 - `profiles/laptop.sh` can delegate to hardware-specific profiles.
 
-### Theming (`theming/`)
-
-- Add new palettes as JSON in `theming/palettes/` (use `"extends"` for shared keys).
-- Set `"crampack_palette"` (`mellow` | `lush` | `fervor` | `blaze`) for Starship sync via `theme-switch.sh`.
-- GTK-only: do not add GNOME Shell SCSS templates (removed in v1.4).
-- Run `scripts/theme-switch.sh <palette>` to regenerate derived configs.
-- Starship uses the vendored **Crampack** preset; refresh with `scripts/install-starship-crampack.sh`.
-
 ### Packages (`packages/`)
 
 - Keep `pacman.txt`, `aur.txt`, and `flatpak.txt` in sync with configs that depend on them.

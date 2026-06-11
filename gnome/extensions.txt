@@ -1,7 +1,4 @@
-blur-my-shell@aunetx
 appindicatorsupport@rgcjonas.gmail.com
 just-perfection-desktop@just-perfection
-user-theme@gnome-shell-extensions.gcampax.github.com
 Vitals@CoreCoding.com
-nightthemeswitcher@romainvigier.fr
 proton-vpn@helllguest

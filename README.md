@@ -1,16 +1,15 @@
-# 🌌 Nord Cyberdeck: Arch + GNOME Dotfiles
+# 🌌 Arch Linux + GNOME Dotfiles
 
-A clean, modular, and programmable dotfiles ecosystem optimized for **Arch Linux**, **GNOME 50**, and **ThinkPad** hardware. This setup focuses on visual cohesion, privacy hardening, and a frictionless "Scandinavian Cyberdeck" aesthetic.
+A clean, modular, and programmable dotfiles ecosystem optimized for **Arch Linux**, **GNOME 50**, and **ThinkPad** hardware. This setup focuses on visual cohesion, privacy hardening, and a frictionless developer workflow.
 
 ---
 
 ## 🚀 Key Features
 
-- **Dynamic Theming Engine:** A palette-driven system (`JSON` + `SCSS`) that synchronizes colors across GTK 3/4, Terminals, Starship, and Neovim.
 - **Privacy Hardened:** Telemetry, usage reporting, and "phoning home" are disabled system-wide (GNOME, VS Code, .NET, etc.).
 - **ThinkPad Optimized:** Hostname-based machine profiles (e.g. `thinkpad-x1.sh`) with power-profiles-daemon, battery charge thresholds, tablet auto-rotate, and S3 deep-sleep tuning (thermal is firmware-managed).
-- **Elite-Tier Terminal:** Kitty & Ghostty with shared Zsh/Bash configs, real-time autocomplete, [Crampack](https://github.com/Noktomezo/CrampackForStarship) Starship prompt, and dynamic theming.
-- **Neovim (Lazy.nvim):** A modular Lua configuration that imports your system-wide palette on the fly.
+- **Elite-Tier Terminal:** Kitty & Ghostty with shared Zsh/Bash configs, real-time autocomplete, [Crampack](https://github.com/Noktomezo/CrampackForStarship) Starship prompt.
+- **Neovim (Lazy.nvim):** A modular Lua configuration.
 
 ---
 
@@ -67,21 +66,12 @@ Modern aliases (when installed): `eza`, `bat`, `rg`, `fd`, `dust`, `duf`, `delta
 
 Pacman `zsh-autocomplete` removed in v1.11 — replaced by zinit + fzf-tab.
 
-### Starship (Crampack)
+### Starship
 
 Uses the **Crampack** preset ([Noktomezo/CrampackForStarship](https://github.com/Noktomezo/CrampackForStarship)) with Nerd Font symbols. Config: `stow/starship/.config/starship.toml`.
 
-| System palette | Crampack palette |
-|----------------|------------------|
-| `nord` | `mellow` |
-| `tokyo-night` | `fervor` |
-| `zukitwo` | `blaze` |
-
-`ts` / `tt` switch the Crampack palette automatically. Install or refresh from upstream:
-
 ```bash
 ~/dotfiles/scripts/install-starship-crampack.sh      # Standard (Nerd Font)
-bash <(curl -fsSL "https://git.new/crampack-sh")    # Upstream interactive installer
 ```
 
 Presets: `1` Standard · `2` Plain text · `3` Emoji · `4` Full text
@@ -92,32 +82,6 @@ Presets: `1` Standard · `2` Plain text · `3` Emoji · `4` Full text
 - **Prefix history search** on `↑` / `↓` via `.inputrc`
 - **Menu-complete** on Tab
 - Same shared exports, aliases, and functions as Zsh
-
----
-
-## 🎨 Dynamic Theming
-
-Switch your entire system's aesthetic with a single command.
-
-### Switch Theme
-```bash
-ts nord          # Apply the Nord palette
-ts tokyo-night   # Apply Tokyo Night palette
-ts zukitwo       # Apply Zukitwo palette
-```
-
-### Toggle Themes
-```bash
-tt              # Cycle through all available palettes
-```
-
-### How it works
-1. **Source:** Pick a palette from `theming/palettes/`.
-2. **Compile:** `dart-sass` compiles SCSS templates into CSS for GTK.
-3. **Propagate:** Updates terminal configs, generates a Neovim Lua palette, and sets the wallpaper.
-4. **Consistency:** All apps and terminals stay in sync with the selected palette.
-
-GNOME Shell uses the **Default** theme; GTK, terminals, and Neovim follow the active palette.
 
 ---
 
@@ -137,9 +101,8 @@ dotfiles/
 │   ├── nvim/        # Neovim (Lazy.nvim)
 │   ├── starship/    # Starship prompt
 │   └── fastfetch/ proton-vpn/ tmp-cleanup/ zen/ …
-├── theming/         # Palettes, templates, and generated theme files
 ├── profiles/        # Hostname-based tweaks (e.g. thinkpad-x1.sh)
-├── scripts/         # Theme switching, health checks, installers
+├── scripts/         # Health checks, installers
 ├── packages/        # Tracked package lists (Pacman, AUR, Flatpak)
 ├── gnome/           # GNOME settings (dconf) and extension lists
 └── docs/            # Installation guides and system documentation
@@ -151,7 +114,7 @@ dotfiles/
 
 | Document | Description |
 |----------|-------------|
-| [README.md](README.md) | Overview, shell setup, theming, installation |
+| [README.md](README.md) | Overview, shell setup, installation |
 | [CHANGELOG.md](CHANGELOG.md) | Version history |
 | [CONTRIBUTING.md](CONTRIBUTING.md) | Contribution guidelines |
 | [docs/hardened-arch-gnome.md](docs/hardened-arch-gnome.md) | Full Arch + GNOME install guide (ThinkPad X1) — automated by `scripts/arch-install.sh` |
@@ -252,13 +215,9 @@ Run `scripts/gnome-console-setup.sh` for Console dconf + Super+Return → kitty.
 
 **Neovim:** `scripts/nvim-setup.sh` — Lazy.nvim plugins, Treesitter parsers, Mason LSP on first launch. Leader = Space.
 
-**GNOME session:** `scripts/gnome-session-setup.sh` — dconf profile, extensions, Catppuccin day/night, X1 Yoga tablet handler. Super+1–4 workspaces.
+**GNOME session:** `scripts/gnome-session-setup.sh` — dconf profile, extensions, and X1 Yoga tablet handler. Super+1–4 workspaces.
 
 **Fonts:** Run `scripts/install-fonts.sh` for top Nerd Fonts (JetBrains Mono, Meslo, FiraCode, Cascadia, Iosevka, etc.)
-
-**Theming:** `papirus-icon-theme`; AUR `zukitwo-themes-git` for GTK theme
-
-**GNOME extensions:** blur-my-shell, vitals, nightthemeswitcher (see `gnome/extensions.txt`, AUR in `packages/aur.txt`)
 
 ---
 

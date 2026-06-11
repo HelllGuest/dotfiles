@@ -68,7 +68,7 @@ return {
       "williamboman/mason.nvim",
       "williamboman/mason-lspconfig.nvim",
       "b0o/SchemaStore.nvim",       -- JSON schemas
-      { "folke/neodev.nvim", opts = {} },  -- nvim Lua API completion
+      { "folke/lazydev.nvim", opts = {} },  -- nvim Lua API completion
     },
     config = function()
       -- Diagnostic signs
@@ -360,18 +360,7 @@ return {
         ghost_text = { enabled = true },
       },
       snippets = {
-        expand = function(snippet)
-          require("luasnip").lsp_expand(snippet)
-        end,
-        active = function(filter)
-          if filter and filter.direction then
-            return require("luasnip").jumpable(filter.direction)
-          end
-          return require("luasnip").in_snippet()
-        end,
-        jump = function(direction)
-          require("luasnip").jump(direction)
-        end,
+        preset = "luasnip",
       },
     },
   },

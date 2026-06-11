@@ -367,7 +367,7 @@ if [[ ${DESKTOP^^} != N* ]]; then
   say "installing minimal GNOME + browsers + VPN + software center"
   # sof-firmware+alsa-ucm-conf: Comet Lake speakers/mic. iio-sensor-proxy: tablet
   # auto-rotate. fprintd: fingerprint. iio/fprintd are D-Bus-activated — do NOT enable.
-  # brave: Chromium-based browser. zen: Firefox-based browser. proton-vpn-gui: VPN client.
+  # brave, zen, proton-vpn: installed via Flatpak (not in official repos).
   # gnome-software: software center for Flatpak apps.
   # Non-fatal: a network hiccup here must not abort an otherwise-bootable base system.
   if pacman -S --noconfirm --needed --disable-download-timeout \
@@ -378,12 +378,17 @@ if [[ ${DESKTOP^^} != N* ]]; then
     flatpak fwupd bolt pipewire pipewire-pulse wireplumber earlyoom \
     power-profiles-daemon \
     sof-firmware alsa-ucm-conf iio-sensor-proxy fprintd \
-    brave zen-browser proton-vpn-gui gnome-software
+    gnome-software
   then
     systemctl enable gdm bolt.service earlyoom.service power-profiles-daemon
     mkdir -p /etc/gdm
     printf '[daemon]\nWaylandEnable=true\n' > /etc/gdm/custom.conf
     flatpak remote-add --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo || true
+    # Install browsers/VPN via Flatpak (not in official repos)
+    flatpak install --system --noconfirm flathub \
+      com.brave.Browser \
+      io.github.zen_browser.zen \
+      com.protonvpn.www || true
   else
     say "WARN: GNOME install incomplete (network?) — base system is fine. Finish post-boot:"
     say "      pacman -S gnome-shell gdm && systemctl enable gdm"

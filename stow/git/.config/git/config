@@ -171,8 +171,7 @@
 [submodule]
 	recurse = true
 
-[include]
-	path = ~/.config/git/delta-theme.conf
+
 
 [includeIf "gitdir:~/work/"]
 	path = ~/.config/git/work.conf

@@ -5,7 +5,7 @@ REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 echo "Running health check..."
 
 # 1. Check for required binaries
-REQUIRED_BINARIES=("stow" "zsh" "starship" "nvim" "ghostty" "fastfetch" "dconf" "jq" "sass")
+REQUIRED_BINARIES=("stow" "zsh" "starship" "nvim" "ghostty" "fastfetch" "dconf" "jq")
 SHELL_BINARIES=("atuin" "fzf" "fd" "rg" "bat" "eza" "zoxide" "direnv" "delta")
 for bin in "${REQUIRED_BINARIES[@]}"; do
     if command -v "$bin" >/dev/null 2>&1; then
