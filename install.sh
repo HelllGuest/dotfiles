@@ -9,37 +9,9 @@ cd "$(dirname "$0")"
 
 echo "Starting installation..."
 
-# 0. Machine Profile Sourcing (hostname override, else hardware detect)
-apply_profile() {
-    local name="$1"
-    local reason="${2:-}"
-    if [ -f "profiles/${name}.sh" ]; then
-        if [ -n "$reason" ]; then
-            echo "Applying profile '${name}' (${reason})..."
-        else
-            echo "Applying profile '${name}'..."
-        fi
-        # shellcheck source=/dev/null
-        source "profiles/${name}.sh" || echo "Profile application had some failures (likely sudo)."
-        return 0
-    fi
-    return 1
-}
-
-HOST=$(hostname 2>/dev/null || cat /etc/hostname 2>/dev/null || echo "unknown")
-if apply_profile "$HOST" "hostname"; then
-    :
-elif [ -f "scripts/detect-profile.sh" ]; then
-    DETECTED=$(bash scripts/detect-profile.sh 2>/dev/null || true)
-    if [ -n "$DETECTED" ] && apply_profile "$DETECTED" "hardware detect"; then
-        if [ "$DETECTED" != "nvidia" ] && bash scripts/detect-profile.sh --has-nvidia 2>/dev/null; then
-            apply_profile nvidia "NVIDIA GPU" || true
-        fi
-    else
-        echo "No hostname or hardware profile matched. Using default install."
-    fi
-else
-    echo "No specific profile found for ${HOST}. Using default."
+# 0. Machine profile (hostname override, else hardware detect)
+if [ -f "scripts/apply-profile.sh" ]; then
+    bash scripts/apply-profile.sh || echo "Profile application had some failures."
 fi
 
 # 1. Install packages
@@ -113,11 +85,6 @@ fi
 
 if [ -f "scripts/location-setup.sh" ]; then
     bash scripts/location-setup.sh || echo "Location setup skipped."
-fi
-
-if [ -f "gnome/dconf-settings.ini" ] && [ ! -f "scripts/gnome-session-setup.sh" ]; then
-    echo "Restoring GNOME settings (legacy ini)..."
-    dconf load /org/gnome/ < gnome/dconf-settings.ini
 fi
 
 # 3.0 GNOME Console (kgx app settings only — shortcuts in gnome/dconf/user.conf)

@@ -20,7 +20,6 @@ stow/gnome-session/.config/systemd/user/yoga-tablet-mode.service
 stow/kitty/.config/kitty/kitty.conf
 stow/kitty/.config/kitty/sessions/dev.conf
 stow/nvim/.config/nvim/init.lua
-stow/nvim/.config/nvim/lazy-lock.json
 stow/nvim/.config/nvim/lua/config/autocmds.lua
 stow/nvim/.config/nvim/lua/config/keymaps.lua
 stow/nvim/.config/nvim/lua/config/options.lua
@@ -35,6 +34,7 @@ stow/proton-vpn/.local/share/gnome-shell/extensions/proton-vpn@helllguest/icons/
 stow/proton-vpn/.local/share/gnome-shell/extensions/proton-vpn@helllguest/icons/state-disconnected.svg
 stow/proton-vpn/.local/share/gnome-shell/extensions/proton-vpn@helllguest/metadata.json
 stow/starship/.config/starship.toml
+stow/vscode/.config/Code/User/settings.json
 stow/system/etc/environment.d/99-wayland.conf
 stow/system/etc/geoclue/conf.d/99-static-dubai.conf
 stow/system/etc/geolocation

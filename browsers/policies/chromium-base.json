@@ -14,12 +14,5 @@
   "AutofillCreditCardEnabled": false,
   "PasswordManagerEnabled": false,
   "PromotionalTabsEnabled": false,
-  "BackgroundModeEnabled": false,
-  "BraveP3AEnabled": false,
-  "BraveStatsUsagePingEnabled": false,
-  "BraveRewardsDisabled": true,
-  "BraveWalletDisabled": true,
-  "BraveVPNDisabled": true,
-  "BraveAIChatEnabled": false,
-  "BraveLeoEnabled": false
+  "BackgroundModeEnabled": false
 }

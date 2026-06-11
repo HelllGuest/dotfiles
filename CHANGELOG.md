@@ -1,6 +1,8 @@
 # Changelog
 
 ## [Unreleased]
+- Cleanup: removed orphaned `editors/vscode/settings.json` (now `stow/vscode/`), `gnome/dconf-settings.ini`, `profiles/desktop.sh`, and `scripts/fix-system-health.sh` (logic already in `profiles/thinkpad-x1.sh`); backup/restore GNOME targets `user.conf`; dropped stale `.gitignore` theming entries and `lazy-lock.json` from `all_stow_files.txt`.
+- Refactor: extracted `scripts/apply-profile.sh`, `scripts/lib/dmi.sh`, and `scripts/lib/browsers.sh`; `packages/browsers.txt` is the browser flatpak source of truth; Chromium policies split into base + chrome/brave extras (merged with jq at deploy).
 - Browsers: added Google Chrome and LibreWolf flatpaks; `scripts/browser-hardening.sh` deploys managed policies for Chrome/Brave (`browsers/policies/*.json`); Zen prefs via `browsers/zen/user.js` into each profile dir (fixes invalid `.zen/user.js` stow path) plus `/etc/firefox/policies/policies.json`; LibreWolf relies on upstream hardening.
 - ThinkPad X1 profile: re-sign UKIs with `sbctl` after `mkinitcpio -P` when Secure Boot keys exist (pacman hook does not run on manual rebuilds).
 - Docs: Secure Boot (Phase 23), ESP multiboot cleanup, profile detection, and UKI re-sign flow synced across `README.md`, `CONTRIBUTING.md`, and `docs/hardened-arch-gnome.md`.

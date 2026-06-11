@@ -154,13 +154,21 @@ fi
 
 echo "--- Flatpaks ---"
 if command -v flatpak >/dev/null 2>&1; then
-    for app in com.brave.Browser io.github.zen_browser.zen com.google.Chrome io.gitlab.librewolf-community com.protonvpn.www; do
+    # shellcheck source=lib/browsers.sh
+    source "$REPO_ROOT/scripts/lib/browsers.sh"
+    while IFS= read -r app; do
+        [[ -n "$app" ]] || continue
         if flatpak list --app 2>/dev/null | grep -q "$app"; then
             echo "✓ $app installed"
         else
             echo "✗ $app missing (run scripts/install-flatpaks.sh)"
         fi
-    done
+    done < <(read_browser_flatpaks)
+    if flatpak list --app 2>/dev/null | grep -q com.protonvpn.www; then
+        echo "✓ com.protonvpn.www installed"
+    else
+        echo "✗ com.protonvpn.www missing (run scripts/install-flatpaks.sh)"
+    fi
 else
     echo "✗ flatpak not installed"
 fi
@@ -178,8 +186,7 @@ if [[ -f /etc/firefox/policies/policies.json ]]; then
 else
     echo "✗ /etc/firefox/policies/policies.json missing (run scripts/browser-hardening.sh)"
 fi
-zen_root="$HOME/.var/app/io.github.zen_browser.zen/.zen"
-if compgen -G "$zen_root"/*/user.js >/dev/null 2>&1; then
+if compgen -G "${HOME}/.var/app/io.github.zen_browser.zen/.zen"/*/user.js >/dev/null 2>&1; then
     echo "✓ Zen user.js deployed in profile(s)"
 elif flatpak list --app 2>/dev/null | grep -q io.github.zen_browser.zen; then
     echo "✗ Zen user.js missing — launch Zen once, then run scripts/browser-hardening.sh"

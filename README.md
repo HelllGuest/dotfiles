@@ -100,10 +100,11 @@ dotfiles/
 │   ├── kitty/ ghostty/ # Terminals
 │   ├── nvim/        # Neovim (Lazy.nvim)
 │   ├── starship/    # Starship prompt
-│   └── fastfetch/ proton-vpn/ tmp-cleanup/ …  (browsers/ for Chrome/Brave/Zen policies)
+│   └── fastfetch/ proton-vpn/ tmp-cleanup/ …
+├── browsers/        # Chromium base + per-browser policy extras; Zen user.js
+├── packages/        # pacman.txt, flatpak.txt, browsers.txt, aur.txt
 ├── profiles/        # Hostname or hardware-detected tweaks (e.g. thinkpad-x1.sh)
-├── scripts/         # Health checks, installers
-├── packages/        # Tracked package lists (Pacman, AUR, Flatpak)
+├── scripts/         # Health checks, installers (lib/ for shared helpers)
 ├── gnome/           # GNOME settings (dconf) and extension lists
 └── docs/            # Installation guides and system documentation
 ```
@@ -210,7 +211,7 @@ Key runtime dependencies (most surfaced by `scripts/check.sh`):
 
 **Shell tools:** `atuin`, `fzf`, `fd`, `ripgrep`, `bat`, `eza`, `zoxide`, `direnv`, `git-delta`
 
-**AUR** (via `install-aur.sh`, bootstraps `paru` if needed): `blesh-git`, `curlie`, `forgit`, GNOME shell extensions, `visual-studio-code-bin`
+**AUR** (via `install-aur.sh`, bootstraps `paru` if needed): `blesh-git`, `curlie`, `forgit`, GNOME shell extensions, `visual-studio-code-bin` (telemetry-off settings in `stow/vscode/`)
 
 **Flatpaks** (via `install-flatpaks.sh`): Brave, Zen, Google Chrome, LibreWolf, Proton VPN, Android Studio. Browser telemetry debloat: `scripts/browser-hardening.sh` (Chrome/Brave `/etc` policies; Zen `user.js` per profile + `/etc/firefox/policies`; LibreWolf upstream-hardened). Launch Zen once before re-running hardening if profiles are new.
 

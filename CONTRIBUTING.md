@@ -44,12 +44,13 @@ Thank you for helping improve this setup. Follow these guidelines to keep the re
 
 ### Packages (`packages/`)
 
-- Keep `pacman.txt`, `aur.txt`, and `flatpak.txt` in sync with configs that depend on them.
+- Keep `pacman.txt`, `aur.txt`, `flatpak.txt`, and `browsers.txt` in sync with configs that depend on them.
+- Browser policies live under `browsers/policies/` (`chromium-base.json` + per-browser extras); `scripts/lib/browsers.sh` merges and deploys them.
 - Shell plugin packages belong in `pacman.txt`.
 
 ### GNOME (`gnome/`)
 
-- Export live settings: `./scripts/backup-gsettings.sh` (writes `gnome/dconf-settings.ini`)
+- Export live settings: `./scripts/backup-gsettings.sh` (overwrites `gnome/dconf/user.conf`)
 - Ensure `user-theme` is `Default` (not `Generated-Theme`).
 - Avoid machine-specific paths unless intentionally updating the reference snapshot.
 

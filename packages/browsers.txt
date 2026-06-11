@@ -1,0 +1,5 @@
+# Browser flatpaks (Flathub) — keep in sync with packages/flatpak.txt
+com.brave.Browser
+io.github.zen_browser.zen
+com.google.Chrome
+io.gitlab.librewolf-community

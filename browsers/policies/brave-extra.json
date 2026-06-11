@@ -1,0 +1,9 @@
+{
+  "BraveP3AEnabled": false,
+  "BraveStatsUsagePingEnabled": false,
+  "BraveRewardsDisabled": true,
+  "BraveWalletDisabled": true,
+  "BraveVPNDisabled": true,
+  "BraveAIChatEnabled": false,
+  "BraveLeoEnabled": false
+}

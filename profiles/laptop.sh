@@ -2,17 +2,11 @@
 # Laptop specific settings
 echo "Applying Laptop profile..."
 
-# Delegate to X1 profile only on X1 models (not every ThinkPad)
-dmi_label=""
-for f in product_family product_version product_name; do
-    if [ -r "/sys/class/dmi/id/$f" ]; then
-        dmi_label+=" $(cat "/sys/class/dmi/id/$f")"
-    fi
-done
-if [ -z "$dmi_label" ] && command -v dmidecode >/dev/null 2>&1; then
-    dmi_label="$(dmidecode -s system-product-name 2>/dev/null || true)"
-fi
-if echo "$dmi_label" | grep -qiE 'ThinkPad[[:space:]]*X1|X1[[:space:]]+Yoga|X1[[:space:]]+Carbon'; then
+REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+# shellcheck source=../scripts/lib/dmi.sh
+source "$REPO_ROOT/scripts/lib/dmi.sh"
+
+if is_thinkpad_x1; then
     if [ -f "profiles/thinkpad-x1.sh" ]; then
         # shellcheck source=/dev/null
         source "profiles/thinkpad-x1.sh"

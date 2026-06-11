@@ -116,8 +116,8 @@ Quick throwaway terminal — `kgx`. Tuned by `scripts/gnome-console-setup.sh` (1
 | `Super+Return` | **kitty** (via custom binding) |
 
 ```bash
-~/dotfiles/scripts/backup-gsettings.sh
-~/dotfiles/scripts/restore-gsettings.sh
+~/dotfiles/scripts/backup-gsettings.sh   # writes gnome/dconf/user.conf
+~/dotfiles/scripts/restore-gsettings.sh  # loads gnome/dconf/user.conf
 ```
 
 OSC 7 CWD reporting is enabled in Zsh and Bash so new tabs open in the same directory.
