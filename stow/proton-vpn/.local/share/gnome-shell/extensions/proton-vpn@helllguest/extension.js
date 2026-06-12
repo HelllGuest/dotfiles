@@ -45,11 +45,26 @@ const INACTIVE_VPN_ICON_OPACITY = 128;
 // connected. The icon stays monochrome and themes to the panel otherwise.
 const CONNECTED_ICON_COLOR = '#1ea885';
 
+// The Proton VPN app stores its config/cache under the Flatpak data dir when
+// installed as a Flatpak, and under the plain XDG dirs when installed natively.
+// Detect which one is present so pinned servers, connection enrichment, and the
+// live config monitor work regardless of install type.
+const FLATPAK_BASE = GLib.build_filenamev([
+    GLib.get_home_dir(), '.var', 'app', 'com.protonvpn.www',
+]);
+const IS_FLATPAK = GLib.file_test(FLATPAK_BASE, GLib.FileTest.IS_DIR);
+const PROTON_CONFIG_DIR = IS_FLATPAK
+    ? GLib.build_filenamev([FLATPAK_BASE, 'config', 'Proton', 'VPN'])
+    : GLib.build_filenamev([GLib.get_home_dir(), '.config', 'Proton', 'VPN']);
+const PROTON_CACHE_DIR = IS_FLATPAK
+    ? GLib.build_filenamev([FLATPAK_BASE, 'cache', 'Proton', 'VPN'])
+    : GLib.build_filenamev([GLib.get_home_dir(), '.cache', 'Proton', 'VPN']);
+
 const APP_CONFIG_PATH = GLib.build_filenamev([
-    GLib.get_home_dir(), '.config', 'Proton', 'VPN', 'app-config.json',
+    PROTON_CONFIG_DIR, 'app-config.json',
 ]);
 const CONNECTION_PERSISTENCE_PATH = GLib.build_filenamev([
-    GLib.get_home_dir(), '.cache', 'Proton', 'VPN', 'connection', 'connection_persistence.json',
+    PROTON_CACHE_DIR, 'connection', 'connection_persistence.json',
 ]);
 
 
