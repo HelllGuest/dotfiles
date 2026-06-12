@@ -43,6 +43,11 @@ secrets/
 .DS_Store
 Thumbs.db
 
+# GNOME extensions dir is a folded stow symlink, so user-installed extensions
+# land here physically. Track only the custom indicator; ignore the rest.
+stow/proton-vpn/.local/share/gnome-shell/extensions/*
+!stow/proton-vpn/.local/share/gnome-shell/extensions/proton-vpn@helllguest/
+
 # Repo-root convenience symlinks (stow targets live in stow/)
 /.bashrc
 /.shell-aliases
