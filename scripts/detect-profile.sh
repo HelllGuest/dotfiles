@@ -15,6 +15,11 @@ if is_thinkpad_x1; then
   exit 0
 fi
 
+if is_thinkpad_p15; then
+  printf '%s\n' thinkpad-p15
+  exit 0
+fi
+
 if echo "$(dmi_label)" | grep -qi 'ThinkPad'; then
   printf '%s\n' laptop
   exit 0

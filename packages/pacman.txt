@@ -13,6 +13,7 @@ dart-sass
 direnv
 dust
 duf
+egl-wayland
 eza
 fastfetch
 flatpak
@@ -50,6 +51,9 @@ linux-hardened-headers
 man-db
 man-pages
 neovim
+nvidia-open-dkms
+nvidia-prime
+nvidia-utils
 playerctl
 power-profiles-daemon
 python-pipx

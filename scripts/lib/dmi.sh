@@ -21,6 +21,10 @@ is_thinkpad_x1() {
   echo "$(dmi_label)" | grep -qiE 'ThinkPad[[:space:]]*X1|X1[[:space:]]+Yoga|X1[[:space:]]+Carbon'
 }
 
+is_thinkpad_p15() {
+  echo "$(dmi_label)" | grep -qiE 'ThinkPad[[:space:]]*P15|P15[[:space:]]+Gen'
+}
+
 is_laptop_chassis() {
   case "$(dmi_field chassis_type)" in
     8|9|10|11|14|31|32) return 0 ;;
