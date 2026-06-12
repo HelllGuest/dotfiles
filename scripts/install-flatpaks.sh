@@ -20,10 +20,7 @@ if [[ ${#refs[@]} -eq 0 ]]; then
     exit 0
 fi
 
-flatpak remote-add --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo || true
+sudo flatpak remote-add --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo || true
 
-if [[ $EUID -eq 0 ]]; then
-    flatpak install --system -y flathub "${refs[@]}"
-else
-    flatpak install -y flathub "${refs[@]}"
-fi
+# Always install system-wide to match arch-install.sh; --or-update makes reruns idempotent.
+sudo flatpak install --system --or-update -y flathub "${refs[@]}"

@@ -399,7 +399,7 @@ if [[ ${DESKTOP^^} != N* ]]; then
     mkdir -p /etc/gdm
     printf '[daemon]\nWaylandEnable=true\n' > /etc/gdm/custom.conf
     flatpak remote-add --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo || true
-    # Browser flatpaks — keep in sync with packages/browsers.txt
+    # Browser flatpaks — keep in sync with packages/flatpak.txt (AndroidStudio excluded: dev tool)
     flatpak install --system -y flathub \
       com.brave.Browser \
       io.github.zen_browser.zen \

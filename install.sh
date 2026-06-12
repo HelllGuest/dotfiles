@@ -73,12 +73,20 @@ for dir in */; do
 done
 cd .. || exit 1
 
-# 2.1 Import shell history into atuin
+# 2.1 Bootstrap Node.js LTS via fnm (avoids bleeding-edge system node breaking native addons)
+if command -v fnm >/dev/null 2>&1; then
+    echo "Setting up Node.js LTS (22) via fnm..."
+    eval "$(fnm env --shell bash)"
+    fnm install 22 || echo "fnm install 22 failed — skipping."
+    fnm default 22 || true
+fi
+
+# 2.2 Import shell history into atuin
 if command -v atuin >/dev/null 2>&1; then
     atuin import auto 2>/dev/null && echo "Atuin history imported." || true
 fi
 
-# 2.2 Materialize zram config (early-boot safe; not a $HOME symlink)
+# 2.3 Materialize zram config (early-boot safe; not a $HOME symlink)
 if [ -f "scripts/zram-setup.sh" ]; then
     bash scripts/zram-setup.sh || echo "zram setup skipped."
 fi
