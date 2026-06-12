@@ -9,6 +9,7 @@ import GioUnix from 'gi://GioUnix';
 import GLib from 'gi://GLib';
 import GObject from 'gi://GObject';
 import NM from 'gi://NM';
+import Pango from 'gi://Pango';
 import Shell from 'gi://Shell';
 import St from 'gi://St';
 import Clutter from 'gi://Clutter';
@@ -293,7 +294,7 @@ const ProtonVPNButton = GObject.registerClass(
                 reactive: false,
                 activate: false,
             });
-            this._geoLabelItem.label.clutter_text.ellipsize = 3;
+            this._geoLabelItem.label.clutter_text.ellipsize = Pango.EllipsizeMode.END;
             this.menu.addMenuItem(this._geoLabelItem);
             this._geoCoordsItem = new PopupMenu.PopupMenuItem('', {
                 reactive: false,
@@ -350,7 +351,7 @@ const ProtonVPNButton = GObject.registerClass(
             this._geoCoordsItem.label.text = lat !== null && lon !== null
                 ? `${lat.toFixed(4)}, ${lon.toFixed(4)}`
                 : 'Coordinates unavailable';
-            this._syncLocationItem.actor.visible = GLib.file_test(
+            this._syncLocationItem.visible = GLib.file_test(
                 syncBin,
                 GLib.FileTest.IS_EXECUTABLE,
             );
@@ -557,11 +558,11 @@ const ProtonVPNButton = GObject.registerClass(
                 this._statusItem.label.text = 'Not connected';
             }
 
-            this._connectItem.actor.visible = !this._connected;
-            this._connectFastestItem.actor.visible = !this._connected;
-            this._reconnectItem.actor.visible = this._connected;
-            this._disconnectItem.actor.visible = this._connected;
-            this._copyIpItem.actor.visible = this._connected && !!this._serverIp;
+            this._connectItem.visible = !this._connected;
+            this._connectFastestItem.visible = !this._connected;
+            this._reconnectItem.visible = this._connected;
+            this._disconnectItem.visible = this._connected;
+            this._copyIpItem.visible = this._connected && !!this._serverIp;
 
             const hasPinned = this._pinnedItems.length > 0;
             this._pinnedSection.actor.visible = hasPinned;
