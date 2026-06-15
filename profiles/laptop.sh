@@ -17,3 +17,8 @@ fi
 # General laptop tools (non-ThinkPad)
 sudo pacman -S --needed --noconfirm power-profiles-daemon brightnessctl
 sudo systemctl enable --now power-profiles-daemon
+
+# Legacy touchpad udev/inhibit cleanup (if present)
+if [ -f "$REPO_ROOT/scripts/cleanup-input-overrides.sh" ]; then
+    bash "$REPO_ROOT/scripts/cleanup-input-overrides.sh" || true
+fi

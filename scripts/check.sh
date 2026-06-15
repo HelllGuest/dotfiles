@@ -152,6 +152,17 @@ else
     echo "✗ Few GNOME extensions enabled ($ENABLED_EXT/4 — run scripts/gnome-session-setup.sh)"
 fi
 
+echo "--- Input / touchpad ---"
+# shellcheck source=lib/input.sh
+source "$REPO_ROOT/scripts/lib/input.sh"
+if phantom_syna_mouse_inhibited; then
+    echo "✗ synaptics Mouse node is inhibited (clicks will not work)"
+    list_phantom_syna_mice | sed 's/^/  /'
+    echo "  run: bash scripts/cleanup-input-overrides.sh && log out once"
+else
+    echo "✓ synaptics Mouse node not inhibited"
+fi
+
 echo "--- Flatpaks ---"
 if command -v flatpak >/dev/null 2>&1; then
     # shellcheck source=lib/browsers.sh

@@ -1,6 +1,8 @@
 #!/bin/bash
 # thinkpad-health.sh — post-tuning verification for ThinkPad X1 Yoga Gen 5
 
+REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+
 echo "=== ThinkPad X1 Yoga Health Check ==="
 
 echo "--- Session ---"
@@ -31,8 +33,16 @@ echo "--- Sleep ---"
 cat /sys/power/mem_sleep 2>/dev/null || echo "  unavailable"
 
 echo "--- Input ---"
+# shellcheck source=lib/input.sh
+source "$REPO_ROOT/scripts/lib/input.sh"
 if command -v libinput >/dev/null 2>&1; then
     libinput list-devices 2>/dev/null | grep -iE 'wacom|trackpoint' | head -4
+    if phantom_syna_mouse_inhibited; then
+        echo "  WARN: synaptics Mouse node inhibited (clicks broken)"
+        echo "        run: bash scripts/cleanup-input-overrides.sh"
+    else
+        echo "  OK:   synaptics Mouse node not inhibited"
+    fi
 else
     grep -i wacom /proc/bus/input/devices 2>/dev/null | grep ^N | head -2
 fi

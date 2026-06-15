@@ -107,5 +107,10 @@ if command -v systemctl >/dev/null 2>&1; then
     systemctl --user enable --now yoga-tablet-mode.service 2>/dev/null || true
 fi
 
+# Legacy touchpad udev/inhibit cleanup (if present)
+if [ -f "${BASH_SOURCE[0]%/*}/../scripts/cleanup-input-overrides.sh" ]; then
+    bash "${BASH_SOURCE[0]%/*}/../scripts/cleanup-input-overrides.sh" || true
+fi
+
 echo "ThinkPad X1 Yoga optimizations applied."
 echo "Reboot recommended for i915 module options and the mem_sleep_default kernel param."

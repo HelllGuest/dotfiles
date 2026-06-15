@@ -25,6 +25,14 @@ if [[ -f "$REPO_ROOT/gnome/dconf/user.conf" ]]; then
   dconf load / < "$REPO_ROOT/gnome/dconf/user.conf"
 fi
 
+if [[ -f "$REPO_ROOT/scripts/reset-input-defaults.sh" ]]; then
+  bash "$REPO_ROOT/scripts/reset-input-defaults.sh" || true
+fi
+
+if [[ -f "$REPO_ROOT/scripts/cleanup-input-overrides.sh" ]]; then
+  bash "$REPO_ROOT/scripts/cleanup-input-overrides.sh" || true
+fi
+
 if [[ -f "$REPO_ROOT/scripts/install-extensions.sh" ]]; then
   bash "$REPO_ROOT/scripts/install-extensions.sh" || true
 fi

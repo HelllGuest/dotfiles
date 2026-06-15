@@ -34,3 +34,6 @@ done
 cd .. || exit 1
 
 echo "Symlinks applied successfully!"
+echo ""
+echo "GNOME session settings (workspaces, keybindings, etc.) are NOT in stow/."
+echo "Mouse/touchpad/keyboard use GNOME defaults (reset by gnome-session-setup.sh)."

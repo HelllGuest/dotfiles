@@ -14,6 +14,11 @@ if [ -f "scripts/apply-profile.sh" ]; then
     bash scripts/apply-profile.sh || echo "Profile application had some failures."
 fi
 
+# Legacy touchpad udev/inhibit cleanup (if present from older dotfiles)
+if [ -f "scripts/cleanup-input-overrides.sh" ]; then
+    bash scripts/cleanup-input-overrides.sh || echo "Input override cleanup skipped."
+fi
+
 # 1. Install packages
 if [ -f "packages/pacman.txt" ]; then
     echo "Installing pacman packages..."
