@@ -1,7 +1,7 @@
 # Add flatpaks here
 com.google.AndroidStudio
 com.brave.Browser
-io.github.zen_browser.zen
+app.zen_browser.zen
 com.google.Chrome
 io.gitlab.librewolf-community
 com.protonvpn.www

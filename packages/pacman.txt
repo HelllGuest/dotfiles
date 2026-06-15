@@ -54,7 +54,7 @@ tree-sitter-cli
 starship
 stow
 swappy
-swww
+awww
 tmux
 wl-clipboard
 yazi

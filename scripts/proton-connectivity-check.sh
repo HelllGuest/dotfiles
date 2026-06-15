@@ -2,6 +2,7 @@
 # proton-connectivity-check.sh — diagnose Proton VPN connect failures
 #
 # Typical failure: ISP/router blocks api.protonvpn.ch TLS while general HTTPS works.
+# Bare curl to /vpn/v1/logicals returns HTTP 400 (missing x-pm-appversion) when TLS is OK.
 
 set -euo pipefail
 
@@ -54,19 +55,29 @@ else
 fi
 
 CURL_ERR_FILE="$(mktemp)"
-HTTP_CODE="$(curl -sS -o /dev/null --max-time "$CURL_TIMEOUT" -w '%{http_code}' "$PROTON_API_URL" 2>"$CURL_ERR_FILE" || true)"
+API_HEADERS_FILE="$(mktemp)"
+API_BODY_FILE="$(mktemp)"
+HTTP_CODE="$(curl -sS -o "$API_BODY_FILE" -D "$API_HEADERS_FILE" --max-time "$CURL_TIMEOUT" \
+    -w '%{http_code}' "$PROTON_API_URL" 2>"$CURL_ERR_FILE" || true)"
 HTTP_CODE="${HTTP_CODE:-000}"
+
+proton_api_responded() {
+    [[ -f "$API_HEADERS_FILE" ]] && grep -qi 'x-pm-date' "$API_HEADERS_FILE"
+}
+
 if [[ "$HTTP_CODE" =~ ^[23] ]]; then
     pass "Proton API reachable (${PROTON_API_URL} → HTTP ${HTTP_CODE})"
 elif [[ "$HTTP_CODE" == "401" || "$HTTP_CODE" == "403" ]]; then
     pass "Proton API TLS OK (HTTP ${HTTP_CODE} without auth — expected)"
+elif proton_api_responded; then
+    pass "Proton API TLS OK (HTTP ${HTTP_CODE} — API responded; app headers/auth required)"
 else
     fail "Proton API blocked or timing out (HTTP ${HTTP_CODE})"
     [[ -s "$CURL_ERR_FILE" ]] && info "$(tr '\n' ' ' <"$CURL_ERR_FILE")"
     info "ISP/network may reset TLS to Proton — try hotspot or different network"
     info "Try: scripts/network-dns-setup.sh && retry protonvpn-app"
 fi
-rm -f "$CURL_ERR_FILE"
+rm -f "$CURL_ERR_FILE" "$API_HEADERS_FILE" "$API_BODY_FILE"
 
 echo "--- Proton app ---"
 if flatpak list --app 2>/dev/null | grep -q 'com.protonvpn.www'; then

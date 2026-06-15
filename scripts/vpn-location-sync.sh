@@ -9,7 +9,31 @@
 
 set -euo pipefail
 
-REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+resolve_repo_root() {
+    if [[ -n "${DOTFILES_ROOT:-}" && -f "${DOTFILES_ROOT}/stow/system/etc/geolocation" ]]; then
+        printf '%s\n' "$DOTFILES_ROOT"
+        return 0
+    fi
+    local real_user="${SUDO_USER:-${USER}}"
+    if [[ -n "$real_user" && -f "/home/${real_user}/dotfiles/stow/system/etc/geolocation" ]]; then
+        printf '%s\n' "/home/${real_user}/dotfiles"
+        return 0
+    fi
+    local script_dir
+    script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+    if [[ -f "${script_dir}/../stow/system/etc/geolocation" ]]; then
+        cd "${script_dir}/.." && pwd
+        return 0
+    fi
+    return 1
+}
+
+REPO_ROOT="$(resolve_repo_root || true)"
+if [[ -z "$REPO_ROOT" ]]; then
+    log() { printf '[vpn-location-sync] %s\n' "$*"; }
+    log "ERROR: could not find dotfiles repo (set DOTFILES_ROOT)" >&2
+    exit 1
+fi
 HOME_GEO="$REPO_ROOT/stow/system/etc/geolocation"
 GEO_FILE="/etc/geolocation"
 VPN_IF="${VPN_IF:-proton0}"

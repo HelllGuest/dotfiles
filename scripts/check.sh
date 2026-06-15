@@ -186,9 +186,9 @@ if [[ -f /etc/firefox/policies/policies.json ]]; then
 else
     echo "✗ /etc/firefox/policies/policies.json missing (run scripts/browser-hardening.sh)"
 fi
-if compgen -G "${HOME}/.var/app/io.github.zen_browser.zen/.zen"/*/user.js >/dev/null 2>&1; then
+if compgen -G "${HOME}/.var/app/app.zen_browser.zen/.zen"/*/user.js >/dev/null 2>&1; then
     echo "✓ Zen user.js deployed in profile(s)"
-elif flatpak list --app 2>/dev/null | grep -q io.github.zen_browser.zen; then
+elif flatpak list --app 2>/dev/null | grep -qE 'app\.zen_browser\.zen|io\.github\.zen_browser\.zen'; then
     echo "✗ Zen user.js missing — launch Zen once, then run scripts/browser-hardening.sh"
 fi
 

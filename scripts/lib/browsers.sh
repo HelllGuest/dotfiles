@@ -9,7 +9,7 @@ CHROME_EXTRA="${REPO_ROOT}/browsers/policies/chrome-extra.json"
 BRAVE_EXTRA="${REPO_ROOT}/browsers/policies/brave-extra.json"
 ZEN_POLICY_SRC="${REPO_ROOT}/browsers/policies/zen-policies.json"
 ZEN_USERJS_SRC="${REPO_ROOT}/browsers/zen/user.js"
-ZEN_FLATPAK_ID="io.github.zen_browser.zen"
+ZEN_FLATPAK_ID="app.zen_browser.zen"
 ZEN_PROFILE_ROOT="${HOME}/.var/app/${ZEN_FLATPAK_ID}/.zen"
 
 read_browser_flatpaks() {
