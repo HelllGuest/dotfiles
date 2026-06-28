@@ -90,11 +90,6 @@ fi
 # ── zoxide ────────────────────────────────────────────────────
 _has zoxide && alias j='z'
 
-# ── Headroom (install: scripts/install-headroom.sh) ─────────
-_has headroom && alias hr-claude='headroom wrap claude'
-_has headroom && alias hr-cursor='headroom wrap cursor'
-_has headroom && alias hr-proxy='headroom proxy --port ${HEADROOM_PORT:-8787}'
-
 # ── Misc ────────────────────────────────────────────────────
 alias cl='clear'
 alias q='exit'
