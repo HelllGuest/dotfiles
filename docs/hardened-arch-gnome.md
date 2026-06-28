@@ -972,14 +972,86 @@ systemctl --user enable --now podman.socket
 
 Configure Docker compatibility:
 
-The dotfiles repo sets this in `~/.shell-exports`. If not using dotfiles yet:
+Dotfiles set `DOCKER_HOST` in `~/.shell-exports` **only when** the Podman socket is running. If you use **Docker** instead (recommended when `docker.service` is enabled and Podman is not), leave Podman stopped — `DOCKER_HOST` stays unset and the Docker CLI talks to `/var/run/docker.sock`.
+
+Podman-only (optional):
+
+```bash
+systemctl --user enable --now podman.socket
+# ~/.shell-exports detects the socket automatically after exec zsh
+```
+
+Legacy manual override (not needed with current dotfiles):
 
 ```bash
 mkdir -p ~/.config/secrets
 echo 'export DOCKER_HOST="unix://$XDG_RUNTIME_DIR/podman/podman.sock"' >> ~/.config/secrets/env
 ```
 
-Or append to `~/.shell-exports` after running `./stow-only.sh`.
+Docker daemon (typical on this setup):
+
+```bash
+pacman -S docker docker-compose
+sudo systemctl enable --now docker
+sudo usermod -aG docker "$USER"
+newgrp docker   # or log out/in
+docker ps
+```
+
+---
+
+# PHASE 17b — NODE.JS (FNM)
+
+Install via dotfiles (`packages/pacman.txt`) or:
+
+```bash
+pacman -S fnm
+```
+
+Shell hooks (after `./install.sh` / `stow-only.sh` + `exec zsh`):
+
+* Zsh: `fnm env --use-on-cd` in `.zsh-plugins`
+* Bash: `fnm env --use-on-cd` in `.bashrc`
+
+When a project declares Node in `.nvmrc`, `.node-version`, or `package.json` `engines.node`, fnm may prompt on shell start:
+
+```text
+Can't find an installed Node version matching >=22.12.0.
+Do you want to install it? answer [y/N]:
+```
+
+Install the requested version once:
+
+```bash
+fnm install 22
+fnm default 22
+```
+
+Or from inside the project: `fnm install`. To stop auto-switching (no prompt), remove `--use-on-cd` from the hook lines above.
+
+List installed versions: `fnm list`. Current: `fnm current`.
+
+---
+
+# PHASE 17c — HEADROOM (CLAUDE / CURSOR)
+
+Optional context compression proxy ([Headroom](https://github.com/headroomlabs-ai/headroom)). Installed user-local via **pipx** (`python-pipx` in `packages/pacman.txt`).
+
+```bash
+bash scripts/headroom-setup.sh   # install + Claude MCP registration
+```
+
+| Shell command | Purpose |
+|---------------|---------|
+| `hr-claude` | `headroom wrap claude` — proxy + launch Claude Code |
+| `hr-cursor` | Start proxy; paste printed Base URL into Cursor → Settings → Models |
+| `hr-proxy` | Proxy only (`HEADROOM_PORT`, default `8787`) |
+
+**Claude Code:** one terminal — run `hr-claude` from the project directory.
+
+**Cursor:** keep the `hr-cursor` terminal open; configure Override OpenAI Base URL in the IDE (Cursor does not read shell env for API routing). Headroom 0.27 registers MCP for Claude only — not Cursor yet.
+
+**Other agents:** Antigravity CLI (`agy`) and Kiro are not in the stable Headroom wrap matrix; `hr-proxy` works only if the tool supports a custom OpenAI/Anthropic base URL.
 
 ---
 
@@ -1399,7 +1471,10 @@ cd ~/dotfiles
 * Stow configs to `$HOME` and `/etc` (`system/`; skips `zram` symlink and `gdm`)
 * Materialize `zram-generator.conf` via `scripts/zram-setup.sh`
 * Apply GNOME session dconf from `gnome/dconf/user.conf`, enable extensions, location spoofing
+* Reset mouse/touchpad/keyboard to stock GNOME defaults (`scripts/reset-input-defaults.sh`); clean legacy touchpad udev/inhibit if present (`scripts/cleanup-input-overrides.sh`)
 * Configure GDM, Git, Neovim, and run health checks + privacy hardening
+* **fnm** auto Node version on `cd` / shell start when project pins a version (see Phase 17b)
+* **Headroom** optional AI context proxy for Claude Code / Cursor (see Phase 17c)
 
 Config-only (no package install; skips `zram`, `system`, and `gdm`):
 

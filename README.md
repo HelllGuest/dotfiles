@@ -21,7 +21,7 @@ Zsh is the primary shell. Bash is fully supported for scripts and fallback sessi
 
 | File | Purpose |
 |------|---------|
-| `.shell-exports` | Environment variables (editor, pager, Android SDK, telemetry opt-outs) |
+| `.shell-exports` | Environment variables (editor, pager, Android SDK, telemetry opt-outs, container CLI socket) |
 | `.shell-aliases` | Shared aliases (`v`, `as`, `ff`, etc.) |
 | `.shell-functions` | Shared functions (`mkcd`, `backup`); zsh-only OSC 7 CWD hook |
 
@@ -48,6 +48,53 @@ Both `~/.zshrc` and `~/.bashrc` source these files.
 
 - **ble.sh** (optional AUR) — syntax highlighting and autosuggestions for bash
 - Same **fzf**, **zoxide**, **atuin**, **direnv**, **starship** as zsh
+- **fzf** preview binds: `Ctrl+F` / `Ctrl+B` page preview; no global `Ctrl+Y` copy bind (fzf 0.72 lacks `copy-selection` — pass `--bind` per invocation if needed)
+
+### Containers (Docker / Podman)
+
+`.shell-exports` sets `DOCKER_HOST` only when the Podman socket exists (`$XDG_RUNTIME_DIR/podman/podman.sock`). Otherwise it is unset so the **Docker** daemon (`/var/run/docker.sock`) is used. Install Docker with `pacman -S docker docker-compose`, enable `docker.service`, and add your user to the `docker` group. After `newgrp docker` or a fresh login, `docker ps` should work without `sudo`.
+
+For Podman-only setups, enable `podman.socket` and ensure the socket path above exists — see [docs/hardened-arch-gnome.md](docs/hardened-arch-gnome.md) Phase 17.
+
+### Node.js (fnm)
+
+**fnm** is in `packages/pacman.txt` and hooks in `.zsh-plugins` / `.bashrc` with `--use-on-cd`. When you open a terminal or `cd` into a project, fnm reads `.nvmrc`, `.node-version`, or `package.json` `engines.node` and switches Node versions.
+
+If you see:
+
+```text
+Can't find an installed Node version matching >=22.12.0.
+Do you want to install it? answer [y/N]:
+```
+
+the project pins a Node version you have not installed via fnm yet. Install once:
+
+```bash
+fnm install 22          # or: fnm install   (inside the project)
+fnm default 22          # optional global default
+```
+
+To disable per-directory auto-switching (no prompt on shell start), remove `--use-on-cd` from `stow/zsh/.zsh-plugins` and `stow/bash/.bashrc`.
+
+**uv** shell completions load from `.zsh-plugins` when installed.
+
+### Headroom (Claude / Cursor token compression)
+
+**Headroom** compresses tool output and context before it hits the model (70–95% savings). Installed user-local via **pipx** (`python-pipx` in `packages/pacman.txt`).
+
+```bash
+bash scripts/headroom-setup.sh    # install + MCP for Claude Code
+```
+
+| Command | What it does |
+|---------|----------------|
+| `hr-claude` | `headroom wrap claude` — proxy + launch Claude Code |
+| `hr-cursor` | Start proxy; paste printed Base URL into Cursor → Settings → Models |
+| `hr-proxy` | Proxy only on port `8787` (`HEADROOM_PORT` to override) |
+
+Cursor does not read API base URLs from the shell — keep `hr-cursor` running in a terminal while you use Cursor. MCP: `headroom mcp install --agent claude` (Cursor MCP registrar not in Headroom 0.27 yet).
+
+Antigravity CLI (`agy`) and Kiro are not in the stable Headroom agent matrix; use `hr-proxy` manually only if the tool supports a custom base URL.
 
 ### Key functions
 
@@ -209,7 +256,9 @@ Key runtime dependencies (most surfaced by `scripts/check.sh`):
 
 **Zsh:** zinit bootstraps on first launch; plugins load via `.zsh-plugins`
 
-**Shell tools:** `atuin`, `fzf`, `fd`, `ripgrep`, `bat`, `eza`, `zoxide`, `direnv`, `git-delta`
+**Shell tools:** `atuin`, `fzf`, `fd`, `ripgrep`, `bat`, `eza`, `zoxide`, `direnv`, `git-delta`, `fnm`
+
+**AI (optional):** `python-pipx` + `headroom` via `scripts/headroom-setup.sh`; `claude` / `cursor` installed separately
 
 **AUR** (via `install-aur.sh`, bootstraps `paru` if needed): `blesh-git`, `curlie`, `forgit`, GNOME shell extensions, `visual-studio-code-bin` (telemetry-off settings in `stow/vscode/`)
 
@@ -225,7 +274,9 @@ Run `scripts/gnome-console-setup.sh` for Console dconf (scrollback, theme). **Su
 
 **Neovim:** `scripts/nvim-setup.sh` — Lazy.nvim plugins, Treesitter parsers, Mason LSP on first launch. Leader = Space.
 
-**GNOME session:** `scripts/gnome-session-setup.sh` — dconf profile, extensions, and X1 Yoga tablet handler. Super+1–4 workspaces.
+**GNOME session:** `scripts/gnome-session-setup.sh` — dconf profile, extensions, and X1 Yoga tablet handler. Super+1–4 workspaces. Mouse/touchpad/keyboard use **stock GNOME defaults** (reset on session setup via `scripts/reset-input-defaults.sh`).
+
+**Location spoofing:** `scripts/location-setup.sh` — static GeoClue coords in `/etc/geolocation` (home Dubai; VPN exit when `proton0` is up). Panel extension `proton-vpn@helllguest` shows spoofed coords and **Sync spoofed location** (runs `pkexec vpn-location-sync sync`). Manual: `vpn-location-sync` or `sudo vpn-location-sync sync`.
 
 **Fonts:** Run `scripts/install-fonts.sh` for top Nerd Fonts (JetBrains Mono, Meslo, FiraCode, Cascadia, Iosevka, etc.)
 
@@ -241,18 +292,37 @@ We take a "quiet by default" approach:
 
 ---
 
+## Troubleshooting
+
+| Symptom | Cause | Fix |
+|---------|--------|-----|
+| `Can't find an installed Node version matching …` on terminal open | **fnm** `--use-on-cd` + project `engines` / `.nvmrc` | `fnm install 22` or `fnm install` in project; or drop `--use-on-cd` in dotfiles |
+| `$FZF_DEFAULT_OPTS: unknown action: copy-selection` | fzf 0.72 lacks `copy-selection` | Fixed in dotfiles; `exec zsh` / `exec bash` |
+| `docker` tries Podman socket / `connect: no such file` | Stale `DOCKER_HOST` or Podman socket missing | Current `.shell-exports` auto-picks; `unset DOCKER_HOST`; enable `docker.service` |
+| `unsafe path transition /etc` during `pacman` | `/etc` owned by user, not root | `sudo chown root:root /etc && sudo chmod 755 /etc` |
+| Spoof location sync does nothing | `vpn-location-sync` failed under `pkexec` | `bash scripts/location-setup.sh`; panel → Sync spoofed location |
+| Touchpad clicks broken after old dotfiles | Legacy synaptics inhibit/udev | `bash scripts/cleanup-input-overrides.sh` (sudo), log out |
+| `headroom not installed` / `hr-claude` fails | Headroom not set up yet | `bash scripts/headroom-setup.sh` |
+| Cursor not using Headroom | Base URL not set in IDE | Run `hr-cursor`, paste URL in Settings → Models; keep proxy terminal open |
+
+---
+
 ## 🧹 Maintenance
 
 | Task | Command |
 |------|---------|
 | Full update | `sudo pacman -Syu && ./install.sh && bash scripts/post-update.sh` |
 | Health check | `~/dotfiles/scripts/check.sh` |
+| Location sync | `vpn-location-sync` or Proton VPN panel → Sync spoofed location |
+| Legacy touchpad cleanup | `bash scripts/cleanup-input-overrides.sh` (sudo; old udev/inhibit only) |
 | Secure Boot | `sbctl status && sbctl verify` (after `enroll-keys -m`; re-sign UKIs if you ran `mkinitcpio -P` manually) |
 | Post-update sync | `~/dotfiles/scripts/post-update.sh` |
 | Backup GNOME | `~/dotfiles/scripts/backup-gsettings.sh` |
 | Move /tmp to disk | `sudo ~/dotfiles/scripts/tmp-to-disk.sh` then reboot (off RAM-capped tmpfs → btrfs `@tmp`) |
 | Starship preset | `scripts/install-starship-crampack.sh` |
 | Reload shell | `exec zsh` |
+| Install project Node (fnm) | `fnm install 22` or `fnm install` inside project |
+| Headroom (Claude / Cursor) | `bash scripts/headroom-setup.sh` then `hr-claude` or `hr-cursor` |
 
 ---
 

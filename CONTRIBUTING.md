@@ -21,6 +21,10 @@ Thank you for helping improve this setup. Follow these guidelines to keep the re
 - **Shared settings** go in `.shell-exports`, `.shell-aliases`, or `.shell-functions`.
 - **Zsh-only** code must be guarded with `[[ -n "$ZSH_VERSION" ]]` in shared files.
 - **Plugin load order in `.zsh-plugins`:** managed by **zinit** (see README shell section).
+- **fnm:** uses `fnm env --use-on-cd` in zsh and bash — documents project Node pins; install versions with `fnm install` before opening those trees, or remove `--use-on-cd` if unwanted.
+- **fzf:** do not add `copy-selection` to `FZF_DEFAULT_OPTS` (unsupported in fzf 0.72); use per-invocation `--bind` with `wl-copy` / `xclip` if needed.
+- **Containers:** `DOCKER_HOST` in `.shell-exports` only when Podman socket exists; do not force Podman when Docker is the target runtime.
+- **Headroom:** optional pipx install via `scripts/install-headroom.sh`; shell entry points in `.shell-functions` / `.shell-aliases` (`hr-claude`, `hr-cursor`, `hr-proxy`). Cursor needs manual Base URL paste — document in README, not hardcoded in stow.
 - Do not reintroduce `.zsh-aliases` / `.zsh-exports` — use the `.shell-*` naming scheme.
 - **atuin** config lives in `stow/atuin/`; run `atuin import auto` after first install.
 
@@ -53,6 +57,13 @@ Thank you for helping improve this setup. Follow these guidelines to keep the re
 - Export live settings: `./scripts/backup-gsettings.sh` (overwrites `gnome/dconf/user.conf`)
 - Ensure `user-theme` is `Default` (not `Generated-Theme`).
 - Avoid machine-specific paths unless intentionally updating the reference snapshot.
+- Do **not** commit touchpad/mouse/keyboard overrides unless deliberately changing from stock GNOME defaults; session setup resets peripherals via `scripts/reset-input-defaults.sh`.
+
+### Location / VPN panel (`scripts/location-setup.sh`, `stow/proton-vpn/`)
+
+- Home template: `stow/system/etc/geolocation`; runtime file: `/etc/geolocation`.
+- `vpn-location-sync.sh` must work as root via `pkexec` and NetworkManager dispatcher — test with `sudo vpn-location-sync sync` and panel **Sync spoofed location**.
+- After script changes, re-run `location-setup.sh` to install `/usr/local/bin/vpn-location-sync` and polkit rule.
 
 ---
 
@@ -66,6 +77,12 @@ Thank you for helping improve this setup. Follow these guidelines to keep the re
 | Profile / Secure Boot behavior | `README.md`, `docs/hardened-arch-gnome.md` (Phases 23, 27, 28), `CHANGELOG.md` |
 | Package list change | `CHANGELOG.md` |
 | GNOME / shortcut change | `gnome/keybindings.md`, `CHANGELOG.md` |
+| Location / VPN panel change | `README.md`, `CHANGELOG.md`, `scripts/location-setup.sh` help text |
+| Container CLI / `DOCKER_HOST` | `README.md`, `docs/hardened-arch-gnome.md`, `CHANGELOG.md` |
+| fzf / shell exports | `README.md`, `gnome/keybindings.md`, `CHANGELOG.md` |
+| fnm / Node version pins | `README.md`, `CHANGELOG.md`, troubleshooting table |
+| Headroom / AI proxy helpers | `README.md`, `docs/hardened-arch-gnome.md` (Phase 17c), `CHANGELOG.md` |
+| Troubleshooting table | `README.md` when adding recurring install/shell issues |
 
 ---
 

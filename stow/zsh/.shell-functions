@@ -153,6 +153,35 @@ httpcheck() {
     curl -o /dev/null -s -w "HTTP %{http_code} — %{time_total}s — %{url_effective}\n" "$1"
 }
 
+# ── Headroom (context compression proxy) ─────────────────────────────────
+_hr_need() {
+    if _has headroom; then
+        return 0
+    fi
+    echo "headroom not installed — run: bash ~/dotfiles/scripts/install-headroom.sh" >&2
+    return 127
+}
+
+hr() {
+    _hr_need || return
+    headroom "$@"
+}
+
+hr-claude() {
+    _hr_need || return
+    headroom wrap claude "$@"
+}
+
+hr-cursor() {
+    _hr_need || return
+    headroom wrap cursor "$@"
+}
+
+hr-proxy() {
+    _hr_need || return
+    headroom proxy --port "${HEADROOM_PORT:-8787}" "$@"
+}
+
 # OSC 7: terminal CWD reporting (zsh only)
 if [[ -n "${ZSH_VERSION:-}" ]]; then
     _update_terminal_cwd() {

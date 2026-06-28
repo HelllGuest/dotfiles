@@ -51,8 +51,14 @@ export GOBIN="$HOME/go/bin"
 # Rust
 [[ -f "$HOME/.cargo/env" ]] && source "$HOME/.cargo/env"
 
-# Podman docker socket
-export DOCKER_HOST="unix://${XDG_RUNTIME_DIR}/podman/podman.sock"
+# Container CLI socket — prefer Podman when its socket exists, else Docker.
+if [[ -S "${XDG_RUNTIME_DIR}/podman/podman.sock" ]]; then
+  export DOCKER_HOST="unix://${XDG_RUNTIME_DIR}/podman/podman.sock"
+elif [[ -S /var/run/docker.sock ]]; then
+  unset DOCKER_HOST
+else
+  unset DOCKER_HOST
+fi
 
 # Disable Telemetry
 export DOTNET_CLI_TELEMETRY_OPTOUT=1

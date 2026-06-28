@@ -15,6 +15,15 @@ for bin in "${REQUIRED_BINARIES[@]}"; do
     fi
 done
 
+echo "--- System ownership ---"
+etc_owner="$(stat -c '%U' /etc 2>/dev/null || echo unknown)"
+if [[ "$etc_owner" == "root" ]]; then
+    echo "✓ /etc owned by root"
+else
+    echo "✗ /etc owned by $etc_owner (must be root — pacman hooks fail with unsafe path transition)"
+    echo "  run: sudo chown root:root /etc && sudo chmod 755 /etc"
+fi
+
 echo "--- Shell productivity tools ---"
 for bin in "${SHELL_BINARIES[@]}"; do
     if command -v "$bin" >/dev/null 2>&1; then
@@ -23,6 +32,21 @@ for bin in "${SHELL_BINARIES[@]}"; do
         echo "✗ $bin is missing"
     fi
 done
+
+echo "--- AI tooling (optional) ---"
+for bin in claude cursor headroom; do
+    if command -v "$bin" >/dev/null 2>&1; then
+        ver="$($bin --version 2>/dev/null | head -1 || true)"
+        echo "✓ $bin is installed${ver:+ ($ver)}"
+    else
+        echo "○ $bin not installed (optional)"
+    fi
+done
+if command -v headroom >/dev/null 2>&1; then
+    echo "  shell: hr-claude | hr-cursor | hr-proxy"
+else
+    echo "  install headroom: bash scripts/install-headroom.sh"
+fi
 
 if [ -d "${XDG_DATA_HOME:-$HOME/.local/share}/zinit/zinit.git" ]; then
     echo "✓ zinit is bootstrapped"

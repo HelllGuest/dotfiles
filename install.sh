@@ -112,6 +112,11 @@ if [ -f "scripts/nvim-setup.sh" ]; then
     bash scripts/nvim-setup.sh || echo "Neovim setup skipped."
 fi
 
+# 3.5 Headroom (Claude / Cursor context proxy — optional, pipx user-local)
+if [ -f "scripts/headroom-setup.sh" ]; then
+    bash scripts/headroom-setup.sh || echo "Headroom setup skipped."
+fi
+
 # 5. Install GNOME Extensions
 if [ -f "scripts/install-extensions.sh" ]; then
     bash scripts/install-extensions.sh || echo "Extension enable skipped."

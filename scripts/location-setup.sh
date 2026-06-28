@@ -31,6 +31,10 @@ ln -sf "$VPN_SYNC" "$HOME/.local/bin/vpn-location-sync"
 echo "→ Installing vpn-location-sync to /usr/local/bin..."
 sudo install -m 0755 -o root -g root "$VPN_SYNC" /usr/local/bin/vpn-location-sync
 
+echo "→ Installing home geolocation template..."
+sudo install -d -m 0755 -o root -g root /usr/local/share/vpn-location-sync
+sudo install -m 0644 -o root -g root "$GEO_FILE" /usr/local/share/vpn-location-sync/home.geolocation
+
 echo "→ Installing GeoClue config (static file only, no IP/WiFi)..."
 sudo install -m 0644 -o root -g root "$GEOCLUE_DROPIN" /etc/geoclue/conf.d/99-static-dubai.conf
 

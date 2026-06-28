@@ -119,10 +119,11 @@ if command -v fzf >/dev/null 2>&1; then
       --layout=reverse
       --border=rounded
       --preview-window=right:55%:wrap
-      --bind=ctrl-y:copy-selection
       --bind=ctrl-f:preview-page-down
       --bind=ctrl-b:preview-page-up
     '
+    # ctrl-y copy: fzf 0.72 lacks copy-selection; {} in FZF_DEFAULT_OPTS breaks parse.
+    # Use CLI bind when needed: fzf --bind='ctrl-y:execute-silent(echo -n {} | wl-copy)'
 fi
 
 # ── zoxide ──────────────────────────────────────────────────

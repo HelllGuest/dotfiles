@@ -25,12 +25,50 @@ Modern CLI aliases (when installed): `eza`, `bat`, `rg`, `fd`, etc.
 | `Ctrl+R` | **atuin** fuzzy history search |
 | `Ctrl+T` | fzf file picker |
 | `Alt+C` | fzf directory jump |
+| `Ctrl+F` / `Ctrl+B` | fzf preview page down / up (in `FZF_DEFAULT_OPTS`) |
 | `fe` | Fuzzy open file in nvim |
 | `rge <pat>` | Ripgrep + open match in nvim |
 | `gai` / `gshow` / `gco` | Interactive git add / log / branch checkout |
 | `fcd` | Fuzzy cd with tree preview |
 
+fzf **0.72** does not support `copy-selection`. To copy the current line to the clipboard:
+
+```bash
+fzf --bind='ctrl-y:execute-silent(echo -n {} | wl-copy)'
+```
+
 Zsh also uses **fzf-tab** and **forgit** (`gfga`, `gfglo`, etc.).
+
+---
+
+## Node.js (fnm)
+
+Shell hooks use **fnm** with `--use-on-cd` (see `stow/zsh/.zsh-plugins`, `stow/bash/.bashrc`). Opening a terminal in a project directory may prompt to install a pinned Node version from `.nvmrc`, `.node-version`, or `package.json` `engines.node`.
+
+```bash
+fnm install 22
+fnm default 22
+```
+
+Or run `fnm install` inside the project. Answer `N` to skip one-time install; install when ready to work in that repo.
+
+---
+
+## Headroom (Claude / Cursor)
+
+Optional token compression proxy — install once:
+
+```bash
+bash ~/dotfiles/scripts/headroom-setup.sh
+```
+
+| Command | Use |
+|---------|-----|
+| `hr-claude` | Proxy + Claude Code in one terminal |
+| `hr-cursor` | Start proxy; paste Base URL into Cursor settings (keep terminal open) |
+| `hr-proxy` | Standalone proxy on port 8787 |
+
+See `README.md` for Cursor model settings and MCP notes.
 
 ---
 
@@ -121,3 +159,16 @@ Quick throwaway terminal — `kgx`. Tuned by `scripts/gnome-console-setup.sh` (1
 ```
 
 OSC 7 CWD reporting is enabled in Zsh and Bash so new tabs open in the same directory.
+
+---
+
+## Proton VPN panel (`proton-vpn@helllguest`)
+
+Status-area menu for connect/disconnect and **Spoofed location** (reads `/etc/geolocation`).
+
+| Action | Notes |
+|--------|--------|
+| Sync spoofed location | Runs `pkexec vpn-location-sync sync` — needs `location-setup.sh` + wheel polkit rule |
+| Manual sync | `vpn-location-sync` or `sudo vpn-location-sync sync` |
+
+Coords follow VPN exit when `proton0` is up; home (Dubai) when disconnected. Does not spoof browser geolocation (WebRTC/IP).

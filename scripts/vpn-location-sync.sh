@@ -9,16 +9,32 @@
 
 set -euo pipefail
 
+CURL="${VPN_LOCATION_CURL:-/usr/bin/curl}"
+INSTALLED_HOME_GEO="/usr/local/share/vpn-location-sync/home.geolocation"
+
 resolve_repo_root() {
     if [[ -n "${DOTFILES_ROOT:-}" && -f "${DOTFILES_ROOT}/stow/system/etc/geolocation" ]]; then
         printf '%s\n' "$DOTFILES_ROOT"
         return 0
     fi
-    local real_user="${SUDO_USER:-${USER}}"
-    if [[ -n "$real_user" && -f "/home/${real_user}/dotfiles/stow/system/etc/geolocation" ]]; then
-        printf '%s\n' "/home/${real_user}/dotfiles"
-        return 0
+
+    local real_user="" home_dir=""
+    if [[ -n "${SUDO_USER:-}" ]]; then
+        real_user="$SUDO_USER"
+    elif [[ -n "${PKEXEC_UID:-}" ]]; then
+        real_user="$(id -nu "$PKEXEC_UID" 2>/dev/null || true)"
+    elif [[ -n "${USER:-}" && "$USER" != "root" ]]; then
+        real_user="$USER"
     fi
+
+    if [[ -n "$real_user" ]]; then
+        home_dir="$(getent passwd "$real_user" 2>/dev/null | cut -d: -f6 || true)"
+        if [[ -n "$home_dir" && -f "${home_dir}/dotfiles/stow/system/etc/geolocation" ]]; then
+            printf '%s\n' "${home_dir}/dotfiles"
+            return 0
+        fi
+    fi
+
     local script_dir
     script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
     if [[ -f "${script_dir}/../stow/system/etc/geolocation" ]]; then
@@ -29,12 +45,15 @@ resolve_repo_root() {
 }
 
 REPO_ROOT="$(resolve_repo_root || true)"
-if [[ -z "$REPO_ROOT" ]]; then
+if [[ -n "$REPO_ROOT" ]]; then
+    HOME_GEO="$REPO_ROOT/stow/system/etc/geolocation"
+elif [[ -f "$INSTALLED_HOME_GEO" ]]; then
+    HOME_GEO="$INSTALLED_HOME_GEO"
+else
     log() { printf '[vpn-location-sync] %s\n' "$*"; }
-    log "ERROR: could not find dotfiles repo (set DOTFILES_ROOT)" >&2
+    log "ERROR: could not find home geolocation (run location-setup.sh)" >&2
     exit 1
 fi
-HOME_GEO="$REPO_ROOT/stow/system/etc/geolocation"
 GEO_FILE="/etc/geolocation"
 VPN_IF="${VPN_IF:-proton0}"
 ACTION="${1:-sync}"
@@ -71,10 +90,10 @@ fetch_vpn_coords() {
     local json="" lat lon city country
     # Prefer lookup bound to the VPN iface so we never touch the real egress.
     if ip link show "$VPN_IF" 2>/dev/null | grep -q 'LOWER_UP'; then
-        json="$(curl -sf --max-time 15 --interface "$VPN_IF" https://ipapi.co/json/ 2>/dev/null || true)"
+        json="$("$CURL" -sf --max-time 15 --interface "$VPN_IF" https://ipapi.co/json/ 2>/dev/null || true)"
     fi
     if [[ -z "$json" ]]; then
-        json="$(curl -sf --max-time 15 https://ipapi.co/json/ 2>/dev/null || true)"
+        json="$("$CURL" -sf --max-time 15 https://ipapi.co/json/ 2>/dev/null || true)"
     fi
     if [[ -z "$json" ]]; then
         log "ERROR: could not geolocate VPN exit IP" >&2

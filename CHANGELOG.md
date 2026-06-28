@@ -1,7 +1,12 @@
 # Changelog
 
 ## [Unreleased]
-- Cleanup: removed orphaned `editors/vscode/settings.json` (now `stow/vscode/`), `gnome/dconf-settings.ini`, `profiles/desktop.sh`, and `scripts/fix-system-health.sh` (logic already in `profiles/thinkpad-x1.sh`); backup/restore GNOME targets `user.conf`; dropped stale `.gitignore` theming entries and `lazy-lock.json` from `all_stow_files.txt`.
+- GNOME input: removed custom touchpad/mouse/keyboard overrides from `gnome/dconf/user.conf`; stock defaults via `scripts/reset-input-defaults.sh`; legacy synaptics udev/inhibit cleanup in `scripts/cleanup-input-overrides.sh`.
+- Location: fixed `vpn-location-sync.sh` under `pkexec`/NetworkManager (resolve home coords via `PKEXEC_UID`; `/usr/bin/curl`; installed template at `/usr/local/share/vpn-location-sync/home.geolocation`); Proton VPN panel extension waits for sync and reports success/failure.
+- Shell: removed invalid fzf `copy-selection` bind (not in fzf 0.72); safe `FZF_DEFAULT_OPTS` in zsh and bash; `DOCKER_HOST` auto-selects Podman socket when present, otherwise Docker (`/var/run/docker.sock`).
+- Health: `check.sh` warns when `/etc` is not owned by root (pacman hook failures).
+- Headroom: `scripts/install-headroom.sh` + `scripts/headroom-setup.sh` (pipx `headroom-ai[all]`); shell helpers `hr-claude`, `hr-cursor`, `hr-proxy`; `python-pipx` in `packages/pacman.txt`; wired into `install.sh` and `check.sh`.
+- Docs: synced README, CHANGELOG, CONTRIBUTING, `gnome/keybindings.md`, and `docs/hardened-arch-gnome.md` — Docker/Podman socket selection, fzf 0.72 binds, location sync, GNOME input defaults, fnm `--use-on-cd`, Headroom (Claude/Cursor), troubleshooting.
 - Refactor: extracted `scripts/apply-profile.sh`, `scripts/lib/dmi.sh`, and `scripts/lib/browsers.sh`; `packages/browsers.txt` is the browser flatpak source of truth; Chromium policies split into base + chrome/brave extras (merged with jq at deploy).
 - Browsers: added Google Chrome and LibreWolf flatpaks; `scripts/browser-hardening.sh` deploys managed policies for Chrome/Brave (`browsers/policies/*.json`); Zen prefs via `browsers/zen/user.js` into each profile dir (fixes invalid `.zen/user.js` stow path) plus `/etc/firefox/policies/policies.json`; LibreWolf relies on upstream hardening.
 - ThinkPad X1 profile: re-sign UKIs with `sbctl` after `mkinitcpio -P` when Secure Boot keys exist (pacman hook does not run on manual rebuilds).

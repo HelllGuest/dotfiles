@@ -352,15 +352,32 @@ const ProtonVPNButton = GObject.registerClass(
             }
 
             try {
-                Gio.Subprocess.new(
+                const proc = Gio.Subprocess.new(
                     ['pkexec', syncBin, 'sync'],
-                    Gio.SubprocessFlags.NONE,
+                    Gio.SubprocessFlags.STDOUT_PIPE | Gio.SubprocessFlags.STDERR_PIPE,
                 );
+                proc.wait_async(null, (_p, result) => {
+                    try {
+                        const ok = proc.wait_finish(result);
+                        if (ok) {
+                            Main.notify('Proton VPN', 'Spoofed location updated.');
+                        } else {
+                            Main.notify('Proton VPN', 'Location sync failed. Check logs.');
+                        }
+                    } catch (error) {
+                        console.error('Proton VPN extension:', error);
+                        Main.notify('Proton VPN', error.message);
+                    } finally {
+                        GLib.timeout_add(GLib.PRIORITY_DEFAULT, 1500, () => {
+                            this._updateGeoMenu();
+                            return GLib.SOURCE_REMOVE;
+                        });
+                    }
+                });
                 Main.notify(
                     'Proton VPN',
                     'Updating GeoClue location from VPN exit…',
                 );
-                this._scheduleGeoRefresh();
             } catch (error) {
                 console.error('Proton VPN extension:', error);
                 Main.notify('Proton VPN', error.message);

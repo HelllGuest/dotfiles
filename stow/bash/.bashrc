@@ -43,6 +43,14 @@ bind '"\e[1;5D": backward-word'
 [ -f ~/.shell-git ] && . ~/.shell-git
 
 if command -v fzf >/dev/null 2>&1; then
+    export FZF_DEFAULT_OPTS='
+      --height=40%
+      --layout=reverse
+      --border=rounded
+      --preview-window=right:55%:wrap
+      --bind=ctrl-f:preview-page-down
+      --bind=ctrl-b:preview-page-up
+    '
     eval "$(fzf --bash)"
     export FZF_DEFAULT_COMMAND='fd --type f --hidden --follow --exclude .git'
     export FZF_CTRL_T_COMMAND="$FZF_DEFAULT_COMMAND"
