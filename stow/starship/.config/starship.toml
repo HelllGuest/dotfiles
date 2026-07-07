@@ -1,208 +1,189 @@
-# Crampack Preset for Starship (v1.0.1; Nerd Font Version)
-# https://github.com/Noktomezo/CrampackForStarship
-# Requires a Nerd Font (preferably with "Propo" variant) to be installed
+"$schema" = 'https://starship.rs/config-schema.json'
 
-"$schema" = "https://starship.rs/config-schema.json"
-
-# Palettes: mellow | lush | fervor | blaze
-palette = "blaze"
-
-format = "\\[$directory$git_branch$git_metrics$git_status$nodejs$python$rust$golang$cmd_duration$battery\\]$character"
-add_newline = false
-
-# Raise from default 500ms: git_metrics/git_status run `git diff`/`git status`
-# which can briefly exceed 500ms while the fsmonitor daemon warms up or disk is
-# busy, producing "Executing command git timed out" warnings.
 command_timeout = 1300
 
-[git_metrics]
-added_style = "fg:lime"
-deleted_style = "fg:ember"
-format = " | [+$added]($added_style)/[-$deleted]($deleted_style)"
+format = """
+[](color_orange)\
+$os\
+$username\
+[](bg:color_yellow fg:color_orange)\
+$directory\
+[](fg:color_yellow bg:color_aqua)\
+$git_branch\
+$git_status\
+[](fg:color_aqua bg:color_blue)\
+$c\
+$cpp\
+$rust\
+$golang\
+$nodejs\
+$bun\
+$php\
+$java\
+$kotlin\
+$haskell\
+$python\
+[](fg:color_blue bg:color_bg3)\
+$docker_context\
+$conda\
+$pixi\
+[](fg:color_bg3 bg:color_bg1)\
+$time\
+[ ](fg:color_bg1)\
+$line_break$character"""
+
+palette = 'gruvbox_dark'
+
+[palettes.gruvbox_dark]
+color_fg0 = '#fbf1c7'
+color_bg1 = '#3c3836'
+color_bg3 = '#665c54'
+color_blue = '#458588'
+color_aqua = '#689d6a'
+color_green = '#98971a'
+color_orange = '#d65d0e'
+color_purple = '#b16286'
+color_red = '#cc241d'
+color_yellow = '#d79921'
+
+[os]
 disabled = false
+style = "bg:color_orange fg:color_fg0"
 
-[cmd_duration]
-min_time = 2000
-format = " | [󱦟 $duration](fg:spark)"
-show_milliseconds = false
+[os.symbols]
+Windows = "󰍲"
+Ubuntu = "󰕈"
+SUSE = ""
+Raspbian = "󰐿"
+Mint = "󰣭"
+Macos = "󰀵"
+Manjaro = ""
+Linux = "󰌽"
+Gentoo = "󰣨"
+Fedora = "󰣛"
+Alpine = ""
+Amazon = ""
+Android = ""
+AOSC = ""
+Arch = "󰣇"
+Artix = "󰣇"
+EndeavourOS = ""
+CentOS = ""
+Debian = "󰣚"
+Redhat = "󱄛"
+RedHatEnterprise = "󱄛"
+Pop = ""
 
-[battery]
-full_symbol = "󰁹"
-charging_symbol = "󰂄"
-discharging_symbol = "󰁾"
-format = " | [$symbol $percentage](fg:surge)"
-[[battery.display]]
-threshold = 20
-style = "fg:ember"
-[[battery.display]]
-threshold = 50
-style = "fg:spark"
-[[battery.display]]
-threshold = 100
-style = "fg:lime"
-
-[nodejs]
-format = " | [$symbol($version)](fg:lime)"
-symbol = " "
-detect_files = ["package.json", ".nvmrc", ".node-version"]
-detect_folders = []
-
-[python]
-format = " | [$symbol$pyenv_prefix($version)](fg:surge)"
-symbol = " "
-detect_folders = []
-
-[rust]
-format = " | [$symbol($version)](fg:ember)"
-symbol = " "
-
-[golang]
-format = " | [$symbol($version)](fg:frost)"
-symbol = " "
+[username]
+show_always = true
+style_user = "bg:color_orange fg:color_fg0"
+style_root = "bg:color_orange fg:color_fg0"
+format = '[ $user ]($style)'
 
 [directory]
-truncation_symbol = " "
-truncation_length = 2
-truncate_to_repo = true
-style = "fg:frost"
-format = "[$path]($style)"
+style = "fg:color_fg0 bg:color_yellow"
+format = "[ $path ]($style)"
+truncation_length = 3
+truncation_symbol = "…/"
+
+[directory.substitutions]
+"Documents" = "󰈙 "
+"Downloads" = " "
+"Music" = "󰝚 "
+"Pictures" = " "
+"Developer" = "󰲋 "
 
 [git_branch]
 symbol = ""
-style = "fg:spark"
-format = " | [[$symbol $branch](fg:spark)]($style)"
+style = "bg:color_aqua"
+format = '[[ $symbol $branch ](fg:color_fg0 bg:color_aqua)]($style)'
 
 [git_status]
-format = "$all_status$ahead_behind"
-conflicted = " | [ $count](fg:nova)"
-ahead = " | [ $count](fg:nova)"
-behind = " | [ $count](fg:nova)"
-diverged = " | [ $ahead_count  $behind_count](fg:nova)"
-untracked = " | [󰞋 $count](fg:nova)"
-stashed = " | [󰒲 $count](fg:nova)"
-modified = " | [󰏫 $count](fg:nova)"
-staged = " | [󰱒 $count](fg:nova)"
-renamed = " | [󰁕 $count](fg:nova)"
-deleted = " | [󰍵 $count](fg:nova)"
+style = "bg:color_aqua"
+format = '[[($all_status$ahead_behind )](fg:color_fg0 bg:color_aqua)]($style)'
+
+[nodejs]
+symbol = ""
+style = "bg:color_blue"
+format = '[[ $symbol( $version) ](fg:color_fg0 bg:color_blue)]($style)'
+
+[bun]
+symbol = ""
+style = "bg:color_blue"
+format = '[[ $symbol( $version) ](fg:color_fg0 bg:color_blue)]($style)'
+
+[c]
+symbol = " "
+style = "bg:color_blue"
+format = '[[ $symbol( $version) ](fg:color_fg0 bg:color_blue)]($style)'
+
+[cpp]
+symbol = " "
+style = "bg:color_blue"
+format = '[[ $symbol( $version) ](fg:color_fg0 bg:color_blue)]($style)'
+
+[rust]
+symbol = ""
+style = "bg:color_blue"
+format = '[[ $symbol( $version) ](fg:color_fg0 bg:color_blue)]($style)'
+
+[golang]
+symbol = ""
+style = "bg:color_blue"
+format = '[[ $symbol( $version) ](fg:color_fg0 bg:color_blue)]($style)'
+
+[php]
+symbol = ""
+style = "bg:color_blue"
+format = '[[ $symbol( $version) ](fg:color_fg0 bg:color_blue)]($style)'
+
+[java]
+symbol = ""
+style = "bg:color_blue"
+format = '[[ $symbol( $version) ](fg:color_fg0 bg:color_blue)]($style)'
+
+[kotlin]
+symbol = ""
+style = "bg:color_blue"
+format = '[[ $symbol( $version) ](fg:color_fg0 bg:color_blue)]($style)'
+
+[haskell]
+symbol = ""
+style = "bg:color_blue"
+format = '[[ $symbol( $version) ](fg:color_fg0 bg:color_blue)]($style)'
+
+[python]
+symbol = ""
+style = "bg:color_blue"
+format = '[[ $symbol( $version) ](fg:color_fg0 bg:color_blue)]($style)'
+
+[docker_context]
+symbol = ""
+style = "bg:color_bg3"
+format = '[[ $symbol( $context) ](fg:#83a598 bg:color_bg3)]($style)'
+
+[conda]
+style = "bg:color_bg3"
+format = '[[ $symbol( $environment) ](fg:#83a598 bg:color_bg3)]($style)'
+
+[pixi]
+style = "bg:color_bg3"
+format = '[[ $symbol( $version)( $environment) ](fg:color_fg0 bg:color_bg3)]($style)'
+
+[time]
+disabled = false
+time_format = "%R"
+style = "bg:color_bg1"
+format = '[[  $time ](fg:color_fg0 bg:color_bg1)]($style)'
+
+[line_break]
+disabled = false
 
 [character]
 disabled = false
-success_symbol = "[\\$](fg:lime)"
-error_symbol = "[\\$](fg:ember)"
-vimcmd_symbol = "[\\$](fg:lime)"
-vimcmd_replace_one_symbol = "[\\$](fg:iris)"
-vimcmd_replace_symbol = "[\\$](fg:iris)"
-vimcmd_visual_symbol = "[\\$](fg:spark)"
-
-[palettes.mellow]
-lychee = "#ffccdd"
-guava = "#ffaa99"
-fizz = "#ff99ee"
-nebula = "#dd88ff"
-ember = "#ff6666"
-cinder = "#ee7777"
-torch = "#ffaa77"
-spark = "#ffdd88"
-lime = "#88ff99"
-surge = "#77ffcc"
-pulse = "#99eeff"
-frost = "#77ccff"
-nova = "#8899ff"
-iris = "#aa88ff"
-text = "#ffffff"
-sub1 = "#eeeeee"
-sub0 = "#dddddd"
-ov2 = "#cccccc"
-ov1 = "#bbbbbb"
-ov0 = "#aaaaaa"
-surf2 = "#999999"
-surf1 = "#888888"
-surf0 = "#777777"
-base = "#222222"
-mantle = "#111111"
-crust = "#000000"
-
-[palettes.lush]
-lychee = "#ffddee"
-guava = "#ffbbcc"
-fizz = "#ff88ff"
-nebula = "#cc66ff"
-ember = "#ff4444"
-cinder = "#ee5555"
-torch = "#ff9966"
-spark = "#ffcc66"
-lime = "#66ff88"
-surge = "#66ffdd"
-pulse = "#88ddff"
-frost = "#66bbff"
-nova = "#6666ff"
-iris = "#9966ff"
-text = "#ffffff"
-sub1 = "#f0f0f0"
-sub0 = "#e0e0e0"
-ov2 = "#d0d0d0"
-ov1 = "#c0c0c0"
-ov0 = "#b0b0b0"
-surf2 = "#a0a0a0"
-surf1 = "#909090"
-surf0 = "#808080"
-base = "#1a1a1a"
-mantle = "#0f0f0f"
-crust = "#050505"
-
-[palettes.fervor]
-lychee = "#ffddff"
-guava = "#ffccbb"
-fizz = "#ff77ff"
-nebula = "#bb44ff"
-ember = "#ff3333"
-cinder = "#dd4444"
-torch = "#ff8833"
-spark = "#ffbb44"
-lime = "#44ff66"
-surge = "#44ffbb"
-pulse = "#77bbff"
-frost = "#4499ff"
-nova = "#4444ff"
-iris = "#7744ff"
-text = "#ffffff"
-sub1 = "#f5f5f5"
-sub0 = "#e5e5e5"
-ov2 = "#d5d5d5"
-ov1 = "#c5c5c5"
-ov0 = "#b5b5b5"
-surf2 = "#a5a5a5"
-surf1 = "#959595"
-surf0 = "#858585"
-base = "#151515"
-mantle = "#0a0a0a"
-crust = "#000000"
-
-[palettes.blaze]
-lychee = "#ffeeff"
-guava = "#ffddcc"
-fizz = "#ff66ff"
-nebula = "#aa22ff"
-ember = "#ff2222"
-cinder = "#cc3333"
-torch = "#ff7722"
-spark = "#ffaa22"
-lime = "#22ff44"
-surge = "#22ff99"
-pulse = "#66aaee"
-frost = "#2288ff"
-nova = "#2222ff"
-iris = "#6622ff"
-text = "#ffffff"
-sub1 = "#fafafa"
-sub0 = "#eaeaea"
-ov2 = "#dadada"
-ov1 = "#cacaca"
-ov0 = "#bababa"
-surf2 = "#aaaaaa"
-surf1 = "#9a9a9a"
-surf0 = "#8a8a8a"
-base = "#0d0d0d"
-mantle = "#050505"
-crust = "#000000"
-
+success_symbol = '[](bold fg:color_green)'
+error_symbol = '[](bold fg:color_red)'
+vimcmd_symbol = '[](bold fg:color_green)'
+vimcmd_replace_one_symbol = '[](bold fg:color_purple)'
+vimcmd_replace_symbol = '[](bold fg:color_purple)'
+vimcmd_visual_symbol = '[](bold fg:color_yellow)'
