@@ -1,9 +1,10 @@
-acpi_call
-acpi_call-lts
+acpi_call-dkms
 alsa-ucm-conf
 atuin
 bash-completion
 bat
+bluez
+bluez-utils
 bolt
 bottom
 brightnessctl

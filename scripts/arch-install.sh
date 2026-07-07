@@ -362,7 +362,7 @@ EOF
 sed -i 's/^#Color/Color/; s/^#ParallelDownloads.*/ParallelDownloads = 10/' /etc/pacman.conf
 
 # services
-systemctl enable NetworkManager apparmor ufw fstrim.timer reflector.timer \
+systemctl enable NetworkManager apparmor ufw bluetooth fstrim.timer reflector.timer \
                  systemd-tmpfiles-clean.timer
 
 # snapper config for / (handle pre-existing @snapshots mount) — non-fatal

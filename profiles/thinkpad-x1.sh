@@ -107,6 +107,12 @@ if command -v systemctl >/dev/null 2>&1; then
     systemctl --user enable --now yoga-tablet-mode.service 2>/dev/null || true
 fi
 
+# 14. Bluetooth (bluez/bluez-utils in packages/pacman.txt)
+if pacman -Q bluez >/dev/null 2>&1; then
+    echo "Enabling bluetooth..."
+    sudo systemctl enable --now bluetooth || true
+fi
+
 # Legacy touchpad udev/inhibit cleanup (if present)
 if [ -f "${BASH_SOURCE[0]%/*}/../scripts/cleanup-input-overrides.sh" ]; then
     bash "${BASH_SOURCE[0]%/*}/../scripts/cleanup-input-overrides.sh" || true
