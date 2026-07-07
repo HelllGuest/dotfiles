@@ -6,6 +6,22 @@
 .nv/
 .lazy/
 
+# VS Code runtime state (whole ~/.config/Code is stowed; only User/ configs belong in git)
+stow/vscode/.config/Code/*
+!stow/vscode/.config/Code/User/
+stow/vscode/.config/Code/User/*
+!stow/vscode/.config/Code/User/settings.json
+!stow/vscode/.config/Code/User/keybindings.json
+!stow/vscode/.config/Code/User/snippets/
+
+# GNOME extensions installed from extensions.gnome.org land in the stowed dir;
+# only the custom proton-vpn extension is ours
+stow/proton-vpn/.local/share/gnome-shell/extensions/*
+!stow/proton-vpn/.local/share/gnome-shell/extensions/proton-vpn@helllguest/
+
+# Claude Code atomic-write leftovers (settings.local.json itself is globally ignored)
+.claude/settings.local.json.tmp.*
+
 # Node/Python dependencies
 node_modules/
 __pycache__/
