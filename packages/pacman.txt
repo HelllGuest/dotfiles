@@ -1,4 +1,5 @@
 acpi_call
+acpi_call-lts
 alsa-ucm-conf
 atuin
 bash-completion
@@ -49,6 +50,7 @@ python-pipx
 procs
 rclone
 ripgrep
+rtkit
 slurp
 sof-firmware
 tree-sitter-cli
