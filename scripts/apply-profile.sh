@@ -30,9 +30,6 @@ fi
 if [[ -f "scripts/detect-profile.sh" ]]; then
   DETECTED=$(bash scripts/detect-profile.sh 2>/dev/null || true)
   if [[ -n "$DETECTED" ]] && apply_profile "$DETECTED" "hardware detect"; then
-    if [[ "$DETECTED" != "nvidia" ]] && bash scripts/detect-profile.sh --has-nvidia 2>/dev/null; then
-      apply_profile nvidia "NVIDIA GPU" || true
-    fi
     exit 0
   fi
   echo "No hostname or hardware profile matched. Using default install."

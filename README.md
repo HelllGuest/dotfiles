@@ -208,7 +208,7 @@ Installs packages, applies symlinks to `$HOME` and `/etc`, restores GNOME settin
 ./install.sh
 ```
 
-Machine profiles run first in `./install.sh`: `profiles/$(hostname).sh` if it exists, otherwise `scripts/detect-profile.sh` picks from hardware (ThinkPad X1 → `thinkpad-x1.sh`, other ThinkPads/laptops → `laptop.sh`, discrete NVIDIA → also `nvidia.sh`).
+Machine profiles run first in `./install.sh`: `profiles/$(hostname).sh` if it exists, otherwise `scripts/detect-profile.sh` picks from hardware (ThinkPad X1 → `thinkpad-x1.sh`, other ThinkPads/laptops → `laptop.sh`). NVIDIA/ThinkPad P15 profiles live on the `p15` branch.
 
 ThinkPad-specific system configs (`i915`, kernel cmdline, Wayland env) live in `stow/system/` and are applied with `./install.sh`. After tuning, run `scripts/thinkpad-health.sh` and **reboot**.
 

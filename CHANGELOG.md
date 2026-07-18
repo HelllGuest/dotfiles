@@ -1,6 +1,7 @@
 # Changelog
 
 ## [Unreleased]
+- Profiles: NVIDIA/ThinkPad P15 configs split out to the `p15` branch (`profiles/nvidia.sh` and its detection removed from main; main targets the X1 Yoga).
 - Kitty: right-click copies the selection to the clipboard (`mouse_map right press ungrabbed copy_to_clipboard`); Shift+right-click still extends the selection.
 - Starship: switched to the official [Gruvbox Rainbow](https://starship.rs/presets/gruvbox-rainbow) preset; Crampack installer kept as legacy (`scripts/install-starship-crampack.sh`).
 - Packages: added `rtkit` (realtime scheduling for PipeWire/gnome-shell) and `bluez`/`bluez-utils`; `acpi_call-dkms` replaces `acpi_call`/`acpi_call-lts` (dkms builds for `linux-lts` and `linux-hardened`).
