@@ -117,6 +117,16 @@ if [ -f "scripts/headroom-setup.sh" ]; then
     bash scripts/headroom-setup.sh || echo "Headroom setup skipped."
 fi
 
+# 3.6 PhotoGIMP (Photoshop-like GIMP layout — optional)
+if [ -f "scripts/install-photogimp.sh" ]; then
+    bash scripts/install-photogimp.sh || echo "PhotoGIMP setup skipped."
+fi
+
+# 3.7 Dash2Dock Animated (EGO — before extension enable)
+if [ -f "scripts/install-dash2dock.sh" ]; then
+    bash scripts/install-dash2dock.sh || echo "Dash2Dock setup skipped."
+fi
+
 # 5. Install GNOME Extensions
 if [ -f "scripts/install-extensions.sh" ]; then
     bash scripts/install-extensions.sh || echo "Extension enable skipped."

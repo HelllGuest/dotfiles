@@ -6,13 +6,13 @@
 .nv/
 .lazy/
 
-# VS Code runtime state (whole ~/.config/Code is stowed; only User/ configs belong in git)
-stow/vscode/.config/Code/*
-!stow/vscode/.config/Code/User/
-stow/vscode/.config/Code/User/*
-!stow/vscode/.config/Code/User/settings.json
-!stow/vscode/.config/Code/User/keybindings.json
-!stow/vscode/.config/Code/User/snippets/
+# VSCodium runtime state (whole ~/.config/VSCodium is stowed; only User/ configs belong in git)
+stow/vscode/.config/VSCodium/*
+!stow/vscode/.config/VSCodium/User/
+stow/vscode/.config/VSCodium/User/*
+!stow/vscode/.config/VSCodium/User/settings.json
+!stow/vscode/.config/VSCodium/User/keybindings.json
+!stow/vscode/.config/VSCodium/User/snippets/
 
 # GNOME extensions installed from extensions.gnome.org land in the stowed dir;
 # only the custom proton-vpn extension is ours

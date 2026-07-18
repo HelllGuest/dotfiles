@@ -2,3 +2,4 @@ appindicatorsupport@rgcjonas.gmail.com
 just-perfection-desktop@just-perfection
 Vitals@CoreCoding.com
 proton-vpn@helllguest
+dash2dock-lite@icedman.github.com

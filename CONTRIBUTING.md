@@ -24,7 +24,9 @@ Thank you for helping improve this setup. Follow these guidelines to keep the re
 - **fnm:** uses `fnm env --use-on-cd` in zsh and bash — documents project Node pins; install versions with `fnm install` before opening those trees, or remove `--use-on-cd` if unwanted.
 - **fzf:** do not add `copy-selection` to `FZF_DEFAULT_OPTS` (unsupported in fzf 0.72); use per-invocation `--bind` with `wl-copy` / `xclip` if needed.
 - **Containers:** `DOCKER_HOST` in `.shell-exports` only when Podman socket exists; do not force Podman when Docker is the target runtime.
-- **Headroom:** optional pipx install via `scripts/install-headroom.sh`; shell entry points in `.shell-functions` / `.shell-aliases` (`hr-claude`, `hr-cursor`, `hr-proxy`). Cursor needs manual Base URL paste — document in README, not hardcoded in stow.
+- **Headroom:** optional pipx install via `scripts/install-headroom.sh`; shell entry points in `.shell-functions` (`hr-claude`, `hr-cursor`, `hr-proxy`) — do not also alias the same names in `.shell-aliases`. Cursor needs manual Base URL paste — document in README, not hardcoded in stow.
+- **PhotoGIMP:** optional; `scripts/install-photogimp.sh` overwrites GIMP config under `~/.config/GIMP/<major.minor>`. Do not commit user GIMP config into stow.
+- **Dash2Dock:** install via `scripts/install-dash2dock.sh` (EGO zip, not stale AUR). Keep UUID in `gnome/extensions.txt` and `gnome/dconf/user.conf` `enabled-extensions`. Wayland: log out/in after install.
 - Do not reintroduce `.zsh-aliases` / `.zsh-exports` — use the `.shell-*` naming scheme.
 - **atuin** config lives in `stow/atuin/`; run `atuin import auto` after first install.
 
@@ -82,6 +84,8 @@ Thank you for helping improve this setup. Follow these guidelines to keep the re
 | fzf / shell exports | `README.md`, `gnome/keybindings.md`, `CHANGELOG.md` |
 | fnm / Node version pins | `README.md`, `CHANGELOG.md`, troubleshooting table |
 | Headroom / AI proxy helpers | `README.md`, `docs/hardened-arch-gnome.md` (Phase 17c), `CHANGELOG.md` |
+| PhotoGIMP / GIMP | `README.md`, `docs/hardened-arch-gnome.md` (Phase 17d), `CHANGELOG.md` |
+| Dash2Dock / GNOME dock | `README.md`, `gnome/keybindings.md`, `docs/hardened-arch-gnome.md` (Phase 17e), `CHANGELOG.md` |
 | Troubleshooting table | `README.md` when adding recurring install/shell issues |
 
 ---

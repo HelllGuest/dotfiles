@@ -939,7 +939,7 @@ flatpak install flathub io.gitlab.librewolf-community
 # VPN
 flatpak install flathub com.protonvpn.www
 
-# IDE (Android Studio is in packages/flatpak.txt; VS Code is AUR visual-studio-code-bin)
+# IDE (Android Studio is in packages/flatpak.txt; VSCodium is AUR vscodium-bin)
 flatpak install flathub com.google.AndroidStudio
 ```
 
@@ -1052,6 +1052,50 @@ bash scripts/headroom-setup.sh   # install + Claude MCP registration
 **Cursor:** keep the `hr-cursor` terminal open; configure Override OpenAI Base URL in the IDE (Cursor does not read shell env for API routing). Headroom 0.27 registers MCP for Claude only — not Cursor yet.
 
 **Other agents:** Antigravity CLI (`agy`) and Kiro are not in the stable Headroom wrap matrix; `hr-proxy` works only if the tool supports a custom OpenAI/Anthropic base URL.
+
+---
+
+# PHASE 17d — PHOTOGIMP (GIMP)
+
+Optional Photoshop-like layout for GIMP ([PhotoGIMP](https://github.com/Diolinux/PhotoGIMP)). Pacman package `gimp` is in `packages/pacman.txt`.
+
+```bash
+bash scripts/install-photogimp.sh
+```
+
+* Installs `gimp` if missing
+* Backs up `~/.config/GIMP/<major.minor>` to `~/GIMP-<ver>-backup-YYYYMMDD`
+* Downloads `PhotoGIMP-linux.zip` and copies the release `3.0` tree into the live config dir (e.g. `3.2` on GIMP 3.2.x)
+* Skips stale upstream `pluginrc` (wrong protocol on GIMP 3.2 — GIMP regenerates it)
+* Sets `gimprc` `config-version` to the installed GIMP version
+* Also patches Flatpak config at `~/.var/app/org.gimp.GIMP/config/GIMP/<ver>` when Flatpak GIMP is installed
+* Rewrites PhotoGIMP `.desktop` `Exec` to native `gimp` (upstream zip assumes Flatpak + `gimp-3.0`, broken on 3.2)
+* Hides stock `gimp.desktop` (`NoDisplay=true`) so the menu shows **PhotoGIMP** once
+* Optional: installs `cfitsio` for the FITS plugin
+* Installs PhotoGIMP icons under `~/.local/share/`
+
+Launch: app menu **PhotoGIMP**, or `gimp`. Undo by restoring the backup (or deleting the config dir and reopening GIMP).
+
+---
+
+# PHASE 17e — DASH2DOCK ANIMATED
+
+Animated dock for GNOME Shell 45–50 ([Dash2Dock Lite](https://github.com/icedman/dash2dock-lite), EGO extension 4994). Do **not** use AUR `gnome-shell-extension-dash2dock-lite` (last updated 2022).
+
+```bash
+bash scripts/install-dash2dock.sh
+```
+
+* Downloads EGO zip (default v92, GNOME 50–compatible)
+* Installs to `~/.local/share/gnome-shell/extensions/dash2dock-lite@icedman.github.com`
+* Compiles GSettings schemas; appends UUID to `org.gnome.shell enabled-extensions`
+* UUID also listed in `gnome/extensions.txt` and `gnome/dconf/user.conf`
+
+**Wayland:** log out and back in so GNOME Shell loads the extension. Then:
+
+```bash
+gnome-extensions prefs dash2dock-lite@icedman.github.com
+```
 
 ---
 
@@ -1475,6 +1519,8 @@ cd ~/dotfiles
 * Configure GDM, Git, Neovim, and run health checks + privacy hardening
 * **fnm** auto Node version on `cd` / shell start when project pins a version (see Phase 17b)
 * **Headroom** optional AI context proxy for Claude Code / Cursor (see Phase 17c)
+* **PhotoGIMP** optional Photoshop-like GIMP layout (see Phase 17d)
+* **Dash2Dock** animated dock via EGO install (see Phase 17e); Wayland needs logout
 
 Config-only (no package install; skips `zram`, `system`, and `gdm`):
 

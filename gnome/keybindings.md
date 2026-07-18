@@ -72,6 +72,30 @@ See `README.md` for Cursor model settings and MCP notes.
 
 ---
 
+## PhotoGIMP
+
+Photoshop-like GIMP layout ([Diolinux/PhotoGIMP](https://github.com/Diolinux/PhotoGIMP)):
+
+```bash
+bash ~/dotfiles/scripts/install-photogimp.sh
+```
+
+App menu → **PhotoGIMP**, or `gimp`. Config lives in `~/.config/GIMP/<major.minor>` (not stowed).
+
+---
+
+## Dash2Dock
+
+Animated dock ([Dash2Dock Animated](https://github.com/icedman/dash2dock-lite)):
+
+```bash
+bash ~/dotfiles/scripts/install-dash2dock.sh
+```
+
+Then **log out → log in** (Wayland). Prefs: `gnome-extensions prefs dash2dock-lite@icedman.github.com`.
+
+---
+
 ## Zsh Key Bindings
 
 Configured in `stow/zsh/.zsh-plugins` via **zinit** plugins:

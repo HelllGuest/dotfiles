@@ -8,6 +8,7 @@ bluez-utils
 bolt
 bottom
 brightnessctl
+cfitsio
 dart-sass
 direnv
 dust
@@ -20,7 +21,9 @@ fnm
 fzf
 fwupd
 ghostty
+gimp
 git-delta
+glab
 gdm
 gnome-console
 gnome-shell
@@ -29,10 +32,12 @@ gnome-software
 gnome-tweaks
 gping
 grim
+htop
 hyperfine
 iio-sensor-proxy
 intel-media-driver
 inter-font
+jdk17-openjdk
 jq
 kitty
 less

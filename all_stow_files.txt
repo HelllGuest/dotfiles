@@ -34,7 +34,9 @@ stow/proton-vpn/.local/share/gnome-shell/extensions/proton-vpn@helllguest/icons/
 stow/proton-vpn/.local/share/gnome-shell/extensions/proton-vpn@helllguest/icons/state-disconnected.svg
 stow/proton-vpn/.local/share/gnome-shell/extensions/proton-vpn@helllguest/metadata.json
 stow/starship/.config/starship.toml
-stow/vscode/.config/Code/User/settings.json
+stow/vscode/.config/VSCodium/User/settings.json
+stow/flutter/.dart-tool/dart-flutter-telemetry.config
+stow/htop/.config/htop/htoprc
 stow/system/etc/environment.d/99-wayland.conf
 stow/system/etc/geoclue/conf.d/99-static-dubai.conf
 stow/system/etc/geolocation

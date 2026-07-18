@@ -44,6 +44,13 @@ _prepend_path "$ANDROID_HOME/emulator"
 _prepend_path "$ANDROID_HOME/cmdline-tools/latest/bin"
 _prepend_path "$ANDROID_HOME/tools/bin"
 
+# Flutter / Chrome (web target)
+export CHROME_EXECUTABLE="${CHROME_EXECUTABLE:-/usr/bin/google-chrome-stable}"
+# Prefer JDK 17 for Android toolchain when present
+if [[ -d /usr/lib/jvm/java-17-openjdk ]]; then
+  export JAVA_HOME="${JAVA_HOME:-/usr/lib/jvm/java-17-openjdk}"
+fi
+
 # Go
 export GOPATH="$HOME/go"
 export GOBIN="$HOME/go/bin"

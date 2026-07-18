@@ -9,5 +9,6 @@
     "workbench.enableExperiments": false,
     "workbench.settings.enableNaturalLanguageSearch": false,
     "update.mode": "none",
-    "telemetry.feedback.enabled": false
+    "telemetry.feedback.enabled": false,
+    "workbench.startupEditor": "none"
 }
