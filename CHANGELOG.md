@@ -1,12 +1,20 @@
 # Changelog
 
 ## [Unreleased]
+- Kitty: right-click copies the selection to the clipboard (`mouse_map right press ungrabbed copy_to_clipboard`); Shift+right-click still extends the selection.
+- Starship: switched to the official [Gruvbox Rainbow](https://starship.rs/presets/gruvbox-rainbow) preset; Crampack installer kept as legacy (`scripts/install-starship-crampack.sh`).
+- Packages: added `rtkit` (realtime scheduling for PipeWire/gnome-shell) and `bluez`/`bluez-utils`; `acpi_call-dkms` replaces `acpi_call`/`acpi_call-lts` (dkms builds for `linux-lts` and `linux-hardened`).
+- Bluetooth: `bluetooth.service` enabled in `profiles/thinkpad-x1.sh` and the `arch-install.sh` base service list.
+- Git: `core.fsmonitor` disabled for repos under `~/.cache/` (includeIf → `no-fsmonitor.conf`) — fsmonitor daemon sockets corrupted yay cache clones (`fatal: not a git repository` on PKGBUILD fetch).
+- Gitignore: VS Code runtime state in the stowed `~/.config/Code` (keeps `User/` settings, keybindings, snippets), third-party GNOME extensions in the stowed extensions dir (keeps `proton-vpn@helllguest`), and Claude Code `settings.local.json.tmp.*` leftovers.
 - GNOME input: removed custom touchpad/mouse/keyboard overrides from `gnome/dconf/user.conf`; stock defaults via `scripts/reset-input-defaults.sh`; legacy synaptics udev/inhibit cleanup in `scripts/cleanup-input-overrides.sh`.
 - Location: fixed `vpn-location-sync.sh` under `pkexec`/NetworkManager (resolve home coords via `PKEXEC_UID`; `/usr/bin/curl`; installed template at `/usr/local/share/vpn-location-sync/home.geolocation`); Proton VPN panel extension waits for sync and reports success/failure.
 - Shell: removed invalid fzf `copy-selection` bind (not in fzf 0.72); safe `FZF_DEFAULT_OPTS` in zsh and bash; `DOCKER_HOST` auto-selects Podman socket when present, otherwise Docker (`/var/run/docker.sock`).
 - Health: `check.sh` warns when `/etc` is not owned by root (pacman hook failures).
 - Headroom: `scripts/install-headroom.sh` + `scripts/headroom-setup.sh` (pipx `headroom-ai[all]`); shell helpers `hr-claude`, `hr-cursor`, `hr-proxy`; `python-pipx` in `packages/pacman.txt`; wired into `install.sh` and `check.sh`.
-- Docs: synced README, CHANGELOG, CONTRIBUTING, `gnome/keybindings.md`, and `docs/hardened-arch-gnome.md` — Docker/Podman socket selection, fzf 0.72 binds, location sync, GNOME input defaults, fnm `--use-on-cd`, Headroom (Claude/Cursor), troubleshooting.
+- PhotoGIMP: `scripts/install-photogimp.sh` applies [Diolinux/PhotoGIMP](https://github.com/Diolinux/PhotoGIMP) over pacman `gimp` (maps `3.0` → live `~/.config/GIMP/<major.minor>`; skips stale `pluginrc`; patches Flatpak config if present; rewrites `.desktop` Exec to native `gimp`; hides stock `gimp.desktop`); `gimp` + `cfitsio` in `packages/pacman.txt`; wired into `install.sh`.
+- Dash2Dock: `scripts/install-dash2dock.sh` installs [Dash2Dock Animated](https://github.com/icedman/dash2dock-lite) from EGO v92 (`dash2dock-lite@icedman.github.com`; AUR package stale); listed in `gnome/extensions.txt` + `user.conf`; wired into `install.sh` / `gnome-session-setup.sh`. Wayland needs logout to load.
+- Docs: synced README, CHANGELOG, CONTRIBUTING, `gnome/keybindings.md`, and `docs/hardened-arch-gnome.md` — Docker/Podman, fzf, location sync, GNOME input, fnm, Headroom, PhotoGIMP, Dash2Dock, troubleshooting.
 - Refactor: extracted `scripts/apply-profile.sh`, `scripts/lib/dmi.sh`, and `scripts/lib/browsers.sh`; `packages/browsers.txt` is the browser flatpak source of truth; Chromium policies split into base + chrome/brave extras (merged with jq at deploy).
 - Browsers: added Google Chrome and LibreWolf flatpaks; `scripts/browser-hardening.sh` deploys managed policies for Chrome/Brave (`browsers/policies/*.json`); Zen prefs via `browsers/zen/user.js` into each profile dir (fixes invalid `.zen/user.js` stow path) plus `/etc/firefox/policies/policies.json`; LibreWolf relies on upstream hardening.
 - ThinkPad X1 profile: re-sign UKIs with `sbctl` after `mkinitcpio -P` when Secure Boot keys exist (pacman hook does not run on manual rebuilds).

@@ -8,7 +8,7 @@ A clean, modular, and programmable dotfiles ecosystem optimized for **Arch Linux
 
 - **Privacy Hardened:** Telemetry, usage reporting, and "phoning home" are disabled system-wide (GNOME, VS Code, .NET, etc.).
 - **ThinkPad Optimized:** Hostname or hardware-detected profiles (e.g. `thinkpad-x1.sh`) with power-profiles-daemon, tablet auto-rotate, UKI re-signing for Secure Boot, and S3 deep-sleep tuning (thermal is firmware-managed). Battery charge thresholds are documented in `docs/hardened-arch-gnome.md` (manual `thinkpad_acpi` sysfs).
-- **Elite-Tier Terminal:** Kitty & Ghostty with shared Zsh/Bash configs, real-time autocomplete, [Crampack](https://github.com/Noktomezo/CrampackForStarship) Starship prompt.
+- **Elite-Tier Terminal:** Kitty & Ghostty with shared Zsh/Bash configs, real-time autocomplete, [Gruvbox Rainbow](https://starship.rs/presets/gruvbox-rainbow) Starship prompt.
 - **Neovim (Lazy.nvim):** A modular Lua configuration.
 
 ---
@@ -96,6 +96,26 @@ Cursor does not read API base URLs from the shell — keep `hr-cursor` running i
 
 Antigravity CLI (`agy`) and Kiro are not in the stable Headroom agent matrix; use `hr-proxy` manually only if the tool supports a custom base URL.
 
+### PhotoGIMP (GIMP Photoshop layout)
+
+Optional [PhotoGIMP](https://github.com/Diolinux/PhotoGIMP) patch on pacman **gimp** (`packages/pacman.txt`). Install/reapply:
+
+```bash
+bash scripts/install-photogimp.sh
+```
+
+Maps the upstream `3.0` config tree into the live dir (`~/.config/GIMP/3.2` on GIMP 3.2.x), skips stale `pluginrc`, bumps `config-version`, also patches Flatpak GIMP config when `org.gimp.GIMP` is installed, rewrites the PhotoGIMP `.desktop` `Exec` to native `gimp` (upstream zip is Flatpak/`gimp-3.0`-only), hides stock `gimp.desktop`, installs icons, and backs up existing config to `~/GIMP-<ver>-backup-YYYYMMDD`. Launch: app menu **PhotoGIMP**, or `gimp`.
+
+### Dash2Dock Animated
+
+Animated GNOME dock ([Dash2Dock Lite](https://github.com/icedman/dash2dock-lite) / EGO #4994). AUR `gnome-shell-extension-dash2dock-lite` is stale — install from EGO:
+
+```bash
+bash scripts/install-dash2dock.sh
+```
+
+UUID `dash2dock-lite@icedman.github.com` is in `gnome/extensions.txt` and `gnome/dconf/user.conf`. **Wayland:** log out → log in for Shell to load it. Prefs: `gnome-extensions prefs dash2dock-lite@icedman.github.com`.
+
 ### Key functions
 
 | Command | Action |
@@ -115,13 +135,9 @@ Pacman `zsh-autocomplete` removed in v1.11 — replaced by zinit + fzf-tab.
 
 ### Starship
 
-Uses the **Crampack** preset ([Noktomezo/CrampackForStarship](https://github.com/Noktomezo/CrampackForStarship)) with Nerd Font symbols. Config: `stow/starship/.config/starship.toml`.
+Uses the **Gruvbox Rainbow** preset (official [starship preset](https://starship.rs/presets/gruvbox-rainbow)) with Nerd Font symbols. Config: `stow/starship/.config/starship.toml`.
 
-```bash
-~/dotfiles/scripts/install-starship-crampack.sh      # Standard (Nerd Font)
-```
-
-Presets: `1` Standard · `2` Plain text · `3` Emoji · `4` Full text
+Legacy: `scripts/install-starship-crampack.sh` installs the previous Crampack preset (`1` Standard · `2` Plain text · `3` Emoji · `4` Full text).
 
 ### Bash (`.bashrc` + `.inputrc`)
 
@@ -260,7 +276,11 @@ Key runtime dependencies (most surfaced by `scripts/check.sh`):
 
 **AI (optional):** `python-pipx` + `headroom` via `scripts/headroom-setup.sh`; `claude` / `cursor` installed separately
 
-**AUR** (via `install-aur.sh`, bootstraps `paru` if needed): `blesh-git`, `curlie`, `forgit`, GNOME shell extensions, `visual-studio-code-bin` (telemetry-off settings in `stow/vscode/`)
+**Graphics (optional):** `gimp` + PhotoGIMP via `scripts/install-photogimp.sh`
+
+**GNOME dock:** Dash2Dock Animated via `scripts/install-dash2dock.sh` (EGO; listed in `gnome/extensions.txt`)
+
+**AUR** (via `install-aur.sh`, bootstraps `paru` if needed): `blesh-git`, `curlie`, `forgit`, GNOME shell extensions, `vscodium-bin` (settings in `stow/vscode/`)
 
 **Flatpaks** (via `install-flatpaks.sh`): Brave, Zen, Google Chrome, LibreWolf, Proton VPN, Android Studio. Browser telemetry debloat: `scripts/browser-hardening.sh` (Chrome/Brave `/etc` policies; Zen `user.js` per profile + `/etc/firefox/policies`; LibreWolf upstream-hardened). Launch Zen once before re-running hardening if profiles are new.
 
@@ -268,13 +288,15 @@ Key runtime dependencies (most surfaced by `scripts/check.sh`):
 
 Run `scripts/gnome-console-setup.sh` for Console dconf (scrollback, theme). **Super+Return → kitty** is set in `gnome/dconf/user.conf`.
 
+Clipboard: selecting text auto-copies in kitty and ghostty (`copy_on_select`); in kitty, right-click also copies the selection (Shift+right-click extends it).
+
 **GDM:** `scripts/gdm-setup.sh` copies greeter config to `/etc` (not stow — GDM cannot read `$HOME`), enables Wayland, compiles greeter dconf, and enables `gdm.service`. Greeter changes appear after **reboot** (or `sudo systemctl restart gdm`, which logs you out). Optional fingerprint: `scripts/fingerprint-setup.sh`.
 
 **Git:** `stow/git/` + `scripts/git-setup.sh` — delta pager, rebase defaults, global ignore, optional hooks and signing. URL shorthands: `git clone gh:user/repo`.
 
 **Neovim:** `scripts/nvim-setup.sh` — Lazy.nvim plugins, Treesitter parsers, Mason LSP on first launch. Leader = Space.
 
-**GNOME session:** `scripts/gnome-session-setup.sh` — dconf profile, extensions, and X1 Yoga tablet handler. Super+1–4 workspaces. Mouse/touchpad/keyboard use **stock GNOME defaults** (reset on session setup via `scripts/reset-input-defaults.sh`).
+**GNOME session:** `scripts/gnome-session-setup.sh` — dconf profile, Dash2Dock install, extensions, and X1 Yoga tablet handler. Super+1–4 workspaces. Mouse/touchpad/keyboard use **stock GNOME defaults** (reset on session setup via `scripts/reset-input-defaults.sh`).
 
 **Location spoofing:** `scripts/location-setup.sh` — static GeoClue coords in `/etc/geolocation` (home Dubai; VPN exit when `proton0` is up). Panel extension `proton-vpn@helllguest` shows spoofed coords and **Sync spoofed location** (runs `pkexec vpn-location-sync sync`). Manual: `vpn-location-sync` or `sudo vpn-location-sync sync`.
 
@@ -304,6 +326,8 @@ We take a "quiet by default" approach:
 | Touchpad clicks broken after old dotfiles | Legacy synaptics inhibit/udev | `bash scripts/cleanup-input-overrides.sh` (sudo), log out |
 | `headroom not installed` / `hr-claude` fails | Headroom not set up yet | `bash scripts/headroom-setup.sh` |
 | Cursor not using Headroom | Base URL not set in IDE | Run `hr-cursor`, paste URL in Settings → Models; keep proxy terminal open |
+| PhotoGIMP layout missing after GIMP update | Config dir version bump / patch not reapplied | `bash scripts/install-photogimp.sh` |
+| Dash2Dock missing after install | Wayland Shell has not reloaded | Log out → log in; or `bash scripts/install-dash2dock.sh` then logout |
 
 ---
 
@@ -323,6 +347,8 @@ We take a "quiet by default" approach:
 | Reload shell | `exec zsh` |
 | Install project Node (fnm) | `fnm install 22` or `fnm install` inside project |
 | Headroom (Claude / Cursor) | `bash scripts/headroom-setup.sh` then `hr-claude` or `hr-cursor` |
+| PhotoGIMP | `bash scripts/install-photogimp.sh` |
+| Dash2Dock | `bash scripts/install-dash2dock.sh` then log out/in (Wayland) |
 
 ---
 
