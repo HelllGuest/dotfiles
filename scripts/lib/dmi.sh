@@ -27,8 +27,3 @@ is_laptop_chassis() {
   esac
   return 1
 }
-
-has_nvidia_gpu() {
-  command -v lspci >/dev/null 2>&1 || return 1
-  lspci -nn 2>/dev/null | grep -qiE 'vga|3d|display.*\[10de:'
-}

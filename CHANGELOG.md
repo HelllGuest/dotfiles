@@ -1,6 +1,7 @@
 # Changelog
 
 ## [Unreleased]
+- Cleanup: removed the now-unused `has_nvidia_gpu()` from `scripts/lib/dmi.sh` (all callers live on the `p15` branch).
 - Profiles: NVIDIA/ThinkPad P15 configs split out to the `p15` branch (`profiles/nvidia.sh` and its detection removed from main; main targets the X1 Yoga).
 - Kitty: right-click copies the selection to the clipboard (`mouse_map right press ungrabbed copy_to_clipboard`); Shift+right-click still extends the selection.
 - Starship: switched to the official [Gruvbox Rainbow](https://starship.rs/presets/gruvbox-rainbow) preset; Crampack installer kept as legacy (`scripts/install-starship-crampack.sh`).
