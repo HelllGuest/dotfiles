@@ -178,3 +178,8 @@
 
 [includeIf "gitdir:~/dev/"]
 	path = ~/.config/git/personal.conf
+
+# fsmonitor daemons hold sockets in .git of throwaway clones (yay cache),
+# leaving corrupt husks when the cache is cleaned
+[includeIf "gitdir:~/.cache/"]
+	path = ~/.config/git/no-fsmonitor.conf
