@@ -1,0 +1,8 @@
+{
+    "telemetry.telemetryLevel": "off",
+    "telemetry.feedback.enabled": false,
+    "workbench.enableExperiments": false,
+    "workbench.settings.enableNaturalLanguageSearch": false,
+    "update.mode": "none",
+    "window.autoDetectColorScheme": true
+}
