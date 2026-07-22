@@ -1,23 +1,23 @@
-# AGENTS.md — shared rules for every coding agent
+# AGENTS.md: shared rules for every coding agent
 
 This file is the single source of truth for how any AI coding agent (Cursor,
 Antigravity, Kiro, Claude Code, or anything else that reads AGENTS.md) should
-behave in this repository. It is symlinked in from `~/dev/ai-rules/AGENTS.md` —
-edit it there, not per-project.
+behave in this repository. It is symlinked in from `~/dev/ai-rules/AGENTS.md`.
+Edit it there, not per project.
 
 For Claude Code: also keep a project `CLAUDE.md` whose first line is
 `@AGENTS.md` (or symlink `CLAUDE.md` → `AGENTS.md`). Claude prefers
 `CLAUDE.md`; without that bridge, these rules are weaker in Claude sessions.
 
 ## Code quality
-- Prefer readability over cleverness. No unnecessary abstractions.
-- Reuse existing utilities before writing new ones. Never duplicate logic.
-- Follow the project's existing style and naming conventions, not your defaults.
-- Remove obsolete code immediately instead of leaving it "just in case."
+* Prefer readability over cleverness. No unnecessary abstractions.
+* Reuse existing utilities before writing new ones. Never duplicate logic.
+* Follow the project's existing style and naming conventions, not your defaults.
+* Remove obsolete code immediately instead of leaving it "just in case."
 
 ## Shell / token hygiene
-- Prefer `rtk <cmd>` for noisy CLI output when the project/dotfiles use RTK.
-- Do not dump huge logs into chat; quote the shortest decisive lines.
+* Prefer `rtk <cmd>` for noisy CLI output when the project/dotfiles use RTK.
+* Do not dump huge logs into chat; quote the shortest decisive lines.
 
 ## Before editing
 Read and understand the existing architecture, patterns, dependencies, and
@@ -37,25 +37,23 @@ Run, in order, and report anything you skipped and why:
 9. Update documentation if behavior changed
 
 ## Never
-- Never disable or skip a failing test to make a run pass.
-- Never ignore compiler/linter warnings without flagging them explicitly.
-- Never leave commented-out code, debug prints, or unused imports.
-- Never create a duplicate helper/util that already exists.
-- Never invent confidence when you could not run a check — mark it SKIPPED.
-
----
+* Never disable or skip a failing test to make a run pass.
+* Never ignore compiler/linter warnings without flagging them explicitly.
+* Never leave commented-out code, debug prints, or unused imports.
+* Never create a duplicate helper/util that already exists.
+* Never invent confidence when you could not run a check; mark it SKIPPED.
 
 ## Commands
 
-These words, said in plain chat, mean the specific checklist below — not a
+These words, said in plain chat, mean the specific checklist below, not a
 generic "sure, I'll look into it." Every agent must treat them as fixed
 procedures. Required report format for `verify` and `double check`:
 
 ```text
-PASS | FAIL | SKIPPED (reason) — <item>
+PASS | FAIL | SKIPPED (reason): <item>
 ```
 
-Never reply "looks good" without the checklist. Scope = files touched this
+Never reply "looks good" without the checklist. Scope equals files touched this
 session (git status + conversation edits) unless the user widens scope.
 
 ### `verify`
@@ -79,7 +77,7 @@ Checklist (each line PASS / FAIL / SKIPPED):
 ### `double check`
 Independent review of the previous work. **Assume mistakes exist.** Look for:
 logic bugs, missed files, wrong imports, API misuse, bad assumptions, edge
-cases, races, error-handling gaps, missing tests. **Findings only** — no
+cases, races, error-handling gaps, missing tests. **Findings only**; no
 silent fixes. Use the same PASS/FAIL/SKIPPED checklist where applicable, plus
 a Findings list.
 
@@ -91,7 +89,7 @@ If behavior would change, stop and ask. After cleanup, run `verify`.
 ### `test`
 Run tests relevant to the last change (unit → integration → build →
 typecheck → lint) using the project's real commands (Makefile / package.json /
-pyproject / cargo — do not guess). No suite for the change → say so and
+pyproject / cargo; do not guess). No suite for the change → say so and
 recommend concrete cases; do not invent confidence. Quote real failure output.
 
 ### `optimize`
@@ -115,15 +113,19 @@ Write a concise Conventional Commit message: `type(scope): summary`.
 Do **not** run `git commit` / push / PR unless explicitly told for this action.
 **Never** include AI attribution trailers (see Git rules).
 
----
+### `rephrase`
+Rewrite prose to drop em dashes, en dashes, and clause-separating hyphens.
+Prefer periods, colons, or semicolons; prefer `*` list markers over `-`.
+Keep hyphens inside tokens (paths, flags, `Co-authored-by`, code). Default
+scope is the last reply or files the user names; do not change code logic.
 
 ## Git rules (hard constraints, not preferences)
-- Never commit, push, amend, force-push, or rewrite history automatically —
+* Never commit, push, amend, force-push, or rewrite history automatically;
   only when explicitly told to for that specific action.
-- Never open a PR automatically.
-- **Never add AI attribution to commits or PRs** — no `Co-authored-by`, no
+* Never open a PR automatically.
+* **Never add AI attribution to commits or PRs**: no `Co-authored-by`, no
   `Generated by Claude / Cursor / Kiro / Antigravity / Copilot`, no
-  "🤖 Generated with..." footer, in any form, ever, regardless of tool
+  "Generated with..." footer, in any form, ever, regardless of tool
   defaults. If a tool adds this automatically, strip it before presenting the
   commit message. A global `commit-msg` hook should also strip these.
 

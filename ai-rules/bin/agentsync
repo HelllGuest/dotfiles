@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# agentsync — link shared AGENTS.md (+ Claude bridge) into a project
+# agentsync: link shared AGENTS.md (+ Claude bridge) into a project
 # Installed to ~/.local/bin by ai-rules/install.sh
 set -euo pipefail
 
@@ -15,7 +15,7 @@ elif [[ -f "$TARGET/AGENTS.md" ]]; then
   ln -sfn "$TARGET/AGENTS.md" "$DEST/AGENTS.md"
   echo "linked $DEST/AGENTS.md -> $TARGET/AGENTS.md"
 else
-  echo "ERROR: no AGENTS.md in $DEST/ai-rules or $TARGET — run ai-rules/install.sh" >&2
+  echo "ERROR: no AGENTS.md in $DEST/ai-rules or $TARGET; run ai-rules/install.sh" >&2
   exit 1
 fi
 
@@ -28,7 +28,7 @@ elif [[ -f "$CLAUDE_MD" ]]; then
   if head -1 "$CLAUDE_MD" | grep -qx '@AGENTS.md'; then
     echo "CLAUDE.md already bridges @AGENTS.md"
   else
-    echo "WARN: $CLAUDE_MD exists — add first line: @AGENTS.md" >&2
+    echo "WARN: $CLAUDE_MD exists; add first line: @AGENTS.md" >&2
   fi
 else
   printf '%s\n' '@AGENTS.md' > "$CLAUDE_MD"

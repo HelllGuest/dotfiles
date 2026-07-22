@@ -1,15 +1,15 @@
-# ai-rules — one config for Cursor, Antigravity, Kiro, and Claude Code
+# ai-rules: one config for Cursor, Antigravity, Kiro, and Claude Code
 
 ## Why this works
 
-- **`AGENTS.md`** — shared constitution (rules + command dictionary). Read by
+* **`AGENTS.md`**: shared constitution (rules + command dictionary). Read by
   Cursor, Antigravity, Kiro, and (via bridge) Claude Code.
-- **`skills/*/SKILL.md`** — Agent Skills slash commands for **Claude Code** and
+* **`skills/*/SKILL.md`**: Agent Skills slash commands for **Claude Code** and
   **Kiro**. Cursor / Antigravity use the same procedures from AGENTS.md
   Commands when you say `verify` / `double check` / etc. in chat.
-- **`bin/agentsync`** — one command to wire a project (`AGENTS.md`,
+* **`bin/agentsync`**: one command to wire a project (`AGENTS.md`,
   `CLAUDE.md` → `@AGENTS.md`, optional `.cursor/rules` pointer).
-- **`git-hooks/commit-msg`** — strips AI attribution trailers on every commit.
+* **`git-hooks/commit-msg`**: strips AI attribution trailers on every commit.
 
 ## Layout
 
@@ -17,11 +17,11 @@
 ai-rules/
 ├── AGENTS.md
 ├── bin/agentsync
-├── skills/{verify,double-check,refactor,test,commit,security-review}/SKILL.md
+├── skills/{verify,double-check,refactor,test,commit,security-review,rephrase}/SKILL.md
 ├── cursor-mdc/00-agents-pointer.mdc
 ├── git-hooks/commit-msg
 ├── claude-settings.json          # merged into ~/.claude/settings.json
-├── vscode-family-telemetry.json  # merged into VS Code–family settings.json
+├── vscode-family-telemetry.json  # merged into VS Code family settings.json
 ├── install.sh
 └── README.md
 ```
@@ -54,8 +54,9 @@ In any IDE / CLI chat:
 | `test` | Run real project tests for last change |
 | `security` | Diff security review |
 | `commit` | Conventional Commit message only (no AI trailer; no auto-commit) |
+| `rephrase` | Drop dash punctuation; rewrite with colon/period/semicolon |
 
-Edit rules **only** in `~/dev/ai-rules` (or this repo’s `ai-rules/` then
+Edit rules **only** in `~/dev/ai-rules` (or this repo's `ai-rules/` then
 re-run `install.sh`).
 
 ## Tool matrix
@@ -69,8 +70,9 @@ re-run `install.sh`).
 
 ## Notes
 
-- Global `core.hooksPath` **replaces** repo `.git/hooks` (husky ignored).
+* Global `core.hooksPath` **replaces** repo `.git/hooks` (husky ignored).
   Unset: `git config --global --unset core.hooksPath`
-- Prefer granular Claude env vars (in kit) over umbrella
+* Prefer granular Claude env vars (in kit) over umbrella
   `CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC` (breaks auto-update).
-- Cursor Privacy Mode ≠ crash reporting — kit sets `crashReporting.enabled: false`.
+* Cursor Privacy Mode is not the same as crash reporting; the kit sets
+  `crashReporting.enabled: false`.

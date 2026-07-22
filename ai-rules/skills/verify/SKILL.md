@@ -13,11 +13,11 @@ Do **not** modify code unless the user explicitly asks you to fix findings.
 For each item below, one line:
 
 ```text
-PASS | FAIL | SKIPPED (reason) — <item>
+PASS | FAIL | SKIPPED (reason): <item>
 ```
 
 Never say "looks good" without this checklist. Mark anything you could not run
-as SKIPPED with a reason — never invent confidence.
+as SKIPPED with a reason; never invent confidence.
 
 ## Checklist
 1. Build / compile

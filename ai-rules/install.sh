@@ -24,9 +24,9 @@ echo "==> Skills: Claude Code + Kiro"
 mkdir -p "$HOME/.claude" "$HOME/.kiro"
 SRC_SKILLS="$TARGET/skills"
 
-# - Missing path  → whole-dir symlink
-# - Symlink       → retarget to kit
-# - Real directory → per-skill symlinks (keeps find-skills / caveman / etc.)
+# Missing path: whole-dir symlink
+# Symlink: retarget to kit
+# Real directory: per-skill symlinks (keeps find-skills / caveman / etc.)
 link_skills() {
   local dst="$1"
   local name entry skill_dir
@@ -48,7 +48,7 @@ link_skills() {
         ln -sfn "$SRC_SKILLS/$name" "$entry"
         echo "    $name -> $SRC_SKILLS/$name"
       else
-        echo "    ! $entry exists and is not a symlink — skip"
+        echo "    ! $entry exists and is not a symlink; skip"
       fi
     done
     return
@@ -81,10 +81,10 @@ elif command -v jq >/dev/null 2>&1; then
   mv "$TMP_MERGE" "$USER_CLAUDE"
   echo "  merged kit telemetry/co-author flags into $USER_CLAUDE"
 else
-  echo "  ! jq missing — install jq, or merge $KIT_CLAUDE by hand"
+  echo "  ! jq missing; install jq, or merge $KIT_CLAUDE by hand"
 fi
 
-echo "==> VS Code–family telemetry (Cursor / Antigravity / Kiro / VSCodium)"
+echo "==> VS Code family telemetry (Cursor / Antigravity / Kiro / VSCodium)"
 TELEMETRY_KIT="$TARGET/vscode-family-telemetry.json"
 merge_vscode_settings() {
   local settings="$1"
@@ -96,7 +96,7 @@ merge_vscode_settings() {
     return
   fi
   if ! command -v jq >/dev/null 2>&1; then
-    echo "  ! jq missing — skip merge for $label"
+    echo "  ! jq missing; skip merge for $label"
     return
   fi
   TMP_VS="$(mktemp)"
@@ -129,7 +129,7 @@ if command -v kiro-cli >/dev/null 2>&1; then
   kiro-cli settings telemetry.enabled false || true
   echo "  set telemetry.enabled=false via kiro-cli"
 else
-  echo "  kiro-cli not on PATH — skip"
+  echo "  kiro-cli not on PATH; skip"
 fi
 
 echo "==> agentsync helper -> ~/.local/bin"
@@ -159,7 +159,7 @@ cat <<EOF
 ==> Done. Day-to-day:
 
   agentsync /path/to/project     # AGENTS.md + CLAUDE.md (@AGENTS.md) + Cursor pointer
-  # In chat: verify | double check | refactor | test | security | commit
+  # In chat: verify | double check | refactor | test | security | commit | rephrase
 
 Edit rules only in: $TARGET
 

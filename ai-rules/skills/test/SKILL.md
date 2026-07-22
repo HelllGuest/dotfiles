@@ -9,7 +9,7 @@ Confirm the last change works using the project's real tooling.
 
 ## Order
 1. Discover commands from Makefile / package.json / pyproject.toml / Cargo.toml /
-   justfile — do not guess a generic runner.
+   justfile; do not guess a generic runner.
 2. Run: unit → integration → build → typecheck → lint (skip with SKIPPED + reason
    if that layer does not exist).
 3. Report each layer as PASS / FAIL / SKIPPED.
