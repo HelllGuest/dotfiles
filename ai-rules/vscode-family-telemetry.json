@@ -1,0 +1,9 @@
+{
+  "telemetry.telemetryLevel": "off",
+  "telemetry.enableTelemetry": false,
+  "telemetry.enableCrashReporter": false,
+  "crashReporting.enabled": false,
+  "cursor.general.enableShadowWorkspace": false,
+  "cursor.general.allowAnonymousUsage": false,
+  "update.mode": "manual"
+}

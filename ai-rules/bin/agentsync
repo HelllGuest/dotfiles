@@ -1,0 +1,50 @@
+#!/usr/bin/env bash
+# agentsync — link shared AGENTS.md (+ Claude bridge) into a project
+# Installed to ~/.local/bin by ai-rules/install.sh
+set -euo pipefail
+
+TARGET="${AI_RULES_HOME:-$HOME/dev/ai-rules}"
+DEST="${1:-.}"
+DEST="$(cd "$DEST" && pwd)"
+
+# Prefer in-repo ai-rules when present (portable relative links)
+if [[ -f "$DEST/ai-rules/AGENTS.md" ]]; then
+  ln -sfn ai-rules/AGENTS.md "$DEST/AGENTS.md"
+  echo "linked $DEST/AGENTS.md -> ai-rules/AGENTS.md (in-repo)"
+elif [[ -f "$TARGET/AGENTS.md" ]]; then
+  ln -sfn "$TARGET/AGENTS.md" "$DEST/AGENTS.md"
+  echo "linked $DEST/AGENTS.md -> $TARGET/AGENTS.md"
+else
+  echo "ERROR: no AGENTS.md in $DEST/ai-rules or $TARGET — run ai-rules/install.sh" >&2
+  exit 1
+fi
+
+# Claude Code bridge (reads CLAUDE.md; @import pulls AGENTS.md)
+CLAUDE_MD="$DEST/CLAUDE.md"
+if [[ -L "$CLAUDE_MD" ]]; then
+  ln -sfn AGENTS.md "$CLAUDE_MD"
+  echo "linked $CLAUDE_MD -> AGENTS.md"
+elif [[ -f "$CLAUDE_MD" ]]; then
+  if head -1 "$CLAUDE_MD" | grep -qx '@AGENTS.md'; then
+    echo "CLAUDE.md already bridges @AGENTS.md"
+  else
+    echo "WARN: $CLAUDE_MD exists — add first line: @AGENTS.md" >&2
+  fi
+else
+  printf '%s\n' '@AGENTS.md' > "$CLAUDE_MD"
+  echo "wrote $CLAUDE_MD (@AGENTS.md)"
+fi
+
+# Optional Cursor backstop
+if [[ -d "$DEST/.cursor" ]] || [[ -d "$DEST/.git" ]]; then
+  mkdir -p "$DEST/.cursor/rules"
+  if [[ -f "$DEST/ai-rules/cursor-mdc/00-agents-pointer.mdc" ]]; then
+    ln -sfn ../../ai-rules/cursor-mdc/00-agents-pointer.mdc \
+      "$DEST/.cursor/rules/00-agents-pointer.mdc"
+    echo "linked .cursor/rules/00-agents-pointer.mdc (in-repo)"
+  elif [[ -f "$TARGET/cursor-mdc/00-agents-pointer.mdc" ]]; then
+    ln -sfn "$TARGET/cursor-mdc/00-agents-pointer.mdc" \
+      "$DEST/.cursor/rules/00-agents-pointer.mdc"
+    echo "linked .cursor/rules/00-agents-pointer.mdc"
+  fi
+fi
