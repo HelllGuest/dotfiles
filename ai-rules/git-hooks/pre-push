@@ -1,0 +1,58 @@
+#!/usr/bin/env bash
+# Fast checks before push — skip with git push --no-verify
+
+run_check() {
+  local name="$1"
+  shift
+  echo -n "  pre-push: $name ... "
+  if "$@" &>/dev/null; then
+    echo "✓"
+    return 0
+  fi
+  echo "✗"
+  echo ""
+  echo "  Failed: $name"
+  echo "  Run manually to see errors, or: git push --no-verify"
+  echo ""
+  return 1
+}
+
+echo ""
+echo "  Running pre-push checks..."
+
+if [[ -f "pnpm-workspace.yaml" || -f "package.json" ]]; then
+  if [[ -f "tsconfig.json" ]]; then
+    if command -v pnpm >/dev/null 2>&1 && grep -q '"tsc"' package.json 2>/dev/null; then
+      run_check "TypeScript" pnpm tsc --noEmit || exit 1
+    elif command -v npm >/dev/null 2>&1 && grep -q '"tsc"' package.json 2>/dev/null; then
+      run_check "TypeScript" npm run tsc -- --noEmit || exit 1
+    elif command -v pnpm >/dev/null 2>&1; then
+      run_check "TypeScript" pnpm exec tsc --noEmit || true
+    fi
+  fi
+  if grep -q '"lint"' package.json 2>/dev/null; then
+    if command -v pnpm >/dev/null 2>&1; then
+      run_check "lint" pnpm lint || exit 1
+    elif command -v npm >/dev/null 2>&1; then
+      run_check "lint" npm run lint || exit 1
+    fi
+  fi
+fi
+
+if [[ -f "Cargo.toml" ]]; then
+  run_check "cargo check" cargo check --quiet || exit 1
+  run_check "cargo clippy" cargo clippy --quiet -- -D warnings || exit 1
+fi
+
+if [[ -f "go.mod" ]]; then
+  run_check "go vet" go vet ./... || exit 1
+fi
+
+if [[ -f "pyproject.toml" || -f "setup.py" ]]; then
+  if command -v ruff >/dev/null 2>&1; then
+    run_check "ruff" ruff check . || exit 1
+  fi
+fi
+
+echo ""
+exit 0

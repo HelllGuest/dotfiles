@@ -9,7 +9,8 @@
   Commands when you say `verify` / `double check` / etc. in chat.
 * **`bin/agentsync`**: one command to wire a project (`AGENTS.md`,
   `CLAUDE.md` → `@AGENTS.md`, optional `.cursor/rules` pointer).
-* **`git-hooks/commit-msg`**: strips AI attribution trailers on every commit.
+* **`git-hooks/`**: global hooks via `core.hooksPath` (strip AI trailers,
+  Conventional Commits, branch-name prefill, pre-push lint).
 
 ## Layout
 
@@ -19,7 +20,7 @@ ai-rules/
 ├── bin/agentsync
 ├── skills/{verify,double-check,refactor,test,commit,security-review,rephrase}/SKILL.md
 ├── cursor-mdc/00-agents-pointer.mdc
-├── git-hooks/commit-msg
+├── git-hooks/{commit-msg,prepare-commit-msg,pre-push}
 ├── claude-settings.json          # merged into ~/.claude/settings.json
 ├── vscode-family-telemetry.json  # merged into VS Code family settings.json
 ├── install.sh
@@ -71,6 +72,9 @@ re-run `install.sh`).
 ## Notes
 
 * Global `core.hooksPath` **replaces** repo `.git/hooks` (husky ignored).
+  Kit hooks: `commit-msg` (strip then Conventional Commits),
+  `prepare-commit-msg` (branch prefill; respects `commit.verbose` scissors),
+  `pre-push` (tsc/lint/cargo/go/ruff when manifests exist).
   Unset: `git config --global --unset core.hooksPath`
 * Prefer granular Claude env vars (in kit) over umbrella
   `CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC` (breaks auto-update).

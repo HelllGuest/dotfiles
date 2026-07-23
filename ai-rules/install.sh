@@ -17,7 +17,10 @@ else
   mkdir -p "$TARGET"
   cp -a "$HERE"/. "$TARGET"/
 fi
-chmod +x "$TARGET/install.sh" "$TARGET/git-hooks/commit-msg" "$TARGET/bin/agentsync" 2>/dev/null || true
+chmod +x "$TARGET/install.sh" "$TARGET/bin/agentsync" \
+  "$TARGET/git-hooks/commit-msg" \
+  "$TARGET/git-hooks/prepare-commit-msg" \
+  "$TARGET/git-hooks/pre-push" 2>/dev/null || true
 echo "  synced from $HERE"
 
 echo "==> Skills: Claude Code + Kiro"
@@ -138,11 +141,13 @@ ln -sfn "$TARGET/bin/agentsync" "$HOME/.local/bin/agentsync"
 chmod +x "$TARGET/bin/agentsync"
 echo "  agentsync ready (ensure ~/.local/bin is on PATH)"
 
-echo "==> Global git hook: strip AI-attribution trailers"
+echo "==> Global git hooks (strip + Conventional Commits + prefill + pre-push)"
 echo "  WARN: core.hooksPath replaces ALL repo .git/hooks (husky/pre-commit ignored)."
 echo "  Unset with: git config --global --unset core.hooksPath"
 git config --global core.hooksPath "$TARGET/git-hooks"
-chmod +x "$TARGET/git-hooks/commit-msg"
+chmod +x "$TARGET/git-hooks/commit-msg" \
+  "$TARGET/git-hooks/prepare-commit-msg" \
+  "$TARGET/git-hooks/pre-push" 2>/dev/null || true
 echo "  git config --global core.hooksPath -> $TARGET/git-hooks"
 
 # Sync this repo's AGENTS bridge if we are installing from a git checkout

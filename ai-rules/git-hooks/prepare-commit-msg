@@ -1,0 +1,38 @@
+#!/usr/bin/env bash
+# Prepopulates commit message from branch name (feat/NX-42-auth → feat(NX-42): auth)
+
+COMMIT_MSG_FILE="$1"
+COMMIT_SOURCE="$2"
+
+[[ "$COMMIT_SOURCE" == "merge" ]] && exit 0
+[[ "$COMMIT_SOURCE" == "squash" ]] && exit 0
+[[ "$COMMIT_SOURCE" == "commit" ]] && exit 0
+
+BRANCH=$(git symbolic-ref --short HEAD 2>/dev/null)
+[[ -z "$BRANCH" ]] && exit 0
+[[ "$BRANCH" == "main" || "$BRANCH" == "master" || "$BRANCH" == "develop" ]] && exit 0
+
+TYPE=$(echo "$BRANCH" | grep -oP '^(feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert)(?=/)')
+TICKET=$(echo "$BRANCH" | grep -oP '(?<=/)[A-Z]+-[0-9]+')
+SLUG=$(echo "$BRANCH" | sed 's|.*/||' | sed 's/^[A-Z]*-[0-9]*-//' | tr '-' ' ')
+
+if [[ -n "$TYPE" && -n "$TICKET" ]]; then
+  PREFIX="${TYPE}(${TICKET}): "
+elif [[ -n "$TYPE" ]]; then
+  PREFIX="${TYPE}: "
+else
+  exit 0
+fi
+
+# Verbose commits (commit.verbose) append the diff below a scissors line;
+# only the portion above it is the actual message.
+BODY=$(sed '/^# -\+ >8 -\+$/,$d' "$COMMIT_MSG_FILE")
+CURRENT=$(echo "$BODY" | grep -v '^#' | tr -d '[:space:]')
+if [[ -z "$CURRENT" ]]; then
+  COMMENTS=$(grep '^#' "$COMMIT_MSG_FILE" || true)
+  {
+    echo "${PREFIX}${SLUG}"
+    echo ""
+    echo "$COMMENTS"
+  } > "$COMMIT_MSG_FILE"
+fi

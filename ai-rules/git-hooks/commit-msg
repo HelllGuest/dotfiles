@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
-# Global commit-msg hook: strips AI-attribution trailers regardless of which
-# tool wrote the commit or what that tool's own settings default to.
-# Installed via: git config --global core.hooksPath ~/dev/ai-rules/git-hooks
+# Global commit-msg hook: strips AI-attribution trailers, then enforces
+# Conventional Commits. Regardless of which tool wrote the message or what
+# that tool's own settings default to. Skip merge/fixup/squash for the format
+# check. Installed via: git config --global core.hooksPath ~/dev/ai-rules/git-hooks
 
 msg_file="$1"
 
@@ -12,8 +13,39 @@ sed -i.bak \
   -e '/^Co-Authored-By:.*Claude.*/Id' \
   "$msg_file"
 
-# Also strip trailing blank lines left behind by the removals
+# Strip trailing blank lines left behind by the removals
 sed -i -e :a -e '/^\n*$/{$d;N;ba' -e '}' "$msg_file"
-
 rm -f "${msg_file}.bak"
+
+FIRST_LINE=$(grep -v '^#' "$msg_file" | head -1)
+
+if echo "$FIRST_LINE" | grep -qE "^(Merge|Revert|fixup!|squash!)"; then
+  exit 0
+fi
+
+if [[ -z "${FIRST_LINE// /}" ]]; then
+  exit 0
+fi
+
+PATTERN="^(feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert)(\(.+\))?(!)?: .{1,100}$"
+
+if ! echo "$FIRST_LINE" | grep -qE "$PATTERN"; then
+  echo ""
+  echo "  ✗ Commit message does not follow Conventional Commits format."
+  echo ""
+  echo "  Format:  type(scope)!: description"
+  echo "  Example: feat(auth): add JWT refresh token rotation"
+  echo ""
+  echo "  Types: feat fix docs style refactor perf test build ci chore revert"
+  echo ""
+  echo "  Your message: $FIRST_LINE"
+  echo ""
+  exit 1
+fi
+
+DESC=$(echo "$FIRST_LINE" | sed 's/^[^:]*: //')
+if echo "$DESC" | grep -qE "^[A-Z]"; then
+  echo "  ⚠ Warning: description should start lowercase (got: '$DESC')"
+fi
+
 exit 0
