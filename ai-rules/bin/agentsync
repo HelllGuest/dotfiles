@@ -19,7 +19,7 @@ else
   exit 1
 fi
 
-# Claude Code bridge (reads CLAUDE.md; @import pulls AGENTS.md)
+# Claude Code bridge (first line @AGENTS.md includes shared rules)
 CLAUDE_MD="$DEST/CLAUDE.md"
 if [[ -L "$CLAUDE_MD" ]]; then
   ln -sfn AGENTS.md "$CLAUDE_MD"

@@ -2,8 +2,9 @@
 
 This file is the single source of truth for how any AI coding agent (Cursor,
 Antigravity, Kiro, Claude Code, or anything else that reads AGENTS.md) should
-behave in this repository. It is symlinked in from `~/dev/ai-rules/AGENTS.md`.
-Edit it there, not per project.
+behave in this repository. Projects usually link it from the kit
+(`~/dev/ai-rules/AGENTS.md` or `./ai-rules/AGENTS.md`). Edit the kit copy, not
+a per-project fork.
 
 For Claude Code: also keep a project `CLAUDE.md` whose first line is
 `@AGENTS.md` (or symlink `CLAUDE.md` → `AGENTS.md`). Claude prefers
@@ -62,7 +63,7 @@ Run, in order, and report anything you skipped and why:
 
 These words, said in plain chat, mean the specific checklist below, not a
 generic "sure, I'll look into it." Every agent must treat them as fixed
-procedures. Required report format for `verify` and `double check`:
+procedures. Required report format for `verify`, `double check`, and `test`:
 
 ```text
 PASS | FAIL | SKIPPED (reason): <item>
@@ -104,8 +105,9 @@ If behavior would change, stop and ask. After cleanup, run `verify`.
 ### `test`
 Run tests relevant to the last change (unit → integration → build →
 typecheck → lint) using the project's real commands (Makefile / package.json /
-pyproject / cargo; do not guess). No suite for the change → say so and
-recommend concrete cases; do not invent confidence. Quote real failure output.
+pyproject / cargo / justfile; do not guess). Report each layer as
+PASS / FAIL / SKIPPED. No suite for the change → say so and recommend concrete
+cases; do not invent confidence. Quote real failure output.
 
 ### `debug`
 Reproduce the failure, isolate the root cause, apply a minimal fix, then
@@ -114,14 +116,15 @@ symptom patches.
 
 ### `optimize`
 Improve performance, memory, readability, maintainability **without** changing
-behavior.
+behavior. Prefer coverage or a quick regression check before risky changes; do
+not invent large speculative suites.
 
 ### `explain`
-Explain only the last change. Do not narrate unrelated code.
+Explain the last change or a named target. Do not narrate unrelated code.
 
 ### `docs`
 Update README and inline docs only when current docs are wrong or incomplete
-relative to the code.
+relative to the code. No fluff; verify links and formatting.
 
 ### `security`
 Review the diff for SQL/XSS/command injection, unsafe file access, authz gaps,
@@ -130,8 +133,9 @@ concrete fix.
 
 ### `commit`
 Write a concise Conventional Commit message: `type(scope): summary`.
-Do **not** run `git commit` / push / PR unless explicitly told for this action.
-**Never** include AI attribution trailers (see Git rules).
+Run `git commit` / push / PR only when the user explicitly asked for that
+action this turn; otherwise produce the message only. **Never** include AI
+attribution trailers (see Git rules).
 
 ### `rephrase`
 Rewrite prose to drop em dashes, en dashes, and clause-separating hyphens.

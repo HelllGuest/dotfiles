@@ -8,14 +8,45 @@ HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 echo "==> Sync kit -> $TARGET"
 mkdir -p "$(dirname "$TARGET")"
+
+# Match rsync -a --delete --exclude '.git/' --exclude '*.bak'
+# (rsync does not delete excluded paths without --delete-excluded).
+sync_kit_cp() {
+  local src="$1" dst="$2" rel
+  mkdir -p "$dst"
+  cp -a "$src"/. "$dst"/
+  while IFS= read -r -d '' f; do
+    rel="${f#"$dst"/}"
+    # Match rsync: --exclude '.git/' --exclude '*.bak' (keep those on dst)
+    case "$rel" in
+      .git|.git/*) continue ;;
+    esac
+    [[ "$rel" == *.bak ]] && continue
+    if [[ ! -e "$src/$rel" ]]; then
+      rm -f "$f"
+    fi
+  done < <(find "$dst" -type f ! -path '*/.git/*' -print0 2>/dev/null || true)
+  # Drop empty dirs absent from src (deepest first); never touch .git
+  while IFS= read -r -d '' d; do
+    rel="${d#"$dst"/}"
+    [[ -z "$rel" || "$rel" == "." ]] && continue
+    case "$rel" in
+      .git|.git/*) continue ;;
+    esac
+    if [[ ! -e "$src/$rel" ]]; then
+      rmdir "$d" 2>/dev/null || true
+    fi
+  done < <(find "$dst" -depth -type d ! -path '*/.git' ! -path '*/.git/*' -print0 2>/dev/null || true)
+}
+
 if command -v rsync >/dev/null 2>&1; then
   rsync -a --delete \
     --exclude '.git/' \
     --exclude '*.bak' \
     "$HERE/" "$TARGET/"
 else
-  mkdir -p "$TARGET"
-  cp -a "$HERE"/. "$TARGET"/
+  echo "  ! rsync missing; using cp -a + orphan cleanup (same excludes as rsync)"
+  sync_kit_cp "$HERE" "$TARGET"
 fi
 chmod +x "$TARGET/install.sh" "$TARGET/bin/agentsync" \
   "$TARGET/git-hooks/commit-msg" \
@@ -167,5 +198,5 @@ cat <<EOF
   # In chat: verify | double check | refactor | test | debug | optimize | explain | docs | security | commit | rephrase
 
 Edit rules only in: $TARGET
-
+(or edit the source tree and re-run install.sh)
 EOF

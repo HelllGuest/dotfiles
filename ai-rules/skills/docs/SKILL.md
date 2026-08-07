@@ -5,11 +5,11 @@ description: Update README and inline documentation only when current docs are i
 
 # Docs
 
-Update project documentation and inline code comments to match existing implementation and behavior.
+Update project documentation only when it is wrong or incomplete relative to
+the code.
 
 ## Workflow
 
-1. Inspect the affected codebase and existing documentation files (README, inline docs, API specs).
-2. Update descriptions, setup instructions, CLI options, or type annotations to align with reality.
-3. Avoid adding unnecessary fluff or redundant comments.
-4. Verify formatting and links.
+1. Inspect the affected code and existing docs (README, inline docs, API specs).
+2. Update only what is inaccurate or missing; no fluff or redundant comments.
+3. Verify formatting and links.
