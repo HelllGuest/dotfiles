@@ -1,0 +1,65 @@
+#!/usr/bin/env bash
+# Re-apply OmniRoute CLI machine-token ESM fix for Node 16+ / Node 26.
+# Safe to re-run. Needed because npm update -g omniroute overwrites the package file.
+set -euo pipefail
+
+TARGET="${NPM_CONFIG_PREFIX:-$HOME/.npm-global}/lib/node_modules/omniroute/bin/cli/utils/cliToken.mjs"
+if [[ ! -f "$TARGET" ]]; then
+  echo "[omniroute-patch] skip: $TARGET missing" >&2
+  exit 0
+fi
+
+if grep -q 'mod.default?.machineIdSync' "$TARGET"; then
+  echo "[omniroute-patch] already patched"
+  exit 0
+fi
+
+python3 - "$TARGET" <<'PY'
+from pathlib import Path
+import sys
+path = Path(sys.argv[1])
+text = path.read_text()
+old = '''export async function getCliToken() {
+  if (_cached !== null) return _cached;
+  try {
+    const { machineIdSync } = await import("node-machine-id");
+    const mid = machineIdSync();
+    _cached = crypto
+      .createHash("sha256")
+      .update(mid + SALT)
+      .digest("hex")
+      .substring(0, 32);
+  } catch {
+    _cached = "";
+  }
+  return _cached;
+}'''
+new = '''export async function getCliToken() {
+  if (_cached !== null) return _cached;
+  try {
+    // Node 16+ ESM interop: CJS default export lands on `.default`, not as named exports.
+    const mod = await import("node-machine-id");
+    const machineIdSync = mod.machineIdSync || mod.default?.machineIdSync;
+    if (typeof machineIdSync !== "function") {
+      throw new Error("node-machine-id.machineIdSync unavailable");
+    }
+    const mid = machineIdSync();
+    _cached = crypto
+      .createHash("sha256")
+      .update(mid + SALT)
+      .digest("hex")
+      .substring(0, 32);
+  } catch {
+    _cached = "";
+  }
+  return _cached;
+}'''
+if old not in text:
+    if "mod.default?.machineIdSync" in text:
+        print("[omniroute-patch] already patched (variant)")
+        raise SystemExit(0)
+    print("[omniroute-patch] WARN: expected snippet not found; skip", file=sys.stderr)
+    raise SystemExit(0)
+path.write_text(text.replace(old, new, 1))
+print("[omniroute-patch] patched", path)
+PY
