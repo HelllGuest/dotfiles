@@ -15,6 +15,21 @@ For Claude Code: also keep a project `CLAUDE.md` whose first line is
 * Follow the project's existing style and naming conventions, not your defaults.
 * Remove obsolete code immediately instead of leaving it "just in case."
 
+## Error handling & robustness
+* Handle errors explicitly at boundaries. Never suppress or swallow exceptions without logging or handling.
+* Prefer typed/structured errors over generic error strings or any-type catches.
+* Ensure resources (file handles, network sockets, database connections) are reliably cleaned up (RAII / try-finally).
+
+## Testing best practices
+* Write tests for behavior and public contracts, not implementation details.
+* Keep unit tests isolated, fast, and deterministic; mock external network and I/O.
+* Ensure tests clean up side effects and temporary files after completion.
+
+## Security hardening
+* Validate and sanitize all external inputs at system boundaries.
+* Never log, store, or hardcode secrets, API keys, tokens, or PII.
+* Avoid dangerous functions (e.g. unsafe string manipulation, raw shell execution without escaping).
+
 ## Shell / token hygiene
 * Prefer `rtk <cmd>` for noisy CLI output when the project/dotfiles use RTK.
 * Do not dump huge logs into chat; quote the shortest decisive lines.
@@ -91,6 +106,11 @@ Run tests relevant to the last change (unit → integration → build →
 typecheck → lint) using the project's real commands (Makefile / package.json /
 pyproject / cargo; do not guess). No suite for the change → say so and
 recommend concrete cases; do not invent confidence. Quote real failure output.
+
+### `debug`
+Reproduce the failure, isolate the root cause, apply a minimal fix, then
+verify with affected tests and edge cases. Prefer root-cause fixes over
+symptom patches.
 
 ### `optimize`
 Improve performance, memory, readability, maintainability **without** changing

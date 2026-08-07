@@ -18,7 +18,7 @@
 ai-rules/
 ├── AGENTS.md
 ├── bin/agentsync
-├── skills/{verify,double-check,refactor,test,commit,security-review,rephrase}/SKILL.md
+├── skills/{verify,double-check,refactor,test,commit,security-review,rephrase,optimize,explain,docs,debug}/SKILL.md
 ├── cursor-mdc/00-agents-pointer.mdc
 ├── git-hooks/{commit-msg,prepare-commit-msg,pre-push}
 ├── claude-settings.json          # merged into ~/.claude/settings.json
@@ -53,6 +53,10 @@ In any IDE / CLI chat:
 | `double check` | Adversarial review; findings only |
 | `refactor` | Dead code/files cleanup; no behavior change |
 | `test` | Run real project tests for last change |
+| `debug` | Reproduce, isolate root cause, minimal fix, then verify |
+| `optimize` | Improve performance/memory/readability/maintainability; no behavior change |
+| `explain` | Explain only the last change |
+| `docs` | Update README/inline docs only when wrong vs code |
 | `security` | Diff security review |
 | `commit` | Conventional Commit message only (no AI trailer; no auto-commit) |
 | `rephrase` | Drop dash punctuation; rewrite with colon/period/semicolon |

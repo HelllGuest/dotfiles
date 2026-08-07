@@ -164,7 +164,7 @@ cat <<EOF
 ==> Done. Day-to-day:
 
   agentsync /path/to/project     # AGENTS.md + CLAUDE.md (@AGENTS.md) + Cursor pointer
-  # In chat: verify | double check | refactor | test | security | commit | rephrase
+  # In chat: verify | double check | refactor | test | debug | optimize | explain | docs | security | commit | rephrase
 
 Edit rules only in: $TARGET
 
