@@ -1,6 +1,7 @@
 # Changelog
 
 ## [Unreleased]
+- CI: `.github/workflows/ci.yml` checks `all_stow_files.txt` freshness, `bash -n` on install/profile/scripts, and `scripts/lint-docs.sh` (markdownlint: heading blanks + tables). Kit `pre-commit` refreshes or fails stale `all_stow_files.txt` when `stow/` exists (global `core.hooksPath`; not repo `.git/hooks`).
 - Docs: fact-check pass across README, CONTRIBUTING, CHANGELOG, `gnome/keybindings.md`, and `docs/hardened-arch-gnome.md` (sleep, profiles, Starship, install order, keybindings, Zen ID, zram, changelog drift). Headroom version pin dropped; Bash `Ctrl+R` documented; historical 1.15/1.17/1.18 bullets marked superseded; warn that stowed kernel cmdline is machine-specific (LUKS UUID).
 - Suspend: stowed kernel cmdline and `sleep.conf.d` use **s2idle** (`mem_sleep_default=s2idle`, `MemorySleepMode=s2idle`); `arch-install.sh` matches. Supersedes the 1.17.0 S3 `deep` claim.
 - Profiles: `thinkpad-p15.sh` and P15 detection stay on **main**; `has_nvidia_gpu()` restored in `scripts/lib/dmi.sh`. `apply-profile.sh` applies exactly one profile (no `nvidia.sh`).

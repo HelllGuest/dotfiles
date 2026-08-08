@@ -335,6 +335,7 @@ We take a "quiet by default" approach:
 |------|---------|
 | Full update | `sudo pacman -Syu && ./install.sh && bash scripts/post-update.sh` |
 | Health check | `~/dotfiles/scripts/check.sh` |
+| Docs lint | `~/dotfiles/scripts/lint-docs.sh` (CI also runs this + `all_stow_files.txt` + `bash -n`) |
 | Location sync | `vpn-location-sync` or Proton VPN panel → Sync spoofed location |
 | Legacy touchpad cleanup | `bash scripts/cleanup-input-overrides.sh` (sudo; old udev/inhibit only) |
 | Secure Boot | `sbctl status && sbctl verify` (after `enroll-keys -m`; re-sign UKIs if you ran `mkinitcpio -P` manually) |

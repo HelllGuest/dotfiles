@@ -1,0 +1,29 @@
+#!/usr/bin/env bash
+# Global pre-commit (core.hooksPath). Only acts in repos that track
+# all_stow_files.txt + stow/. Skip with git commit --no-verify.
+set -euo pipefail
+
+ROOT="$(git rev-parse --show-toplevel 2>/dev/null || true)"
+[[ -n "$ROOT" ]] || exit 0
+cd "$ROOT"
+
+[[ -d stow && -f all_stow_files.txt ]] || exit 0
+
+expected="$(find stow -type f | sort)"
+if diff -q all_stow_files.txt <(printf '%s\n' "$expected") >/dev/null 2>&1; then
+  exit 0
+fi
+
+if git diff --cached --name-only -- stow | grep -q .; then
+  printf '%s\n' "$expected" > all_stow_files.txt
+  git add all_stow_files.txt
+  echo "  pre-commit: refreshed all_stow_files.txt"
+  exit 0
+fi
+
+echo ""
+echo "  ✗ all_stow_files.txt is stale vs stow/."
+echo "    Run:  find stow -type f | sort > all_stow_files.txt"
+echo "    then stage all_stow_files.txt (and any new stow files)."
+echo ""
+exit 1

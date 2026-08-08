@@ -51,6 +51,7 @@ fi
 chmod +x "$TARGET/install.sh" "$TARGET/bin/agentsync" \
   "$TARGET/git-hooks/commit-msg" \
   "$TARGET/git-hooks/prepare-commit-msg" \
+  "$TARGET/git-hooks/pre-commit" \
   "$TARGET/git-hooks/pre-push" 2>/dev/null || true
 echo "  synced from $HERE"
 
@@ -172,12 +173,13 @@ ln -sfn "$TARGET/bin/agentsync" "$HOME/.local/bin/agentsync"
 chmod +x "$TARGET/bin/agentsync"
 echo "  agentsync ready (ensure ~/.local/bin is on PATH)"
 
-echo "==> Global git hooks (strip + Conventional Commits + prefill + pre-push)"
+echo "==> Global git hooks (strip + Conventional Commits + prefill + pre-commit + pre-push)"
 echo "  WARN: core.hooksPath replaces ALL repo .git/hooks (husky/pre-commit ignored)."
 echo "  Unset with: git config --global --unset core.hooksPath"
 git config --global core.hooksPath "$TARGET/git-hooks"
 chmod +x "$TARGET/git-hooks/commit-msg" \
   "$TARGET/git-hooks/prepare-commit-msg" \
+  "$TARGET/git-hooks/pre-commit" \
   "$TARGET/git-hooks/pre-push" 2>/dev/null || true
 echo "  git config --global core.hooksPath -> $TARGET/git-hooks"
 

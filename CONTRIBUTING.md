@@ -40,6 +40,10 @@ Thank you for helping improve this setup. Follow these guidelines to keep the re
   ```bash
   find stow -type f | sort > all_stow_files.txt
   ```
+  The global kit `pre-commit` hook (via `core.hooksPath`) refreshes this file when
+  `stow/` is staged, or fails if it is stale. CI also diffs it on PRs.
+- Markdown: `bash scripts/lint-docs.sh` (header spacing + tables). GitHub Actions
+  runs it; keep it out of `validate-configs.sh`.
 
 ### Machine profiles (`profiles/`)
 
@@ -88,12 +92,14 @@ Thank you for helping improve this setup. Follow these guidelines to keep the re
 | PhotoGIMP / GIMP | `README.md`, `docs/hardened-arch-gnome.md` (Phase 17d), `CHANGELOG.md` |
 | Dash2Dock / GNOME dock | `README.md`, `gnome/keybindings.md`, `docs/hardened-arch-gnome.md` (Phase 17e), `CHANGELOG.md` |
 | Troubleshooting table | `README.md` when adding recurring install/shell issues |
+| CI / lint / stow inventory | `.github/workflows/ci.yml`, `scripts/lint-docs.sh`, `CHANGELOG.md` |
 
 ---
 
 ## Scripts
 
-- All scripts in `scripts/` must be executable (`chmod +x`).
+- All scripts in `scripts/` must be executable (`chmod +x`). `bash -n` on
+  `scripts/**/*.sh`, `install.sh`, `stow-only.sh`, and `profiles/*.sh` runs in CI.
 - Use `$HOME`-relative paths or repo-root detection — avoid hardcoding usernames.
 - Prefer `set -e` for install scripts; use guarded fallbacks where sudo may fail.
 

@@ -1,0 +1,3 @@
+stow/**
+node_modules/**
+.git/**

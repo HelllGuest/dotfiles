@@ -20,7 +20,7 @@ ai-rules/
 ├── bin/agentsync
 ├── skills/{verify,double-check,refactor,test,commit,security-review,rephrase,optimize,explain,docs,debug}/SKILL.md
 ├── cursor-mdc/00-agents-pointer.mdc
-├── git-hooks/{commit-msg,prepare-commit-msg,pre-push}
+├── git-hooks/{commit-msg,prepare-commit-msg,pre-commit,pre-push}
 ├── claude-settings.json          # create/merge into ~/.claude/settings.json
 ├── vscode-family-telemetry.json  # create/merge into VS Code family settings.json
 ├── install.sh
@@ -99,6 +99,8 @@ In any IDE / CLI chat:
   skips format check for Merge/Revert/fixup!/squash! and empty messages),
   `prepare-commit-msg` (branch-name prefill; ignores text below
   `commit.verbose` scissors),
+  `pre-commit` (if `stow/` + `all_stow_files.txt` exist: refresh or fail when
+  the inventory is stale),
   `pre-push` (only if `package.json` or `pnpm-workspace.yaml` exists: with
   `tsconfig.json`, hard-fail `tsc` when a `"tsc"` script exists via pnpm/npm;
   else soft `pnpm exec tsc --noEmit || true` when pnpm is present; hard-fail
