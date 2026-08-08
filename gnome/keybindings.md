@@ -22,13 +22,13 @@ Modern CLI aliases (when installed): `eza`, `bat`, `rg`, `fd`, etc.
 
 | Key / Command | Action |
 |---------------|--------|
-| `Ctrl+R` | **atuin** fuzzy history search |
+| `Ctrl+R` | History search: **fzf** on Zsh (`fzf --zsh` after atuin), **atuin** on Bash (atuin after `fzf --bash`) |
 | `Ctrl+T` | fzf file picker |
 | `Alt+C` | fzf directory jump |
 | `Ctrl+F` / `Ctrl+B` | fzf preview page down / up (in `FZF_DEFAULT_OPTS`) |
 | `fe` | Fuzzy open file in nvim |
 | `rge <pat>` | Ripgrep + open match in nvim |
-| `gai` / `gshow` / `gco` | Interactive git add / log / branch checkout |
+| `gai` / `gshow` / `gco` | Interactive git add / log / branch checkout (`gco` fzf picker is Zsh; Bash keeps alias `git checkout`) |
 | `fcd` | Fuzzy cd with tree preview |
 
 fzf **0.72** does not support `copy-selection`. To copy the current line to the clipboard:
@@ -105,19 +105,21 @@ Configured in `stow/zsh/.zsh-plugins` via **zinit** plugins:
 | `Tab` / fzf-tab | Completion picker with previews |
 | `↑` / `↓` | Prefix history search |
 | `→` or `End` | Accept ghost suggestion |
-| `Ctrl+R` | atuin history (replaces default) |
+| `Ctrl+R` | fzf history (`fzf --zsh` overwrites atuin's `^R`) |
 
 ---
 
 ## Bash Key Bindings
 
-Configured in `stow/bash/.inputrc`:
+`.inputrc` plus `stow/bash/.bashrc` (`fzf --bash` then `atuin init bash`):
 
 | Key | Action |
 |-----|--------|
 | `Tab` | Menu-complete (cycle matches) |
 | `Shift+Tab` | Reverse menu-complete |
 | `↑` / `↓` | Prefix history search (match typed text) |
+| `Ctrl+R` | **atuin** history (loads after fzf, so atuin owns `^R`) |
+| `Ctrl+T` / `Alt+C` | fzf file / directory picker |
 
 Optional **ble.sh** adds syntax highlighting and autosuggestions.
 
@@ -174,7 +176,7 @@ Quick throwaway terminal — `kgx`. Tuned by `scripts/gnome-console-setup.sh` (1
 | `Super` | Activities overview |
 | `Super+Tab` | Switch applications |
 | `Super+L` | Lock screen |
-| `Super+Shift+S` | Screenshot (region) |
+| `Shift+Print` | Screenshot (region) — GNOME default; not remapped in this repo |
 | `Super+Return` | **kitty** (via custom binding) |
 
 ```bash

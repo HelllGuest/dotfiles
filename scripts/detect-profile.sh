@@ -2,7 +2,7 @@
 # detect-profile.sh — suggest profiles/*.sh from hardware (sysfs first, no sudo).
 # Usage:
 #   detect-profile.sh → primary profile name (stdout)
-# NVIDIA/ThinkPad P15 profiles live on the p15 branch.
+# Order: thinkpad-x1 → thinkpad-p15 → laptop (other ThinkPads / laptop chassis).
 
 set -euo pipefail
 

@@ -19,7 +19,7 @@ This guide builds a modern Arch Linux workstation with:
 * rootless Podman
 * Flatpak sandboxing
 * Unified Kernel Images (UKIs)
-* custom Secure Boot keys using [sbctl](https://github.com/Foxboron/sbctl?utm_source=chatgpt.com)
+* custom Secure Boot keys using [sbctl](https://github.com/Foxboron/sbctl)
 
 This guide prioritizes:
 
@@ -34,7 +34,7 @@ This guide prioritizes:
 > ```bash
 > bash <(curl -fsSL https://raw.githubusercontent.com/HelllGuest/dotfiles/main/scripts/arch-install.sh)
 > ```
-> Dry-run first in a UEFI VM with [`scripts/arch-install-vmtest.sh`](../scripts/arch-install-vmtest.sh). The manual phases below remain the reference for what it does and for customizing.
+> Rehearse first in a UEFI VM with [`scripts/arch-install-vmtest.sh`](../scripts/arch-install-vmtest.sh) (full install on a virtual disk; host disks untouched). The manual phases below remain the reference for what it does and for customizing.
 
 > **Dotfiles:** After completing this guide, continue with [PHASE 27 — Dotfiles Setup](#phase-27--dotfiles-setup) or jump to the [dotfiles README](../README.md) for shell and maintenance.
 
@@ -69,17 +69,18 @@ Set:
 Linux
 ```
 
-Your system supports proper deep sleep:
+`/sys/power/mem_sleep` lists available modes; the **bracketed** value is active.
 
-```text
-s2idle [deep]
-```
+This repo pins **s2idle** (not S3/`deep`): `mem_sleep_default=s2idle` on the kernel
+cmdline (`arch-install.sh` and `stow/system/etc/kernel/cmdline`) plus
+`stow/system/etc/systemd/sleep.conf.d/` (`SuspendState=mem` +
+`MemorySleepMode=s2idle`). After install + stow, expect `[s2idle] deep` if the
+firmware still exposes S3. Confirm after resume with
+`journalctl -b | grep "suspend entry"` → `PM: suspend entry (s2idle)`.
 
-Deep sleep (S3) is selected two ways in this repo: the `mem_sleep_default=deep`
-kernel cmdline param (PHASE 9/21), and `stow/system/etc/systemd/sleep.conf.d/`
-(`SuspendState=mem` + `MemorySleepMode=deep`). Either forces S3 over s2idle for
-lower standby drain. Confirm after resume with `journalctl -b | grep "suspend entry"`
-→ expect `PM: suspend entry (deep)`.
+The tracked `stow/system/etc/kernel/cmdline` also hardcodes **this machine's**
+LUKS UUID (`rd.luks.name=…`). `arch-install.sh` writes the correct UUID at install
+time; do not stow that file onto another disk without replacing the UUID.
 
 ---
 
@@ -193,7 +194,7 @@ y
 n
 1
 <enter>
-+1G
++2G
 ef00
 
 n
@@ -395,13 +396,23 @@ linux-hardened-headers \
 linux-firmware \
 intel-ucode \
 btrfs-progs \
+cryptsetup \
 networkmanager \
 sudo \
+zsh \
 nano \
 vim \
 git \
 reflector \
-pacman-contrib
+pacman-contrib \
+mkinitcpio \
+snapper \
+snap-pac \
+zram-generator \
+apparmor \
+ufw \
+sbctl \
+efibootmgr
 ```
 
 Generate fstab:
@@ -424,6 +435,7 @@ arch-chroot /mnt
 
 ```bash
 ln -sf /usr/share/zoneinfo/Europe/Dublin /etc/localtime
+# installer prompt default is America/New_York; pick your Region/City
 ```
 
 Sync hardware clock:
@@ -459,12 +471,14 @@ Set locale:
 
 ```bash
 echo "LANG=en_IE.UTF-8" > /etc/locale.conf
+# installer prompt default is en_US.UTF-8
 ```
 
 Keyboard layout:
 
 ```bash
 echo "KEYMAP=uk" > /etc/vconsole.conf
+# installer prompt default is us
 ```
 
 ---
@@ -595,7 +609,7 @@ title   Arch Linux (Hardened)
 linux   /vmlinuz-linux-hardened
 initrd  /intel-ucode.img
 initrd  /initramfs-linux-hardened.img
-options rd.luks.name=YOUR_UUID=cryptroot root=/dev/mapper/cryptroot rootflags=subvol=@ rw quiet loglevel=3 mem_sleep_default=deep apparmor=1 security=apparmor intel_iommu=on
+options rd.luks.name=YOUR_UUID=cryptroot root=/dev/mapper/cryptroot rootflags=subvol=@ rw quiet loglevel=3 mem_sleep_default=s2idle apparmor=1 security=apparmor intel_iommu=on
 ```
 
 ---
@@ -613,7 +627,7 @@ title   Arch Linux (LTS)
 linux   /vmlinuz-linux-lts
 initrd  /intel-ucode.img
 initrd  /initramfs-linux-lts.img
-options rd.luks.name=YOUR_UUID=cryptroot root=/dev/mapper/cryptroot rootflags=subvol=@ rw quiet loglevel=3 mem_sleep_default=deep apparmor=1 security=apparmor intel_iommu=on
+options rd.luks.name=YOUR_UUID=cryptroot root=/dev/mapper/cryptroot rootflags=subvol=@ rw quiet loglevel=3 mem_sleep_default=s2idle apparmor=1 security=apparmor intel_iommu=on
 ```
 
 ---
@@ -689,19 +703,16 @@ WaylandEnable=true
 
 # PHASE 11 — ZRAM
 
+Do **not** `stow -t / zram`: a symlink into `$HOME` breaks at early boot (home is not mounted when zram-generator runs).
+
 **Option A — Dotfiles (recommended after cloning this repo):**
 
 ```bash
 cd ~/dotfiles
-sudo stow -d stow -t / zram
+bash scripts/zram-setup.sh
 ```
 
-If stow reports a conflict, remove the existing plain file first (only when content matches `stow/zram/etc/systemd/zram-generator.conf`):
-
-```bash
-sudo rm /etc/systemd/zram-generator.conf
-sudo stow -d ~/dotfiles/stow -t / zram
-```
+That copies a real file to `/etc/systemd/zram-generator.conf`.
 
 **Option B — Manual:**
 
@@ -832,8 +843,8 @@ sudo systemctl enable --now waydroid-nat.service
 
 This service ensures the masquerade rule is added exactly once and survives `ufw reload` cycles.
 
-`DEFAULT_FORWARD_POLICY="ACCEPT"` in `/etc/default/ufw` is required for
-forwarding (default on this system).
+If container forwarding fails, check `/etc/default/ufw` and set
+`DEFAULT_FORWARD_POLICY="ACCEPT"` if it is still `DROP`.
 
 ---
 
@@ -932,7 +943,7 @@ Install apps:
 ```bash
 # Browsers
 flatpak install flathub com.brave.Browser
-flatpak install flathub io.github.zen_browser.zen
+flatpak install flathub app.zen_browser.zen
 flatpak install flathub com.google.Chrome
 flatpak install flathub io.gitlab.librewolf-community
 
@@ -1049,9 +1060,9 @@ bash scripts/headroom-setup.sh   # install + Claude MCP registration
 
 **Claude Code:** one terminal — run `hr-claude` from the project directory.
 
-**Cursor:** keep the `hr-cursor` terminal open; configure Override OpenAI Base URL in the IDE (Cursor does not read shell env for API routing). Headroom 0.27 registers MCP for Claude only — not Cursor yet.
+**Cursor:** keep the `hr-cursor` terminal open; configure Override OpenAI Base URL in the IDE (Cursor does not read shell env for API routing). MCP: `headroom mcp install --agent claude` (Cursor MCP support depends on the installed Headroom version; check `headroom --help` / `headroom --version`).
 
-**Other agents:** Antigravity CLI (`agy`) and Kiro are not in the stable Headroom wrap matrix; `hr-proxy` works only if the tool supports a custom OpenAI/Anthropic base URL.
+**Other agents:** Antigravity CLI (`agy`) and Kiro: use `hr-proxy` only if that tool accepts a custom OpenAI-compatible base URL.
 
 ---
 
@@ -1134,9 +1145,9 @@ Enable:
 ```ini
 Color
 ParallelDownloads = 10
-VerbosePkgLists
-ILoveCandy
 ```
+
+(`arch-install.sh` enables Color + ParallelDownloads = 10 only; VerbosePkgLists / ILoveCandy are optional extras, not set by the installer.)
 
 ---
 
@@ -1151,12 +1162,13 @@ nano /etc/xdg/reflector/reflector.conf
 Contents:
 
 ```ini
---country Ireland,Germany,Netherlands
 --latest 10
 --protocol https
 --sort rate
 --save /etc/pacman.d/mirrorlist
 ```
+
+(`arch-install.sh` writes this file with no `--country` filter. Live ISO `reflector` uses `--latest 20`.)
 
 Enable timer:
 
@@ -1189,7 +1201,7 @@ nano /etc/kernel/cmdline
 Contents (single line):
 
 ```text
-rd.luks.name=YOUR_UUID=cryptroot root=/dev/mapper/cryptroot rootflags=subvol=@ rw quiet loglevel=3 mem_sleep_default=deep apparmor=1 security=apparmor intel_iommu=on
+rd.luks.name=YOUR_UUID=cryptroot root=/dev/mapper/cryptroot rootflags=subvol=@ rw quiet loglevel=3 mem_sleep_default=s2idle apparmor=1 security=apparmor intel_iommu=on
 ```
 
 ---
@@ -1465,7 +1477,7 @@ Install prerequisites:
 sudo pacman -S --needed base-devel git
 ```
 
-Install yay:
+`./install.sh` / `install-aur.sh` bootstraps **paru** if no AUR helper is present. yay is optional:
 
 ```bash
 git clone https://aur.archlinux.org/yay.git
@@ -1506,11 +1518,11 @@ cd ~/dotfiles
 
 `./install.sh` (run from a GNOME session) will:
 
-* Apply a machine profile: `profiles/$(hostname).sh` if present, otherwise `scripts/detect-profile.sh` (ThinkPad X1 → `thinkpad-x1.sh`; hybrid GPU → also `nvidia.sh`)
+* Apply exactly one machine profile: `profiles/$(hostname).sh` if present, otherwise `scripts/detect-profile.sh` (ThinkPad X1 → `thinkpad-x1`; ThinkPad P15 → `thinkpad-p15`; other ThinkPads/laptop chassis → `laptop`). Optimus/NVIDIA setup is inside `thinkpad-p15.sh` (no `nvidia.sh`).
 * On ThinkPad X1, re-sign UKIs after `mkinitcpio -P` when Secure Boot keys exist (`/etc/sbctl/keys`)
 * Install packages from `packages/pacman.txt` (kernels, shells, terminals, CLI tools)
 * Install Flatpaks from `packages/flatpak.txt` (Brave, Zen, Chrome, LibreWolf, Proton VPN, Android Studio)
-* Deploy browser telemetry policies via `scripts/browser-hardening.sh` (Chrome/Brave `/etc` policies; Zen `user.js` into each `~/.var/app/io.github.zen_browser.zen/.zen/<profile>/` after first launch; LibreWolf upstream defaults)
+* Deploy browser telemetry policies via `scripts/browser-hardening.sh` (Chrome/Brave `/etc` policies; Zen `user.js` into each `~/.var/app/app.zen_browser.zen/.zen/<profile>/` after first launch; LibreWolf upstream defaults)
 * Install AUR packages from `packages/aur.txt` (bootstraps `paru` if no helper exists)
 * Stow configs to `$HOME` and `/etc` (`system/`; skips `zram` symlink and `gdm`)
 * Materialize `zram-generator.conf` via `scripts/zram-setup.sh`
@@ -1558,16 +1570,16 @@ wayland
 
 ---
 
-# Verify Deep Sleep
+# Verify sleep (s2idle)
 
 ```bash
 cat /sys/power/mem_sleep
 ```
 
-Expected:
+Expected after this repo's cmdline + `sleep.conf.d` (S3 still listed if firmware exposes it):
 
 ```text
-s2idle [deep]
+[s2idle] deep
 ```
 
 ---

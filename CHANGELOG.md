@@ -1,14 +1,20 @@
 # Changelog
 
 ## [Unreleased]
-- Cleanup: removed the now-unused `has_nvidia_gpu()` from `scripts/lib/dmi.sh` (all callers live on the `p15` branch).
-- Profiles: NVIDIA/ThinkPad P15 configs split out to the `p15` branch (`profiles/nvidia.sh` and its detection removed from main; main targets the X1 Yoga).
+- Docs: fact-check pass across README, CONTRIBUTING, CHANGELOG, `gnome/keybindings.md`, and `docs/hardened-arch-gnome.md` (sleep, profiles, Starship, install order, keybindings, Zen ID, zram, changelog drift). Headroom version pin dropped; Bash `Ctrl+R` documented; historical 1.15/1.17/1.18 bullets marked superseded; warn that stowed kernel cmdline is machine-specific (LUKS UUID).
+- Suspend: stowed kernel cmdline and `sleep.conf.d` use **s2idle** (`mem_sleep_default=s2idle`, `MemorySleepMode=s2idle`); `arch-install.sh` matches. Supersedes the 1.17.0 S3 `deep` claim.
+- Profiles: `thinkpad-p15.sh` and P15 detection stay on **main**; `has_nvidia_gpu()` restored in `scripts/lib/dmi.sh`. `apply-profile.sh` applies exactly one profile (no `nvidia.sh`).
+- Zen: Flatpak ID is `app.zen_browser.zen` (`arch-install.sh` + hardened guide aligned; old `io.github.zen_browser.zen` was stale).
+- Starship: Gruvbox Rainbow (`gruvbox_dark`); `command_timeout = 3000`. Crampack installer remains legacy only.
+- Waydroid: NAT masquerade is `waydroid-nat.service`, not a `*nat` block in `ufw/before.rules`.
+- Neovim: Catppuccin/`palette.lua` overlay is gone; Lazy fallback colorscheme is `habamax`.
+- Zsh: pacman `zsh-autocomplete` was replaced by zinit + fzf-tab (v1.11) and stays removed.
 - Kitty: right-click copies the selection to the clipboard (`mouse_map right press ungrabbed copy_to_clipboard`); Shift+right-click still extends the selection.
 - Starship: switched to the official [Gruvbox Rainbow](https://starship.rs/presets/gruvbox-rainbow) preset; Crampack installer kept as legacy (`scripts/install-starship-crampack.sh`).
 - Packages: added `rtkit` (realtime scheduling for PipeWire/gnome-shell) and `bluez`/`bluez-utils`; `acpi_call-dkms` replaces `acpi_call`/`acpi_call-lts` (dkms builds for `linux-lts` and `linux-hardened`).
 - Bluetooth: `bluetooth.service` enabled in `profiles/thinkpad-x1.sh` and the `arch-install.sh` base service list.
 - Git: `core.fsmonitor` disabled for repos under `~/.cache/` (includeIf → `no-fsmonitor.conf`) — fsmonitor daemon sockets corrupted yay cache clones (`fatal: not a git repository` on PKGBUILD fetch).
-- Gitignore: VS Code runtime state in the stowed `~/.config/Code` (keeps `User/` settings, keybindings, snippets), third-party GNOME extensions in the stowed extensions dir (keeps `proton-vpn@helllguest`), and Claude Code `settings.local.json.tmp.*` leftovers.
+- Gitignore: VSCodium runtime state in the stowed `~/.config/VSCodium` (keeps `User/` settings, keybindings, snippets), third-party GNOME extensions in the stowed extensions dir (keeps `proton-vpn@helllguest`), and Claude Code `settings.local.json.tmp.*` leftovers.
 - GNOME input: removed custom touchpad/mouse/keyboard overrides from `gnome/dconf/user.conf`; stock defaults via `scripts/reset-input-defaults.sh`; legacy synaptics udev/inhibit cleanup in `scripts/cleanup-input-overrides.sh`.
 - Location: fixed `vpn-location-sync.sh` under `pkexec`/NetworkManager (resolve home coords via `PKEXEC_UID`; `/usr/bin/curl`; installed template at `/usr/local/share/vpn-location-sync/home.geolocation`); Proton VPN panel extension waits for sync and reports success/failure.
 - Shell: removed invalid fzf `copy-selection` bind (not in fzf 0.72); safe `FZF_DEFAULT_OPTS` in zsh and bash; `DOCKER_HOST` auto-selects Podman socket when present, otherwise Docker (`/var/run/docker.sock`).
@@ -21,13 +27,13 @@
 - Browsers: added Google Chrome and LibreWolf flatpaks; `scripts/browser-hardening.sh` deploys managed policies for Chrome/Brave (`browsers/policies/*.json`); Zen prefs via `browsers/zen/user.js` into each profile dir (fixes invalid `.zen/user.js` stow path) plus `/etc/firefox/policies/policies.json`; LibreWolf relies on upstream hardening.
 - ThinkPad X1 profile: re-sign UKIs with `sbctl` after `mkinitcpio -P` when Secure Boot keys exist (pacman hook does not run on manual rebuilds).
 - Docs: Secure Boot (Phase 23), ESP multiboot cleanup, profile detection, and UKI re-sign flow synced across `README.md`, `CONTRIBUTING.md`, and `docs/hardened-arch-gnome.md`.
-- Install: hardware-based profile detection (`scripts/detect-profile.sh`) when `profiles/$(hostname).sh` is missing; hybrid laptops also get `nvidia.sh`. `laptop.sh` delegates to `thinkpad-x1.sh` only on X1 models.
+- Install: hardware-based profile detection (`scripts/detect-profile.sh`) when `profiles/$(hostname).sh` is missing; picks `thinkpad-x1`, `thinkpad-p15`, or `laptop`. `laptop.sh` delegates to `thinkpad-x1.sh` only on X1 models.
 - Installer: on ESP reuse, `arch-install.sh` now removes stale Arch UKIs (`/EFI/Linux/arch-linux*.efi`), legacy `vmlinuz`/`initramfs` on the ESP, and old systemd-boot entries (`arch*.conf`, `linux-*.conf`) before rebuilding — multiboot-safe (Windows/other `/EFI/*` untouched).
 - Docs: aligned README, CONTRIBUTING, and `docs/hardened-arch-gnome.md` Phase 27 with current `install.sh` flow (flatpak/AUR auto, `user.conf`, zram materialize, GNOME session requirement); fixed stale VS Code flatpak, battery-threshold, and stow-only claims.
 - Install: fixed flatpak installs (`-y` not `--noconfirm`); added `install-flatpaks.sh`, `install-aur.sh`, `bootstrap-aur.sh` (auto paru); wired location setup into `install.sh`.
 - Packages: `pacman.txt` syncs `linux-lts`/`linux-hardened`, `starship`, `flatpak`; dropped `linux-zen` and `python-pywal`.
 - Starship: restored Crampack palette definitions removed during theming refactor.
-- Zen: stow path fixed for Flatpak (`~/.var/app/io.github.zen_browser.zen/.zen/`).
+- Zen: stow path fixed for Flatpak (`~/.var/app/app.zen_browser.zen/.zen/`).
 - GNOME: deduplicated AUR extension installs; `install-extensions.sh` no longer fails headless sessions.
 - VPN: polkit rule uses `wheel` group; `proton-connectivity-check.sh` detects Flatpak app; removed hardcoded `jondoe` from `vpn-location-sync.sh`.
 - Health: `check.sh` verifies flatpaks, bash/shell symlinks; no duplicate `validate-configs` run.
@@ -43,8 +49,8 @@
 - Hardening: install adds a `kernel.unprivileged_userns_clone` sysctl (leading-`-`/ignore-if-absent) so Flatpak/Podman/browser sandboxes work under `linux-hardened`.
 
 ## [1.18.0] - 2026-06-02
-- Waydroid: enabled container internet via NAT masquerade of the `192.168.240.0/24` subnet; persisted as a `*nat` block in tracked `stow/system/etc/ufw/before.rules` (source-based, survives wifi/VPN iface changes). Host-side `ufw allow 53/udp` + `67/udp` for the container's dnsmasq/DHCP.
-- Starship: raised `command_timeout` 500 → 1300 ms to stop "git timed out" warnings when `git_metrics` runs `git diff` during fsmonitor warm-up.
+- Waydroid: enabled container internet via NAT masquerade of the `192.168.240.0/24` subnet; persisted as a `*nat` block in tracked `stow/system/etc/ufw/before.rules` (source-based, survives wifi/VPN iface changes). Host-side `ufw allow 53/udp` + `67/udp` for the container's dnsmasq/DHCP. *(Superseded: NAT now lives in `waydroid-nat.service`; see Unreleased.)*
+- Starship: raised `command_timeout` 500 → 1300 ms to stop "git timed out" warnings when `git_metrics` runs `git diff` during fsmonitor warm-up. *(Superseded: current `stow/starship` uses 3000 ms; see Unreleased.)*
 - GNOME: disabled keyboard key repeat (`peripherals.keyboard repeat=false`) in `gnome/dconf/user.conf`.
 - Power: finalized PPD-only stack — documented removal of TLP (conflicts with power-profiles-daemon) and thermald (self-exits on X1: `dytc_lapmode present, can't run on this platform`; thermal is firmware-managed). Phase 14 install/enable + battery-threshold steps switched to `power-profiles-daemon` and `thinkpad_acpi` sysfs.
 - UFW: silenced `[UFW BLOCK]` log spam by silently dropping link-local multicast (`224.0.0.0/4`) + IGMP in `before.rules` (same deny posture, no logging).
@@ -53,7 +59,7 @@
 - Theme auto-switch (NTS v82): Night Theme Switcher v82 dropped built-in gtk/cursor variants; obsolete `gtk-variants` dconf keys were ignored. Added `scripts/night-theme-hook.sh` hooked via NTS sunrise/sunset commands for Catppuccin latte/mocha GTK; NTS `color-scheme` set to prefer-light/prefer-dark; removed hardcoded gtk/color-scheme/cursor from `user.conf`; stopped `theme-switch.sh` forcing prefer-dark when NTS active; Dubai fallback location in `extensions.conf`.
 
 ## [1.17.0] - 2026-06-02
-- Suspend: switched X1 to S3 `deep` via `sleep.conf.d` (`SuspendState=mem` + `MemorySleepMode=deep`); lower standby drain than s2idle.
+- Suspend: switched X1 to S3 `deep` via `sleep.conf.d` (`SuspendState=mem` + `MemorySleepMode=deep`); lower standby drain than s2idle. *(Superseded: current cmdline + `sleep.conf.d` pin s2idle; see Unreleased.)*
 - Power: hard-disabled unused Synaptics fingerprint reader (06cb:00bd) at its USB port via `72-fingerprint-disable.rules` — kills resume `xHC error`/`usb 1-9` reset spam and idle drain.
 - Ghostty: fixed config errors for 1.3.x — dropped removed `gtk-prefer-dark-theme`, `quick-terminal-size = 40%` (unit required), `keybind` key `backquote` (was `grave`); quick terminal now `global:` toggle.
 
@@ -66,7 +72,7 @@
 ## [1.15.0] - 2026-05-31
 - Full Lazy.nvim stack: blink.cmp, Mason LSP, conform, treesitter, telescope, flash, ufo, noice, DAP, neotest.
 - Modular layout under `lua/config/` and `lua/plugins/`; `scripts/nvim-setup.sh` for headless plugin/parser sync.
-- Catppuccin colorscheme + palette.lua overlay; vim-kitty-navigator for kitty split navigation.
+- Catppuccin colorscheme + palette.lua overlay; vim-kitty-navigator for kitty split navigation. *(Superseded: Catppuccin/`palette.lua` removed; Lazy fallback is `habamax`; see Unreleased.)*
 
 ## [1.14.0] - 2026-05-31
 - Global git config: rebase stack, rerere, histogram diff, delta side-by-side, URL shorthands.

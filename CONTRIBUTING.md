@@ -33,7 +33,8 @@ Thank you for helping improve this setup. Follow these guidelines to keep the re
 ### Stow
 
 - User configs: `stow -R -t "$HOME" <package>` from the `stow/` directory.
-- System configs (zram): `sudo stow -R -t / zram`.
+- System configs: `sudo stow -R -t / system` (via `install.sh`). **zram:** never stow to `/`; use `scripts/zram-setup.sh` (real file, not a `$HOME` symlink).
+- `stow/system/etc/kernel/cmdline` hardcodes this repo's LUKS UUID. Do not stow it onto another machine without rewriting `rd.luks.name=`.
 - `install.sh` and `stow-only.sh` encode this logic — update docs if you change it.
 - Regenerate `all_stow_files.txt` after adding or removing stowed files:
   ```bash
@@ -43,8 +44,8 @@ Thank you for helping improve this setup. Follow these guidelines to keep the re
 ### Machine profiles (`profiles/`)
 
 - Optional hostname override: `profiles/$(hostname).sh` (e.g. `thinkpad-x1.sh`).
-- If no hostname match, `scripts/detect-profile.sh` picks from DMI + chassis + `lspci` (ThinkPad X1, laptop, desktop, NVIDIA).
-- `install.sh` sources the primary profile, then `nvidia.sh` on hybrid-GPU machines when it was not already primary.
+- If no hostname match, `scripts/detect-profile.sh` picks from DMI product strings + chassis type: `thinkpad-x1`, `thinkpad-p15`, or `laptop` (no desktop/NVIDIA-only profile; no `lspci` in detect-profile).
+- `install.sh` → `apply-profile.sh` sources **exactly one** profile. Optimus/NVIDIA setup is inside `profiles/thinkpad-p15.sh` (`has_nvidia_gpu` in `scripts/lib/dmi.sh`). There is no `nvidia.sh`.
 - `profiles/laptop.sh` delegates to `thinkpad-x1.sh` only on X1 models.
 - `profiles/thinkpad-x1.sh` runs `mkinitcpio -P` when kernel cmdline changes; re-sign UKIs with `sbctl sign -s` when `/etc/sbctl/keys` exists (pacman hook does not run on manual rebuilds).
 
@@ -52,7 +53,7 @@ Thank you for helping improve this setup. Follow these guidelines to keep the re
 
 - Keep `pacman.txt`, `aur.txt`, `flatpak.txt`, and `browsers.txt` in sync with configs that depend on them.
 - Browser policies live under `browsers/policies/` (`chromium-base.json` + per-browser extras); `scripts/lib/browsers.sh` merges and deploys them.
-- Shell plugin packages belong in `pacman.txt`.
+- Shell plugin packages: pacman extras in `pacman.txt`; AUR plugins such as **forgit** and **blesh-git** belong in `aur.txt`.
 
 ### GNOME (`gnome/`)
 

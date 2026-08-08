@@ -7,7 +7,7 @@ A clean, modular, and programmable dotfiles ecosystem optimized for **Arch Linux
 ## 🚀 Key Features
 
 - **Privacy Hardened:** Telemetry, usage reporting, and "phoning home" are disabled system-wide (GNOME, VS Code, .NET, etc.).
-- **ThinkPad Optimized:** Hostname or hardware-detected profiles (e.g. `thinkpad-x1.sh`) with power-profiles-daemon, tablet auto-rotate, UKI re-signing for Secure Boot, and S3 deep-sleep tuning (thermal is firmware-managed). Battery charge thresholds are documented in `docs/hardened-arch-gnome.md` (manual `thinkpad_acpi` sysfs).
+- **ThinkPad Optimized:** Hostname or hardware-detected profiles (`thinkpad-x1.sh`, `thinkpad-p15.sh`, or `laptop.sh`) with power-profiles-daemon, tablet auto-rotate, UKI re-signing for Secure Boot, and **s2idle** sleep (`mem_sleep_default=s2idle`; thermal is firmware-managed). Battery charge thresholds are documented in `docs/hardened-arch-gnome.md` (manual `thinkpad_acpi` sysfs).
 - **Elite-Tier Terminal:** Kitty & Ghostty with shared Zsh/Bash configs, real-time autocomplete, [Gruvbox Rainbow](https://starship.rs/presets/gruvbox-rainbow) Starship prompt.
 - **Neovim (Lazy.nvim):** A modular Lua configuration.
 
@@ -40,7 +40,7 @@ Both `~/.zshrc` and `~/.bashrc` source these files.
 | **you-should-use** | Alias usage hints |
 | **forgit** | fzf git UI |
 
-**History:** **atuin** powers `Ctrl+R` (sqlite, fuzzy). `↑`/`↓` stay on zsh prefix history-search (atuin up-arrow disabled). Config: `stow/atuin/.config/atuin/config.toml`.
+**History:** **atuin** is initialized with `--disable-up-arrow` (sqlite). `↑`/`↓` stay on prefix history-search. **`Ctrl+R`:** Zsh loads atuin then `fzf --zsh`, so **fzf** owns `^R`; Bash loads `fzf --bash` then atuin, so **atuin** owns `^R`. Config: `stow/atuin/.config/atuin/config.toml`.
 
 **Shared files:** `.shell-{exports,aliases,functions,git}` sourced by both Zsh and Bash.
 
@@ -80,7 +80,7 @@ To disable per-directory auto-switching (no prompt on shell start), remove `--us
 
 ### Headroom (Claude / Cursor token compression)
 
-**Headroom** compresses tool output and context before it hits the model (70–95% savings). Installed user-local via **pipx** (`python-pipx` in `packages/pacman.txt`).
+**Headroom** compresses tool output and context before it hits the model (savings vary; see upstream docs). Installed user-local via **pipx** (`python-pipx` in `packages/pacman.txt`).
 
 ```bash
 bash scripts/headroom-setup.sh    # install + MCP for Claude Code
@@ -92,9 +92,9 @@ bash scripts/headroom-setup.sh    # install + MCP for Claude Code
 | `hr-cursor` | Start proxy; paste printed Base URL into Cursor → Settings → Models |
 | `hr-proxy` | Proxy only on port `8787` (`HEADROOM_PORT` to override) |
 
-Cursor does not read API base URLs from the shell — keep `hr-cursor` running in a terminal while you use Cursor. MCP: `headroom mcp install --agent claude` (Cursor MCP registrar not in Headroom 0.27 yet).
+Cursor does not read API base URLs from the shell — keep `hr-cursor` running in a terminal while you use Cursor. MCP: `headroom mcp install --agent claude` (Cursor MCP support depends on the installed Headroom version; check `headroom --help`).
 
-Antigravity CLI (`agy`) and Kiro are not in the stable Headroom agent matrix; use `hr-proxy` manually only if the tool supports a custom base URL.
+Antigravity CLI (`agy`) and Kiro: use `hr-proxy` only if that tool accepts a custom OpenAI-compatible base URL.
 
 ### PhotoGIMP (GIMP Photoshop layout)
 
@@ -122,9 +122,9 @@ UUID `dash2dock-lite@icedman.github.com` is in `gnome/extensions.txt` and `gnome
 |---------|--------|
 | `fe` | Fuzzy file → nvim |
 | `rge <pat>` | ripgrep → jump to line in nvim |
-| `gai` / `gshow` / `gco` | Interactive git add / log / branch checkout |
+| `gai` / `gshow` / `gco` | Interactive git add / log / branch checkout (`gco` fzf picker is Zsh; Bash keeps `git checkout`) |
 | `fcd` | Fuzzy directory jump |
-| `Ctrl+R` | atuin history search |
+| `Ctrl+R` | History search: **fzf** on Zsh, **atuin** on Bash |
 | `Ctrl+T` / `Alt+C` | fzf file / directory picker |
 
 Modern aliases (when installed): `eza`, `bat`, `rg`, `fd`, `dust`, `duf`, `delta`, etc.
@@ -197,10 +197,11 @@ LUKS2 (argon2id) + Btrfs subvolumes (incl. disk-backed `@tmp`) + `linux-lts`
 # from the Arch ISO (UEFI, as root). AUTO wipe, or MANUAL with EFI optional/reuse.
 bash <(curl -fsSL https://raw.githubusercontent.com/HelllGuest/dotfiles/main/scripts/arch-install.sh)
 ```
-It mirrors [docs/hardened-arch-gnome.md](docs/hardened-arch-gnome.md). Dry-run it
-safely in a UEFI VM first — `scripts/arch-install-vmtest.sh` (OVMF qemu, serves the
-installer over loopback, nothing on your host touched). Then continue with **1. Full
-Bootstrap** below to apply the dotfiles.
+It mirrors [docs/hardened-arch-gnome.md](docs/hardened-arch-gnome.md). Rehearse it
+in a UEFI VM first — `scripts/arch-install-vmtest.sh` (OVMF qemu, serves the
+installer over loopback; host disks untouched; this is a full VM install, not a
+no-op dry-run). Then continue with **1. Full Bootstrap** below to apply the
+dotfiles.
 
 ### 1. Full Bootstrap (Recommended)
 Installs packages, applies symlinks to `$HOME` and `/etc`, restores GNOME settings, and runs health checks.
@@ -208,15 +209,15 @@ Installs packages, applies symlinks to `$HOME` and `/etc`, restores GNOME settin
 ./install.sh
 ```
 
-Machine profiles run first in `./install.sh`: `profiles/$(hostname).sh` if it exists, otherwise `scripts/detect-profile.sh` picks from hardware (ThinkPad X1 → `thinkpad-x1.sh`, other ThinkPads/laptops → `laptop.sh`). NVIDIA/ThinkPad P15 profiles live on the `p15` branch.
+Machine profiles run first in `./install.sh` via `scripts/apply-profile.sh` (exactly one profile): `profiles/$(hostname).sh` if it exists, otherwise `scripts/detect-profile.sh` (ThinkPad X1 → `thinkpad-x1`, ThinkPad P15 → `thinkpad-p15`, other ThinkPads/laptop chassis → `laptop`). There is no `nvidia.sh`; Optimus setup is inside `profiles/thinkpad-p15.sh`.
 
-ThinkPad-specific system configs (`i915`, kernel cmdline, Wayland env) live in `stow/system/` and are applied with `./install.sh`. After tuning, run `scripts/thinkpad-health.sh` and **reboot**.
+ThinkPad-specific system configs (`i915`, kernel cmdline, Wayland env) live in `stow/system/` and are applied with `./install.sh`. **`stow/system/etc/kernel/cmdline` is machine-specific:** it hardcodes this laptop's LUKS UUID (`rd.luks.name=…`). On another disk, keep the live `/etc/kernel/cmdline` (or rewrite the UUID) before stowing `system/`; do not copy that line blindly. After tuning, run `scripts/thinkpad-health.sh` and **reboot**.
 
 #### Script execution order (fresh machine)
 
 **Stage A — from the Arch ISO (bare metal):**
 ```text
-scripts/arch-install-vmtest.sh   # optional: dry-run the installer in a UEFI VM
+scripts/arch-install-vmtest.sh   # optional: full UEFI VM install (host disks untouched)
 scripts/arch-install.sh          # LUKS + Btrfs(@tmp) + UKI(lts/hardened) + systemd-boot + sbctl + minimal GNOME
 → reboot, remove ISO
 ```
@@ -239,13 +240,14 @@ scripts/thinkpad-health.sh → reboot
 
 **What `./install.sh` runs, in order:**
 ```text
-profiles/$(hostname).sh or detect-profile.sh → pacman < packages/pacman.txt
-→ install-flatpaks.sh → install-aur.sh (bootstraps paru if needed) → install-fonts.sh
-→ stow (/etc system + $HOME, skips zram & gdm) → atuin import → zram-setup.sh
-→ gnome-session-setup.sh (dconf + ext enable) → location-setup.sh
-→ gnome-console-setup.sh → gdm-setup.sh
-→ git-setup.sh (interactive) → nvim-setup.sh
-→ install-extensions.sh → check.sh → validate-configs.sh → privacy-hardener.sh (incl. browser-hardening.sh)
+apply-profile.sh (hostname or detect-profile.sh) → cleanup-input-overrides.sh
+→ pacman < packages/pacman.txt → install-flatpaks.sh → install-aur.sh (bootstraps paru)
+→ install-fonts.sh → stow (/etc system + $HOME, skips zram & gdm)
+→ fnm install/default 22 → atuin import → zram-setup.sh
+→ gnome-session-setup.sh → location-setup.sh → gnome-console-setup.sh → gdm-setup.sh
+→ git-setup.sh → nvim-setup.sh → headroom-setup.sh → install-photogimp.sh
+→ install-dash2dock.sh → install-extensions.sh → check.sh → validate-configs.sh
+→ privacy-hardener.sh (incl. browser-hardening.sh)
 ```
 
 > `scripts/tmp-to-disk.sh` is **not** part of this flow — `arch-install.sh` already
@@ -258,15 +260,11 @@ Applies user-level symlinks only. Skips `zram`, `system`, and `gdm` (require roo
 ./stow-only.sh
 ```
 
-### 3. Stow zram manually
-If `install.sh` could not stow the zram config (existing plain file in `/etc`):
-```bash
-sudo rm /etc/systemd/zram-generator.conf   # only if content matches stow/zram/
-sudo stow -d ~/dotfiles/stow -t / zram
-```
+### 3. zram config
+Do **not** `stow -t / zram` (a symlink into `$HOME` breaks at early boot). `install.sh` runs `scripts/zram-setup.sh`, which copies a real file to `/etc/systemd/zram-generator.conf`. Re-run that script to refresh.
 
 ### 4. Dependencies
-Key runtime dependencies (most surfaced by `scripts/check.sh`):
+Key runtime dependencies (`scripts/check.sh` asserts binaries, shell tools, symlinks, fonts, optional AI, and Zen `user.js` when present; it does **not** check `rclone`, `dart-sass`, or `zram-generator`):
 
 **Core:** `stow`, `zsh`, `starship`, `neovim`, `flatpak`, `rclone`, `jq`, `dart-sass`, `zram-generator`
 
@@ -310,7 +308,7 @@ We take a "quiet by default" approach:
 - **GNOME Debloated:** Uses `gnome-shell` instead of the full `gnome` meta-package where possible.
 - **Zero Telemetry:** VS Code, GNOME usage stats, and technical reporting are disabled.
 - **Opt-Out Defaults:** Global environment variables in `.shell-exports` disable telemetry for development tools.
-- **Starship prompt:** Crampack preset in `stow/starship/` (optional: `scripts/install-starship-crampack.sh` to refresh from upstream).
+- **Starship prompt:** Gruvbox Rainbow in `stow/starship/` (`palette = gruvbox_dark`). Optional legacy: `scripts/install-starship-crampack.sh`.
 
 ---
 

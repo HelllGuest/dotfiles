@@ -260,7 +260,7 @@ sed -i 's/^HOOKS=.*/HOOKS=(base systemd autodetect microcode modconf kms keyboar
 
 # kernel cmdline (shared by both UKIs)
 mkdir -p /etc/kernel
-echo "rd.luks.name=${LUKS_UUID}=cryptroot root=/dev/mapper/cryptroot rootflags=subvol=@ rw quiet loglevel=3 mem_sleep_default=deep apparmor=1 security=apparmor intel_iommu=on" > /etc/kernel/cmdline
+echo "rd.luks.name=${LUKS_UUID}=cryptroot root=/dev/mapper/cryptroot rootflags=subvol=@ rw quiet loglevel=3 mem_sleep_default=s2idle apparmor=1 security=apparmor intel_iommu=on" > /etc/kernel/cmdline
 
 # UKI presets: linux-lts (primary) + linux-hardened (fallback)
 # reuse ESP: clear stale UKIs + loader entries before rebuild (multiboot-safe names)
@@ -402,7 +402,7 @@ if [[ ${DESKTOP^^} != N* ]]; then
     # Browser flatpaks — keep in sync with packages/flatpak.txt (AndroidStudio excluded: dev tool)
     flatpak install --system -y flathub \
       com.brave.Browser \
-      io.github.zen_browser.zen \
+      app.zen_browser.zen \
       com.google.Chrome \
       io.gitlab.librewolf-community \
       com.protonvpn.www || true
