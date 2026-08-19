@@ -1046,23 +1046,37 @@ List installed versions: `fnm list`. Current: `fnm current`.
 
 # PHASE 17c — HEADROOM (CLAUDE / CURSOR)
 
-Optional context compression proxy ([Headroom](https://github.com/headroomlabs-ai/headroom)). Installed user-local via **pipx** (`python-pipx` in `packages/pacman.txt`).
+Optional context compression proxy ([Headroom](https://github.com/headroomlabs-ai/headroom)). Installed user-local via **pipx** (`python-pipx` in `packages/pacman.txt`). `scripts/install-headroom.sh` installs or upgrades `headroom-ai[all]`.
 
 ```bash
-bash scripts/headroom-setup.sh   # install + Claude MCP registration
+bash scripts/headroom-setup.sh   # install/upgrade + MCP registration
+```
+
+Preferred always-on proxy (user systemd; enable linger so it survives logout):
+
+```bash
+headroom install apply --preset persistent-service --runtime python --scope user \
+  --providers auto --profile default --port 8787 --backend anthropic --mode token --no-telemetry
+loginctl enable-linger "$USER"   # once, if Linger is no
+systemctl --user status headroom-default.service
+headroom doctor
 ```
 
 | Shell command | Purpose |
 |---------------|---------|
 | `hr-claude` | `headroom wrap claude` — proxy + launch Claude Code |
 | `hr-cursor` | Start proxy; paste printed Base URL into Cursor → Settings → Models |
-| `hr-proxy` | Proxy only (`HEADROOM_PORT`, default `8787`) |
+| `hr-proxy` | One-shot proxy (`HEADROOM_PORT`, default `8787`) |
 
-**Claude Code:** one terminal — run `hr-claude` from the project directory.
+**Claude Code:** `ANTHROPIC_BASE_URL` in `~/.claude/settings.json`, or run `hr-claude` from the project directory.
 
-**Cursor:** keep the `hr-cursor` terminal open; configure Override OpenAI Base URL in the IDE (Cursor does not read shell env for API routing). MCP: `headroom mcp install --agent claude` (Cursor MCP support depends on the installed Headroom version; check `headroom --help` / `headroom --version`).
+**Shell env:** stowed `~/.zshrc` / `~/.bashrc` (and `~/.profile`) export `ANTHROPIC_BASE_URL` / `OPENAI_BASE_URL` to `http://127.0.0.1:8787` (+ `/v1` for OpenAI). If `headroom doctor` warns they are unset, the current shell did not source those files: `source ~/.zshrc` or open a new terminal.
 
-**Other agents:** Antigravity CLI (`agy`) and Kiro: use `hr-proxy` only if that tool accepts a custom OpenAI-compatible base URL.
+**Cursor:** paste Override OpenAI Base URL from `hr-cursor` (IDE ignores shell env for models). MCP: `headroom mcp install --force` for Claude/Codex/OpenCode; Cursor may need a manual `~/.cursor/mcp.json` entry (`headroom mcp serve`).
+
+**RTK:** separate from Headroom 0.34+ ([rtk-ai/rtk](https://github.com/rtk-ai/rtk)). Install outside `~/.headroom/bin` so wrap/init does not purge it. Keep `HEADROOM_TELEMETRY=off`.
+
+**Other agents:** Antigravity CLI (`agy`) and Kiro: custom OpenAI-compatible base URL → `http://127.0.0.1:8787/v1` when supported.
 
 ---
 

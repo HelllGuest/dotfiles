@@ -56,19 +56,21 @@ Or run `fnm install` inside the project. Answer `N` to skip one-time install; in
 
 ## Headroom (Claude / Cursor)
 
-Optional token compression proxy — install once:
+Optional token compression proxy — install/upgrade once:
 
 ```bash
 bash ~/dotfiles/scripts/headroom-setup.sh
 ```
 
+Always-on (recommended): `headroom install apply --preset persistent-service … --no-telemetry` then `systemctl --user status headroom-default.service`.
+
 | Command | Use |
 |---------|-----|
 | `hr-claude` | Proxy + Claude Code in one terminal |
-| `hr-cursor` | Start proxy; paste Base URL into Cursor settings (keep terminal open) |
-| `hr-proxy` | Standalone proxy on port 8787 |
+| `hr-cursor` | Start proxy; paste Base URL into Cursor settings |
+| `hr-proxy` | One-shot proxy on port 8787 |
 
-See `README.md` for Cursor model settings and MCP notes.
+If `headroom doctor` says Base URL env is unset, `source ~/.zshrc` or open a new terminal. See `README.md` for MCP, RTK, and Cursor notes.
 
 ---
 

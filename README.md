@@ -80,21 +80,34 @@ To disable per-directory auto-switching (no prompt on shell start), remove `--us
 
 ### Headroom (Claude / Cursor token compression)
 
-**Headroom** compresses tool output and context before it hits the model (savings vary; see upstream docs). Installed user-local via **pipx** (`python-pipx` in `packages/pacman.txt`).
+**Headroom** compresses tool output and context before it hits the model (savings vary; see [upstream](https://github.com/headroomlabs-ai/headroom)). Installed user-local via **pipx** (`python-pipx` in `packages/pacman.txt`). `scripts/install-headroom.sh` installs or upgrades `headroom-ai[all]`.
 
 ```bash
-bash scripts/headroom-setup.sh    # install + MCP for Claude Code
+bash scripts/headroom-setup.sh    # install/upgrade + MCP registration
+```
+
+After setup, prefer a **systemd user** persistent proxy (survives logout when linger is on):
+
+```bash
+headroom install apply --preset persistent-service --runtime python --scope user \
+  --providers auto --profile default --port 8787 --backend anthropic --mode token --no-telemetry
+systemctl --user status headroom-default.service   # enabled + active
+headroom doctor
 ```
 
 | Command | What it does |
 |---------|----------------|
 | `hr-claude` | `headroom wrap claude` — proxy + launch Claude Code |
 | `hr-cursor` | Start proxy; paste printed Base URL into Cursor → Settings → Models |
-| `hr-proxy` | Proxy only on port `8787` (`HEADROOM_PORT` to override) |
+| `hr-proxy` | One-shot proxy on port `8787` (`HEADROOM_PORT` to override) |
 
-Cursor does not read API base URLs from the shell — keep `hr-cursor` running in a terminal while you use Cursor. MCP: `headroom mcp install --agent claude` (Cursor MCP support depends on the installed Headroom version; check `headroom --help`).
+**Routing:** Claude Code uses `ANTHROPIC_BASE_URL` from `~/.claude/settings.json`. Interactive shells get `ANTHROPIC_BASE_URL` / `OPENAI_BASE_URL` from the Headroom block in stowed `~/.zshrc` / `~/.bashrc` (and `~/.profile`). If `headroom doctor` warns that those vars are unset, the *current* process never sourced the rc file (common in IDE/agent shells): `source ~/.zshrc`, open a new terminal, or `export ANTHROPIC_BASE_URL=http://127.0.0.1:8787` / `OPENAI_BASE_URL=http://127.0.0.1:8787/v1`.
 
-Antigravity CLI (`agy`) and Kiro: use `hr-proxy` only if that tool accepts a custom OpenAI-compatible base URL.
+**Cursor:** still paste Override OpenAI Base URL from `hr-cursor` (IDE does not use shell env for model routing). MCP: `headroom mcp install --force` registers Claude / Codex / OpenCode when detected; add Cursor manually in `~/.cursor/mcp.json` if needed (`command`: `headroom`, `args`: `["mcp","serve"]`).
+
+**RTK:** Headroom 0.34+ no longer bundles [RTK](https://github.com/rtk-ai/rtk). Keep the binary under e.g. `~/.local/share/rtk/rtk` (symlink from `~/.local/bin/rtk`). Do **not** put it in `~/.headroom/bin`; `headroom wrap` / some `init` paths purge managed copies there. Telemetry stays off (`HEADROOM_TELEMETRY=off`, `--no-telemetry`).
+
+Antigravity CLI (`agy`) and Kiro: point at `http://127.0.0.1:8787/v1` only if that tool accepts a custom OpenAI-compatible base URL.
 
 ### PhotoGIMP (GIMP Photoshop layout)
 
@@ -323,6 +336,8 @@ We take a "quiet by default" approach:
 | Spoof location sync does nothing | `vpn-location-sync` failed under `pkexec` | `bash scripts/location-setup.sh`; panel → Sync spoofed location |
 | Touchpad clicks broken after old dotfiles | Legacy synaptics inhibit/udev | `bash scripts/cleanup-input-overrides.sh` (sudo), log out |
 | `headroom not installed` / `hr-claude` fails | Headroom not set up yet | `bash scripts/headroom-setup.sh` |
+| `headroom doctor`: Base URL unset | Current shell never sourced rc | `source ~/.zshrc` or new terminal; Claude Code uses settings.json |
+| Headroom proxy down after reboot | User service not lingering | `systemctl --user enable --now headroom-default.service`; `loginctl enable-linger $USER` |
 | Cursor not using Headroom | Base URL not set in IDE | Run `hr-cursor`, paste URL in Settings → Models; keep proxy terminal open |
 | PhotoGIMP layout missing after GIMP update | Config dir version bump / patch not reapplied | `bash scripts/install-photogimp.sh` |
 | Dash2Dock missing after install | Wayland Shell has not reloaded | Log out → log in; or `bash scripts/install-dash2dock.sh` then logout |
@@ -345,7 +360,7 @@ We take a "quiet by default" approach:
 | Starship preset | `scripts/install-starship-crampack.sh` |
 | Reload shell | `exec zsh` |
 | Install project Node (fnm) | `fnm install 22` or `fnm install` inside project |
-| Headroom (Claude / Cursor) | `bash scripts/headroom-setup.sh` then `hr-claude` or `hr-cursor` |
+| Headroom (Claude / Cursor) | `bash scripts/headroom-setup.sh`; prefer `headroom-default.service`; then `hr-claude` / `hr-cursor` |
 | PhotoGIMP | `bash scripts/install-photogimp.sh` |
 | Dash2Dock | `bash scripts/install-dash2dock.sh` then log out/in (Wayland) |
 

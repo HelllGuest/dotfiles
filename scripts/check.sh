@@ -44,8 +44,10 @@ for bin in claude cursor headroom; do
 done
 if command -v headroom >/dev/null 2>&1; then
     echo "  shell: hr-claude | hr-cursor | hr-proxy"
+    echo "  service: systemctl --user status headroom-default.service"
+    echo "  doctor: headroom doctor"
 else
-    echo "  install headroom: bash scripts/install-headroom.sh"
+    echo "  install/upgrade: bash scripts/headroom-setup.sh"
 fi
 
 if [ -d "${XDG_DATA_HOME:-$HOME/.local/share}/zinit/zinit.git" ]; then

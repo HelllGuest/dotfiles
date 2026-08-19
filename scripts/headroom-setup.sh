@@ -11,8 +11,7 @@ bash "$REPO_ROOT/scripts/install-headroom.sh"
 echo ""
 echo "Registering Headroom MCP server for Claude Code..."
 if command -v claude >/dev/null 2>&1; then
-    headroom mcp install --agent claude --proxy-url "http://127.0.0.1:${PORT}" \
-        || headroom mcp install --agent claude --proxy-url "http://127.0.0.1:${PORT}" --force \
+    headroom mcp install --force --proxy-url "http://127.0.0.1:${PORT}" \
         || true
 else
     echo "  (claude not in PATH — run 'headroom mcp install --agent claude' after installing Claude Code)"
@@ -22,22 +21,32 @@ cat <<EOF
 
 Headroom is ready.
 
+Always-on proxy (recommended):
+  headroom install apply --preset persistent-service --runtime python --scope user \\
+    --providers auto --profile default --port ${PORT} --backend anthropic --mode token --no-telemetry
+  systemctl --user status headroom-default.service
+  headroom doctor
+
 Claude Code (one command — proxy + launch):
   hr-claude
   # or: headroom wrap claude
 
-Cursor (proxy stays in foreground; open Cursor in another terminal):
+Cursor (paste Base URL into Settings → Models; IDE ignores shell env):
   hr-cursor
-  # then in Cursor: Settings → Models → OpenAI API Key → Override OpenAI Base URL
-  # paste the Base URL printed by hr-cursor (project-scoped, e.g. http://127.0.0.1:${PORT}/p/<project>/v1)
+  # Override OpenAI Base URL with the URL printed by hr-cursor
 
-Proxy only (any OpenAI/Anthropic client):
+One-shot proxy only:
   hr-proxy
-  # ANTHROPIC_BASE_URL=http://127.0.0.1:${PORT} claude
+  # or: ANTHROPIC_BASE_URL=http://127.0.0.1:${PORT} claude
 
-MCP tools (compress / retrieve / stats):
-  headroom mcp install --agent claude
+MCP (Claude / Codex / OpenCode when detected):
+  headroom mcp install --force
 
-Stop proxy: Ctrl+C in the hr-cursor / hr-proxy terminal.
+If doctor warns Base URL env is unset in this shell:
+  source ~/.zshrc   # or open a new terminal
+
+Note: Headroom 0.34+ no longer bundles RTK. Keep RTK separately
+(rtk-ai/rtk) under e.g. ~/.local/share/rtk (not ~/.headroom/bin) so
+headroom wrap/init does not purge it. Telemetry stays off.
 
 EOF
