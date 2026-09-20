@@ -15,7 +15,7 @@ sudo pacman -S --needed --noconfirm git git-delta pinentry-gnome3 2>/dev/null ||
 if [[ ! -f /usr/lib/git-core/git-credential-libsecret ]]; then
   if [[ -d /usr/share/git/credential/libsecret ]]; then
     echo "→ Building git-credential-libsecret..."
-    (cd /usr/share/git/credential/libsecret && sudo make)
+    (cd /usr/share/git/credential/libsecret && sudo make) || echo "  ⚠ libsecret helper build failed; falling back to credential store."
   fi
 fi
 
