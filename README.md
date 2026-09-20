@@ -109,6 +109,22 @@ headroom doctor
 
 Antigravity CLI (`agy`) and Kiro: point at `http://127.0.0.1:8787/v1` only if that tool accepts a custom OpenAI-compatible base URL.
 
+### x86-64-v3 local builds
+
+This ThinkPad (Comet Lake) is **x86-64-v3**, not v4. Official extra/ packages stay generic `x86-64`. For local/AUR builds:
+
+* `stow/system/etc/makepkg.conf.d/99-x86-64-v3.conf` (via `sudo stow -t / system`)
+* `stow/pacman/.config/pacman/makepkg.conf` (user overlay)
+* `.shell-exports` sets `GOAMD64=v3` and `RUSTFLAGS=-C target-cpu=x86-64-v3`
+
+Rebuild compression libs used by pacman/tar:
+
+```bash
+bash scripts/rebuild-v3.sh
+```
+
+Packages are signed with a local rebuild-v3 key (imported into pacman). `pacman -Syu` puts extra/ binaries back when those packages update; re-run the script. ffmpeg/zlib are opt-in: `bash scripts/rebuild-v3.sh ffmpeg`.
+
 ### PhotoGIMP (GIMP Photoshop layout)
 
 Optional [PhotoGIMP](https://github.com/Diolinux/PhotoGIMP) patch on pacman **gimp** (`packages/pacman.txt`). Install/reapply:
@@ -339,6 +355,7 @@ We take a "quiet by default" approach:
 | `headroom doctor`: Base URL unset | Current shell never sourced rc | `source ~/.zshrc` or new terminal; Claude Code uses settings.json |
 | Headroom proxy down after reboot | User service not lingering | `systemctl --user enable --now headroom-default.service`; `loginctl enable-linger $USER` |
 | Cursor not using Headroom | Base URL not set in IDE | Run `hr-cursor`, paste URL in Settings → Models; keep proxy terminal open |
+| zstd/xz/lz4 back to extra/ after `-Syu` | Repo upgrade replaced v3 rebuilds | `bash scripts/rebuild-v3.sh` then `sudo pacman -U` if sudo -n fails |
 | PhotoGIMP layout missing after GIMP update | Config dir version bump / patch not reapplied | `bash scripts/install-photogimp.sh` |
 | Dash2Dock missing after install | Wayland Shell has not reloaded | Log out → log in; or `bash scripts/install-dash2dock.sh` then logout |
 
@@ -361,6 +378,7 @@ We take a "quiet by default" approach:
 | Reload shell | `exec zsh` |
 | Install project Node (fnm) | `fnm install 22` or `fnm install` inside project |
 | Headroom (Claude / Cursor) | `bash scripts/headroom-setup.sh`; prefer `headroom-default.service`; then `hr-claude` / `hr-cursor` |
+| x86-64-v3 rebuilds | `bash scripts/rebuild-v3.sh` |
 | PhotoGIMP | `bash scripts/install-photogimp.sh` |
 | Dash2Dock | `bash scripts/install-dash2dock.sh` then log out/in (Wayland) |
 

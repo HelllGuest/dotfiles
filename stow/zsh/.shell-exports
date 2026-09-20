@@ -54,9 +54,14 @@ fi
 # Go
 export GOPATH="$HOME/go"
 export GOBIN="$HOME/go/bin"
+export GOAMD64="${GOAMD64:-v3}"
 
 # Rust
 [[ -f "$HOME/.cargo/env" ]] && source "$HOME/.cargo/env"
+case "${RUSTFLAGS:-} " in
+    *" -C target-cpu="*|*" target-cpu="*) ;;
+    *) export RUSTFLAGS="${RUSTFLAGS:+$RUSTFLAGS }-C target-cpu=x86-64-v3" ;;
+esac
 
 # Container CLI socket — prefer Podman when its socket exists, else Docker.
 if [[ -S "${XDG_RUNTIME_DIR}/podman/podman.sock" ]]; then

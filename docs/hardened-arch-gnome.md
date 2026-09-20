@@ -1044,6 +1044,24 @@ List installed versions: `fnm list`. Current: `fnm current`.
 
 ---
 
+# PHASE 17b2 — X86-64-V3 MAKEPKG
+
+This ThinkPad (Comet Lake) is **x86-64-v3** (AVX2/BMI2/FMA), not v4. Official extra/ packages stay generic `x86-64`. Local/AUR builds pick up v3 from:
+
+* `stow/system/etc/makepkg.conf.d/99-x86-64-v3.conf` (`sudo stow -R -t / system` from `stow/`)
+* `stow/pacman/.config/pacman/makepkg.conf` (user overlay)
+* `.shell-exports`: `GOAMD64=v3` and `RUSTFLAGS=-C target-cpu=x86-64-v3`
+
+Rebuild compression tools used by pacman/tar (skips PKGBUILD `check()`):
+
+```bash
+bash scripts/rebuild-v3.sh
+```
+
+Packages are signed with a local **rebuild-v3** key (`~/.local/share/rebuild-v3/gnupg`). The script local-signs that key into pacman (`pacman-key --lsign-key`). `pacman -Qi` should show Validated By: Signature. `pacman -Syu` still puts extra/ binaries back; re-run the script. ffmpeg/zlib are opt-in: `bash scripts/rebuild-v3.sh ffmpeg`.
+
+---
+
 # PHASE 17c — HEADROOM (CLAUDE / CURSOR)
 
 Optional context compression proxy ([Headroom](https://github.com/headroomlabs-ai/headroom)). Installed user-local via **pipx** (`python-pipx` in `packages/pacman.txt`). `scripts/install-headroom.sh` installs or upgrades `headroom-ai[all]`.

@@ -1,6 +1,7 @@
 # Changelog
 
 ## [Unreleased]
+- CPU: makepkg drop-in and shell `GOAMD64`/`RUSTFLAGS` target x86-64-v3; `scripts/rebuild-v3.sh` rebuilds zstd/xz/lz4, signed with a local rebuild-v3 key. extra/ still replaces them on `-Syu`. Documented in README and `docs/hardened-arch-gnome.md` Phase 17b2.
 - Headroom: `install-headroom.sh` upgrades in place; docs cover persistent-service (`headroom-default.service`), `--no-telemetry`, shell Base URL exports vs `headroom doctor` warn, MCP (`--force`), and RTK as a separate binary outside `~/.headroom/bin`. Removed obsolete `stow/omniroute` package.
 - CI: `.github/workflows/ci.yml` checks `all_stow_files.txt` freshness, `bash -n` on install/profile/scripts, and `scripts/lint-docs.sh` (markdownlint: heading blanks + tables). Kit `pre-commit` refreshes or fails stale `all_stow_files.txt` when `stow/` exists (global `core.hooksPath`; not repo `.git/hooks`).
 - Docs: fact-check pass across README, CONTRIBUTING, CHANGELOG, `gnome/keybindings.md`, and `docs/hardened-arch-gnome.md` (sleep, profiles, Starship, install order, keybindings, Zen ID, zram, changelog drift). Headroom version pin dropped; Bash `Ctrl+R` documented; historical 1.15/1.17/1.18 bullets marked superseded; warn that stowed kernel cmdline is machine-specific (LUKS UUID).
