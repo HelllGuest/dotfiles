@@ -211,6 +211,7 @@ BASE_PKGS=(
   linux-lts linux-lts-headers linux-hardened linux-hardened-headers
   linux-firmware "$UCODE"
   btrfs-progs cryptsetup
+  bluez bluez-utils
   networkmanager sudo zsh git vim nano
   reflector pacman-contrib
   mkinitcpio snapper snap-pac zram-generator
