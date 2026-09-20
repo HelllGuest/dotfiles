@@ -30,3 +30,7 @@ export ANTHROPIC_BASE_URL="http://127.0.0.1:8787"
 export ENABLE_TOOL_SEARCH="true"
 export OPENAI_BASE_URL="http://127.0.0.1:8787/v1"
 # <<< headroom persistent env <<<
+
+# Garmin Connect IQ SDK
+export CIQ_HOME="$(cat "$HOME/.Garmin/ConnectIQ/current-sdk.cfg" 2>/dev/null)"
+export PATH="$CIQ_HOME/bin:$PATH"
