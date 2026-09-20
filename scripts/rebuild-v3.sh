@@ -48,8 +48,9 @@ echo "packages: ${PACKAGES[*]}"
 
 command -v git >/dev/null || { echo "git required" >&2; exit 1; }
 command -v makepkg >/dev/null || { echo "base-devel/makepkg required" >&2; exit 1; }
-if ! pacman -Qq base-devel >/dev/null 2>&1 || ! command -v git >/dev/null; then
-    sudo -n pacman -S --needed --noconfirm base-devel git
+if ! pacman -Qq base-devel >/dev/null 2>&1; then
+    sudo -n pacman -S --needed --noconfirm base-devel \
+        || { echo "base-devel required: sudo pacman -S base-devel" >&2; exit 1; }
 fi
 
 pkgdest="${XDG_CACHE_HOME:-$HOME/.cache}/rebuild-v3"
