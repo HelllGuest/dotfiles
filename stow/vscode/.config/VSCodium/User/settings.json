@@ -4,7 +4,6 @@
   "workbench.colorTheme": "Dark Modern",
   "editor.minimap.enabled": false,
   "editor.formatOnSave": true,
-  "window.menuBarVisibility": "toggle",
   "telemetry.telemetryLevel": "off",
   "workbench.enableExperiments": false,
   "workbench.settings.enableNaturalLanguageSearch": false,
