@@ -1,0 +1,11 @@
+[Desktop Entry]
+Name=st
+GenericName=Terminal
+Comment=suckless simple terminal (riced)
+Exec=st
+Icon=utilities-terminal
+Terminal=false
+Type=Application
+Categories=System;TerminalEmulator;
+StartupNotify=true
+Keywords=shell;prompt;command;commandline;cmd;

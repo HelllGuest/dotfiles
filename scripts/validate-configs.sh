@@ -43,6 +43,24 @@ else
   warn "kitty not installed"
 fi
 
+for term_pair in \
+  "alacritty:$HOME/.config/alacritty/alacritty.toml" \
+  "rio:$HOME/.config/rio/config.toml" \
+  "foot:$HOME/.config/foot/foot.ini" \
+  "wezterm:$HOME/.config/wezterm/wezterm.lua" \
+  "contour:$HOME/.config/contour/contour.yml"
+do
+  bin="${term_pair%%:*}"
+  cfg="${term_pair#*:}"
+  if command -v "$bin" >/dev/null 2>&1; then
+    if [[ -f "$cfg" || -L "$cfg" ]]; then
+      ok "$bin config present"
+    else
+      warn "$bin installed but config missing (stow $bin?)"
+    fi
+  fi
+done
+
 echo ""
 echo "=== Git / delta ==="
 if git config --get pull.rebase >/dev/null 2>&1; then

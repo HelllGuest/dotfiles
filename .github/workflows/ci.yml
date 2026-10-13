@@ -16,7 +16,14 @@ jobs:
 
       - name: Stow inventory freshness
         shell: bash
-        run: diff -u all_stow_files.txt <(find stow -type f | sort)
+        run: |
+          set -euo pipefail
+          diff -u all_stow_files.txt <(bash scripts/list-stow-files.sh)
+          # Guard against regenerating with bare find (Cache / foreign extensions)
+          if grep -Eiq 'Cache|/CacheStorage/|lazy-lock\.json' all_stow_files.txt; then
+            echo "all_stow_files.txt must not list runtime Cache or lazy-lock paths" >&2
+            exit 1
+          fi
 
       - name: Shell syntax
         shell: bash

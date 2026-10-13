@@ -44,11 +44,34 @@ _prepend_path "$ANDROID_HOME/emulator"
 _prepend_path "$ANDROID_HOME/cmdline-tools/latest/bin"
 _prepend_path "$ANDROID_HOME/tools/bin"
 
-# Flutter / Chrome (web target)
+# Chrome (Flutter web target; Puppeteer/Playwright/AI browser tools for UI testing)
 export CHROME_EXECUTABLE="${CHROME_EXECUTABLE:-/usr/bin/google-chrome-stable}"
+export CHROME_PATH="${CHROME_PATH:-$CHROME_EXECUTABLE}"
+export PUPPETEER_EXECUTABLE_PATH="${PUPPETEER_EXECUTABLE_PATH:-$CHROME_EXECUTABLE}"
+export PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH="${PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH:-$CHROME_EXECUTABLE}"
 # Prefer JDK 17 for Android toolchain when present
 if [[ -d /usr/lib/jvm/java-17-openjdk ]]; then
   export JAVA_HOME="${JAVA_HOME:-/usr/lib/jvm/java-17-openjdk}"
+fi
+
+# ghidra-cli (akiselev): ~/.cargo/bin/ghidra shadows Arch GUI /usr/bin/ghidra
+export GHIDRA_INSTALL_DIR="${GHIDRA_INSTALL_DIR:-/opt/ghidra}"
+# Prefer newest full JDK >= 21 (Android may set JAVA_HOME to 17)
+if [[ -z "${GHIDRA_CLI_JAVA_HOME:-}" ]]; then
+  _ghidra_jdk=""
+  _ghidra_jdk_ver=0
+  for _cand in /usr/lib/jvm/java-*-openjdk; do
+    [[ -x "${_cand}/bin/javac" ]] || continue
+    _ver="${_cand##*/java-}"
+    _ver="${_ver%%-*}"
+    [[ "${_ver}" =~ ^[0-9]+$ ]] || continue
+    if (( _ver >= 21 && _ver > _ghidra_jdk_ver )); then
+      _ghidra_jdk="${_cand}"
+      _ghidra_jdk_ver="${_ver}"
+    fi
+  done
+  [[ -n "${_ghidra_jdk}" ]] && export GHIDRA_CLI_JAVA_HOME="${_ghidra_jdk}"
+  unset _ghidra_jdk _ghidra_jdk_ver _cand _ver
 fi
 
 # Go

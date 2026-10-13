@@ -39,10 +39,13 @@ Thank you for helping improve this setup. Follow these guidelines to keep the re
 - `install.sh` and `stow-only.sh` encode this logic — update docs if you change it.
 - Regenerate `all_stow_files.txt` after adding or removing stowed files:
   ```bash
-  find stow -type f | sort > all_stow_files.txt
+  git add stow/…   # index new paths first
+  bash scripts/list-stow-files.sh > all_stow_files.txt
   ```
-  The global kit `pre-commit` hook (via `core.hooksPath`) refreshes this file when
-  `stow/` is staged, or fails if it is stale. CI also diffs it on PRs.
+  Listing is **index-only** (`git ls-files -- stow`): tracked or staged paths.
+  Untracked files are omitted so CI matches a clean checkout. Do **not** use bare
+  `find stow` (VSCodium Cache / foreign GNOME extensions). Kit `pre-commit` and
+  CI both call `scripts/list-stow-files.sh`.
 - Markdown: `bash scripts/lint-docs.sh` (header spacing + tables). GitHub Actions
   runs it; keep it out of `validate-configs.sh`.
 
@@ -103,6 +106,20 @@ Thank you for helping improve this setup. Follow these guidelines to keep the re
   `scripts/**/*.sh`, `install.sh`, `stow-only.sh`, and `profiles/*.sh` runs in CI.
 - Use `$HOME`-relative paths or repo-root detection — avoid hardcoding usernames.
 - Prefer `set -e` for install scripts; use guarded fallbacks where sudo may fail.
+- Shared helpers live in `scripts/lib/` (`dmi.sh`, `browsers.sh`, `input.sh`).
+  Prefer sourcing those over copying snippets.
+
+### Script map (keep flat; group by role)
+
+| Role | Scripts |
+|------|---------|
+| Bootstrap | `install.sh`, `stow-only.sh`, `minimal-stow.sh`, `arch-install.sh`, `arch-install-vmtest.sh`, `apply-profile.sh`, `detect-profile.sh` |
+| Packages | `install-flatpaks.sh`, `install-aur.sh`, `bootstrap-aur.sh`, `install-fonts.sh` |
+| GNOME / desktop | `gnome-session-setup.sh`, `install-extensions.sh`, `fetch-gnome-extensions.sh`, `install-dash2dock.sh`, `gnome-console-setup.sh`, `ptyxis-setup.sh`, `gdm-setup.sh`, `backup-gsettings.sh`, `restore-gsettings.sh`, `reset-input-defaults.sh`, `cleanup-input-overrides.sh` |
+| Location / VPN | `location-setup.sh`, `vpn-location-sync.sh`, `proton-connectivity-check.sh`, `proton-seed-serverlist.sh` |
+| Dev tools | `git-setup.sh`, `nvim-setup.sh`, `headroom-setup.sh`, `install-headroom.sh`, `install-ghidra-cli.sh`, `install-photogimp.sh`, `install-starship-crampack.sh` (legacy), `browser-hardening.sh`, `privacy-hardener.sh` |
+| System | `zram-setup.sh`, `tmp-to-disk.sh`, `network-dns-setup.sh`, `fingerprint-setup.sh`, `thinkpad-health.sh`, `rebuild-v3.sh`, `build-st.sh` |
+| Validate | `check.sh`, `validate-configs.sh`, `lint-docs.sh`, `list-stow-files.sh`, `post-update.sh` |
 
 ---
 

@@ -21,7 +21,12 @@ fd
 fnm
 fzf
 fwupd
+alacritty
+contour
+foot
+foot-terminfo
 ghostty
+ghidra
 gimp
 git-delta
 glab
@@ -38,9 +43,14 @@ hyperfine
 iio-sensor-proxy
 intel-media-driver
 inter-font
+jdk-openjdk
 jdk17-openjdk
 jq
 kitty
+ptyxis
+rio
+vulkan-intel
+wezterm
 less
 libinput
 libva-utils
@@ -61,6 +71,7 @@ procs
 rclone
 ripgrep
 rtkit
+rust
 slurp
 sof-firmware
 tree-sitter-cli

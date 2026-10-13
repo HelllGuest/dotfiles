@@ -104,6 +104,9 @@ fi
 if [ -f "scripts/gnome-console-setup.sh" ]; then
     SKIP_GNOME_MEDIA_KEYS=1 bash scripts/gnome-console-setup.sh || echo "GNOME Console setup skipped."
 fi
+if [ -f "scripts/ptyxis-setup.sh" ]; then
+    bash scripts/ptyxis-setup.sh || echo "Ptyxis setup skipped."
+fi
 
 # 3.2 GDM login screen (Wayland, greeter dconf, udev)
 if [ -f "scripts/gdm-setup.sh" ]; then
@@ -125,6 +128,16 @@ if [ -f "scripts/headroom-setup.sh" ]; then
     bash scripts/headroom-setup.sh || echo "Headroom setup skipped."
 fi
 
+# 3.5b ghidra-cli (optional Rust bridge; needs pacman ghidra + rust/cargo)
+if [ -f "scripts/install-ghidra-cli.sh" ]; then
+    if pacman -Q ghidra >/dev/null 2>&1; then
+        bash scripts/install-ghidra-cli.sh || \
+            echo "ghidra-cli install failed — re-run: bash scripts/install-ghidra-cli.sh"
+    else
+        echo "Skipping ghidra-cli (pacman package ghidra not installed)."
+    fi
+fi
+
 # 3.6 PhotoGIMP (Photoshop-like GIMP layout — optional)
 if [ -f "scripts/install-photogimp.sh" ]; then
     bash scripts/install-photogimp.sh || echo "PhotoGIMP setup skipped."
@@ -135,12 +148,12 @@ if [ -f "scripts/install-dash2dock.sh" ]; then
     bash scripts/install-dash2dock.sh || echo "Dash2Dock setup skipped."
 fi
 
-# 5. Install GNOME Extensions
+# 3.8 Enable GNOME Extensions (list in gnome/extensions.txt)
 if [ -f "scripts/install-extensions.sh" ]; then
     bash scripts/install-extensions.sh || echo "Extension enable skipped."
 fi
 
-# 6. Final Health Check
+# 4. Final Health Check
 if [ -f "scripts/check.sh" ]; then
     bash scripts/check.sh
 fi
@@ -149,7 +162,7 @@ if [ -f "scripts/validate-configs.sh" ]; then
     bash scripts/validate-configs.sh || echo "Config validation reported issues."
 fi
 
-# 7. Privacy Hardening
+# 5. Privacy Hardening
 if [ -f "scripts/privacy-hardener.sh" ]; then
     bash scripts/privacy-hardener.sh
 fi

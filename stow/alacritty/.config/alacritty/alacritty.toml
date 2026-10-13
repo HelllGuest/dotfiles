@@ -1,0 +1,64 @@
+# Alacritty — ThinkPad X1 Yoga / GNOME Shell 51 Wayland
+# Match kitty/ghostty rice. NL font = no ligatures (no feature toggles here).
+
+[general]
+live_config_reload = true
+
+[window]
+opacity = 0.95
+blur = false
+decorations = "Full"
+startup_mode = "Windowed"
+dynamic_padding = true
+padding = { x = 12, y = 8 }
+dimensions = { columns = 120, lines = 34 }
+
+[scrolling]
+history = 50000
+multiplier = 3
+
+[font]
+size = 13.0
+builtin_box_drawing = true
+
+[font.normal]
+family = "JetBrainsMonoNL Nerd Font"
+style = "Regular"
+
+[font.bold]
+family = "JetBrainsMonoNL Nerd Font"
+style = "Bold"
+
+[font.italic]
+family = "JetBrainsMonoNL Nerd Font"
+style = "Italic"
+
+[font.bold_italic]
+family = "JetBrainsMonoNL Nerd Font"
+style = "Bold Italic"
+
+[cursor]
+style = { shape = "Block", blinking = "On" }
+blink_interval = 500
+unfocused_hollow = true
+
+[mouse]
+hide_when_typing = true
+
+[selection]
+save_to_clipboard = true
+
+[bell]
+animation = "EaseOutExpo"
+duration = 0
+command = "None"
+
+[keyboard]
+bindings = [
+  { key = "C", mods = "Control|Shift", action = "Copy" },
+  { key = "V", mods = "Control|Shift", action = "Paste" },
+  { key = "Equals", mods = "Control|Shift", action = "IncreaseFontSize" },
+  { key = "Minus", mods = "Control|Shift", action = "DecreaseFontSize" },
+  { key = "Key0", mods = "Control|Shift", action = "ResetFontSize" },
+  { key = "N", mods = "Control|Shift", action = "CreateNewWindow" },
+]

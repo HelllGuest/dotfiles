@@ -56,6 +56,7 @@ fi
 
 if command -v gnome-extensions >/dev/null 2>&1; then
   echo "→ Enabling Proton VPN panel extension..."
+  # Never gnome-extensions uninstall this UUID when stowed from dotfiles (deletes tree).
   gnome-extensions enable proton-vpn@helllguest 2>/dev/null || \
     echo "  ⚠ enable after GNOME Shell restart if needed"
 fi

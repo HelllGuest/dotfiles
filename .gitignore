@@ -15,12 +15,13 @@ stow/vscode/.config/VSCodium/User/*
 !stow/vscode/.config/VSCodium/User/snippets/
 
 # GNOME extensions installed from extensions.gnome.org land in the stowed dir;
-# only the custom proton-vpn extension is ours
+# only the custom proton-vpn indicator is tracked
 stow/proton-vpn/.local/share/gnome-shell/extensions/*
 !stow/proton-vpn/.local/share/gnome-shell/extensions/proton-vpn@helllguest/
 
-# Claude Code atomic-write leftovers (settings.local.json itself is globally ignored)
+# Claude Code local leftovers
 .claude/settings.local.json.tmp.*
+.claude/.headroom_wrap_settings.lock
 
 # Node/Python dependencies
 node_modules/
@@ -43,16 +44,18 @@ secrets/
 .DS_Store
 Thumbs.db
 
-# GNOME extensions dir is a folded stow symlink, so user-installed extensions
-# land here physically. Track only the custom indicator; ignore the rest.
-stow/proton-vpn/.local/share/gnome-shell/extensions/*
-!stow/proton-vpn/.local/share/gnome-shell/extensions/proton-vpn@helllguest/
-
 # Repo-root convenience symlinks (stow targets live in stow/)
 /.bashrc
 /.shell-aliases
 /.shell-exports
 /.shell-functions
+
+# Local package build trees (tracked sources live under builds/*/ )
+builds/*/src/
+builds/*/pkg/
+builds/*/*.pkg.tar.zst
+builds/*/*.tar.gz
+builds/st/st-*.diff
 
 # Accidental initramfs/UKI extract artifacts (never commit)
 /bin

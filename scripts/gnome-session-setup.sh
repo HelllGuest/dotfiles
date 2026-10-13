@@ -33,13 +33,10 @@ if [[ -f "$REPO_ROOT/scripts/cleanup-input-overrides.sh" ]]; then
   bash "$REPO_ROOT/scripts/cleanup-input-overrides.sh" || true
 fi
 
-if [[ -f "$REPO_ROOT/scripts/install-dash2dock.sh" ]]; then
-  echo "→ Installing Dash2Dock Animated..."
-  bash "$REPO_ROOT/scripts/install-dash2dock.sh" || true
-fi
-
+# Fetch Dash2Dock / clipboard / blur / caffeine, then enable extensions.txt
 if [[ -f "$REPO_ROOT/scripts/install-extensions.sh" ]]; then
-  bash "$REPO_ROOT/scripts/install-extensions.sh" || true
+  echo "→ Fetching/enabling GNOME extensions..."
+  GNOME_EXT_FETCH=1 bash "$REPO_ROOT/scripts/install-extensions.sh" || true
 fi
 
 if [[ -f "$REPO_ROOT/gnome/dconf/extensions.conf" ]]; then
@@ -55,4 +52,4 @@ fc-cache -fv &>/dev/null || true
 echo ""
 echo "✓ GNOME session configured."
 echo "  Log out/in (or restart GNOME Shell) to reload extensions."
-echo "  Super+1-4 workspaces | Super+Return kitty"
+echo "  Super+1-4 workspaces | Super+Return kitty | Shell 51"

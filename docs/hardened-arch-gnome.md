@@ -1123,13 +1123,13 @@ Launch: app menu **PhotoGIMP**, or `gimp`. Undo by restoring the backup (or dele
 
 # PHASE 17e — DASH2DOCK ANIMATED
 
-Animated dock for GNOME Shell 45–50 ([Dash2Dock Lite](https://github.com/icedman/dash2dock-lite), EGO extension 4994). Do **not** use AUR `gnome-shell-extension-dash2dock-lite` (last updated 2022).
+Animated dock for GNOME Shell 51 ([Dash2Dock Lite](https://github.com/icedman/dash2dock-lite), EGO extension 4994). Do **not** use AUR `gnome-shell-extension-dash2dock-lite` (last updated 2022). Upstream zip targets older shells; the installer patches `metadata.json` for Shell 51.
 
 ```bash
 bash scripts/install-dash2dock.sh
 ```
 
-* Downloads EGO zip (default v92, GNOME 50–compatible)
+* Downloads EGO zip (default version_tag 71180; metadata patched for GNOME Shell 51)
 * Installs to `~/.local/share/gnome-shell/extensions/dash2dock-lite@icedman.github.com`
 * Compiles GSettings schemas; appends UUID to `org.gnome.shell enabled-extensions`
 * UUID also listed in `gnome/extensions.txt` and `gnome/dconf/user.conf`
@@ -1139,6 +1139,19 @@ bash scripts/install-dash2dock.sh
 ```bash
 gnome-extensions prefs dash2dock-lite@icedman.github.com
 ```
+
+---
+
+# PHASE 17f — PTYXIS / GHIDRA-CLI (OPTIONAL)
+
+```bash
+bash scripts/ptyxis-setup.sh
+# if pacman -Q ghidra:
+bash scripts/install-ghidra-cli.sh
+```
+
+* Ptyxis: gsettings/dconf rice aligned with kitty/ghostty habits; wired into `./install.sh` after `gnome-console-setup.sh`
+* ghidra-cli: cargo CLI + host skill under `skills/ghidra-cli-host/`; GUI via `ghidra-gui` (cargo `ghidra` shadows `/usr/bin/ghidra`). Install failure is non-fatal in `./install.sh`
 
 ---
 
@@ -1565,6 +1578,9 @@ cd ~/dotfiles
 * **Headroom** optional AI context proxy for Claude Code / Cursor (see Phase 17c)
 * **PhotoGIMP** optional Photoshop-like GIMP layout (see Phase 17d)
 * **Dash2Dock** animated dock via EGO install (see Phase 17e); Wayland needs logout
+* **Ptyxis** optional terminal rice via `scripts/ptyxis-setup.sh` (after Console setup)
+* **ghidra-cli** optional when pacman `ghidra` is installed (`scripts/install-ghidra-cli.sh`; failure does not abort `./install.sh`)
+* Stow inventory for CI: `bash scripts/list-stow-files.sh > all_stow_files.txt` (git index only; never bare `find stow`)
 
 Config-only (no package install; skips `zram`, `system`, and `gdm`):
 

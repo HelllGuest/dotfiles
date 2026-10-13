@@ -1,10 +1,13 @@
+stow/alacritty/.config/alacritty/alacritty.toml
 stow/antigravity/.config/Antigravity IDE/User/settings.json
 stow/atuin/.config/atuin/config.toml
 stow/bash/.bashrc
 stow/bash/.inputrc
+stow/contour/.config/contour/contour.yml
 stow/cursor/.config/Cursor/User/settings.json
 stow/fastfetch/.config/fastfetch/config.jsonc
 stow/flutter/.dart-tool/dart-flutter-telemetry.config
+stow/foot/.config/foot/foot.ini
 stow/gdm/etc/dconf/db/gdm.d/00-login-screen
 stow/gdm/etc/dconf/profile/gdm
 stow/gdm/etc/gdm/custom.conf
@@ -37,6 +40,177 @@ stow/nvim/.config/nvim/lua/plugins/lsp.lua
 stow/nvim/.config/nvim/lua/plugins/test.lua
 stow/nvim/.config/nvim/lua/plugins/ui.lua
 stow/pacman/.config/pacman/makepkg.conf
+stow/proton-vpn/.local/share/gnome-shell/extensions/blur-my-shell@aunetx/components/appfolders.js
+stow/proton-vpn/.local/share/gnome-shell/extensions/blur-my-shell@aunetx/components/applications.js
+stow/proton-vpn/.local/share/gnome-shell/extensions/blur-my-shell@aunetx/components/coverflow_alt_tab.js
+stow/proton-vpn/.local/share/gnome-shell/extensions/blur-my-shell@aunetx/components/dash_to_dock.js
+stow/proton-vpn/.local/share/gnome-shell/extensions/blur-my-shell@aunetx/components/lockscreen.js
+stow/proton-vpn/.local/share/gnome-shell/extensions/blur-my-shell@aunetx/components/overview.js
+stow/proton-vpn/.local/share/gnome-shell/extensions/blur-my-shell@aunetx/components/panel.js
+stow/proton-vpn/.local/share/gnome-shell/extensions/blur-my-shell@aunetx/components/popup/blur_surface.js
+stow/proton-vpn/.local/share/gnome-shell/extensions/blur-my-shell@aunetx/components/popup/index.js
+stow/proton-vpn/.local/share/gnome-shell/extensions/blur-my-shell@aunetx/components/popup.js
+stow/proton-vpn/.local/share/gnome-shell/extensions/blur-my-shell@aunetx/components/popup/message_stacks.js
+stow/proton-vpn/.local/share/gnome-shell/extensions/blur-my-shell@aunetx/components/popup/static_actor.js
+stow/proton-vpn/.local/share/gnome-shell/extensions/blur-my-shell@aunetx/components/popup/static_corner.js
+stow/proton-vpn/.local/share/gnome-shell/extensions/blur-my-shell@aunetx/components/popup/surface_fade.js
+stow/proton-vpn/.local/share/gnome-shell/extensions/blur-my-shell@aunetx/components/popup/surface_geometry.js
+stow/proton-vpn/.local/share/gnome-shell/extensions/blur-my-shell@aunetx/components/popup/surface_placement.js
+stow/proton-vpn/.local/share/gnome-shell/extensions/blur-my-shell@aunetx/components/popup/surface_signals.js
+stow/proton-vpn/.local/share/gnome-shell/extensions/blur-my-shell@aunetx/components/popup/surface_style.js
+stow/proton-vpn/.local/share/gnome-shell/extensions/blur-my-shell@aunetx/components/popup/surface_transitions.js
+stow/proton-vpn/.local/share/gnome-shell/extensions/blur-my-shell@aunetx/components/popup/targets.js
+stow/proton-vpn/.local/share/gnome-shell/extensions/blur-my-shell@aunetx/components/screenshot.js
+stow/proton-vpn/.local/share/gnome-shell/extensions/blur-my-shell@aunetx/components/window_list.js
+stow/proton-vpn/.local/share/gnome-shell/extensions/blur-my-shell@aunetx/conveniences/connections.js
+stow/proton-vpn/.local/share/gnome-shell/extensions/blur-my-shell@aunetx/conveniences/dummy_pipeline.js
+stow/proton-vpn/.local/share/gnome-shell/extensions/blur-my-shell@aunetx/conveniences/effects_manager.js
+stow/proton-vpn/.local/share/gnome-shell/extensions/blur-my-shell@aunetx/conveniences/keys.js
+stow/proton-vpn/.local/share/gnome-shell/extensions/blur-my-shell@aunetx/conveniences/paint_signals.js
+stow/proton-vpn/.local/share/gnome-shell/extensions/blur-my-shell@aunetx/conveniences/pipeline.js
+stow/proton-vpn/.local/share/gnome-shell/extensions/blur-my-shell@aunetx/conveniences/pipeline_settings.js
+stow/proton-vpn/.local/share/gnome-shell/extensions/blur-my-shell@aunetx/conveniences/pipelines_manager.js
+stow/proton-vpn/.local/share/gnome-shell/extensions/blur-my-shell@aunetx/conveniences/settings.js
+stow/proton-vpn/.local/share/gnome-shell/extensions/blur-my-shell@aunetx/conveniences/settings_updater.js
+stow/proton-vpn/.local/share/gnome-shell/extensions/blur-my-shell@aunetx/conveniences/shader_uniforms.js
+stow/proton-vpn/.local/share/gnome-shell/extensions/blur-my-shell@aunetx/conveniences/utils.js
+stow/proton-vpn/.local/share/gnome-shell/extensions/blur-my-shell@aunetx/dbus/client.js
+stow/proton-vpn/.local/share/gnome-shell/extensions/blur-my-shell@aunetx/dbus/services.js
+stow/proton-vpn/.local/share/gnome-shell/extensions/blur-my-shell@aunetx/effects/color.glsl
+stow/proton-vpn/.local/share/gnome-shell/extensions/blur-my-shell@aunetx/effects/color.js
+stow/proton-vpn/.local/share/gnome-shell/extensions/blur-my-shell@aunetx/effects/corner.glsl
+stow/proton-vpn/.local/share/gnome-shell/extensions/blur-my-shell@aunetx/effects/corner.js
+stow/proton-vpn/.local/share/gnome-shell/extensions/blur-my-shell@aunetx/effects/derivative.glsl
+stow/proton-vpn/.local/share/gnome-shell/extensions/blur-my-shell@aunetx/effects/derivative.js
+stow/proton-vpn/.local/share/gnome-shell/extensions/blur-my-shell@aunetx/effects/downscale.glsl
+stow/proton-vpn/.local/share/gnome-shell/extensions/blur-my-shell@aunetx/effects/downscale.js
+stow/proton-vpn/.local/share/gnome-shell/extensions/blur-my-shell@aunetx/effects/effect_groups.js
+stow/proton-vpn/.local/share/gnome-shell/extensions/blur-my-shell@aunetx/effects/effects.js
+stow/proton-vpn/.local/share/gnome-shell/extensions/blur-my-shell@aunetx/effects/gaussian_blur.glsl
+stow/proton-vpn/.local/share/gnome-shell/extensions/blur-my-shell@aunetx/effects/gaussian_blur.js
+stow/proton-vpn/.local/share/gnome-shell/extensions/blur-my-shell@aunetx/effects/hsl_to_rgb.glsl
+stow/proton-vpn/.local/share/gnome-shell/extensions/blur-my-shell@aunetx/effects/hsl_to_rgb.js
+stow/proton-vpn/.local/share/gnome-shell/extensions/blur-my-shell@aunetx/effects/luminosity.glsl
+stow/proton-vpn/.local/share/gnome-shell/extensions/blur-my-shell@aunetx/effects/luminosity.js
+stow/proton-vpn/.local/share/gnome-shell/extensions/blur-my-shell@aunetx/effects/monte_carlo_blur.glsl
+stow/proton-vpn/.local/share/gnome-shell/extensions/blur-my-shell@aunetx/effects/monte_carlo_blur.js
+stow/proton-vpn/.local/share/gnome-shell/extensions/blur-my-shell@aunetx/effects/native_dynamic_gaussian_blur.js
+stow/proton-vpn/.local/share/gnome-shell/extensions/blur-my-shell@aunetx/effects/native_static_gaussian_blur.js
+stow/proton-vpn/.local/share/gnome-shell/extensions/blur-my-shell@aunetx/effects/noise.glsl
+stow/proton-vpn/.local/share/gnome-shell/extensions/blur-my-shell@aunetx/effects/noise.js
+stow/proton-vpn/.local/share/gnome-shell/extensions/blur-my-shell@aunetx/effects/pixelize.js
+stow/proton-vpn/.local/share/gnome-shell/extensions/blur-my-shell@aunetx/effects/refraction.glsl
+stow/proton-vpn/.local/share/gnome-shell/extensions/blur-my-shell@aunetx/effects/refraction.js
+stow/proton-vpn/.local/share/gnome-shell/extensions/blur-my-shell@aunetx/effects/rgb_to_hsl.glsl
+stow/proton-vpn/.local/share/gnome-shell/extensions/blur-my-shell@aunetx/effects/rgb_to_hsl.js
+stow/proton-vpn/.local/share/gnome-shell/extensions/blur-my-shell@aunetx/effects/upscale.glsl
+stow/proton-vpn/.local/share/gnome-shell/extensions/blur-my-shell@aunetx/effects/upscale.js
+stow/proton-vpn/.local/share/gnome-shell/extensions/blur-my-shell@aunetx/extension.js
+stow/proton-vpn/.local/share/gnome-shell/extensions/blur-my-shell@aunetx/icons/hicolor/scalable/actions/add-row-symbolic.svg
+stow/proton-vpn/.local/share/gnome-shell/extensions/blur-my-shell@aunetx/icons/hicolor/scalable/actions/applications-symbolic.svg
+stow/proton-vpn/.local/share/gnome-shell/extensions/blur-my-shell@aunetx/icons/hicolor/scalable/actions/bottom-panel-symbolic.svg
+stow/proton-vpn/.local/share/gnome-shell/extensions/blur-my-shell@aunetx/icons/hicolor/scalable/actions/dash-symbolic.svg
+stow/proton-vpn/.local/share/gnome-shell/extensions/blur-my-shell@aunetx/icons/hicolor/scalable/actions/down-symbolic.svg
+stow/proton-vpn/.local/share/gnome-shell/extensions/blur-my-shell@aunetx/icons/hicolor/scalable/actions/duplicate-row-symbolic.svg
+stow/proton-vpn/.local/share/gnome-shell/extensions/blur-my-shell@aunetx/icons/hicolor/scalable/actions/dynamic-mode-symbolic.svg
+stow/proton-vpn/.local/share/gnome-shell/extensions/blur-my-shell@aunetx/icons/hicolor/scalable/actions/edit-row-symbolic.svg
+stow/proton-vpn/.local/share/gnome-shell/extensions/blur-my-shell@aunetx/icons/hicolor/scalable/actions/heart-symbolic.svg
+stow/proton-vpn/.local/share/gnome-shell/extensions/blur-my-shell@aunetx/icons/hicolor/scalable/actions/other-symbolic.svg
+stow/proton-vpn/.local/share/gnome-shell/extensions/blur-my-shell@aunetx/icons/hicolor/scalable/actions/overview-symbolic.svg
+stow/proton-vpn/.local/share/gnome-shell/extensions/blur-my-shell@aunetx/icons/hicolor/scalable/actions/pipelines-symbolic.svg
+stow/proton-vpn/.local/share/gnome-shell/extensions/blur-my-shell@aunetx/icons/hicolor/scalable/actions/popup-symbolic.svg
+stow/proton-vpn/.local/share/gnome-shell/extensions/blur-my-shell@aunetx/icons/hicolor/scalable/actions/remove-row-symbolic.svg
+stow/proton-vpn/.local/share/gnome-shell/extensions/blur-my-shell@aunetx/icons/hicolor/scalable/actions/reset-symbolic.svg
+stow/proton-vpn/.local/share/gnome-shell/extensions/blur-my-shell@aunetx/icons/hicolor/scalable/actions/select-row-symbolic.svg
+stow/proton-vpn/.local/share/gnome-shell/extensions/blur-my-shell@aunetx/icons/hicolor/scalable/actions/select-window-symbolic.svg
+stow/proton-vpn/.local/share/gnome-shell/extensions/blur-my-shell@aunetx/icons/hicolor/scalable/actions/static-mode-symbolic.svg
+stow/proton-vpn/.local/share/gnome-shell/extensions/blur-my-shell@aunetx/LICENSE
+stow/proton-vpn/.local/share/gnome-shell/extensions/blur-my-shell@aunetx/locale/af/LC_MESSAGES/blur-my-shell@aunetx.mo
+stow/proton-vpn/.local/share/gnome-shell/extensions/blur-my-shell@aunetx/locale/ar/LC_MESSAGES/blur-my-shell@aunetx.mo
+stow/proton-vpn/.local/share/gnome-shell/extensions/blur-my-shell@aunetx/locale/az/LC_MESSAGES/blur-my-shell@aunetx.mo
+stow/proton-vpn/.local/share/gnome-shell/extensions/blur-my-shell@aunetx/locale/be/LC_MESSAGES/blur-my-shell@aunetx.mo
+stow/proton-vpn/.local/share/gnome-shell/extensions/blur-my-shell@aunetx/locale/bg/LC_MESSAGES/blur-my-shell@aunetx.mo
+stow/proton-vpn/.local/share/gnome-shell/extensions/blur-my-shell@aunetx/locale/ca/LC_MESSAGES/blur-my-shell@aunetx.mo
+stow/proton-vpn/.local/share/gnome-shell/extensions/blur-my-shell@aunetx/locale/cs/LC_MESSAGES/blur-my-shell@aunetx.mo
+stow/proton-vpn/.local/share/gnome-shell/extensions/blur-my-shell@aunetx/locale/da/LC_MESSAGES/blur-my-shell@aunetx.mo
+stow/proton-vpn/.local/share/gnome-shell/extensions/blur-my-shell@aunetx/locale/de/LC_MESSAGES/blur-my-shell@aunetx.mo
+stow/proton-vpn/.local/share/gnome-shell/extensions/blur-my-shell@aunetx/locale/el/LC_MESSAGES/blur-my-shell@aunetx.mo
+stow/proton-vpn/.local/share/gnome-shell/extensions/blur-my-shell@aunetx/locale/eo/LC_MESSAGES/blur-my-shell@aunetx.mo
+stow/proton-vpn/.local/share/gnome-shell/extensions/blur-my-shell@aunetx/locale/es/LC_MESSAGES/blur-my-shell@aunetx.mo
+stow/proton-vpn/.local/share/gnome-shell/extensions/blur-my-shell@aunetx/locale/et/LC_MESSAGES/blur-my-shell@aunetx.mo
+stow/proton-vpn/.local/share/gnome-shell/extensions/blur-my-shell@aunetx/locale/fi/LC_MESSAGES/blur-my-shell@aunetx.mo
+stow/proton-vpn/.local/share/gnome-shell/extensions/blur-my-shell@aunetx/locale/fr/LC_MESSAGES/blur-my-shell@aunetx.mo
+stow/proton-vpn/.local/share/gnome-shell/extensions/blur-my-shell@aunetx/locale/ga/LC_MESSAGES/blur-my-shell@aunetx.mo
+stow/proton-vpn/.local/share/gnome-shell/extensions/blur-my-shell@aunetx/locale/he/LC_MESSAGES/blur-my-shell@aunetx.mo
+stow/proton-vpn/.local/share/gnome-shell/extensions/blur-my-shell@aunetx/locale/hi/LC_MESSAGES/blur-my-shell@aunetx.mo
+stow/proton-vpn/.local/share/gnome-shell/extensions/blur-my-shell@aunetx/locale/hr/LC_MESSAGES/blur-my-shell@aunetx.mo
+stow/proton-vpn/.local/share/gnome-shell/extensions/blur-my-shell@aunetx/locale/hu/LC_MESSAGES/blur-my-shell@aunetx.mo
+stow/proton-vpn/.local/share/gnome-shell/extensions/blur-my-shell@aunetx/locale/id/LC_MESSAGES/blur-my-shell@aunetx.mo
+stow/proton-vpn/.local/share/gnome-shell/extensions/blur-my-shell@aunetx/locale/it/LC_MESSAGES/blur-my-shell@aunetx.mo
+stow/proton-vpn/.local/share/gnome-shell/extensions/blur-my-shell@aunetx/locale/ja/LC_MESSAGES/blur-my-shell@aunetx.mo
+stow/proton-vpn/.local/share/gnome-shell/extensions/blur-my-shell@aunetx/locale/ka/LC_MESSAGES/blur-my-shell@aunetx.mo
+stow/proton-vpn/.local/share/gnome-shell/extensions/blur-my-shell@aunetx/locale/ko/LC_MESSAGES/blur-my-shell@aunetx.mo
+stow/proton-vpn/.local/share/gnome-shell/extensions/blur-my-shell@aunetx/locale/ml/LC_MESSAGES/blur-my-shell@aunetx.mo
+stow/proton-vpn/.local/share/gnome-shell/extensions/blur-my-shell@aunetx/locale/mrh/LC_MESSAGES/blur-my-shell@aunetx.mo
+stow/proton-vpn/.local/share/gnome-shell/extensions/blur-my-shell@aunetx/locale/my/LC_MESSAGES/blur-my-shell@aunetx.mo
+stow/proton-vpn/.local/share/gnome-shell/extensions/blur-my-shell@aunetx/locale/nb_NO/LC_MESSAGES/blur-my-shell@aunetx.mo
+stow/proton-vpn/.local/share/gnome-shell/extensions/blur-my-shell@aunetx/locale/nl/LC_MESSAGES/blur-my-shell@aunetx.mo
+stow/proton-vpn/.local/share/gnome-shell/extensions/blur-my-shell@aunetx/locale/nn/LC_MESSAGES/blur-my-shell@aunetx.mo
+stow/proton-vpn/.local/share/gnome-shell/extensions/blur-my-shell@aunetx/locale/pl/LC_MESSAGES/blur-my-shell@aunetx.mo
+stow/proton-vpn/.local/share/gnome-shell/extensions/blur-my-shell@aunetx/locale/pt_BR/LC_MESSAGES/blur-my-shell@aunetx.mo
+stow/proton-vpn/.local/share/gnome-shell/extensions/blur-my-shell@aunetx/locale/pt/LC_MESSAGES/blur-my-shell@aunetx.mo
+stow/proton-vpn/.local/share/gnome-shell/extensions/blur-my-shell@aunetx/locale/ro/LC_MESSAGES/blur-my-shell@aunetx.mo
+stow/proton-vpn/.local/share/gnome-shell/extensions/blur-my-shell@aunetx/locale/ru/LC_MESSAGES/blur-my-shell@aunetx.mo
+stow/proton-vpn/.local/share/gnome-shell/extensions/blur-my-shell@aunetx/locale/sk/LC_MESSAGES/blur-my-shell@aunetx.mo
+stow/proton-vpn/.local/share/gnome-shell/extensions/blur-my-shell@aunetx/locale/sl/LC_MESSAGES/blur-my-shell@aunetx.mo
+stow/proton-vpn/.local/share/gnome-shell/extensions/blur-my-shell@aunetx/locale/sv/LC_MESSAGES/blur-my-shell@aunetx.mo
+stow/proton-vpn/.local/share/gnome-shell/extensions/blur-my-shell@aunetx/locale/ta/LC_MESSAGES/blur-my-shell@aunetx.mo
+stow/proton-vpn/.local/share/gnome-shell/extensions/blur-my-shell@aunetx/locale/th/LC_MESSAGES/blur-my-shell@aunetx.mo
+stow/proton-vpn/.local/share/gnome-shell/extensions/blur-my-shell@aunetx/locale/tr/LC_MESSAGES/blur-my-shell@aunetx.mo
+stow/proton-vpn/.local/share/gnome-shell/extensions/blur-my-shell@aunetx/locale/uk/LC_MESSAGES/blur-my-shell@aunetx.mo
+stow/proton-vpn/.local/share/gnome-shell/extensions/blur-my-shell@aunetx/locale/vi/LC_MESSAGES/blur-my-shell@aunetx.mo
+stow/proton-vpn/.local/share/gnome-shell/extensions/blur-my-shell@aunetx/locale/zh_CN/LC_MESSAGES/blur-my-shell@aunetx.mo
+stow/proton-vpn/.local/share/gnome-shell/extensions/blur-my-shell@aunetx/locale/zh_TW/LC_MESSAGES/blur-my-shell@aunetx.mo
+stow/proton-vpn/.local/share/gnome-shell/extensions/blur-my-shell@aunetx/metadata.json
+stow/proton-vpn/.local/share/gnome-shell/extensions/blur-my-shell@aunetx/preferences/applications.js
+stow/proton-vpn/.local/share/gnome-shell/extensions/blur-my-shell@aunetx/preferences/applications_management/application_row.js
+stow/proton-vpn/.local/share/gnome-shell/extensions/blur-my-shell@aunetx/preferences/dash.js
+stow/proton-vpn/.local/share/gnome-shell/extensions/blur-my-shell@aunetx/preferences/menu.js
+stow/proton-vpn/.local/share/gnome-shell/extensions/blur-my-shell@aunetx/preferences/other.js
+stow/proton-vpn/.local/share/gnome-shell/extensions/blur-my-shell@aunetx/preferences/overview.js
+stow/proton-vpn/.local/share/gnome-shell/extensions/blur-my-shell@aunetx/preferences/panel.js
+stow/proton-vpn/.local/share/gnome-shell/extensions/blur-my-shell@aunetx/preferences/pipelines.js
+stow/proton-vpn/.local/share/gnome-shell/extensions/blur-my-shell@aunetx/preferences/pipelines_management/effect_row.js
+stow/proton-vpn/.local/share/gnome-shell/extensions/blur-my-shell@aunetx/preferences/pipelines_management/effects_dialog.js
+stow/proton-vpn/.local/share/gnome-shell/extensions/blur-my-shell@aunetx/preferences/pipelines_management/pipeline_choose_row.js
+stow/proton-vpn/.local/share/gnome-shell/extensions/blur-my-shell@aunetx/preferences/pipelines_management/pipeline_group.js
+stow/proton-vpn/.local/share/gnome-shell/extensions/blur-my-shell@aunetx/preferences/popup.js
+stow/proton-vpn/.local/share/gnome-shell/extensions/blur-my-shell@aunetx/prefs.js
+stow/proton-vpn/.local/share/gnome-shell/extensions/blur-my-shell@aunetx/schemas/gschemas.compiled
+stow/proton-vpn/.local/share/gnome-shell/extensions/blur-my-shell@aunetx/schemas/org.gnome.shell.extensions.blur-my-shell.gschema.xml
+stow/proton-vpn/.local/share/gnome-shell/extensions/blur-my-shell@aunetx/styles/appfolders.css
+stow/proton-vpn/.local/share/gnome-shell/extensions/blur-my-shell@aunetx/styles/dash.css
+stow/proton-vpn/.local/share/gnome-shell/extensions/blur-my-shell@aunetx/stylesheet.css
+stow/proton-vpn/.local/share/gnome-shell/extensions/blur-my-shell@aunetx/styles/overview.css
+stow/proton-vpn/.local/share/gnome-shell/extensions/blur-my-shell@aunetx/styles/panel.css
+stow/proton-vpn/.local/share/gnome-shell/extensions/blur-my-shell@aunetx/styles/panel-light-text.css
+stow/proton-vpn/.local/share/gnome-shell/extensions/blur-my-shell@aunetx/styles/popup/base.css
+stow/proton-vpn/.local/share/gnome-shell/extensions/blur-my-shell@aunetx/styles/popup/dark.css
+stow/proton-vpn/.local/share/gnome-shell/extensions/blur-my-shell@aunetx/styles/popup/light.css
+stow/proton-vpn/.local/share/gnome-shell/extensions/blur-my-shell@aunetx/styles/popup/menu-items.css
+stow/proton-vpn/.local/share/gnome-shell/extensions/blur-my-shell@aunetx/styles/popup/transparent.css
+stow/proton-vpn/.local/share/gnome-shell/extensions/blur-my-shell@aunetx/ui/application-row.ui
+stow/proton-vpn/.local/share/gnome-shell/extensions/blur-my-shell@aunetx/ui/applications.ui
+stow/proton-vpn/.local/share/gnome-shell/extensions/blur-my-shell@aunetx/ui/dash.ui
+stow/proton-vpn/.local/share/gnome-shell/extensions/blur-my-shell@aunetx/ui/effects-dialog.ui
+stow/proton-vpn/.local/share/gnome-shell/extensions/blur-my-shell@aunetx/ui/menu.ui
+stow/proton-vpn/.local/share/gnome-shell/extensions/blur-my-shell@aunetx/ui/other.ui
+stow/proton-vpn/.local/share/gnome-shell/extensions/blur-my-shell@aunetx/ui/overview.ui
+stow/proton-vpn/.local/share/gnome-shell/extensions/blur-my-shell@aunetx/ui/panel.ui
+stow/proton-vpn/.local/share/gnome-shell/extensions/blur-my-shell@aunetx/ui/pipeline-choose-row.ui
+stow/proton-vpn/.local/share/gnome-shell/extensions/blur-my-shell@aunetx/ui/pipeline-group.ui
+stow/proton-vpn/.local/share/gnome-shell/extensions/blur-my-shell@aunetx/ui/pipelines.ui
+stow/proton-vpn/.local/share/gnome-shell/extensions/blur-my-shell@aunetx/ui/popup.ui
 stow/proton-vpn/.local/share/gnome-shell/extensions/caffeine@patapon.info/extension.js
 stow/proton-vpn/.local/share/gnome-shell/extensions/caffeine@patapon.info/icons/hicolor/scalable/actions/applications-symbolic.svg
 stow/proton-vpn/.local/share/gnome-shell/extensions/caffeine@patapon.info/icons/hicolor/scalable/actions/caffeine-infinite-timer-symbolic.svg
@@ -62,7 +236,7 @@ stow/proton-vpn/.local/share/gnome-shell/extensions/caffeine@patapon.info/locale
 stow/proton-vpn/.local/share/gnome-shell/extensions/caffeine@patapon.info/locale/ko/LC_MESSAGES/gnome-shell-extension-caffeine.mo
 stow/proton-vpn/.local/share/gnome-shell/extensions/caffeine@patapon.info/locale/nl/LC_MESSAGES/gnome-shell-extension-caffeine.mo
 stow/proton-vpn/.local/share/gnome-shell/extensions/caffeine@patapon.info/locale/pl/LC_MESSAGES/gnome-shell-extension-caffeine.mo
-stow/proton-vpn/.local/share/gnome-shell/extensions/caffeine@patapon.info/locale/pr_BR/LC_MESSAGES/gnome-shell-extension-caffeine.mo
+stow/proton-vpn/.local/share/gnome-shell/extensions/caffeine@patapon.info/locale/pt_BR/LC_MESSAGES/gnome-shell-extension-caffeine.mo
 stow/proton-vpn/.local/share/gnome-shell/extensions/caffeine@patapon.info/locale/pt_PT/LC_MESSAGES/gnome-shell-extension-caffeine.mo
 stow/proton-vpn/.local/share/gnome-shell/extensions/caffeine@patapon.info/locale/ru/LC_MESSAGES/gnome-shell-extension-caffeine.mo
 stow/proton-vpn/.local/share/gnome-shell/extensions/caffeine@patapon.info/locale/sk/LC_MESSAGES/gnome-shell-extension-caffeine.mo
@@ -155,11 +329,6 @@ stow/proton-vpn/.local/share/gnome-shell/extensions/gnome-clipboard@b00f.github.
 stow/proton-vpn/.local/share/gnome-shell/extensions/gnome-clipboard@b00f.github.io/extension.js
 stow/proton-vpn/.local/share/gnome-shell/extensions/gnome-clipboard@b00f.github.io/history.js
 stow/proton-vpn/.local/share/gnome-shell/extensions/gnome-clipboard@b00f.github.io/historyMenu.js
-stow/proton-vpn/.local/share/gnome-shell/extensions/gnome-clipboard@b00f.github.io/locale/fa/LC_MESSAGES/gnome-clipboard.mo
-stow/proton-vpn/.local/share/gnome-shell/extensions/gnome-clipboard@b00f.github.io/locale/ko/LC_MESSAGES/gnome-clipboard.mo
-stow/proton-vpn/.local/share/gnome-shell/extensions/gnome-clipboard@b00f.github.io/locale/nl/LC_MESSAGES/gnome-clipboard.mo
-stow/proton-vpn/.local/share/gnome-shell/extensions/gnome-clipboard@b00f.github.io/locale/pt_br/LC_MESSAGES/gnome-clipboard.mo
-stow/proton-vpn/.local/share/gnome-shell/extensions/gnome-clipboard@b00f.github.io/locale/tr/LC_MESSAGES/gnome-clipboard.mo
 stow/proton-vpn/.local/share/gnome-shell/extensions/gnome-clipboard@b00f.github.io/log.js
 stow/proton-vpn/.local/share/gnome-shell/extensions/gnome-clipboard@b00f.github.io/menuItem.js
 stow/proton-vpn/.local/share/gnome-shell/extensions/gnome-clipboard@b00f.github.io/metadata.json
@@ -176,7 +345,9 @@ stow/proton-vpn/.local/share/gnome-shell/extensions/proton-vpn@helllguest/extens
 stow/proton-vpn/.local/share/gnome-shell/extensions/proton-vpn@helllguest/icons/protonvpn-symbolic.svg
 stow/proton-vpn/.local/share/gnome-shell/extensions/proton-vpn@helllguest/icons/state-connected.svg
 stow/proton-vpn/.local/share/gnome-shell/extensions/proton-vpn@helllguest/icons/state-disconnected.svg
+stow/proton-vpn/.local/share/gnome-shell/extensions/proton-vpn@helllguest/LICENSE
 stow/proton-vpn/.local/share/gnome-shell/extensions/proton-vpn@helllguest/metadata.json
+stow/rio/.config/rio/config.toml
 stow/starship/.config/starship.toml
 stow/system/etc/environment.d/99-wayland.conf
 stow/system/etc/geoclue/conf.d/99-static-dubai.conf
@@ -268,6 +439,7 @@ stow/vscode/.config/VSCodium/Cache/Cache_Data/235b7cda2af6dff5_0
 stow/vscode/.config/VSCodium/Cache/Cache_Data/23e0c58864bd9cfc_0
 stow/vscode/.config/VSCodium/Cache/Cache_Data/2465ce93752568d6_0
 stow/vscode/.config/VSCodium/Cache/Cache_Data/24c9bfa96cd56a19_0
+stow/vscode/.config/VSCodium/Cache/Cache_Data/24cee0ceb9e8097c_0
 stow/vscode/.config/VSCodium/Cache/Cache_Data/267e62d70defbce0_0
 stow/vscode/.config/VSCodium/Cache/Cache_Data/26b1b5a3affe47a3_0
 stow/vscode/.config/VSCodium/Cache/Cache_Data/27066d11a3d4e83f_0
@@ -335,6 +507,7 @@ stow/vscode/.config/VSCodium/Cache/Cache_Data/4c0daa9df1cc86e5_0
 stow/vscode/.config/VSCodium/Cache/Cache_Data/4cadbfa1d011d434_0
 stow/vscode/.config/VSCodium/Cache/Cache_Data/4cd1d0b44c09c1bf_0
 stow/vscode/.config/VSCodium/Cache/Cache_Data/4f1f9e07af113bbf_0
+stow/vscode/.config/VSCodium/Cache/Cache_Data/50395707293bbaa6_0
 stow/vscode/.config/VSCodium/Cache/Cache_Data/504545946e1155ba_0
 stow/vscode/.config/VSCodium/Cache/Cache_Data/504ef2d98fb30212_0
 stow/vscode/.config/VSCodium/Cache/Cache_Data/515a5266b70cf762_0
@@ -343,9 +516,11 @@ stow/vscode/.config/VSCodium/Cache/Cache_Data/524aa09d74e516b9_0
 stow/vscode/.config/VSCodium/Cache/Cache_Data/52695f946342e953_0
 stow/vscode/.config/VSCodium/Cache/Cache_Data/5283edf90cf4ab50_0
 stow/vscode/.config/VSCodium/Cache/Cache_Data/53157e9a731b84a0_0
+stow/vscode/.config/VSCodium/Cache/Cache_Data/531c1a7e3ebb9335_0
 stow/vscode/.config/VSCodium/Cache/Cache_Data/5404ef7659dee2c3_0
 stow/vscode/.config/VSCodium/Cache/Cache_Data/540516a45c437115_0
 stow/vscode/.config/VSCodium/Cache/Cache_Data/55e3b65bd81c3a60_0
+stow/vscode/.config/VSCodium/Cache/Cache_Data/5630dbb2eaa5967d_0
 stow/vscode/.config/VSCodium/Cache/Cache_Data/566b2a5886628d94_0
 stow/vscode/.config/VSCodium/Cache/Cache_Data/5722bfc929da4a84_0
 stow/vscode/.config/VSCodium/Cache/Cache_Data/57d86b409ee351c8_0
@@ -387,6 +562,7 @@ stow/vscode/.config/VSCodium/Cache/Cache_Data/738dd6d1a875f399_0
 stow/vscode/.config/VSCodium/Cache/Cache_Data/7424fa2fd01e25dc_0
 stow/vscode/.config/VSCodium/Cache/Cache_Data/7684f2bec51046c7_0
 stow/vscode/.config/VSCodium/Cache/Cache_Data/76bb5a0f7bfd4745_0
+stow/vscode/.config/VSCodium/Cache/Cache_Data/7712c1cf95a7644e_0
 stow/vscode/.config/VSCodium/Cache/Cache_Data/779ffc5e655bdc9e_0
 stow/vscode/.config/VSCodium/Cache/Cache_Data/78638d3c4d4ec79d_0
 stow/vscode/.config/VSCodium/Cache/Cache_Data/786e9e7aee4addc9_0
@@ -425,6 +601,7 @@ stow/vscode/.config/VSCodium/Cache/Cache_Data/8cdbcc27efb88382_0
 stow/vscode/.config/VSCodium/Cache/Cache_Data/8eb77eec1fb7bcf2_0
 stow/vscode/.config/VSCodium/Cache/Cache_Data/8ed3dd996609b1c5_0
 stow/vscode/.config/VSCodium/Cache/Cache_Data/8eecb5f225a22a10_0
+stow/vscode/.config/VSCodium/Cache/Cache_Data/8f360b8ea56781fc_0
 stow/vscode/.config/VSCodium/Cache/Cache_Data/8f8d11c743cf3ea0_0
 stow/vscode/.config/VSCodium/Cache/Cache_Data/8f9cc0443e479cd9_0
 stow/vscode/.config/VSCodium/Cache/Cache_Data/903a1e32db77a74c_0
@@ -450,6 +627,7 @@ stow/vscode/.config/VSCodium/Cache/Cache_Data/9b0fe605085da181_0
 stow/vscode/.config/VSCodium/Cache/Cache_Data/9b2c26798680e494_0
 stow/vscode/.config/VSCodium/Cache/Cache_Data/9b4d81cfcf41bf73_0
 stow/vscode/.config/VSCodium/Cache/Cache_Data/9c550aa1b18546ad_0
+stow/vscode/.config/VSCodium/Cache/Cache_Data/9c63221f3f423675_0
 stow/vscode/.config/VSCodium/Cache/Cache_Data/9d3b173dc4e5c047_0
 stow/vscode/.config/VSCodium/Cache/Cache_Data/9ea24a35af47b37a_0
 stow/vscode/.config/VSCodium/Cache/Cache_Data/9f597f82dae71793_0
@@ -524,6 +702,7 @@ stow/vscode/.config/VSCodium/Cache/Cache_Data/c393294fbceb336e_0
 stow/vscode/.config/VSCodium/Cache/Cache_Data/c3ea7956c43fcdbe_0
 stow/vscode/.config/VSCodium/Cache/Cache_Data/c41135f73be227e4_0
 stow/vscode/.config/VSCodium/Cache/Cache_Data/c4715ff026251773_0
+stow/vscode/.config/VSCodium/Cache/Cache_Data/c4a333b2bf0865b8_0
 stow/vscode/.config/VSCodium/Cache/Cache_Data/c627f67931470573_0
 stow/vscode/.config/VSCodium/Cache/Cache_Data/c7fc6d7dda748efa_0
 stow/vscode/.config/VSCodium/Cache/Cache_Data/c8aa5ca9e028a5b3_0
@@ -550,6 +729,7 @@ stow/vscode/.config/VSCodium/Cache/Cache_Data/d6a1c049c78bcf61_0
 stow/vscode/.config/VSCodium/Cache/Cache_Data/d7096cd0231cb837_0
 stow/vscode/.config/VSCodium/Cache/Cache_Data/d71b5aaa33b0a420_0
 stow/vscode/.config/VSCodium/Cache/Cache_Data/d7326bfa80f20a14_0
+stow/vscode/.config/VSCodium/Cache/Cache_Data/d7ce7d24bb17d631_0
 stow/vscode/.config/VSCodium/Cache/Cache_Data/d82a504f6e9d6cef_0
 stow/vscode/.config/VSCodium/Cache/Cache_Data/d8ab40c06069c5ef_0
 stow/vscode/.config/VSCodium/Cache/Cache_Data/d8d64d04ee37ac58_0
@@ -590,6 +770,8 @@ stow/vscode/.config/VSCodium/Cache/Cache_Data/eb43c9520c9d33a0_0
 stow/vscode/.config/VSCodium/Cache/Cache_Data/eb8f6b1d3c3f5562_0
 stow/vscode/.config/VSCodium/Cache/Cache_Data/eba3252f0fd9b841_0
 stow/vscode/.config/VSCodium/Cache/Cache_Data/ed1919be3ad87249_0
+stow/vscode/.config/VSCodium/Cache/Cache_Data/edc165bf5362b97d_0
+stow/vscode/.config/VSCodium/Cache/Cache_Data/edc165bf5362b97d_s
 stow/vscode/.config/VSCodium/Cache/Cache_Data/edd556c990fe81c3_0
 stow/vscode/.config/VSCodium/Cache/Cache_Data/ee07aa412476b2fc_0
 stow/vscode/.config/VSCodium/Cache/Cache_Data/eefc783780de8b37_0
@@ -613,6 +795,7 @@ stow/vscode/.config/VSCodium/Cache/Cache_Data/f7536c9109892c65_0
 stow/vscode/.config/VSCodium/Cache/Cache_Data/f7778b77f115a08d_0
 stow/vscode/.config/VSCodium/Cache/Cache_Data/f781f93780a43543_0
 stow/vscode/.config/VSCodium/Cache/Cache_Data/f8ed639440ab416a_0
+stow/vscode/.config/VSCodium/Cache/Cache_Data/f8fe989d20cae2f4_0
 stow/vscode/.config/VSCodium/Cache/Cache_Data/f961eba8c235eb15_0
 stow/vscode/.config/VSCodium/Cache/Cache_Data/f9915687a32542a8_0
 stow/vscode/.config/VSCodium/Cache/Cache_Data/fa43f00daf6fb170_0
@@ -624,6 +807,24 @@ stow/vscode/.config/VSCodium/Cache/Cache_Data/ff4f7eacff0b5847_0
 stow/vscode/.config/VSCodium/Cache/Cache_Data/ffd3ea3be243447d_0
 stow/vscode/.config/VSCodium/Cache/Cache_Data/index
 stow/vscode/.config/VSCodium/Cache/Cache_Data/index-dir/the-real-index
+stow/vscode/.config/VSCodium/CachedData/1a46a584725d5dd330e0bcd7f5510f24990efcf2/chrome/js/320913a3384421af_0
+stow/vscode/.config/VSCodium/CachedData/1a46a584725d5dd330e0bcd7f5510f24990efcf2/chrome/js/3d8d96c8067143d9_0
+stow/vscode/.config/VSCodium/CachedData/1a46a584725d5dd330e0bcd7f5510f24990efcf2/chrome/js/45cbe7816d9be6cc_0
+stow/vscode/.config/VSCodium/CachedData/1a46a584725d5dd330e0bcd7f5510f24990efcf2/chrome/js/5937abbbc9d9dcd4_0
+stow/vscode/.config/VSCodium/CachedData/1a46a584725d5dd330e0bcd7f5510f24990efcf2/chrome/js/60674115e4d1505f_0
+stow/vscode/.config/VSCodium/CachedData/1a46a584725d5dd330e0bcd7f5510f24990efcf2/chrome/js/8093484b704f97d0_0
+stow/vscode/.config/VSCodium/CachedData/1a46a584725d5dd330e0bcd7f5510f24990efcf2/chrome/js/8e495342a33d57b6_0
+stow/vscode/.config/VSCodium/CachedData/1a46a584725d5dd330e0bcd7f5510f24990efcf2/chrome/js/9f9da414d1c3fe6d_0
+stow/vscode/.config/VSCodium/CachedData/1a46a584725d5dd330e0bcd7f5510f24990efcf2/chrome/js/b3b1f65c94e34ee9_0
+stow/vscode/.config/VSCodium/CachedData/1a46a584725d5dd330e0bcd7f5510f24990efcf2/chrome/js/b668f990dc971de9_0
+stow/vscode/.config/VSCodium/CachedData/1a46a584725d5dd330e0bcd7f5510f24990efcf2/chrome/js/bf9929e7bbc15bae_0
+stow/vscode/.config/VSCodium/CachedData/1a46a584725d5dd330e0bcd7f5510f24990efcf2/chrome/js/cdbc5af6997a155f_0
+stow/vscode/.config/VSCodium/CachedData/1a46a584725d5dd330e0bcd7f5510f24990efcf2/chrome/js/f24a61fd1283c6fa_0
+stow/vscode/.config/VSCodium/CachedData/1a46a584725d5dd330e0bcd7f5510f24990efcf2/chrome/js/fe27f87111057438_0
+stow/vscode/.config/VSCodium/CachedData/1a46a584725d5dd330e0bcd7f5510f24990efcf2/chrome/js/index
+stow/vscode/.config/VSCodium/CachedData/1a46a584725d5dd330e0bcd7f5510f24990efcf2/chrome/js/index-dir/the-real-index
+stow/vscode/.config/VSCodium/CachedData/1a46a584725d5dd330e0bcd7f5510f24990efcf2/chrome/wasm/index
+stow/vscode/.config/VSCodium/CachedData/1a46a584725d5dd330e0bcd7f5510f24990efcf2/chrome/wasm/index-dir/the-real-index
 stow/vscode/.config/VSCodium/CachedData/4c0b0c6cc561d2d3636d1ec250935431876ce4dc/chrome/js/06a6be2a13ab4551_0
 stow/vscode/.config/VSCodium/CachedData/4c0b0c6cc561d2d3636d1ec250935431876ce4dc/chrome/js/13fe8659e83263d5_0
 stow/vscode/.config/VSCodium/CachedData/4c0b0c6cc561d2d3636d1ec250935431876ce4dc/chrome/js/224c36e589edce3b_0
@@ -641,11 +842,11 @@ stow/vscode/.config/VSCodium/CachedData/4c0b0c6cc561d2d3636d1ec250935431876ce4dc
 stow/vscode/.config/VSCodium/CachedData/4c0b0c6cc561d2d3636d1ec250935431876ce4dc/chrome/js/index-dir/the-real-index
 stow/vscode/.config/VSCodium/CachedData/4c0b0c6cc561d2d3636d1ec250935431876ce4dc/chrome/wasm/index
 stow/vscode/.config/VSCodium/CachedData/4c0b0c6cc561d2d3636d1ec250935431876ce4dc/chrome/wasm/index-dir/the-real-index
-stow/vscode/.config/VSCodium/CachedExtensionVSIXs/.trash/francodoce12.copy-project-context-1.0.7-universal
-stow/vscode/.config/VSCodium/CachedExtensionVSIXs/.trash/fuzionix.devtool-plus-0.6.0-universal
 stow/vscode/.config/VSCodium/CachedProfilesData/__default__profile__/extensions.builtin.cache
+stow/vscode/.config/VSCodium/CachedProfilesData/__default__profile__/extensions.user.cache
 stow/vscode/.config/VSCodium/Cache/No_Vary_Search/journal.baj
 stow/vscode/.config/VSCodium/Cache/No_Vary_Search/snapshot.baf
+stow/vscode/.config/VSCodium/Code Cache/electron-preload/1F3DBCBFB90F4BFF26A8A06C7B02785ABA185A75EFFF331F6B5904312AA71783.cache
 stow/vscode/.config/VSCodium/Code Cache/js/index
 stow/vscode/.config/VSCodium/Code Cache/js/index-dir/the-real-index
 stow/vscode/.config/VSCodium/Code Cache/wasm/index
@@ -680,6 +881,45 @@ stow/vscode/.config/VSCodium/Local Storage/leveldb/LOG.old
 stow/vscode/.config/VSCodium/Local Storage/leveldb/MANIFEST-000001
 stow/vscode/.config/VSCodium/machineid
 stow/vscode/.config/VSCodium/Network Persistent State
+stow/vscode/.config/VSCodium/Partitions/vscode-browser/Code Cache/js/index
+stow/vscode/.config/VSCodium/Partitions/vscode-browser/Code Cache/js/index-dir/the-real-index
+stow/vscode/.config/VSCodium/Partitions/vscode-browser/Code Cache/wasm/index
+stow/vscode/.config/VSCodium/Partitions/vscode-browser/Code Cache/wasm/index-dir/the-real-index
+stow/vscode/.config/VSCodium/Partitions/vscode-browser/DawnGraphiteCache/data_0
+stow/vscode/.config/VSCodium/Partitions/vscode-browser/DawnGraphiteCache/data_1
+stow/vscode/.config/VSCodium/Partitions/vscode-browser/DawnGraphiteCache/data_2
+stow/vscode/.config/VSCodium/Partitions/vscode-browser/DawnGraphiteCache/data_3
+stow/vscode/.config/VSCodium/Partitions/vscode-browser/DawnGraphiteCache/index
+stow/vscode/.config/VSCodium/Partitions/vscode-browser/DawnWebGPUCache/data_0
+stow/vscode/.config/VSCodium/Partitions/vscode-browser/DawnWebGPUCache/data_1
+stow/vscode/.config/VSCodium/Partitions/vscode-browser/DawnWebGPUCache/data_2
+stow/vscode/.config/VSCodium/Partitions/vscode-browser/DawnWebGPUCache/data_3
+stow/vscode/.config/VSCodium/Partitions/vscode-browser/DawnWebGPUCache/index
+stow/vscode/.config/VSCodium/Partitions/vscode-browser/DIPS
+stow/vscode/.config/VSCodium/Partitions/vscode-browser/GPUCache/data_0
+stow/vscode/.config/VSCodium/Partitions/vscode-browser/GPUCache/data_1
+stow/vscode/.config/VSCodium/Partitions/vscode-browser/GPUCache/data_2
+stow/vscode/.config/VSCodium/Partitions/vscode-browser/GPUCache/data_3
+stow/vscode/.config/VSCodium/Partitions/vscode-browser/GPUCache/index
+stow/vscode/.config/VSCodium/Partitions/vscode-browser/Local Storage/leveldb/000003.log
+stow/vscode/.config/VSCodium/Partitions/vscode-browser/Local Storage/leveldb/CURRENT
+stow/vscode/.config/VSCodium/Partitions/vscode-browser/Local Storage/leveldb/LOCK
+stow/vscode/.config/VSCodium/Partitions/vscode-browser/Local Storage/leveldb/LOG
+stow/vscode/.config/VSCodium/Partitions/vscode-browser/Local Storage/leveldb/MANIFEST-000001
+stow/vscode/.config/VSCodium/Partitions/vscode-browser/Network Persistent State
+stow/vscode/.config/VSCodium/Partitions/vscode-browser/Preferences
+stow/vscode/.config/VSCodium/Partitions/vscode-browser/Session Storage/000003.log
+stow/vscode/.config/VSCodium/Partitions/vscode-browser/Session Storage/CURRENT
+stow/vscode/.config/VSCodium/Partitions/vscode-browser/Session Storage/LOCK
+stow/vscode/.config/VSCodium/Partitions/vscode-browser/Session Storage/LOG
+stow/vscode/.config/VSCodium/Partitions/vscode-browser/Session Storage/MANIFEST-000001
+stow/vscode/.config/VSCodium/Partitions/vscode-browser/Shared Dictionary/cache/index
+stow/vscode/.config/VSCodium/Partitions/vscode-browser/Shared Dictionary/cache/index-dir/the-real-index
+stow/vscode/.config/VSCodium/Partitions/vscode-browser/Shared Dictionary/db
+stow/vscode/.config/VSCodium/Partitions/vscode-browser/Shared Dictionary/db-journal
+stow/vscode/.config/VSCodium/Partitions/vscode-browser/SharedStorage
+stow/vscode/.config/VSCodium/Partitions/vscode-browser/Trust Tokens
+stow/vscode/.config/VSCodium/Partitions/vscode-browser/Trust Tokens-journal
 stow/vscode/.config/VSCodium/Preferences
 stow/vscode/.config/VSCodium/Service Worker/Database/000003.log
 stow/vscode/.config/VSCodium/Service Worker/Database/CURRENT
@@ -687,7 +927,8 @@ stow/vscode/.config/VSCodium/Service Worker/Database/LOCK
 stow/vscode/.config/VSCodium/Service Worker/Database/LOG
 stow/vscode/.config/VSCodium/Service Worker/Database/LOG.old
 stow/vscode/.config/VSCodium/Service Worker/Database/MANIFEST-000001
-stow/vscode/.config/VSCodium/Service Worker/ScriptCache/2cc80dabc69f58b6_0
+stow/vscode/.config/VSCodium/Service Worker/ScriptCache/4cb013792b196a35_0
+stow/vscode/.config/VSCodium/Service Worker/ScriptCache/f1cdccba37924bda_0
 stow/vscode/.config/VSCodium/Service Worker/ScriptCache/index
 stow/vscode/.config/VSCodium/Service Worker/ScriptCache/index-dir/the-real-index
 stow/vscode/.config/VSCodium/Session Storage/000003.log
@@ -712,13 +953,36 @@ stow/vscode/.config/VSCodium/User/globalStorage/storage.json
 stow/vscode/.config/VSCodium/User/History/-717da9e/entries.json
 stow/vscode/.config/VSCodium/User/History/-717da9e/gHiA.json
 stow/vscode/.config/VSCodium/User/History/-717da9e/WUIG.json
+stow/vscode/.config/VSCodium/User/mcp.json
 stow/vscode/.config/VSCodium/User/settings.json
+stow/vscode/.config/VSCodium/User/workspaceStorage/1790447086130/state.vscdb
+stow/vscode/.config/VSCodium/User/workspaceStorage/1790447086130/state.vscdb.backup
+stow/vscode/.config/VSCodium/User/workspaceStorage/3cff9aa6cefc85fd3f43756ea3f29161/state.vscdb
+stow/vscode/.config/VSCodium/User/workspaceStorage/3cff9aa6cefc85fd3f43756ea3f29161/state.vscdb.backup
+stow/vscode/.config/VSCodium/User/workspaceStorage/3cff9aa6cefc85fd3f43756ea3f29161/workspace.json
 stow/vscode/.config/VSCodium/User/workspaceStorage/4ddfced52510c1634d0fb3dbc1f7a46c/state.vscdb
 stow/vscode/.config/VSCodium/User/workspaceStorage/4ddfced52510c1634d0fb3dbc1f7a46c/state.vscdb.backup
 stow/vscode/.config/VSCodium/User/workspaceStorage/4ddfced52510c1634d0fb3dbc1f7a46c/workspace.json
+stow/vscode/.config/VSCodium/User/workspaceStorage/817f2ee5d188200a198b3c0fd22c548d/ms-python.python/pythonrc.py
+stow/vscode/.config/VSCodium/User/workspaceStorage/817f2ee5d188200a198b3c0fd22c548d/state.vscdb
+stow/vscode/.config/VSCodium/User/workspaceStorage/817f2ee5d188200a198b3c0fd22c548d/state.vscdb.backup
+stow/vscode/.config/VSCodium/User/workspaceStorage/817f2ee5d188200a198b3c0fd22c548d/workspace.json
 stow/vscode/.config/VSCodium/User/workspaceStorage/e91793d8e9a22246d3e94aadd34cb8c9/state.vscdb
 stow/vscode/.config/VSCodium/User/workspaceStorage/e91793d8e9a22246d3e94aadd34cb8c9/state.vscdb.backup
 stow/vscode/.config/VSCodium/User/workspaceStorage/e91793d8e9a22246d3e94aadd34cb8c9/workspace.json
+stow/vscode/.config/VSCodium/WebStorage/1/CacheStorage/15d8f39f-94b2-4ff3-9194-576d9ddc4ce4/4f339f0c1a666997_0
+stow/vscode/.config/VSCodium/WebStorage/1/CacheStorage/15d8f39f-94b2-4ff3-9194-576d9ddc4ce4/4f339f0c1a666997_1
+stow/vscode/.config/VSCodium/WebStorage/1/CacheStorage/15d8f39f-94b2-4ff3-9194-576d9ddc4ce4/62aa510fabcdb2fb_0
+stow/vscode/.config/VSCodium/WebStorage/1/CacheStorage/15d8f39f-94b2-4ff3-9194-576d9ddc4ce4/7652309e46297825_0
+stow/vscode/.config/VSCodium/WebStorage/1/CacheStorage/15d8f39f-94b2-4ff3-9194-576d9ddc4ce4/a122432057c9510a_0
+stow/vscode/.config/VSCodium/WebStorage/1/CacheStorage/15d8f39f-94b2-4ff3-9194-576d9ddc4ce4/a122432057c9510a_1
+stow/vscode/.config/VSCodium/WebStorage/1/CacheStorage/15d8f39f-94b2-4ff3-9194-576d9ddc4ce4/b6a804b7185df612_0
+stow/vscode/.config/VSCodium/WebStorage/1/CacheStorage/15d8f39f-94b2-4ff3-9194-576d9ddc4ce4/b73272d6d1a7e270_0
+stow/vscode/.config/VSCodium/WebStorage/1/CacheStorage/15d8f39f-94b2-4ff3-9194-576d9ddc4ce4/ba3f968598e9e886_0
+stow/vscode/.config/VSCodium/WebStorage/1/CacheStorage/15d8f39f-94b2-4ff3-9194-576d9ddc4ce4/ba3f968598e9e886_1
+stow/vscode/.config/VSCodium/WebStorage/1/CacheStorage/15d8f39f-94b2-4ff3-9194-576d9ddc4ce4/fc057a03a11664ef_0
+stow/vscode/.config/VSCodium/WebStorage/1/CacheStorage/15d8f39f-94b2-4ff3-9194-576d9ddc4ce4/index
+stow/vscode/.config/VSCodium/WebStorage/1/CacheStorage/15d8f39f-94b2-4ff3-9194-576d9ddc4ce4/index-dir/the-real-index
 stow/vscode/.config/VSCodium/WebStorage/1/CacheStorage/d0afb540-1229-48c7-b81d-082140de1e05/4f339f0c1a666997_0
 stow/vscode/.config/VSCodium/WebStorage/1/CacheStorage/d0afb540-1229-48c7-b81d-082140de1e05/62aa510fabcdb2fb_0
 stow/vscode/.config/VSCodium/WebStorage/1/CacheStorage/d0afb540-1229-48c7-b81d-082140de1e05/7652309e46297825_0
@@ -730,8 +994,19 @@ stow/vscode/.config/VSCodium/WebStorage/1/CacheStorage/d0afb540-1229-48c7-b81d-0
 stow/vscode/.config/VSCodium/WebStorage/1/CacheStorage/d0afb540-1229-48c7-b81d-082140de1e05/index
 stow/vscode/.config/VSCodium/WebStorage/1/CacheStorage/d0afb540-1229-48c7-b81d-082140de1e05/index-dir/the-real-index
 stow/vscode/.config/VSCodium/WebStorage/1/CacheStorage/index.txt
+stow/vscode/.config/VSCodium/WebStorage/2/CacheStorage/81c7d76a-1c82-4741-b834-5d90d6dc21ce/0e0cf009fd226872_0
+stow/vscode/.config/VSCodium/WebStorage/2/CacheStorage/81c7d76a-1c82-4741-b834-5d90d6dc21ce/340ec61fbd686331_0
+stow/vscode/.config/VSCodium/WebStorage/2/CacheStorage/81c7d76a-1c82-4741-b834-5d90d6dc21ce/43f95d7cf9c69c3a_0
+stow/vscode/.config/VSCodium/WebStorage/2/CacheStorage/81c7d76a-1c82-4741-b834-5d90d6dc21ce/43f95d7cf9c69c3a_1
+stow/vscode/.config/VSCodium/WebStorage/2/CacheStorage/81c7d76a-1c82-4741-b834-5d90d6dc21ce/483e0bb0d0abfd57_0
+stow/vscode/.config/VSCodium/WebStorage/2/CacheStorage/81c7d76a-1c82-4741-b834-5d90d6dc21ce/dcc74e12c8e5676f_0
+stow/vscode/.config/VSCodium/WebStorage/2/CacheStorage/81c7d76a-1c82-4741-b834-5d90d6dc21ce/dd5abf0aea834ba0_0
+stow/vscode/.config/VSCodium/WebStorage/2/CacheStorage/81c7d76a-1c82-4741-b834-5d90d6dc21ce/index
+stow/vscode/.config/VSCodium/WebStorage/2/CacheStorage/81c7d76a-1c82-4741-b834-5d90d6dc21ce/index-dir/the-real-index
+stow/vscode/.config/VSCodium/WebStorage/2/CacheStorage/index.txt
 stow/vscode/.config/VSCodium/WebStorage/QuotaManager
 stow/vscode/.config/VSCodium/WebStorage/QuotaManager-journal
+stow/wezterm/.config/wezterm/wezterm.lua
 stow/zram/etc/systemd/zram-generator.conf
 stow/zsh/.shell-aliases
 stow/zsh/.shell-exports

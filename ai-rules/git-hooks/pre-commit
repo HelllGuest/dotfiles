@@ -9,7 +9,14 @@ cd "$ROOT"
 
 [[ -d stow && -f all_stow_files.txt ]] || exit 0
 
-expected="$(find stow -type f | sort)"
+if [[ ! -f scripts/list-stow-files.sh ]]; then
+  echo ""
+  echo "  ✗ scripts/list-stow-files.sh missing (required for all_stow_files.txt)."
+  echo ""
+  exit 1
+fi
+
+expected="$(bash scripts/list-stow-files.sh)"
 if diff -q all_stow_files.txt <(printf '%s\n' "$expected") >/dev/null 2>&1; then
   exit 0
 fi
@@ -22,8 +29,9 @@ if git diff --cached --name-only -- stow | grep -q .; then
 fi
 
 echo ""
-echo "  ✗ all_stow_files.txt is stale vs stow/."
-echo "    Run:  find stow -type f | sort > all_stow_files.txt"
-echo "    then stage all_stow_files.txt (and any new stow files)."
+echo "  ✗ all_stow_files.txt is stale vs stow/ (gitignore-aware)."
+echo "    Stage new stow files, then:"
+echo "      bash scripts/list-stow-files.sh > all_stow_files.txt"
+echo "    and stage all_stow_files.txt."
 echo ""
 exit 1

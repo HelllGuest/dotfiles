@@ -6,9 +6,13 @@
     "47",
     "48",
     "49",
-    "50"
+    "50",
+    "51"
   ],
   "url": "https://github.com/helllguest/proton-vpn-indicator",
   "uuid": "proton-vpn@helllguest",
-  "version": 4
+  "version": 6,
+  "session-modes": [
+    "user"
+  ]
 }

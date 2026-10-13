@@ -100,7 +100,7 @@ In any IDE / CLI chat:
   `prepare-commit-msg` (branch-name prefill; ignores text below
   `commit.verbose` scissors),
   `pre-commit` (if `stow/` + `all_stow_files.txt` exist: refresh or fail when
-  the inventory is stale),
+  inventory is stale vs `scripts/list-stow-files.sh`),
   `pre-push` (only if `package.json` or `pnpm-workspace.yaml` exists: with
   `tsconfig.json`, hard-fail `tsc` when a `"tsc"` script exists via pnpm/npm;
   else soft `pnpm exec tsc --noEmit || true` when pnpm is present; hard-fail

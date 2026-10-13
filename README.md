@@ -1,6 +1,6 @@
 # 🌌 Arch Linux + GNOME Dotfiles
 
-A clean, modular, and programmable dotfiles ecosystem optimized for **Arch Linux**, **GNOME 50**, and **ThinkPad** hardware. This setup focuses on visual cohesion, privacy hardening, and a frictionless developer workflow.
+A clean, modular, and programmable dotfiles ecosystem optimized for **Arch Linux**, **GNOME Shell 51**, and **ThinkPad** hardware. This setup focuses on visual cohesion, privacy hardening, and a frictionless developer workflow.
 
 ---
 
@@ -143,7 +143,7 @@ Animated GNOME dock ([Dash2Dock Lite](https://github.com/icedman/dash2dock-lite)
 bash scripts/install-dash2dock.sh
 ```
 
-UUID `dash2dock-lite@icedman.github.com` is in `gnome/extensions.txt` and `gnome/dconf/user.conf`. **Wayland:** log out → log in for Shell to load it. Prefs: `gnome-extensions prefs dash2dock-lite@icedman.github.com`.
+UUID `dash2dock-lite@icedman.github.com` is in `gnome/extensions.txt` and `gnome/dconf/user.conf`. EGO zip still declares Shell ≤50; the install script patches `metadata.json` for **Shell 51** (unofficial — may still break). Other non-AUR zips (blur, caffeine, clipboard) install via `scripts/fetch-gnome-extensions.sh` (`GNOME_EXT_FETCH=1 bash scripts/install-extensions.sh`). **Wayland:** log out → log in (`Meta.restart` is disabled). Prefs: `gnome-extensions prefs dash2dock-lite@icedman.github.com`.
 
 ### Key functions
 
@@ -181,24 +181,24 @@ Legacy: `scripts/install-starship-crampack.sh` installs the previous Crampack pr
 
 ```text
 dotfiles/
-├── stow/            # GNU Stow packages (symlinked to $HOME, or / for system/)
-│   ├── bash/        # .bashrc, .inputrc
-│   ├── zsh/         # .zshrc, .zsh-plugins, .shell-*
-│   ├── system/      # /etc configs (i915, sleep, UFW, udev) — root stow
-│   ├── zram/        # /etc/systemd/zram-generator.conf (requires root stow)
-│   ├── git/         # Git config, delta, ignore
-│   ├── atuin/       # Shell history (sqlite)
-│   ├── gnome-session/ # GNOME user services (tablet handler, etc.)
-│   ├── kitty/ ghostty/ # Terminals
-│   ├── nvim/        # Neovim (Lazy.nvim)
-│   ├── starship/    # Starship prompt
-│   └── fastfetch/ proton-vpn/ tmp-cleanup/ …
+├── stow/            # GNU Stow packages → $HOME (system/ → / with sudo)
+│   ├── bash/ zsh/   # shells; shared .shell-* under zsh/
+│   ├── system/      # /etc (i915, sleep, UFW, udev, Wayland env)
+│   ├── zram/        # template only — copied by scripts/zram-setup.sh (never stow -t /)
+│   ├── gdm/         # template only — copied by scripts/gdm-setup.sh
+│   ├── kitty/ ghostty/ alacritty/ contour/ foot/ rio/ wezterm/
+│   ├── nvim/ starship/ atuin/ git/ fastfetch/ proton-vpn/ …
+│   └── vscode/ cursor/ antigravity/ flutter/ npm/ htop/ …
 ├── browsers/        # Chromium base + per-browser policy extras; Zen user.js
 ├── packages/        # pacman.txt, flatpak.txt, browsers.txt, aur.txt
-├── profiles/        # Hostname or hardware-detected tweaks (e.g. thinkpad-x1.sh)
-├── scripts/         # Health checks, installers (lib/ for shared helpers)
-├── gnome/           # GNOME settings (dconf) and extension lists
-└── docs/            # Installation guides and system documentation
+├── profiles/        # Hostname or hardware-detected tweaks
+├── scripts/         # Installers + health checks (lib/ shared helpers)
+├── gnome/           # dconf snapshots, extensions.txt, keybindings.md
+├── docs/            # Hardened Arch + GNOME install guide
+├── builds/          # Optional local PKGBUILDs (e.g. builds/st + scripts/build-st.sh)
+├── skills/          # Agent skills shipped with the repo (e.g. ghidra-cli-host)
+├── ai-rules/        # Shared AGENTS.md kit + git hooks (AGENTS.md → symlink)
+└── .github/         # CI (stow inventory, bash -n, markdownlint)
 ```
 
 ---
@@ -271,10 +271,11 @@ scripts/thinkpad-health.sh → reboot
 ```text
 apply-profile.sh (hostname or detect-profile.sh) → cleanup-input-overrides.sh
 → pacman < packages/pacman.txt → install-flatpaks.sh → install-aur.sh (bootstraps paru)
-→ install-fonts.sh → stow (/etc system + $HOME, skips zram & gdm)
+→ install-fonts.sh → stow (/etc system + $HOME; skips zram & gdm)
 → fnm install/default 22 → atuin import → zram-setup.sh
-→ gnome-session-setup.sh → location-setup.sh → gnome-console-setup.sh → gdm-setup.sh
-→ git-setup.sh → nvim-setup.sh → headroom-setup.sh → install-photogimp.sh
+→ gnome-session-setup.sh → location-setup.sh → gnome-console-setup.sh → ptyxis-setup.sh
+→ gdm-setup.sh → git-setup.sh → nvim-setup.sh → headroom-setup.sh
+→ install-ghidra-cli.sh (if pacman ghidra present) → install-photogimp.sh
 → install-dash2dock.sh → install-extensions.sh → check.sh → validate-configs.sh
 → privacy-hardener.sh (incl. browser-hardening.sh)
 ```
@@ -311,11 +312,13 @@ Key runtime dependencies (`scripts/check.sh` asserts binaries, shell tools, syml
 
 **Flatpaks** (via `install-flatpaks.sh`): Brave, Zen, Google Chrome, LibreWolf, Proton VPN, Android Studio. Browser telemetry debloat: `scripts/browser-hardening.sh` (Chrome/Brave `/etc` policies; Zen `user.js` per profile + `/etc/firefox/policies`; LibreWolf upstream-hardened). Launch Zen once before re-running hardening if profiles are new.
 
-**Terminals:** `kitty` (primary), `ghostty`, `gnome-console` (kgx quick terminal)
+**Terminals:** `kitty` (primary; Super+Return), `ghostty`, optional stowed configs for `alacritty`, `contour`, `foot`, `rio`, `wezterm`, plus `gnome-console` (kgx) and `ptyxis`. Optional suckless `st`: `bash scripts/build-st.sh` (`builds/st/`).
 
-Run `scripts/gnome-console-setup.sh` for Console dconf (scrollback, theme). **Super+Return → kitty** is set in `gnome/dconf/user.conf`.
+Run `scripts/gnome-console-setup.sh` / `scripts/ptyxis-setup.sh` for Console/Ptyxis dconf. **Super+Return → kitty** is in `gnome/dconf/user.conf`.
 
 Clipboard: selecting text auto-copies in kitty and ghostty (`copy_on_select`); in kitty, right-click also copies the selection (Shift+right-click extends it).
+
+**Ghidra:** pacman `ghidra` + `bash scripts/install-ghidra-cli.sh` (cargo CLI; host skill under `skills/ghidra-cli-host/`). GUI: `ghidra-gui` (cargo `ghidra` shadows `/usr/bin/ghidra`).
 
 **GDM:** `scripts/gdm-setup.sh` copies greeter config to `/etc` (not stow — GDM cannot read `$HOME`), enables Wayland, compiles greeter dconf, and enables `gdm.service`. Greeter changes appear after **reboot** (or `sudo systemctl restart gdm`, which logs you out). Optional fingerprint: `scripts/fingerprint-setup.sh`.
 
@@ -358,6 +361,9 @@ We take a "quiet by default" approach:
 | zstd/xz/lz4 back to extra/ after `-Syu` | Repo upgrade replaced v3 rebuilds | `bash scripts/rebuild-v3.sh` then `sudo pacman -U` if sudo -n fails |
 | PhotoGIMP layout missing after GIMP update | Config dir version bump / patch not reapplied | `bash scripts/install-photogimp.sh` |
 | Dash2Dock missing after install | Wayland Shell has not reloaded | Log out → log in; or `bash scripts/install-dash2dock.sh` then logout |
+| `proton-vpn@helllguest` missing from `gnome-extensions list` | Shell session cache stale / after uninstall | Log out → log in; never `gnome-extensions uninstall` a stowed UUID (deletes tree) |
+| Proton VPN app stuck on "Loading app" | Server list fetch hung | `bash scripts/proton-seed-serverlist.sh` (or `--kill`) |
+| `ghidra` CLI is the GUI / wrong Java | cargo bin shadows `/usr/bin/ghidra` | Use `ghidra-gui`; re-run `bash scripts/install-ghidra-cli.sh` |
 
 ---
 
@@ -368,7 +374,11 @@ We take a "quiet by default" approach:
 | Full update | `sudo pacman -Syu && ./install.sh && bash scripts/post-update.sh` |
 | Health check | `~/dotfiles/scripts/check.sh` |
 | Docs lint | `~/dotfiles/scripts/lint-docs.sh` (CI also runs this + `all_stow_files.txt` + `bash -n`) |
+| Refresh stow inventory | `git add stow/…` then `bash scripts/list-stow-files.sh > all_stow_files.txt` (index only) |
 | Location sync | `vpn-location-sync` or Proton VPN panel → Sync spoofed location |
+| Optional st (suckless) | `bash scripts/build-st.sh` |
+| ghidra-cli | `bash scripts/install-ghidra-cli.sh` |
+
 | Legacy touchpad cleanup | `bash scripts/cleanup-input-overrides.sh` (sudo; old udev/inhibit only) |
 | Secure Boot | `sbctl status && sbctl verify` (after `enroll-keys -m`; re-sign UKIs if you ran `mkinitcpio -P` manually) |
 | Post-update sync | `~/dotfiles/scripts/post-update.sh` |

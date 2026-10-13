@@ -1,0 +1,71 @@
+# Maintainer: helllguest <helllguest@pm.me>
+# Based on AUR st; patched to match kitty/ghostty look on this machine.
+
+pkgname=st
+pkgver=0.9.3
+pkgrel=2
+pkgdesc='suckless st — riced: JetBrainsMono NF, alpha 0.95, scrollback, clipboard'
+arch=('x86_64')
+license=('MIT')
+depends=('libxft' 'libxrender')
+url='https://st.suckless.org'
+source=(
+  "https://dl.suckless.org/st/st-${pkgver}.tar.gz"
+  terminfo.patch
+  README.terminfo.rst
+  config.h
+  st.desktop
+  st-alpha-20240814-a0274bc.diff
+  st-scrollback-0.9.2.diff
+  st-scrollback-mouse-0.9.2.diff
+  st-clipboard-0.8.3.diff
+)
+sha256sums=(
+  '9ed9feabcded713d4ded38c8cebf36a3b08f0042ef7934a0e2b2409da56e649b'
+  'f9deea445a5c6203a0e8e699f3c3b55e27275f17fb408562c4dd5d649edeea23'
+  '95be3197f7de77a0fe2e4f527202e17e910ee24e1ed6bc39beb320a1304bb7e1'
+  'SKIP'
+  'SKIP'
+  'SKIP'
+  'SKIP'
+  'SKIP'
+  'SKIP'
+)
+_sourcedir="st-${pkgver}"
+
+prepare() {
+  cd "$_sourcedir"
+
+  patch -p0 < ../terminfo.patch
+
+  # Order matters: alpha before scrollback; mouse/clipboard last.
+  local p
+  for p in \
+    st-alpha-20240814-a0274bc.diff \
+    st-scrollback-0.9.2.diff \
+    st-scrollback-mouse-0.9.2.diff \
+    st-clipboard-0.8.3.diff
+  do
+    echo "Applying $p"
+    patch -p1 < "../$p"
+  done
+
+  # Alpha wants Xrender for 32-bit visuals under compositors.
+  sed -i 's/-lXft /-lXft -lXrender /' config.mk
+
+  # Tracked rice config (do not regenerate from config.def.h).
+  cp ../config.h .
+}
+
+build() {
+  make -C "$_sourcedir" X11INC=/usr/include/X11 X11LIB=/usr/lib/X11
+}
+
+package() {
+  local shrdir="$pkgdir/usr/share"
+  make -C "$_sourcedir" PREFIX=/usr DESTDIR="$pkgdir" install
+  install -D -m 0644 -t "$shrdir/licenses/$pkgname" "$_sourcedir/LICENSE"
+  install -D -m 0644 -t "$shrdir/doc/$pkgname" "$_sourcedir/README" README.terminfo.rst
+  install -D -m 0644 -t "$shrdir/$pkgname" "$_sourcedir/st.info"
+  install -D -m 0644 -t "$shrdir/applications" st.desktop
+}

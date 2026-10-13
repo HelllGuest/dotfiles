@@ -6,6 +6,8 @@ _has() { command -v "$1" >/dev/null 2>&1; }
 alias v='nvim'
 alias as='flatpak run com.google.AndroidStudio'
 alias ff='fastfetch'
+# cargo ghidra-cli owns `ghidra`; Arch GUI via this alias
+[[ -x /opt/ghidra/ghidraRun ]] && alias ghidra-gui='/opt/ghidra/ghidraRun'
 
 # ── Safer defaults ──────────────────────────────────────────
 alias cp='cp -iv'
