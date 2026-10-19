@@ -272,7 +272,9 @@ cleanup-input-overrides.sh
 → fnm install/default 22 → atuin import → zram-setup.sh
 → gnome-session-setup.sh → location-setup.sh → gnome-console-setup.sh → ptyxis-setup.sh
 → gdm-setup.sh → git-setup.sh → nvim-setup.sh → headroom-setup.sh
-→ install-ghidra-cli.sh (if pacman ghidra present) → install-photogimp.sh
+→ sync-agent-skills.sh → install-caveman.sh (if npm) → install-android-ui-skills.sh (if npx)
+→ install-ghidra-cli.sh (if ghidra) → install-rea.sh (if npm) → sync-agent-skills.sh (once more)
+→ install-photogimp.sh
 → install-dash2dock.sh → install-extensions.sh → check.sh → validate-configs.sh
 → privacy-hardener.sh (incl. browser-hardening.sh)
 ```
@@ -375,6 +377,10 @@ We take a "quiet by default" approach:
 | Refresh stow inventory | `git add stow/…` then `bash scripts/list-stow-files.sh > all_stow_files.txt` (index only) |
 | Location sync | `vpn-location-sync` or Proton VPN panel → Sync spoofed location |
 | Optional st (suckless) | `bash scripts/build-st.sh` |
+| Agent skills sync | `bash scripts/sync-agent-skills.sh` |
+| Caveman (`/caveman`) | `bash scripts/install-caveman.sh` |
+| Android UI skills | `bash scripts/install-android-ui-skills.sh` (Compose + Material 3) |
+| REA (MCP + jadx) | `bash scripts/install-rea.sh` (Hopper: `INSTALL_HOPPER=1`) |
 | ghidra-cli | `bash scripts/install-ghidra-cli.sh` |
 | Legacy touchpad cleanup | `bash scripts/cleanup-input-overrides.sh` (sudo; old udev/inhibit only) |
 | Secure Boot | `sbctl status && sbctl verify` (after `enroll-keys -m`; `mkinitcpio -P` re-signs UKIs via sbctl's hook) |

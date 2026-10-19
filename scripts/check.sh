@@ -61,6 +61,20 @@ else
     echo "  install/upgrade: bash scripts/headroom-setup.sh"
 fi
 
+AGENTS_SKILLS="${HOME}/.agents/skills"
+check_agent_skill() {
+    local name=$1 hint=$2
+    if [[ -f "${AGENTS_SKILLS}/${name}/SKILL.md" ]]; then
+        echo "✓ skill $name"
+    else
+        echo "○ skill $name missing (optional: $hint)"
+    fi
+}
+check_agent_skill caveman "bash scripts/install-caveman.sh"
+check_agent_skill android-compose-design "bash scripts/install-android-ui-skills.sh"
+check_agent_skill material-3 "bash scripts/install-android-ui-skills.sh"
+check_agent_skill reverse-engineer-anything "bash scripts/install-rea.sh"
+
 if [ -d "${XDG_DATA_HOME:-$HOME/.local/share}/zinit/zinit.git" ]; then
     echo "✓ zinit is bootstrapped"
 else

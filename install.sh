@@ -129,6 +129,31 @@ if [ -f "scripts/headroom-setup.sh" ]; then
     bash scripts/headroom-setup.sh || echo "Headroom setup skipped."
 fi
 
+# 3.5a Shared AI skills (ai-rules kit + ~/.agents hub → Claude/Cursor)
+if [ -f "scripts/sync-agent-skills.sh" ]; then
+    bash scripts/sync-agent-skills.sh || echo "Agent skills sync skipped."
+fi
+
+# 3.5a2 Caveman (terse voice + ultracave/megacave; pinned installer + SHA-256)
+if [ -f "scripts/install-caveman.sh" ]; then
+    if command -v npm >/dev/null 2>&1; then
+        SKIP_SKILL_SYNC=1 bash scripts/install-caveman.sh || \
+            echo "Caveman install failed — re-run: bash scripts/install-caveman.sh"
+    else
+        echo "Skipping caveman (npm not on PATH)."
+    fi
+fi
+
+# 3.5a3 Android UI skills (Compose anti-slop + Material 3; pinned refs)
+if [ -f "scripts/install-android-ui-skills.sh" ]; then
+    if command -v npx >/dev/null 2>&1; then
+        SKIP_SKILL_SYNC=1 bash scripts/install-android-ui-skills.sh || \
+            echo "Android UI skills failed — re-run: bash scripts/install-android-ui-skills.sh"
+    else
+        echo "Skipping Android UI skills (npx not on PATH)."
+    fi
+fi
+
 # 3.5b ghidra-cli (optional Rust bridge; needs pacman ghidra + rust/cargo)
 if [ -f "scripts/install-ghidra-cli.sh" ]; then
     if pacman -Q ghidra >/dev/null 2>&1; then
@@ -137,6 +162,20 @@ if [ -f "scripts/install-ghidra-cli.sh" ]; then
     else
         echo "Skipping ghidra-cli (pacman package ghidra not installed)."
     fi
+fi
+
+# 3.5c REA (reverse-engineer-anything MCP + jadx JAR; needs npm from fnm)
+if [ -f "scripts/install-rea.sh" ]; then
+    if command -v npm >/dev/null 2>&1; then
+        bash scripts/install-rea.sh || echo "REA install failed — re-run: bash scripts/install-rea.sh"
+    else
+        echo "Skipping REA (npm not on PATH — open a new shell after fnm, then: bash scripts/install-rea.sh)."
+    fi
+fi
+
+# One hub mirror after AI installers (caveman/android skip their own sync above)
+if [ -f "scripts/sync-agent-skills.sh" ]; then
+    bash scripts/sync-agent-skills.sh || echo "Agent skills post-sync skipped."
 fi
 
 # 3.6 PhotoGIMP (Photoshop-like GIMP layout — optional)
