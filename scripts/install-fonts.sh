@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # install-fonts.sh
-# Top Nerd Fonts for terminals, Starship (Crampack), and editors.
+# Top Nerd Fonts for terminals, Starship, and editors.
 
 set -euo pipefail
 

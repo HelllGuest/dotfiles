@@ -129,12 +129,12 @@ if [ -f "scripts/headroom-setup.sh" ]; then
     bash scripts/headroom-setup.sh || echo "Headroom setup skipped."
 fi
 
-# 3.5a Shared AI skills (ai-rules kit + ~/.agents hub → Claude/Cursor)
+# 3.5a Kit skills first (fallback if post-AI sync fails later)
 if [ -f "scripts/sync-agent-skills.sh" ]; then
-    bash scripts/sync-agent-skills.sh || echo "Agent skills sync skipped."
+    bash scripts/sync-agent-skills.sh || echo "Agent skills pre-sync skipped."
 fi
 
-# 3.5a2 Caveman (terse voice + ultracave/megacave; pinned installer + SHA-256)
+# 3.5b Caveman (terse voice + ultracave/megacave; pinned installer + SHA-256)
 if [ -f "scripts/install-caveman.sh" ]; then
     if command -v npm >/dev/null 2>&1; then
         SKIP_SKILL_SYNC=1 bash scripts/install-caveman.sh || \
@@ -144,7 +144,7 @@ if [ -f "scripts/install-caveman.sh" ]; then
     fi
 fi
 
-# 3.5a3 Android UI skills (Compose anti-slop + Material 3; pinned refs)
+# 3.5c Android UI skills (Compose anti-slop + Material 3; pinned refs)
 if [ -f "scripts/install-android-ui-skills.sh" ]; then
     if command -v npx >/dev/null 2>&1; then
         SKIP_SKILL_SYNC=1 bash scripts/install-android-ui-skills.sh || \
@@ -154,7 +154,7 @@ if [ -f "scripts/install-android-ui-skills.sh" ]; then
     fi
 fi
 
-# 3.5b ghidra-cli (optional Rust bridge; needs pacman ghidra + rust/cargo)
+# 3.5d ghidra-cli (optional Rust bridge; needs pacman ghidra + rust/cargo)
 if [ -f "scripts/install-ghidra-cli.sh" ]; then
     if pacman -Q ghidra >/dev/null 2>&1; then
         bash scripts/install-ghidra-cli.sh || \
@@ -164,7 +164,7 @@ if [ -f "scripts/install-ghidra-cli.sh" ]; then
     fi
 fi
 
-# 3.5c REA (reverse-engineer-anything MCP + jadx JAR; needs npm from fnm)
+# 3.5e REA (reverse-engineer-anything MCP + jadx JAR; needs npm from fnm)
 if [ -f "scripts/install-rea.sh" ]; then
     if command -v npm >/dev/null 2>&1; then
         bash scripts/install-rea.sh || echo "REA install failed — re-run: bash scripts/install-rea.sh"
@@ -173,7 +173,7 @@ if [ -f "scripts/install-rea.sh" ]; then
     fi
 fi
 
-# One hub mirror after AI installers (caveman/android skip their own sync above)
+# 3.5f Hub mirror after AI installers (caveman/android/REA/ghidra → Claude/Cursor)
 if [ -f "scripts/sync-agent-skills.sh" ]; then
     bash scripts/sync-agent-skills.sh || echo "Agent skills post-sync skipped."
 fi

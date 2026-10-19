@@ -153,7 +153,8 @@ Shell functions (`fe`, `rge`, `gai`, `fcd`, …), `Ctrl+R` / `Ctrl+T` / `Alt+C`,
 
 Uses the **Gruvbox Rainbow** preset (official [starship preset](https://starship.rs/presets/gruvbox-rainbow)) with Nerd Font symbols. Config: `stow/starship/.config/starship.toml`.
 
-Legacy: `scripts/install-starship-crampack.sh` installs the previous Crampack preset (`1` Standard · `2` Plain text · `3` Emoji · `4` Full text).
+Optional older **Crampack** presets (not in this repo):  
+`bash <(curl -fsSL "https://git.new/crampack-sh")`
 
 ### Bash (`.bashrc` + `.inputrc`)
 
@@ -227,7 +228,7 @@ Installs packages, stows configs into `$HOME`, installs `stow/system/` into `/et
 ./install.sh
 ```
 
-Machine profiles run first in `./install.sh` via `scripts/apply-profile.sh` (exactly one profile): `profiles/$(hostname).sh` if it exists, otherwise `scripts/detect-profile.sh` (ThinkPad X1 → `thinkpad-x1`, ThinkPad P15 → `thinkpad-p15`, other ThinkPads/laptop chassis → `laptop`). There is no `nvidia.sh`; Optimus setup is inside `profiles/thinkpad-p15.sh`.
+Machine profiles run in `./install.sh` via `scripts/apply-profile.sh` **after** `packages/pacman.txt` (exactly one profile): `profiles/$(hostname).sh` if it exists, otherwise `scripts/detect-profile.sh` (ThinkPad X1 → `thinkpad-x1`, ThinkPad P15 → `thinkpad-p15`, other ThinkPads/laptop chassis → `laptop`). Pacman first so Optimus/NVIDIA packages exist before `thinkpad-p15` enables services and rebuilds UKIs. There is no `nvidia.sh`; Optimus setup is inside `profiles/thinkpad-p15.sh`.
 
 ThinkPad system configs (`i915`, kernel cmdline, sleep, UFW, Wayland env) live in `stow/system/` and are installed by `scripts/system-setup.sh` as **root-owned regular files**, never stow symlinks (re-run it after editing `stow/system/`). Why, and how the cmdline UUID is handled: [hardened guide — `system/` files](docs/hardened-arch-gnome.md#kernel-cmdline--system-files-installed-not-stowed). After tuning, run `scripts/thinkpad-health.sh` and **reboot**.
 
@@ -273,7 +274,7 @@ cleanup-input-overrides.sh
 → gnome-session-setup.sh → location-setup.sh → gnome-console-setup.sh → ptyxis-setup.sh
 → gdm-setup.sh → git-setup.sh → nvim-setup.sh → headroom-setup.sh
 → sync-agent-skills.sh → install-caveman.sh (if npm) → install-android-ui-skills.sh (if npx)
-→ install-ghidra-cli.sh (if ghidra) → install-rea.sh (if npm) → sync-agent-skills.sh (once more)
+→ install-ghidra-cli.sh (if ghidra) → install-rea.sh (if npm) → sync-agent-skills.sh
 → install-photogimp.sh
 → install-dash2dock.sh → install-extensions.sh → check.sh → validate-configs.sh
 → privacy-hardener.sh (incl. browser-hardening.sh)

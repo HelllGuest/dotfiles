@@ -116,6 +116,7 @@ bash scripts/p15-dotfiles-preflight.sh   # skip on X1
 #   bash scripts/install-android-ui-skills.sh  # Compose + Material 3
 #   bash scripts/install-ghidra-cli.sh
 #   bash scripts/install-rea.sh          # optional: INSTALL_HOPPER=1
+#   bash scripts/sync-agent-skills.sh
 exec zsh
 bash scripts/thinkpad-health.sh
 reboot   # required after NVIDIA early KMS / nouveau blacklist

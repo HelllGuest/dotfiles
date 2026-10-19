@@ -32,6 +32,18 @@ grep -q 'SKIP_SKILL_SYNC' "$ROOT/scripts/install-android-ui-skills.sh" \
   || fail "android-ui SKIP_SKILL_SYNC missing"
 
 grep -q 'SKIP_SKILL_SYNC=1' "$ROOT/install.sh" || fail "install.sh must batch skill sync"
+# Pre-sync (kit fallback) + post-sync (hub mirror after AI)
+sync_count="$(grep -c 'bash scripts/sync-agent-skills.sh' "$ROOT/install.sh" || true)"
+[[ "$sync_count" -eq 2 ]] \
+  || fail "install.sh must call sync-agent-skills.sh twice (pre + post AI)"
+grep -q '3\.5a Kit skills first' "$ROOT/install.sh" \
+  || fail "install.sh missing pre-AI sync block (3.5a)"
+grep -q '3\.5f Hub mirror after AI' "$ROOT/install.sh" \
+  || fail "install.sh missing post-AI sync block (3.5f)"
 grep -q 'check_agent_skill' "$ROOT/scripts/check.sh" || fail "check.sh skill probes missing"
+grep -q 'git.new/crampack-sh' "$ROOT/README.md" \
+  || fail "README must keep upstream Crampack one-liner after script removal"
+grep -q 'pacman.txt' "$ROOT/CONTRIBUTING.md" \
+  || fail "CONTRIBUTING profiles must mention pacman-then-profile"
 
 echo "PASS: ai-install-scripts.test.sh"

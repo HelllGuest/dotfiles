@@ -19,9 +19,20 @@ stow/vscode/.config/VSCodium/User/*
 stow/proton-vpn/.local/share/gnome-shell/extensions/*
 !stow/proton-vpn/.local/share/gnome-shell/extensions/proton-vpn@helllguest/
 
-# Claude Code local leftovers
+# Claude Code local leftovers (runtime; never commit)
+.claude/settings.local.json
 .claude/settings.local.json.tmp.*
 .claude/.headroom_wrap_settings.lock
+.claude/scheduled_tasks.lock
+.claude/scheduled_tasks.json
+.claude/routines/.state/
+.claude/worktrees/
+.claude/checkpoints/
+.claude/mailbox/
+.claude/agent-registry.json
+.claude/agent-memory-local
+.claude/first-run
+.claude/assistant-daemon-state.json
 
 # Node/Python dependencies
 node_modules/
