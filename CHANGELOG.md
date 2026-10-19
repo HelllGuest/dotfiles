@@ -1,6 +1,7 @@
 # Changelog
 
 ## [Unreleased]
+- Ghostty: stow systemd user drop-in `Type=notify` for `app-com.mitchellh.ghostty.service` so GNOME D-Bus launch works on recent systemd (stock `notify-reload` races with late SIGUSR2 → click does nothing until retry).
 - Base cleanup: drop unused `install-starship-crampack.sh` (README keeps upstream Crampack one-liner); README/CONTRIBUTING profile order = pacman then profile; `.gitignore` covers Claude Code runtime under `.claude/`. `install.sh` syncs agent skills before AI installers (kit fallback) and again after (hub mirror); installers use `SKIP_SKILL_SYNC=1`.
 - AI tools reproducible on any host (incl. P15): `scripts/sync-agent-skills.sh` (ai-rules kit + `~/.agents` hub → Claude/Cursor), `scripts/install-caveman.sh` (JuliusBrussee/caveman `v4.0.1` + SHA-256 of installer), `scripts/install-android-ui-skills.sh` (pinned `android-compose-design` commit + `material-3` `v1.1.1`), `scripts/install-rea.sh` (rea-agents, jadx JAR, MCP for detected agents, VSCodium). `check.sh` reports optional hub skills. Hopper still opt-in: `INSTALL_HOPPER=1`.
 - P15 dotfiles path: `profiles/p15.sh` (hostname alias → `thinkpad-p15.sh`); `install.sh` applies machine profile **after** `pacman.txt` so Optimus NVIDIA packages exist before `nvidia-*.service` / UKI rebuild; `scripts/p15-dotfiles-preflight.sh` checks session/sudo/network/DMI/GPU before clone install.

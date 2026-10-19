@@ -104,6 +104,13 @@ kitty --session ~/.config/kitty/sessions/dev.conf
 
 ## Terminal (Ghostty)
 
+If the app grid needs two clicks: D-Bus unit race. Stow ships
+`~/.config/systemd/user/app-com.mitchellh.ghostty.service.d/override.conf`
+(`Type=notify`). After pull: `stow -R -t ~ ghostty` from `~/dotfiles/stow`, then
+`systemctl --user daemon-reload`.
+
+
+
 | Shortcut | Action |
 |----------|--------|
 | `Ctrl+`` ` | Quick drop-down terminal (top, 40%) |
