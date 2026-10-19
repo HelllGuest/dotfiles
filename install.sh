@@ -9,20 +9,21 @@ cd "$(dirname "$0")"
 
 echo "Starting installation..."
 
-# 0. Machine profile (hostname override, else hardware detect)
-if [ -f "scripts/apply-profile.sh" ]; then
-    bash scripts/apply-profile.sh || echo "Profile application had some failures."
-fi
-
 # Legacy touchpad udev/inhibit cleanup (if present from older dotfiles)
 if [ -f "scripts/cleanup-input-overrides.sh" ]; then
     bash scripts/cleanup-input-overrides.sh || echo "Input override cleanup skipped."
 fi
 
-# 1. Install packages
+# 1. Install packages (before machine profile — NVIDIA/Optimus needs nvidia-* present)
 if [ -f "packages/pacman.txt" ]; then
     echo "Installing pacman packages..."
     sudo pacman -S --needed --noconfirm - < packages/pacman.txt || echo "Sudo failed. Skipping package installation."
+fi
+
+# 1.05 Machine profile (hostname override, else hardware detect)
+# Runs after pacman so thinkpad-p15 can enable nvidia-*.service and rebuild UKIs.
+if [ -f "scripts/apply-profile.sh" ]; then
+    bash scripts/apply-profile.sh || echo "Profile application had some failures."
 fi
 
 # 1.1 Install Flatpaks
@@ -51,6 +52,9 @@ if ! command -v stow >/dev/null 2>&1; then
 fi
 
 echo "Applying dotfiles..."
+# shellcheck source=scripts/lib/skel.sh
+source scripts/lib/skel.sh
+remove_unmodified_skel "$PWD/stow"
 cd stow || exit 1
 for dir in */; do
     dir=${dir%/}
@@ -58,11 +62,8 @@ for dir in */; do
     if [ "$dir" = "zram" ]; then
         echo "Skipping zram stow (use scripts/zram-setup.sh — /etc must not symlink into \$HOME)."
     elif [ "$dir" = "system" ]; then
-        if [ "$STOW_CMD" == "stow" ]; then
-            sudo stow -R -t / "$dir" || echo "$dir stow failed (sudo required)."
-        else
-            echo "Skipping $dir (requires GNU Stow + sudo)."
-        fi
+        echo "Installing $dir as root-owned files (scripts/system-setup.sh — /etc must not symlink into \$HOME)."
+        bash ../scripts/system-setup.sh || echo "System setup failed (sudo required)."
     elif [ "$dir" = "gdm" ]; then
         echo "Skipping gdm (handled by scripts/gdm-setup.sh)."
     elif [ "$STOW_CMD" == "stow" ]; then

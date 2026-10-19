@@ -36,7 +36,7 @@ This guide prioritizes:
 > ```
 > Rehearse first in a UEFI VM with [`scripts/arch-install-vmtest.sh`](../scripts/arch-install-vmtest.sh) (full install on a virtual disk; host disks untouched). The manual phases below remain the reference for what it does and for customizing.
 
-> **Dotfiles:** After completing this guide, continue with [PHASE 27 — Dotfiles Setup](#phase-27--dotfiles-setup) or jump to the [dotfiles README](../README.md) for shell and maintenance.
+> **Dotfiles:** After completing this guide, continue with [PHASE 27 — Dotfiles Setup](#phase-27--dotfiles-setup) or jump to the [dotfiles README](../README.md) for shell and maintenance. For coding, reverse engineering, and malware-lab purpose stacks on this ThinkPad, see [fresh-install-coding-re.md](fresh-install-coding-re.md).
 
 ---
 
@@ -63,24 +63,57 @@ Disabled
 
 ## Config → Power → Sleep State
 
-Set:
+Pick the BIOS mode that matches the sleep policy you want in Linux. On ThinkPads
+these labels are easy to misread:
+
+| BIOS Sleep State | Firmware behavior | Matches this repo? |
+|------------------|-------------------|--------------------|
+| **Windows and Linux** | Prefers modern standby (**s2idle**) | Yes — default below |
+| **Linux** | Enables classic S3 (**deep**) | No — fights the s2idle pin unless you also change cmdline + `sleep.conf.d` |
+
+For a fresh install that follows this repo, set:
 
 ```text
-Linux
+Windows and Linux
 ```
 
 `/sys/power/mem_sleep` lists available modes; the **bracketed** value is active.
 
-This repo pins **s2idle** (not S3/`deep`): `mem_sleep_default=s2idle` on the kernel
-cmdline (`arch-install.sh` and `stow/system/etc/kernel/cmdline`) plus
-`stow/system/etc/systemd/sleep.conf.d/` (`SuspendState=mem` +
-`MemorySleepMode=s2idle`). After install + stow, expect `[s2idle] deep` if the
-firmware still exposes S3. Confirm after resume with
+This repo’s tracked files pin **s2idle** (not S3/`deep`):
+`mem_sleep_default=s2idle` on the kernel cmdline (`arch-install.sh` and
+`stow/system/etc/kernel/cmdline`) plus `stow/system/etc/systemd/sleep.conf.d/`
+(`SuspendState=mem` + `MemorySleepMode=s2idle`). Check with
+[Verify sleep](#verify-sleep-s2idle); after resume,
 `journalctl -b | grep "suspend entry"` → `PM: suspend entry (s2idle)`.
 
-The tracked `stow/system/etc/kernel/cmdline` also hardcodes **this machine's**
-LUKS UUID (`rd.luks.name=…`). `arch-install.sh` writes the correct UUID at install
-time; do not stow that file onto another disk without replacing the UUID.
+### Kernel cmdline + `system/` files (installed, not stowed)
+
+`stow/system/` is **not** stowed. `install.sh` runs `scripts/system-setup.sh`,
+which installs each file as a root-owned regular file (same reason as zram and
+GDM). Symlinks from `/etc` into `$HOME` break in two ways:
+
+* `ufw.service` starts before `/home` is mounted. A stowed
+  `/etc/ufw/before.rules` dangles, ufw loads its chains without the
+  `ESTABLISHED,RELATED` accepts, and reply traffic (DNS included) is dropped.
+  `ufw status` still says `active`.
+* The repo owner could edit root config (kernel cmdline, udev, sleep, units)
+  without sudo.
+
+`arch-install.sh` writes `/etc/kernel/cmdline` with the LUKS UUID of the disk it
+configured. The tracked `stow/system/etc/kernel/cmdline` carries this machine's
+UUID and X1 options (i915, `thinkpad_acpi`). It and the other X1-only files (i915,
+X1 sleep/logind, fingerprint port rule) install only on ThinkPad X1 hardware, by
+DMI (`is_thinkpad_x1`), not hostname. Other profiles (e.g. P15 with
+`nvidia_drm.modeset=1`) keep their own; old stow symlinks to X1-only files are
+removed there, and a stowed cmdline becomes a real file. It rewrites `rd.luks.name=` to the UUID in `/proc/cmdline`
+(the one that unlocked the running root) and skips the file if that UUID is not
+a present block device. When cmdline or `modprobe.d` changes it runs
+`mkinitcpio -P` (sbctl's hook re-signs the UKIs). Replaced files are backed up to
+`/var/backups/dotfiles-system/<timestamp>/`. Leftover stow symlinks from older
+setups are removed; `scripts/check.sh` flags any that remain.
+
+The four location files (`/etc/geolocation`, GeoClue drop-in, NetworkManager
+dispatcher, polkit rule) are installed by `scripts/location-setup.sh` instead.
 
 ---
 
@@ -397,6 +430,8 @@ linux-firmware \
 intel-ucode \
 btrfs-progs \
 cryptsetup \
+bluez \
+bluez-utils \
 networkmanager \
 sudo \
 zsh \
@@ -678,9 +713,11 @@ Enable services:
 systemctl enable NetworkManager
 systemctl enable gdm
 systemctl enable apparmor
+systemctl enable bluetooth
 systemctl enable fstrim.timer
 systemctl enable bolt.service
 systemctl enable earlyoom.service
+systemctl enable power-profiles-daemon
 ```
 
 ---
@@ -833,11 +870,9 @@ ufw allow 53/udp
 ufw allow 67/udp
 ```
 
-Deploy the idempotent `waydroid-nat.service` unit (tracked at `stow/system/etc/systemd/system/waydroid-nat.service`):
+Enable the idempotent `waydroid-nat.service` unit (installed from `stow/system/` by `scripts/system-setup.sh`):
 
 ```bash
-sudo install -m 644 stow/system/etc/systemd/system/waydroid-nat.service /etc/systemd/system/waydroid-nat.service
-sudo systemctl daemon-reload
 sudo systemctl enable --now waydroid-nat.service
 ```
 
@@ -850,23 +885,12 @@ If container forwarding fails, check `/etc/default/ufw` and set
 
 # PHASE 14 — THINKPAD OPTIMIZATION
 
-Install:
+PPD, `sof-firmware`, `alsa-ucm-conf`, `fprintd`, and `iio-sensor-proxy` come from
+Phase 10 (`iio-sensor-proxy` and `fprintd` are D-Bus activated — do not enable
+them). Optional power diagnostics:
 
 ```bash
-pacman -S \
-power-profiles-daemon \
-powertop \
-sof-firmware \
-alsa-ucm-conf \
-fprintd \
-iio-sensor-proxy
-```
-
-Enable:
-
-```bash
-systemctl enable --now power-profiles-daemon
-systemctl enable --now iio-sensor-proxy
+pacman -S powertop
 ```
 
 **Power stack note:** this system uses **power-profiles-daemon (PPD)** only.
@@ -908,13 +932,7 @@ its root-hub port on enumeration. Re-enable by deleting that rule,
 
 # PHASE 15 — SNAPSHOTS
 
-Install:
-
-```bash
-pacman -S snapper snap-pac
-```
-
-Initialize Snapper:
+`snapper` and `snap-pac` are installed in Phase 6. Initialize Snapper:
 
 ```bash
 snapper -c root create-config /
@@ -938,23 +956,9 @@ flatpak remote-add --if-not-exists flathub \
 https://flathub.org/repo/flathub.flatpakrepo
 ```
 
-Install apps:
-
-```bash
-# Browsers
-flatpak install flathub com.brave.Browser
-flatpak install flathub app.zen_browser.zen
-flatpak install flathub com.google.Chrome
-flatpak install flathub io.gitlab.librewolf-community
-
-# VPN
-flatpak install flathub com.protonvpn.www
-
-# IDE (Android Studio is in packages/flatpak.txt; VSCodium is AUR vscodium-bin)
-flatpak install flathub com.google.AndroidStudio
-```
-
-> After dotfiles install, `./install.sh` installs all apps in `packages/flatpak.txt` and `packages/aur.txt` automatically.
+Apps: `packages/flatpak.txt` (browsers, Proton VPN, Android Studio). `arch-install.sh`
+installs the browsers + Proton VPN; `./install.sh` (`scripts/install-flatpaks.sh`)
+installs the full list, including any that failed in the installer chroot.
 
 ---
 
@@ -975,170 +979,28 @@ mkdir -p ~/.local/share/containers/storage
 chattr +C ~/.local/share/containers/storage
 ```
 
-Enable socket:
+Podman-only setups: enable the socket (`~/.shell-exports` then sets
+`DOCKER_HOST` automatically after `exec zsh`):
 
 ```bash
 systemctl --user enable --now podman.socket
 ```
 
-Configure Docker compatibility:
-
-Dotfiles set `DOCKER_HOST` in `~/.shell-exports` **only when** the Podman socket is running. If you use **Docker** instead (recommended when `docker.service` is enabled and Podman is not), leave Podman stopped — `DOCKER_HOST` stays unset and the Docker CLI talks to `/var/run/docker.sock`.
-
-Podman-only (optional):
-
-```bash
-systemctl --user enable --now podman.socket
-# ~/.shell-exports detects the socket automatically after exec zsh
-```
-
-Legacy manual override (not needed with current dotfiles):
-
-```bash
-mkdir -p ~/.config/secrets
-echo 'export DOCKER_HOST="unix://$XDG_RUNTIME_DIR/podman/podman.sock"' >> ~/.config/secrets/env
-```
-
-Docker daemon (typical on this setup):
-
-```bash
-pacman -S docker docker-compose
-sudo systemctl enable --now docker
-sudo usermod -aG docker "$USER"
-newgrp docker   # or log out/in
-docker ps
-```
+With **Docker** instead (typical here), leave Podman stopped: `DOCKER_HOST` stays
+unset and the CLI talks to `/var/run/docker.sock`. Docker install steps:
+[fresh-install-coding-re.md — Coding stack](fresh-install-coding-re.md#not-in-packagespacmantxt-install-separately).
 
 ---
 
-# PHASE 17b — NODE.JS (FNM)
+# PHASE 17b–17e — DEVELOPER EXTRAS (DOTFILES)
 
-Install via dotfiles (`packages/pacman.txt`) or:
+Installed or wired by `./install.sh`; documented once in the README:
 
-```bash
-pacman -S fnm
-```
-
-Shell hooks (after `./install.sh` / `stow-only.sh` + `exec zsh`):
-
-* Zsh: `fnm env --use-on-cd` in `.zsh-plugins`
-* Bash: `fnm env --use-on-cd` in `.bashrc`
-
-When a project declares Node in `.nvmrc`, `.node-version`, or `package.json` `engines.node`, fnm may prompt on shell start:
-
-```text
-Can't find an installed Node version matching >=22.12.0.
-Do you want to install it? answer [y/N]:
-```
-
-Install the requested version once:
-
-```bash
-fnm install 22
-fnm default 22
-```
-
-Or from inside the project: `fnm install`. To stop auto-switching (no prompt), remove `--use-on-cd` from the hook lines above.
-
-List installed versions: `fnm list`. Current: `fnm current`.
-
----
-
-# PHASE 17b2 — X86-64-V3 MAKEPKG
-
-This ThinkPad (Comet Lake) is **x86-64-v3** (AVX2/BMI2/FMA), not v4. Official extra/ packages stay generic `x86-64`. Local/AUR builds pick up v3 from:
-
-* `stow/system/etc/makepkg.conf.d/99-x86-64-v3.conf` (`sudo stow -R -t / system` from `stow/`)
-* `stow/pacman/.config/pacman/makepkg.conf` (user overlay)
-* `.shell-exports`: `GOAMD64=v3` and `RUSTFLAGS=-C target-cpu=x86-64-v3`
-
-Rebuild compression tools used by pacman/tar (skips PKGBUILD `check()`):
-
-```bash
-bash scripts/rebuild-v3.sh
-```
-
-Packages are signed with a local **rebuild-v3** key (`~/.local/share/rebuild-v3/gnupg`). The script local-signs that key into pacman (`pacman-key --lsign-key`). `pacman -Qi` should show Validated By: Signature. `pacman -Syu` still puts extra/ binaries back; re-run the script. ffmpeg/zlib are opt-in: `bash scripts/rebuild-v3.sh ffmpeg`.
-
----
-
-# PHASE 17c — HEADROOM (CLAUDE / CURSOR)
-
-Optional context compression proxy ([Headroom](https://github.com/headroomlabs-ai/headroom)). Installed user-local via **pipx** (`python-pipx` in `packages/pacman.txt`). `scripts/install-headroom.sh` installs or upgrades `headroom-ai[all]`.
-
-```bash
-bash scripts/headroom-setup.sh   # install/upgrade + MCP registration
-```
-
-Preferred always-on proxy (user systemd; enable linger so it survives logout):
-
-```bash
-headroom install apply --preset persistent-service --runtime python --scope user \
-  --providers auto --profile default --port 8787 --backend anthropic --mode token --no-telemetry
-loginctl enable-linger "$USER"   # once, if Linger is no
-systemctl --user status headroom-default.service
-headroom doctor
-```
-
-| Shell command | Purpose |
-|---------------|---------|
-| `hr-claude` | `headroom wrap claude` — proxy + launch Claude Code |
-| `hr-cursor` | Start proxy; paste printed Base URL into Cursor → Settings → Models |
-| `hr-proxy` | One-shot proxy (`HEADROOM_PORT`, default `8787`) |
-
-**Claude Code:** `ANTHROPIC_BASE_URL` in `~/.claude/settings.json`, or run `hr-claude` from the project directory.
-
-**Shell env:** stowed `~/.zshrc` / `~/.bashrc` (and `~/.profile`) export `ANTHROPIC_BASE_URL` / `OPENAI_BASE_URL` to `http://127.0.0.1:8787` (+ `/v1` for OpenAI). If `headroom doctor` warns they are unset, the current shell did not source those files: `source ~/.zshrc` or open a new terminal.
-
-**Cursor:** paste Override OpenAI Base URL from `hr-cursor` (IDE ignores shell env for models). MCP: `headroom mcp install --force` for Claude/Codex/OpenCode; Cursor may need a manual `~/.cursor/mcp.json` entry (`headroom mcp serve`).
-
-**RTK:** separate from Headroom 0.34+ ([rtk-ai/rtk](https://github.com/rtk-ai/rtk)). Install outside `~/.headroom/bin` so wrap/init does not purge it. Keep `HEADROOM_TELEMETRY=off`.
-
-**Other agents:** Antigravity CLI (`agy`) and Kiro: custom OpenAI-compatible base URL → `http://127.0.0.1:8787/v1` when supported.
-
----
-
-# PHASE 17d — PHOTOGIMP (GIMP)
-
-Optional Photoshop-like layout for GIMP ([PhotoGIMP](https://github.com/Diolinux/PhotoGIMP)). Pacman package `gimp` is in `packages/pacman.txt`.
-
-```bash
-bash scripts/install-photogimp.sh
-```
-
-* Installs `gimp` if missing
-* Backs up `~/.config/GIMP/<major.minor>` to `~/GIMP-<ver>-backup-YYYYMMDD`
-* Downloads `PhotoGIMP-linux.zip` and copies the release `3.0` tree into the live config dir (e.g. `3.2` on GIMP 3.2.x)
-* Skips stale upstream `pluginrc` (wrong protocol on GIMP 3.2 — GIMP regenerates it)
-* Sets `gimprc` `config-version` to the installed GIMP version
-* Also patches Flatpak config at `~/.var/app/org.gimp.GIMP/config/GIMP/<ver>` when Flatpak GIMP is installed
-* Rewrites PhotoGIMP `.desktop` `Exec` to native `gimp` (upstream zip assumes Flatpak + `gimp-3.0`, broken on 3.2)
-* Hides stock `gimp.desktop` (`NoDisplay=true`) so the menu shows **PhotoGIMP** once
-* Optional: installs `cfitsio` for the FITS plugin
-* Installs PhotoGIMP icons under `~/.local/share/`
-
-Launch: app menu **PhotoGIMP**, or `gimp`. Undo by restoring the backup (or deleting the config dir and reopening GIMP).
-
----
-
-# PHASE 17e — DASH2DOCK ANIMATED
-
-Animated dock for GNOME Shell 51 ([Dash2Dock Lite](https://github.com/icedman/dash2dock-lite), EGO extension 4994). Do **not** use AUR `gnome-shell-extension-dash2dock-lite` (last updated 2022). Upstream zip targets older shells; the installer patches `metadata.json` for Shell 51.
-
-```bash
-bash scripts/install-dash2dock.sh
-```
-
-* Downloads EGO zip (default version_tag 71180; metadata patched for GNOME Shell 51)
-* Installs to `~/.local/share/gnome-shell/extensions/dash2dock-lite@icedman.github.com`
-* Compiles GSettings schemas; appends UUID to `org.gnome.shell enabled-extensions`
-* UUID also listed in `gnome/extensions.txt` and `gnome/dconf/user.conf`
-
-**Wayland:** log out and back in so GNOME Shell loads the extension. Then:
-
-```bash
-gnome-extensions prefs dash2dock-lite@icedman.github.com
-```
+* fnm Node pins: [README — Node.js (fnm)](../README.md#nodejs-fnm)
+* x86-64-v3 makepkg + `rebuild-v3.sh`: [README — x86-64-v3 local builds](../README.md#x86-64-v3-local-builds)
+* Headroom proxy (Claude / Cursor): [README — Headroom](../README.md#headroom-claude--cursor-token-compression)
+* PhotoGIMP: [README — PhotoGIMP](../README.md#photogimp-gimp-photoshop-layout)
+* Dash2Dock Animated: [README — Dash2Dock Animated](../README.md#dash2dock-animated)
 
 ---
 
@@ -1274,12 +1136,6 @@ fallback_uki="/boot/EFI/Linux/arch-linux-hardened-fallback.efi"
 fallback_options="-S autodetect"
 ```
 
-**Note:** The splash image option is removed. If `/usr/share/systemd/bootctl/splash-arch.bmp` exists on your system, you may add:
-
-```ini
-default_options="--splash /usr/share/systemd/bootctl/splash-arch.bmp"
-```
-
 ---
 
 # Configure linux-lts UKI Preset
@@ -1306,15 +1162,11 @@ fallback_uki="/boot/EFI/Linux/arch-linux-lts-fallback.efi"
 fallback_options="-S autodetect"
 ```
 
-**Note:** The splash image option is removed. If `/usr/share/systemd/bootctl/splash-arch.bmp` exists on your system, you may add:
-
-```ini
-default_options="--splash /usr/share/systemd/bootctl/splash-arch.bmp"
-```
-
 ---
 
 # Build UKIs
+
+Optional splash for either preset, if `/usr/share/systemd/bootctl/splash-arch.bmp` exists: `default_options="--splash /usr/share/systemd/bootctl/splash-arch.bmp"`.
 
 ```bash
 mkdir -p /boot/EFI/Linux
@@ -1454,20 +1306,11 @@ bootctl status  # Measured UKI: yes (when SB active)
 
 ---
 
-# Re-sign after manual UKI rebuilds
+# UKI rebuilds after enrollment
 
-`mkinitcpio -P` (for example after editing `/etc/kernel/cmdline`) does **not** run the pacman hook. Re-sign UKIs:
-
-```bash
-sudo mkinitcpio -P
-for f in /boot/EFI/Linux/arch-linux-lts.efi /boot/EFI/Linux/arch-linux-lts-fallback.efi \
-         /boot/EFI/Linux/arch-linux-hardened.efi /boot/EFI/Linux/arch-linux-hardened-fallback.efi; do
-  [[ -f $f ]] && sudo sbctl sign -s "$f"
-done
-sudo sbctl verify
-```
-
-`profiles/thinkpad-x1.sh` (via `./install.sh`) performs this automatically when `/etc/sbctl/keys` exists.
+`mkinitcpio -P` (for example after editing `/etc/kernel/cmdline`) re-signs the
+UKIs itself: sbctl ships a mkinitcpio post hook (`/usr/lib/initcpio/post/sbctl`)
+that signs each UKI it builds once sbctl keys exist. Confirm with `sudo sbctl verify`.
 
 ---
 
@@ -1549,8 +1392,6 @@ sudo pacman -Rns $(pacman -Qtdq)
 
 ---
 
----
-
 # PHASE 27 — DOTFILES SETUP
 
 Log into GNOME, open a terminal, then clone and install:
@@ -1564,25 +1405,20 @@ cd ~/dotfiles
 `./install.sh` (run from a GNOME session) will:
 
 * Apply exactly one machine profile: `profiles/$(hostname).sh` if present, otherwise `scripts/detect-profile.sh` (ThinkPad X1 → `thinkpad-x1`; ThinkPad P15 → `thinkpad-p15`; other ThinkPads/laptop chassis → `laptop`). Optimus/NVIDIA setup is inside `thinkpad-p15.sh` (no `nvidia.sh`).
-* On ThinkPad X1, re-sign UKIs after `mkinitcpio -P` when Secure Boot keys exist (`/etc/sbctl/keys`)
 * Install packages from `packages/pacman.txt` (kernels, shells, terminals, CLI tools)
 * Install Flatpaks from `packages/flatpak.txt` (Brave, Zen, Chrome, LibreWolf, Proton VPN, Android Studio)
 * Deploy browser telemetry policies via `scripts/browser-hardening.sh` (Chrome/Brave `/etc` policies; Zen `user.js` into each `~/.var/app/app.zen_browser.zen/.zen/<profile>/` after first launch; LibreWolf upstream defaults)
 * Install AUR packages from `packages/aur.txt` (bootstraps `paru` if no helper exists)
-* Stow configs to `$HOME` and `/etc` (`system/`; skips `zram` symlink and `gdm`)
+* Stow configs to `$HOME` (skips `zram` and `gdm`); install `system/` into `/etc` as root-owned files via `scripts/system-setup.sh`
 * Materialize `zram-generator.conf` via `scripts/zram-setup.sh`
 * Apply GNOME session dconf from `gnome/dconf/user.conf`, enable extensions, location spoofing
 * Reset mouse/touchpad/keyboard to stock GNOME defaults (`scripts/reset-input-defaults.sh`); clean legacy touchpad udev/inhibit if present (`scripts/cleanup-input-overrides.sh`)
 * Configure GDM, Git, Neovim, and run health checks + privacy hardening
-* **fnm** auto Node version on `cd` / shell start when project pins a version (see Phase 17b)
-* **Headroom** optional AI context proxy for Claude Code / Cursor (see Phase 17c)
-* **PhotoGIMP** optional Photoshop-like GIMP layout (see Phase 17d)
-* **Dash2Dock** animated dock via EGO install (see Phase 17e); Wayland needs logout
+* fnm, Headroom, PhotoGIMP, Dash2Dock (Wayland needs logout): see Phase 17b–17e
 * **Ptyxis** optional terminal rice via `scripts/ptyxis-setup.sh` (after Console setup)
 * **ghidra-cli** optional when pacman `ghidra` is installed (`scripts/install-ghidra-cli.sh`; failure does not abort `./install.sh`)
-* Stow inventory for CI: `bash scripts/list-stow-files.sh > all_stow_files.txt` (git index only; never bare `find stow`)
 
-Config-only (no package install; skips `zram`, `system`, and `gdm`):
+Config-only (no package install; skips `zram`, `system`, and `gdm`; removes unmodified `/etc/skel` copies that block stow):
 
 ```bash
 ./stow-only.sh
@@ -1596,9 +1432,9 @@ bash scripts/install-flatpaks.sh
 bash scripts/install-aur.sh
 ```
 
-
-
-See [README.md](../README.md) for shell setup and maintenance commands.
+See [README.md](../README.md) for shell setup and maintenance commands. For
+coding / reverse engineering / malware-lab stacks on this machine, see
+[fresh-install-coding-re.md](fresh-install-coding-re.md).
 
 ---
 
@@ -1622,13 +1458,19 @@ wayland
 
 ```bash
 cat /sys/power/mem_sleep
+grep -o 'mem_sleep_default=[^ ]*' /proc/cmdline
 ```
 
-Expected after this repo's cmdline + `sleep.conf.d` (S3 still listed if firmware exposes it):
+Expected after this repo’s cmdline + `sleep.conf.d` are actually applied (S3 still
+listed if firmware exposes it):
 
 ```text
 [s2idle] deep
+mem_sleep_default=s2idle
 ```
+
+If you see `s2idle [deep]` and/or `mem_sleep_default=deep`, the live cmdline or
+BIOS Sleep State has drifted from the repo pin.
 
 ---
 
@@ -1655,8 +1497,15 @@ Expected output shows IOMMU entries confirming Intel VT-d is active.
 # Verify Firewall
 
 ```bash
-ufw status verbose
+systemctl is-active ufw
+sudo ufw status verbose
+sudo iptables -S ufw-before-input | grep -c ESTABLISHED
 ```
+
+Expect `active`, `Status: active`, and a count of at least `1`. `ufw status`
+alone is not enough: it reports `active` even when `ufw.service` failed at boot
+and loaded no `before.rules` (then reply traffic, DNS included, is dropped).
+Fix with `sudo ufw reload` and check `journalctl -b -u ufw`.
 
 ---
 
@@ -1701,7 +1550,7 @@ Secure Boot: enabled
 
 All signed binaries should pass `sbctl verify`. With SB enabled, `bootctl status` should show `Measured UKI: yes`.
 
-If you rebuilt UKIs manually, re-sign before enabling SB or after `mkinitcpio -P` (see [Phase 23](#phase-23--secure-boot-with-sbctl)).
+UKIs rebuilt with `mkinitcpio -P` are re-signed by sbctl's mkinitcpio hook (see [Phase 23](#phase-23--secure-boot-with-sbctl)).
 
 ---
 

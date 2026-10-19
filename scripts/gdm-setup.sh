@@ -29,19 +29,18 @@ if command -v stow >/dev/null 2>&1; then
     sudo stow -d "$STOW_DIR" -t / -D gdm 2>/dev/null || true
 fi
 
-echo "→ Copying GDM config into /etc..."
-if command -v rsync >/dev/null 2>&1; then
-    sudo rsync -a "$GDM_SRC/" /etc/
-else
-    sudo cp -a "$GDM_SRC/." /etc/
-fi
-
-echo "→ Fixing ownership of system GDM files..."
-sudo chown root:root /etc/gdm/custom.conf 2>/dev/null || true
-sudo chown -R root:root /etc/systemd/system/gdm.service.d
-sudo chown -R root:root /etc/dconf/db/gdm.d
-sudo chown root:root /etc/dconf/profile/gdm 2>/dev/null || true
-sudo chown root:root /etc/udev/rules.d/61-gdm-wayland.rules 2>/dev/null || true
+echo "→ Installing GDM config into /etc (root-owned)..."
+# Per-file install, never `cp -a`/`rsync -a`: those copy the repo owner onto /etc
+# and its parent dirs (user-writable /etc; pacman hooks refuse unsafe paths).
+while IFS= read -r -d '' src; do
+    sudo install -D -m 0644 -o root -g root "$src" "/etc/${src#"$GDM_SRC"/}"
+done < <(find "$GDM_SRC" -type f -print0)
+# Repair parent dirs an older `rsync -a` handed to the repo owner, with the repo's
+# mode (700 under umask 077). Non-recursive; only adds read/traverse, drops go-w.
+while IFS= read -r -d '' dir; do
+    sudo chown root:root "/etc${dir#"$GDM_SRC"}"
+    sudo chmod u+rwx,go+rx,go-w "/etc${dir#"$GDM_SRC"}"
+done < <(find "$GDM_SRC" -type d -print0)
 
 echo "→ Compiling GDM dconf database..."
 sudo dconf update

@@ -408,6 +408,8 @@ stow/vscode/.config/VSCodium/Cache/Cache_Data/1395c7855b6eca75_0
 stow/vscode/.config/VSCodium/Cache/Cache_Data/141a380d52d7b787_0
 stow/vscode/.config/VSCodium/Cache/Cache_Data/144b498d998f1f50_0
 stow/vscode/.config/VSCodium/Cache/Cache_Data/1451ac35f988d7bf_0
+stow/vscode/.config/VSCodium/Cache/Cache_Data/1472585daef0e688_0
+stow/vscode/.config/VSCodium/Cache/Cache_Data/1472585daef0e688_s
 stow/vscode/.config/VSCodium/Cache/Cache_Data/14b0e6f7afe88629_0
 stow/vscode/.config/VSCodium/Cache/Cache_Data/14eb682c2e6e7003_0
 stow/vscode/.config/VSCodium/Cache/Cache_Data/160abb780195cd95_0
@@ -460,10 +462,14 @@ stow/vscode/.config/VSCodium/Cache/Cache_Data/2db41ae3b1c265fd_0
 stow/vscode/.config/VSCodium/Cache/Cache_Data/2e47a0b32377d9b0_0
 stow/vscode/.config/VSCodium/Cache/Cache_Data/2e61bc39d25021d0_0
 stow/vscode/.config/VSCodium/Cache/Cache_Data/2f67c10a0a0cc4bc_0
+stow/vscode/.config/VSCodium/Cache/Cache_Data/2f85b036dba164c8_0
+stow/vscode/.config/VSCodium/Cache/Cache_Data/2f98c631584eaea2_0
 stow/vscode/.config/VSCodium/Cache/Cache_Data/300061a54288df40_0
 stow/vscode/.config/VSCodium/Cache/Cache_Data/301a413f1e5b19f5_0
 stow/vscode/.config/VSCodium/Cache/Cache_Data/303c67a8aff0f17e_0
 stow/vscode/.config/VSCodium/Cache/Cache_Data/304b5d46e60d7a0c_0
+stow/vscode/.config/VSCodium/Cache/Cache_Data/3168c30e0d03802b_0
+stow/vscode/.config/VSCodium/Cache/Cache_Data/3168c30e0d03802b_s
 stow/vscode/.config/VSCodium/Cache/Cache_Data/31d555f0bac15ca8_0
 stow/vscode/.config/VSCodium/Cache/Cache_Data/33595c88363d0ab1_0
 stow/vscode/.config/VSCodium/Cache/Cache_Data/3365adf9f6899f13_0
@@ -485,6 +491,7 @@ stow/vscode/.config/VSCodium/Cache/Cache_Data/3e55a253716c13f7_0
 stow/vscode/.config/VSCodium/Cache/Cache_Data/3ecaf772369a99bf_0
 stow/vscode/.config/VSCodium/Cache/Cache_Data/3f11d5033492aaad_0
 stow/vscode/.config/VSCodium/Cache/Cache_Data/40669a1add231edb_0
+stow/vscode/.config/VSCodium/Cache/Cache_Data/4222b91e26bad0d2_0
 stow/vscode/.config/VSCodium/Cache/Cache_Data/427bb3fb22688324_0
 stow/vscode/.config/VSCodium/Cache/Cache_Data/4319f243334c52df_0
 stow/vscode/.config/VSCodium/Cache/Cache_Data/4497ced4e2d49a49_0
@@ -594,10 +601,12 @@ stow/vscode/.config/VSCodium/Cache/Cache_Data/87ac5143a010badc_0
 stow/vscode/.config/VSCodium/Cache/Cache_Data/8864a170a72d5846_0
 stow/vscode/.config/VSCodium/Cache/Cache_Data/888354da003c4964_0
 stow/vscode/.config/VSCodium/Cache/Cache_Data/890775e35538deb9_0
+stow/vscode/.config/VSCodium/Cache/Cache_Data/89238006473aceeb_0
 stow/vscode/.config/VSCodium/Cache/Cache_Data/8b2c854be95d3db5_0
 stow/vscode/.config/VSCodium/Cache/Cache_Data/8b4df6f099c3c228_0
 stow/vscode/.config/VSCodium/Cache/Cache_Data/8be54ac9d5ce0152_0
 stow/vscode/.config/VSCodium/Cache/Cache_Data/8cdbcc27efb88382_0
+stow/vscode/.config/VSCodium/Cache/Cache_Data/8d4d981671ab1234_0
 stow/vscode/.config/VSCodium/Cache/Cache_Data/8eb77eec1fb7bcf2_0
 stow/vscode/.config/VSCodium/Cache/Cache_Data/8ed3dd996609b1c5_0
 stow/vscode/.config/VSCodium/Cache/Cache_Data/8eecb5f225a22a10_0
@@ -625,6 +634,7 @@ stow/vscode/.config/VSCodium/Cache/Cache_Data/98740bf9b94e568f_0
 stow/vscode/.config/VSCodium/Cache/Cache_Data/990d4c5e132f65ed_0
 stow/vscode/.config/VSCodium/Cache/Cache_Data/9b0fe605085da181_0
 stow/vscode/.config/VSCodium/Cache/Cache_Data/9b2c26798680e494_0
+stow/vscode/.config/VSCodium/Cache/Cache_Data/9b378882b7930777_0
 stow/vscode/.config/VSCodium/Cache/Cache_Data/9b4d81cfcf41bf73_0
 stow/vscode/.config/VSCodium/Cache/Cache_Data/9c550aa1b18546ad_0
 stow/vscode/.config/VSCodium/Cache/Cache_Data/9c63221f3f423675_0
@@ -652,6 +662,7 @@ stow/vscode/.config/VSCodium/Cache/Cache_Data/a6010d4de48859a7_0
 stow/vscode/.config/VSCodium/Cache/Cache_Data/a62c1467cfbcf94a_0
 stow/vscode/.config/VSCodium/Cache/Cache_Data/a63314f1573ecedf_0
 stow/vscode/.config/VSCodium/Cache/Cache_Data/a6706280e0b5fc57_0
+stow/vscode/.config/VSCodium/Cache/Cache_Data/a68c7c28f1cf7fcb_0
 stow/vscode/.config/VSCodium/Cache/Cache_Data/a6c6afda96a46221_0
 stow/vscode/.config/VSCodium/Cache/Cache_Data/a79f8777e65fcb5d_0
 stow/vscode/.config/VSCodium/Cache/Cache_Data/a7fa8b82ef67f84c_0
@@ -667,6 +678,7 @@ stow/vscode/.config/VSCodium/Cache/Cache_Data/aeedb9137f165e71_0
 stow/vscode/.config/VSCodium/Cache/Cache_Data/af427d8b61e79316_0
 stow/vscode/.config/VSCodium/Cache/Cache_Data/afd412d5334e7ddd_0
 stow/vscode/.config/VSCodium/Cache/Cache_Data/b02c923ea33588ba_0
+stow/vscode/.config/VSCodium/Cache/Cache_Data/b0b0814e337c656d_0
 stow/vscode/.config/VSCodium/Cache/Cache_Data/b0f481b398bdf64c_0
 stow/vscode/.config/VSCodium/Cache/Cache_Data/b131a551d54a20c9_0
 stow/vscode/.config/VSCodium/Cache/Cache_Data/b1a60bb7fa421f52_0
@@ -696,8 +708,12 @@ stow/vscode/.config/VSCodium/Cache/Cache_Data/c052916fabab7605_0
 stow/vscode/.config/VSCodium/Cache/Cache_Data/c1764fec8ba6db75_0
 stow/vscode/.config/VSCodium/Cache/Cache_Data/c19d7328bc22e016_0
 stow/vscode/.config/VSCodium/Cache/Cache_Data/c2842fef89e5ac66_0
+stow/vscode/.config/VSCodium/Cache/Cache_Data/c2f75684c9f1a8c7_0
+stow/vscode/.config/VSCodium/Cache/Cache_Data/c2f75684c9f1a8c7_s
 stow/vscode/.config/VSCodium/Cache/Cache_Data/c3151b06ce56bf1e_0
 stow/vscode/.config/VSCodium/Cache/Cache_Data/c359c8a5b12254ac_0
+stow/vscode/.config/VSCodium/Cache/Cache_Data/c38b130ce702fdcc_0
+stow/vscode/.config/VSCodium/Cache/Cache_Data/c38b130ce702fdcc_s
 stow/vscode/.config/VSCodium/Cache/Cache_Data/c393294fbceb336e_0
 stow/vscode/.config/VSCodium/Cache/Cache_Data/c3ea7956c43fcdbe_0
 stow/vscode/.config/VSCodium/Cache/Cache_Data/c41135f73be227e4_0
@@ -712,6 +728,8 @@ stow/vscode/.config/VSCodium/Cache/Cache_Data/cb6f5e3b70660b31_0
 stow/vscode/.config/VSCodium/Cache/Cache_Data/cca3e650489e9984_0
 stow/vscode/.config/VSCodium/Cache/Cache_Data/cceeedd91841f237_0
 stow/vscode/.config/VSCodium/Cache/Cache_Data/cd989f77cce7d4ee_0
+stow/vscode/.config/VSCodium/Cache/Cache_Data/cef3f18fe7a5dd3b_0
+stow/vscode/.config/VSCodium/Cache/Cache_Data/cef3f18fe7a5dd3b_s
 stow/vscode/.config/VSCodium/Cache/Cache_Data/cf671e15f405d6ee_0
 stow/vscode/.config/VSCodium/Cache/Cache_Data/cfb1d0e5ca823967_0
 stow/vscode/.config/VSCodium/Cache/Cache_Data/d0bd9270e288bb17_0
@@ -729,7 +747,10 @@ stow/vscode/.config/VSCodium/Cache/Cache_Data/d6a1c049c78bcf61_0
 stow/vscode/.config/VSCodium/Cache/Cache_Data/d7096cd0231cb837_0
 stow/vscode/.config/VSCodium/Cache/Cache_Data/d71b5aaa33b0a420_0
 stow/vscode/.config/VSCodium/Cache/Cache_Data/d7326bfa80f20a14_0
+stow/vscode/.config/VSCodium/Cache/Cache_Data/d7bb6b3566f3b96f_0
+stow/vscode/.config/VSCodium/Cache/Cache_Data/d7bb6b3566f3b96f_s
 stow/vscode/.config/VSCodium/Cache/Cache_Data/d7ce7d24bb17d631_0
+stow/vscode/.config/VSCodium/Cache/Cache_Data/d80473f37fd3258c_0
 stow/vscode/.config/VSCodium/Cache/Cache_Data/d82a504f6e9d6cef_0
 stow/vscode/.config/VSCodium/Cache/Cache_Data/d8ab40c06069c5ef_0
 stow/vscode/.config/VSCodium/Cache/Cache_Data/d8d64d04ee37ac58_0
@@ -738,8 +759,10 @@ stow/vscode/.config/VSCodium/Cache/Cache_Data/d952b4884bcb5a14_0
 stow/vscode/.config/VSCodium/Cache/Cache_Data/d9c9579540630be8_0
 stow/vscode/.config/VSCodium/Cache/Cache_Data/da285561464dd0e5_0
 stow/vscode/.config/VSCodium/Cache/Cache_Data/da785d3c734aed38_0
+stow/vscode/.config/VSCodium/Cache/Cache_Data/dad4c73272b67a2f_0
 stow/vscode/.config/VSCodium/Cache/Cache_Data/db17e3498e4c7f0a_0
 stow/vscode/.config/VSCodium/Cache/Cache_Data/db5ea6b68eb84aba_0
+stow/vscode/.config/VSCodium/Cache/Cache_Data/dbffcca9c5e9b4f6_0
 stow/vscode/.config/VSCodium/Cache/Cache_Data/dcc3f0b5dbd1b720_0
 stow/vscode/.config/VSCodium/Cache/Cache_Data/dd49d248bb0f9699_0
 stow/vscode/.config/VSCodium/Cache/Cache_Data/dd5c9e0fbe58321a_0
@@ -799,8 +822,11 @@ stow/vscode/.config/VSCodium/Cache/Cache_Data/f8fe989d20cae2f4_0
 stow/vscode/.config/VSCodium/Cache/Cache_Data/f961eba8c235eb15_0
 stow/vscode/.config/VSCodium/Cache/Cache_Data/f9915687a32542a8_0
 stow/vscode/.config/VSCodium/Cache/Cache_Data/fa43f00daf6fb170_0
+stow/vscode/.config/VSCodium/Cache/Cache_Data/fc1ff6818c02a7fd_0
+stow/vscode/.config/VSCodium/Cache/Cache_Data/fcb086a8d66466aa_0
 stow/vscode/.config/VSCodium/Cache/Cache_Data/fd092109456dd5fe_0
 stow/vscode/.config/VSCodium/Cache/Cache_Data/fd16e687bebe93c6_0
+stow/vscode/.config/VSCodium/Cache/Cache_Data/fdc24855e0cf37d3_0
 stow/vscode/.config/VSCodium/Cache/Cache_Data/fdfbd1a7cb543bbd_0
 stow/vscode/.config/VSCodium/Cache/Cache_Data/fe1fbe8ab673a0b6_0
 stow/vscode/.config/VSCodium/Cache/Cache_Data/ff4f7eacff0b5847_0
@@ -825,27 +851,31 @@ stow/vscode/.config/VSCodium/CachedData/1a46a584725d5dd330e0bcd7f5510f24990efcf2
 stow/vscode/.config/VSCodium/CachedData/1a46a584725d5dd330e0bcd7f5510f24990efcf2/chrome/js/index-dir/the-real-index
 stow/vscode/.config/VSCodium/CachedData/1a46a584725d5dd330e0bcd7f5510f24990efcf2/chrome/wasm/index
 stow/vscode/.config/VSCodium/CachedData/1a46a584725d5dd330e0bcd7f5510f24990efcf2/chrome/wasm/index-dir/the-real-index
-stow/vscode/.config/VSCodium/CachedData/4c0b0c6cc561d2d3636d1ec250935431876ce4dc/chrome/js/06a6be2a13ab4551_0
-stow/vscode/.config/VSCodium/CachedData/4c0b0c6cc561d2d3636d1ec250935431876ce4dc/chrome/js/13fe8659e83263d5_0
-stow/vscode/.config/VSCodium/CachedData/4c0b0c6cc561d2d3636d1ec250935431876ce4dc/chrome/js/224c36e589edce3b_0
-stow/vscode/.config/VSCodium/CachedData/4c0b0c6cc561d2d3636d1ec250935431876ce4dc/chrome/js/45cbe7816d9be6cc_0
-stow/vscode/.config/VSCodium/CachedData/4c0b0c6cc561d2d3636d1ec250935431876ce4dc/chrome/js/51372939731702dc_0
-stow/vscode/.config/VSCodium/CachedData/4c0b0c6cc561d2d3636d1ec250935431876ce4dc/chrome/js/67955535dedc909f_0
-stow/vscode/.config/VSCodium/CachedData/4c0b0c6cc561d2d3636d1ec250935431876ce4dc/chrome/js/8e794f69d4e85421_0
-stow/vscode/.config/VSCodium/CachedData/4c0b0c6cc561d2d3636d1ec250935431876ce4dc/chrome/js/a2e988da580603ae_0
-stow/vscode/.config/VSCodium/CachedData/4c0b0c6cc561d2d3636d1ec250935431876ce4dc/chrome/js/b3b1f65c94e34ee9_0
-stow/vscode/.config/VSCodium/CachedData/4c0b0c6cc561d2d3636d1ec250935431876ce4dc/chrome/js/b668f990dc971de9_0
-stow/vscode/.config/VSCodium/CachedData/4c0b0c6cc561d2d3636d1ec250935431876ce4dc/chrome/js/c039a873dd3408ad_0
-stow/vscode/.config/VSCodium/CachedData/4c0b0c6cc561d2d3636d1ec250935431876ce4dc/chrome/js/edd9c1b9dcad31e5_0
-stow/vscode/.config/VSCodium/CachedData/4c0b0c6cc561d2d3636d1ec250935431876ce4dc/chrome/js/f24a61fd1283c6fa_0
-stow/vscode/.config/VSCodium/CachedData/4c0b0c6cc561d2d3636d1ec250935431876ce4dc/chrome/js/index
-stow/vscode/.config/VSCodium/CachedData/4c0b0c6cc561d2d3636d1ec250935431876ce4dc/chrome/js/index-dir/the-real-index
-stow/vscode/.config/VSCodium/CachedData/4c0b0c6cc561d2d3636d1ec250935431876ce4dc/chrome/wasm/index
-stow/vscode/.config/VSCodium/CachedData/4c0b0c6cc561d2d3636d1ec250935431876ce4dc/chrome/wasm/index-dir/the-real-index
+stow/vscode/.config/VSCodium/CachedData/807ba2d6075c29587f884698cd7370c81ab0724c/chrome/js/3dc7a65acc9cc8f6_0
+stow/vscode/.config/VSCodium/CachedData/807ba2d6075c29587f884698cd7370c81ab0724c/chrome/js/4228bbec02dfee3c_0
+stow/vscode/.config/VSCodium/CachedData/807ba2d6075c29587f884698cd7370c81ab0724c/chrome/js/45cbe7816d9be6cc_0
+stow/vscode/.config/VSCodium/CachedData/807ba2d6075c29587f884698cd7370c81ab0724c/chrome/js/55395cb6bebb89e1_0
+stow/vscode/.config/VSCodium/CachedData/807ba2d6075c29587f884698cd7370c81ab0724c/chrome/js/7455cabf6f2694a6_0
+stow/vscode/.config/VSCodium/CachedData/807ba2d6075c29587f884698cd7370c81ab0724c/chrome/js/8e495342a33d57b6_0
+stow/vscode/.config/VSCodium/CachedData/807ba2d6075c29587f884698cd7370c81ab0724c/chrome/js/9d286cdeffc6cf34_0
+stow/vscode/.config/VSCodium/CachedData/807ba2d6075c29587f884698cd7370c81ab0724c/chrome/js/b3b1f65c94e34ee9_0
+stow/vscode/.config/VSCodium/CachedData/807ba2d6075c29587f884698cd7370c81ab0724c/chrome/js/b668f990dc971de9_0
+stow/vscode/.config/VSCodium/CachedData/807ba2d6075c29587f884698cd7370c81ab0724c/chrome/js/b8748123a8b81b0b_0
+stow/vscode/.config/VSCodium/CachedData/807ba2d6075c29587f884698cd7370c81ab0724c/chrome/js/c24e5545ea308077_0
+stow/vscode/.config/VSCodium/CachedData/807ba2d6075c29587f884698cd7370c81ab0724c/chrome/js/cdbc5af6997a155f_0
+stow/vscode/.config/VSCodium/CachedData/807ba2d6075c29587f884698cd7370c81ab0724c/chrome/js/d38223de50e32b1e_0
+stow/vscode/.config/VSCodium/CachedData/807ba2d6075c29587f884698cd7370c81ab0724c/chrome/js/f24a61fd1283c6fa_0
+stow/vscode/.config/VSCodium/CachedData/807ba2d6075c29587f884698cd7370c81ab0724c/chrome/js/index
+stow/vscode/.config/VSCodium/CachedData/807ba2d6075c29587f884698cd7370c81ab0724c/chrome/js/index-dir/the-real-index
+stow/vscode/.config/VSCodium/CachedData/807ba2d6075c29587f884698cd7370c81ab0724c/chrome/wasm/index
+stow/vscode/.config/VSCodium/CachedData/807ba2d6075c29587f884698cd7370c81ab0724c/chrome/wasm/index-dir/the-real-index
 stow/vscode/.config/VSCodium/CachedProfilesData/__default__profile__/extensions.builtin.cache
+stow/vscode/.config/VSCodium/CachedProfilesData/__default__profile__/extensions.builtin.en.cache
 stow/vscode/.config/VSCodium/CachedProfilesData/__default__profile__/extensions.user.cache
+stow/vscode/.config/VSCodium/CachedProfilesData/__default__profile__/extensions.user.en.cache
 stow/vscode/.config/VSCodium/Cache/No_Vary_Search/journal.baj
 stow/vscode/.config/VSCodium/Cache/No_Vary_Search/snapshot.baf
+stow/vscode/.config/VSCodium/Code Cache/electron-preload/1F3DBCBFB90F4BFF26A8A06C7B02785ABA185A75EFFF331F6B5904312AA71783-67A64C46445250C0C0E1103FCA3290FE88811449B7F10FD5FBBE5AA8F3AC1EB2.cache
 stow/vscode/.config/VSCodium/Code Cache/electron-preload/1F3DBCBFB90F4BFF26A8A06C7B02785ABA185A75EFFF331F6B5904312AA71783.cache
 stow/vscode/.config/VSCodium/Code Cache/js/index
 stow/vscode/.config/VSCodium/Code Cache/js/index-dir/the-real-index
@@ -927,8 +957,10 @@ stow/vscode/.config/VSCodium/Service Worker/Database/LOCK
 stow/vscode/.config/VSCodium/Service Worker/Database/LOG
 stow/vscode/.config/VSCodium/Service Worker/Database/LOG.old
 stow/vscode/.config/VSCodium/Service Worker/Database/MANIFEST-000001
-stow/vscode/.config/VSCodium/Service Worker/ScriptCache/4cb013792b196a35_0
-stow/vscode/.config/VSCodium/Service Worker/ScriptCache/f1cdccba37924bda_0
+stow/vscode/.config/VSCodium/Service Worker/ScriptCache/297ecea5cebb5dfe_0
+stow/vscode/.config/VSCodium/Service Worker/ScriptCache/653e56b4b6556a9e_0
+stow/vscode/.config/VSCodium/Service Worker/ScriptCache/b3bd0d67f800d222_0
+stow/vscode/.config/VSCodium/Service Worker/ScriptCache/ba23d8ecda68de77_0
 stow/vscode/.config/VSCodium/Service Worker/ScriptCache/index
 stow/vscode/.config/VSCodium/Service Worker/ScriptCache/index-dir/the-real-index
 stow/vscode/.config/VSCodium/Session Storage/000003.log
@@ -955,8 +987,8 @@ stow/vscode/.config/VSCodium/User/History/-717da9e/gHiA.json
 stow/vscode/.config/VSCodium/User/History/-717da9e/WUIG.json
 stow/vscode/.config/VSCodium/User/mcp.json
 stow/vscode/.config/VSCodium/User/settings.json
-stow/vscode/.config/VSCodium/User/workspaceStorage/1790447086130/state.vscdb
-stow/vscode/.config/VSCodium/User/workspaceStorage/1790447086130/state.vscdb.backup
+stow/vscode/.config/VSCodium/User/workspaceStorage/1792135381156/state.vscdb
+stow/vscode/.config/VSCodium/User/workspaceStorage/1792135381156/state.vscdb.backup
 stow/vscode/.config/VSCodium/User/workspaceStorage/3cff9aa6cefc85fd3f43756ea3f29161/state.vscdb
 stow/vscode/.config/VSCodium/User/workspaceStorage/3cff9aa6cefc85fd3f43756ea3f29161/state.vscdb.backup
 stow/vscode/.config/VSCodium/User/workspaceStorage/3cff9aa6cefc85fd3f43756ea3f29161/workspace.json
@@ -967,19 +999,42 @@ stow/vscode/.config/VSCodium/User/workspaceStorage/817f2ee5d188200a198b3c0fd22c5
 stow/vscode/.config/VSCodium/User/workspaceStorage/817f2ee5d188200a198b3c0fd22c548d/state.vscdb
 stow/vscode/.config/VSCodium/User/workspaceStorage/817f2ee5d188200a198b3c0fd22c548d/state.vscdb.backup
 stow/vscode/.config/VSCodium/User/workspaceStorage/817f2ee5d188200a198b3c0fd22c548d/workspace.json
+stow/vscode/.config/VSCodium/User/workspaceStorage/834639df3dfbc58691cd6476534ae728/state.vscdb
+stow/vscode/.config/VSCodium/User/workspaceStorage/834639df3dfbc58691cd6476534ae728/state.vscdb.backup
+stow/vscode/.config/VSCodium/User/workspaceStorage/834639df3dfbc58691cd6476534ae728/workspace.json
 stow/vscode/.config/VSCodium/User/workspaceStorage/e91793d8e9a22246d3e94aadd34cb8c9/state.vscdb
 stow/vscode/.config/VSCodium/User/workspaceStorage/e91793d8e9a22246d3e94aadd34cb8c9/state.vscdb.backup
 stow/vscode/.config/VSCodium/User/workspaceStorage/e91793d8e9a22246d3e94aadd34cb8c9/workspace.json
+stow/vscode/.config/VSCodium/WebStorage/1/CacheStorage/15d8f39f-94b2-4ff3-9194-576d9ddc4ce4/05c85093b3277240_0
+stow/vscode/.config/VSCodium/WebStorage/1/CacheStorage/15d8f39f-94b2-4ff3-9194-576d9ddc4ce4/0aa276f8b04c5bee_0
+stow/vscode/.config/VSCodium/WebStorage/1/CacheStorage/15d8f39f-94b2-4ff3-9194-576d9ddc4ce4/0b26efe2853562e8_0
+stow/vscode/.config/VSCodium/WebStorage/1/CacheStorage/15d8f39f-94b2-4ff3-9194-576d9ddc4ce4/17040f743e844437_0
+stow/vscode/.config/VSCodium/WebStorage/1/CacheStorage/15d8f39f-94b2-4ff3-9194-576d9ddc4ce4/24b4b21dd0d55654_0
+stow/vscode/.config/VSCodium/WebStorage/1/CacheStorage/15d8f39f-94b2-4ff3-9194-576d9ddc4ce4/2a87d8f5a3118651_0
+stow/vscode/.config/VSCodium/WebStorage/1/CacheStorage/15d8f39f-94b2-4ff3-9194-576d9ddc4ce4/3f23fe6c234a5049_0
+stow/vscode/.config/VSCodium/WebStorage/1/CacheStorage/15d8f39f-94b2-4ff3-9194-576d9ddc4ce4/3f5070145fcdc9e2_0
+stow/vscode/.config/VSCodium/WebStorage/1/CacheStorage/15d8f39f-94b2-4ff3-9194-576d9ddc4ce4/3f9d11ecdfaa70d2_0
+stow/vscode/.config/VSCodium/WebStorage/1/CacheStorage/15d8f39f-94b2-4ff3-9194-576d9ddc4ce4/43f54b8f7661563d_0
+stow/vscode/.config/VSCodium/WebStorage/1/CacheStorage/15d8f39f-94b2-4ff3-9194-576d9ddc4ce4/4e03b32b45e85b94_0
 stow/vscode/.config/VSCodium/WebStorage/1/CacheStorage/15d8f39f-94b2-4ff3-9194-576d9ddc4ce4/4f339f0c1a666997_0
-stow/vscode/.config/VSCodium/WebStorage/1/CacheStorage/15d8f39f-94b2-4ff3-9194-576d9ddc4ce4/4f339f0c1a666997_1
 stow/vscode/.config/VSCodium/WebStorage/1/CacheStorage/15d8f39f-94b2-4ff3-9194-576d9ddc4ce4/62aa510fabcdb2fb_0
+stow/vscode/.config/VSCodium/WebStorage/1/CacheStorage/15d8f39f-94b2-4ff3-9194-576d9ddc4ce4/68c16fea01fc1d3e_0
+stow/vscode/.config/VSCodium/WebStorage/1/CacheStorage/15d8f39f-94b2-4ff3-9194-576d9ddc4ce4/711aaaf2a3ac65bc_0
 stow/vscode/.config/VSCodium/WebStorage/1/CacheStorage/15d8f39f-94b2-4ff3-9194-576d9ddc4ce4/7652309e46297825_0
+stow/vscode/.config/VSCodium/WebStorage/1/CacheStorage/15d8f39f-94b2-4ff3-9194-576d9ddc4ce4/807f798e0056fe0c_0
+stow/vscode/.config/VSCodium/WebStorage/1/CacheStorage/15d8f39f-94b2-4ff3-9194-576d9ddc4ce4/8b10c607cda217c3_0
+stow/vscode/.config/VSCodium/WebStorage/1/CacheStorage/15d8f39f-94b2-4ff3-9194-576d9ddc4ce4/936240a5d8da46a7_0
+stow/vscode/.config/VSCodium/WebStorage/1/CacheStorage/15d8f39f-94b2-4ff3-9194-576d9ddc4ce4/945fdc847a5e16c9_0
+stow/vscode/.config/VSCodium/WebStorage/1/CacheStorage/15d8f39f-94b2-4ff3-9194-576d9ddc4ce4/95de76d309aaa410_0
+stow/vscode/.config/VSCodium/WebStorage/1/CacheStorage/15d8f39f-94b2-4ff3-9194-576d9ddc4ce4/a0d4a21ae2f752be_0
 stow/vscode/.config/VSCodium/WebStorage/1/CacheStorage/15d8f39f-94b2-4ff3-9194-576d9ddc4ce4/a122432057c9510a_0
-stow/vscode/.config/VSCodium/WebStorage/1/CacheStorage/15d8f39f-94b2-4ff3-9194-576d9ddc4ce4/a122432057c9510a_1
+stow/vscode/.config/VSCodium/WebStorage/1/CacheStorage/15d8f39f-94b2-4ff3-9194-576d9ddc4ce4/a2494f67bfbfd615_0
 stow/vscode/.config/VSCodium/WebStorage/1/CacheStorage/15d8f39f-94b2-4ff3-9194-576d9ddc4ce4/b6a804b7185df612_0
 stow/vscode/.config/VSCodium/WebStorage/1/CacheStorage/15d8f39f-94b2-4ff3-9194-576d9ddc4ce4/b73272d6d1a7e270_0
+stow/vscode/.config/VSCodium/WebStorage/1/CacheStorage/15d8f39f-94b2-4ff3-9194-576d9ddc4ce4/b95b25492ccb2578_0
 stow/vscode/.config/VSCodium/WebStorage/1/CacheStorage/15d8f39f-94b2-4ff3-9194-576d9ddc4ce4/ba3f968598e9e886_0
-stow/vscode/.config/VSCodium/WebStorage/1/CacheStorage/15d8f39f-94b2-4ff3-9194-576d9ddc4ce4/ba3f968598e9e886_1
+stow/vscode/.config/VSCodium/WebStorage/1/CacheStorage/15d8f39f-94b2-4ff3-9194-576d9ddc4ce4/bd6f08f9bc439eae_0
+stow/vscode/.config/VSCodium/WebStorage/1/CacheStorage/15d8f39f-94b2-4ff3-9194-576d9ddc4ce4/d3dbe4fa171f4a96_0
 stow/vscode/.config/VSCodium/WebStorage/1/CacheStorage/15d8f39f-94b2-4ff3-9194-576d9ddc4ce4/fc057a03a11664ef_0
 stow/vscode/.config/VSCodium/WebStorage/1/CacheStorage/15d8f39f-94b2-4ff3-9194-576d9ddc4ce4/index
 stow/vscode/.config/VSCodium/WebStorage/1/CacheStorage/15d8f39f-94b2-4ff3-9194-576d9ddc4ce4/index-dir/the-real-index
@@ -995,15 +1050,60 @@ stow/vscode/.config/VSCodium/WebStorage/1/CacheStorage/d0afb540-1229-48c7-b81d-0
 stow/vscode/.config/VSCodium/WebStorage/1/CacheStorage/d0afb540-1229-48c7-b81d-082140de1e05/index-dir/the-real-index
 stow/vscode/.config/VSCodium/WebStorage/1/CacheStorage/index.txt
 stow/vscode/.config/VSCodium/WebStorage/2/CacheStorage/81c7d76a-1c82-4741-b834-5d90d6dc21ce/0e0cf009fd226872_0
+stow/vscode/.config/VSCodium/WebStorage/2/CacheStorage/81c7d76a-1c82-4741-b834-5d90d6dc21ce/25adbec546294492_0
+stow/vscode/.config/VSCodium/WebStorage/2/CacheStorage/81c7d76a-1c82-4741-b834-5d90d6dc21ce/32d7aa107e71e79e_0
 stow/vscode/.config/VSCodium/WebStorage/2/CacheStorage/81c7d76a-1c82-4741-b834-5d90d6dc21ce/340ec61fbd686331_0
 stow/vscode/.config/VSCodium/WebStorage/2/CacheStorage/81c7d76a-1c82-4741-b834-5d90d6dc21ce/43f95d7cf9c69c3a_0
-stow/vscode/.config/VSCodium/WebStorage/2/CacheStorage/81c7d76a-1c82-4741-b834-5d90d6dc21ce/43f95d7cf9c69c3a_1
 stow/vscode/.config/VSCodium/WebStorage/2/CacheStorage/81c7d76a-1c82-4741-b834-5d90d6dc21ce/483e0bb0d0abfd57_0
+stow/vscode/.config/VSCodium/WebStorage/2/CacheStorage/81c7d76a-1c82-4741-b834-5d90d6dc21ce/d5a707af0ab9cce4_0
 stow/vscode/.config/VSCodium/WebStorage/2/CacheStorage/81c7d76a-1c82-4741-b834-5d90d6dc21ce/dcc74e12c8e5676f_0
 stow/vscode/.config/VSCodium/WebStorage/2/CacheStorage/81c7d76a-1c82-4741-b834-5d90d6dc21ce/dd5abf0aea834ba0_0
 stow/vscode/.config/VSCodium/WebStorage/2/CacheStorage/81c7d76a-1c82-4741-b834-5d90d6dc21ce/index
 stow/vscode/.config/VSCodium/WebStorage/2/CacheStorage/81c7d76a-1c82-4741-b834-5d90d6dc21ce/index-dir/the-real-index
 stow/vscode/.config/VSCodium/WebStorage/2/CacheStorage/index.txt
+stow/vscode/.config/VSCodium/WebStorage/3/CacheStorage/87f2a9e5-c414-4573-8b0a-cac051c36403/05c85093b3277240_0
+stow/vscode/.config/VSCodium/WebStorage/3/CacheStorage/87f2a9e5-c414-4573-8b0a-cac051c36403/0aa276f8b04c5bee_0
+stow/vscode/.config/VSCodium/WebStorage/3/CacheStorage/87f2a9e5-c414-4573-8b0a-cac051c36403/0b26efe2853562e8_0
+stow/vscode/.config/VSCodium/WebStorage/3/CacheStorage/87f2a9e5-c414-4573-8b0a-cac051c36403/17040f743e844437_0
+stow/vscode/.config/VSCodium/WebStorage/3/CacheStorage/87f2a9e5-c414-4573-8b0a-cac051c36403/24b4b21dd0d55654_0
+stow/vscode/.config/VSCodium/WebStorage/3/CacheStorage/87f2a9e5-c414-4573-8b0a-cac051c36403/2a87d8f5a3118651_0
+stow/vscode/.config/VSCodium/WebStorage/3/CacheStorage/87f2a9e5-c414-4573-8b0a-cac051c36403/3f23fe6c234a5049_0
+stow/vscode/.config/VSCodium/WebStorage/3/CacheStorage/87f2a9e5-c414-4573-8b0a-cac051c36403/3f5070145fcdc9e2_0
+stow/vscode/.config/VSCodium/WebStorage/3/CacheStorage/87f2a9e5-c414-4573-8b0a-cac051c36403/3f9d11ecdfaa70d2_0
+stow/vscode/.config/VSCodium/WebStorage/3/CacheStorage/87f2a9e5-c414-4573-8b0a-cac051c36403/43f54b8f7661563d_0
+stow/vscode/.config/VSCodium/WebStorage/3/CacheStorage/87f2a9e5-c414-4573-8b0a-cac051c36403/4e03b32b45e85b94_0
+stow/vscode/.config/VSCodium/WebStorage/3/CacheStorage/87f2a9e5-c414-4573-8b0a-cac051c36403/4f339f0c1a666997_0
+stow/vscode/.config/VSCodium/WebStorage/3/CacheStorage/87f2a9e5-c414-4573-8b0a-cac051c36403/62aa510fabcdb2fb_0
+stow/vscode/.config/VSCodium/WebStorage/3/CacheStorage/87f2a9e5-c414-4573-8b0a-cac051c36403/68c16fea01fc1d3e_0
+stow/vscode/.config/VSCodium/WebStorage/3/CacheStorage/87f2a9e5-c414-4573-8b0a-cac051c36403/711aaaf2a3ac65bc_0
+stow/vscode/.config/VSCodium/WebStorage/3/CacheStorage/87f2a9e5-c414-4573-8b0a-cac051c36403/7652309e46297825_0
+stow/vscode/.config/VSCodium/WebStorage/3/CacheStorage/87f2a9e5-c414-4573-8b0a-cac051c36403/807f798e0056fe0c_0
+stow/vscode/.config/VSCodium/WebStorage/3/CacheStorage/87f2a9e5-c414-4573-8b0a-cac051c36403/8b10c607cda217c3_0
+stow/vscode/.config/VSCodium/WebStorage/3/CacheStorage/87f2a9e5-c414-4573-8b0a-cac051c36403/936240a5d8da46a7_0
+stow/vscode/.config/VSCodium/WebStorage/3/CacheStorage/87f2a9e5-c414-4573-8b0a-cac051c36403/945fdc847a5e16c9_0
+stow/vscode/.config/VSCodium/WebStorage/3/CacheStorage/87f2a9e5-c414-4573-8b0a-cac051c36403/95de76d309aaa410_0
+stow/vscode/.config/VSCodium/WebStorage/3/CacheStorage/87f2a9e5-c414-4573-8b0a-cac051c36403/a0d4a21ae2f752be_0
+stow/vscode/.config/VSCodium/WebStorage/3/CacheStorage/87f2a9e5-c414-4573-8b0a-cac051c36403/a122432057c9510a_0
+stow/vscode/.config/VSCodium/WebStorage/3/CacheStorage/87f2a9e5-c414-4573-8b0a-cac051c36403/a2494f67bfbfd615_0
+stow/vscode/.config/VSCodium/WebStorage/3/CacheStorage/87f2a9e5-c414-4573-8b0a-cac051c36403/b6a804b7185df612_0
+stow/vscode/.config/VSCodium/WebStorage/3/CacheStorage/87f2a9e5-c414-4573-8b0a-cac051c36403/b73272d6d1a7e270_0
+stow/vscode/.config/VSCodium/WebStorage/3/CacheStorage/87f2a9e5-c414-4573-8b0a-cac051c36403/b95b25492ccb2578_0
+stow/vscode/.config/VSCodium/WebStorage/3/CacheStorage/87f2a9e5-c414-4573-8b0a-cac051c36403/ba3f968598e9e886_0
+stow/vscode/.config/VSCodium/WebStorage/3/CacheStorage/87f2a9e5-c414-4573-8b0a-cac051c36403/bd6f08f9bc439eae_0
+stow/vscode/.config/VSCodium/WebStorage/3/CacheStorage/87f2a9e5-c414-4573-8b0a-cac051c36403/d3dbe4fa171f4a96_0
+stow/vscode/.config/VSCodium/WebStorage/3/CacheStorage/87f2a9e5-c414-4573-8b0a-cac051c36403/fc057a03a11664ef_0
+stow/vscode/.config/VSCodium/WebStorage/3/CacheStorage/87f2a9e5-c414-4573-8b0a-cac051c36403/index
+stow/vscode/.config/VSCodium/WebStorage/3/CacheStorage/87f2a9e5-c414-4573-8b0a-cac051c36403/index-dir/the-real-index
+stow/vscode/.config/VSCodium/WebStorage/3/CacheStorage/index.txt
+stow/vscode/.config/VSCodium/WebStorage/4/CacheStorage/6d720ac8-b717-42a1-89ce-3c01832c0f25/1c746ce33e0efb16_0
+stow/vscode/.config/VSCodium/WebStorage/4/CacheStorage/6d720ac8-b717-42a1-89ce-3c01832c0f25/244023a83f8dca97_0
+stow/vscode/.config/VSCodium/WebStorage/4/CacheStorage/6d720ac8-b717-42a1-89ce-3c01832c0f25/41e5ff478d1360cf_0
+stow/vscode/.config/VSCodium/WebStorage/4/CacheStorage/6d720ac8-b717-42a1-89ce-3c01832c0f25/6182313f9bcf581e_0
+stow/vscode/.config/VSCodium/WebStorage/4/CacheStorage/6d720ac8-b717-42a1-89ce-3c01832c0f25/86a7c22ead7768be_0
+stow/vscode/.config/VSCodium/WebStorage/4/CacheStorage/6d720ac8-b717-42a1-89ce-3c01832c0f25/ed2adc340a552ad4_0
+stow/vscode/.config/VSCodium/WebStorage/4/CacheStorage/6d720ac8-b717-42a1-89ce-3c01832c0f25/index
+stow/vscode/.config/VSCodium/WebStorage/4/CacheStorage/6d720ac8-b717-42a1-89ce-3c01832c0f25/index-dir/the-real-index
+stow/vscode/.config/VSCodium/WebStorage/4/CacheStorage/index.txt
 stow/vscode/.config/VSCodium/WebStorage/QuotaManager
 stow/vscode/.config/VSCodium/WebStorage/QuotaManager-journal
 stow/wezterm/.config/wezterm/wezterm.lua

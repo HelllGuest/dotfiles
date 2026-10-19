@@ -53,32 +53,13 @@ if command -v boltctl >/dev/null 2>&1; then
     sudo systemctl enable --now bolt || true
 fi
 
-# 8. Materialize zram-generator.conf (stow symlink into $HOME breaks at early boot)
-if [ -f "${BASH_SOURCE[0]%/*}/../scripts/zram-setup.sh" ]; then
-    bash "${BASH_SOURCE[0]%/*}/../scripts/zram-setup.sh" || true
-elif [ -f "$HOME/dotfiles/scripts/zram-setup.sh" ]; then
-    bash "$HOME/dotfiles/scripts/zram-setup.sh" || true
-fi
-
-# 9. Materialize modprobe.d files (stow symlinks break in initramfs)
-for conf in /etc/modprobe.d/i915.conf; do
-    if [ -L "$conf" ]; then
-        echo "Materializing $conf for mkinitcpio..."
-        target=$(readlink -f "$conf")
-        tmp=$(mktemp)
-        cp "$target" "$tmp"
-        sudo cp "$tmp" "$conf"
-        rm -f "$tmp"
-    fi
-done
-
-# 10. Desktop RDP: user daemon has creds; system daemon steals :3389 with none set
+# 8. Desktop RDP: user daemon has creds; system daemon steals :3389 with none set
 if systemctl is-enabled --quiet gnome-remote-desktop.service 2>/dev/null; then
     echo "Disabling system gnome-remote-desktop (use user-session RDP)..."
     sudo systemctl disable --now gnome-remote-desktop.service || true
 fi
 
-# 11. TPM access for gnome-remote-desktop system credentials
+# 9. TPM access for gnome-remote-desktop system credentials
 if id gnome-remote-desktop >/dev/null 2>&1; then
     if ! id gnome-remote-desktop | grep -q '\btss\b'; then
         echo "Adding gnome-remote-desktop to tss group (TPM credential store)..."
@@ -86,37 +67,16 @@ if id gnome-remote-desktop >/dev/null 2>&1; then
     fi
 fi
 
-# 12. Rebuild UKI/initramfs when kernel cmdline changed
-if [ -f /etc/kernel/cmdline ] && command -v mkinitcpio >/dev/null 2>&1; then
-    echo "Rebuilding initramfs/UKI for new kernel cmdline..."
-    sudo mkinitcpio -P || true
-    # mkinitcpio -P does not trigger the pacman zz-sbctl hook — re-sign UKIs when SB is set up
-    if command -v sbctl >/dev/null 2>&1 && [ -d /etc/sbctl/keys ]; then
-        echo "Re-signing UKIs for Secure Boot..."
-        for f in /boot/EFI/Linux/arch-linux-lts.efi /boot/EFI/Linux/arch-linux-lts-fallback.efi \
-                 /boot/EFI/Linux/arch-linux-hardened.efi /boot/EFI/Linux/arch-linux-hardened-fallback.efi; do
-            [ -f "$f" ] && sudo sbctl sign -s "$f" || true
-        done
-        sudo sbctl verify 2>/dev/null || echo "WARN: sbctl verify failed — run: sudo sbctl sign -s /boot/EFI/Linux/arch-linux-lts.efi"
-    fi
-fi
-
-# 13. Tablet mode handler (X1 Yoga)
+# 10. Tablet mode handler (X1 Yoga)
 if command -v systemctl >/dev/null 2>&1; then
     echo "Enabling yoga-tablet-mode user service..."
     systemctl --user enable --now yoga-tablet-mode.service 2>/dev/null || true
 fi
 
-# 14. Bluetooth (bluez/bluez-utils in packages/pacman.txt)
+# 11. Bluetooth (bluez/bluez-utils in packages/pacman.txt)
 if pacman -Q bluez >/dev/null 2>&1; then
     echo "Enabling bluetooth..."
     sudo systemctl enable --now bluetooth || true
 fi
 
-# Legacy touchpad udev/inhibit cleanup (if present)
-if [ -f "${BASH_SOURCE[0]%/*}/../scripts/cleanup-input-overrides.sh" ]; then
-    bash "${BASH_SOURCE[0]%/*}/../scripts/cleanup-input-overrides.sh" || true
-fi
-
 echo "ThinkPad X1 Yoga optimizations applied."
-echo "Reboot recommended for i915 module options and the mem_sleep_default kernel param."

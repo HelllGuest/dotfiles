@@ -23,6 +23,17 @@ else
     echo "✗ /etc owned by $etc_owner (must be root — pacman hooks fail with unsafe path transition)"
     echo "  run: sudo chown root:root /etc && sudo chmod 755 /etc"
 fi
+# sudo -n when cached: plain find cannot enter 700 dirs (e.g. /etc/sudoers.d).
+find_etc=(find)
+sudo -n true 2>/dev/null && find_etc=(sudo -n find)
+stowed_etc="$("${find_etc[@]}" /etc -type l -lname '*/stow/system/*' 2>/dev/null)"
+if [[ -z "$stowed_etc" ]]; then
+    echo "✓ no /etc symlinks into stow/system"
+else
+    echo "✗ /etc symlinks into stow/system (dangle at early boot; user-writable root config):"
+    echo "$stowed_etc" | sed 's/^/  /'
+    echo "  run: bash scripts/system-setup.sh"
+fi
 
 echo "--- Shell productivity tools ---"
 for bin in "${SHELL_BINARIES[@]}"; do

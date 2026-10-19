@@ -9,7 +9,7 @@
 #   # inside the VM's ISO shell:
 #   bash <(curl -fsSL http://10.0.2.2:8000/arch-install.sh)
 #
-# Env overrides: WORK, DISK_SIZE (40G), RAM (4096), PORT (8000), ISO, FRESH=1
+# Env overrides: WORK, DISK_SIZE (80G: full ./install.sh needs ~40G), RAM (4096), PORT (8000), ISO, FRESH=1
 set -euo pipefail
 say(){ printf '\e[1;34m>>\e[0m %s\n' "$*"; }
 die(){ printf '\e[1;31mERR\e[0m %s\n' "$*" >&2; exit 1; }
@@ -18,7 +18,7 @@ SCRIPTS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 [[ -f "$SCRIPTS_DIR/arch-install.sh" ]] || die "arch-install.sh not found next to this script"
 WORK=${WORK:-$HOME/arch-vmtest}
 DISK="$WORK/test-disk.qcow2"
-DISK_SIZE=${DISK_SIZE:-40G}
+DISK_SIZE=${DISK_SIZE:-80G}
 RAM=${RAM:-4096}
 PORT=${PORT:-8000}
 ISO=${ISO:-}

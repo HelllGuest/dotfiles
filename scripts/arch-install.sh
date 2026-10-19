@@ -401,12 +401,23 @@ if [[ ${DESKTOP^^} != N* ]]; then
     printf '[daemon]\nWaylandEnable=true\n' > /etc/gdm/custom.conf
     flatpak remote-add --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo || true
     # Browser flatpaks — keep in sync with packages/flatpak.txt (AndroidStudio excluded: dev tool)
-    flatpak install --system -y flathub \
-      com.brave.Browser \
-      app.zen_browser.zen \
-      com.google.Chrome \
-      io.gitlab.librewolf-community \
-      com.protonvpn.www || true
+    # One install per app: a single failure must not abort the rest. Extra-data apps
+    # (Chrome) need bwrap user namespaces, which the kernel refuses inside a chroot;
+    # drop any half-installed ref so install-flatpaks.sh retries it after first boot.
+    failed_fp=()
+    for app in com.brave.Browser app.zen_browser.zen com.google.Chrome \
+               io.gitlab.librewolf-community com.protonvpn.www; do
+      if ! flatpak install --system -y --noninteractive flathub "$app"; then
+        failed_fp+=("$app")
+        flatpak uninstall --system -y --noninteractive "$app" >/dev/null 2>&1 || true
+        # failed extra-data apply leaves an empty app dir; drop it only if no ref remains
+        flatpak info --system "$app" >/dev/null 2>&1 || rm -rf "/var/lib/flatpak/app/$app"
+      fi
+    done
+    if (( ${#failed_fp[@]} )); then
+      say "WARN: flatpak install failed: ${failed_fp[*]}"
+      say "      retried by ./install.sh (scripts/install-flatpaks.sh) after first boot"
+    fi
   else
     say "WARN: GNOME install incomplete (network?) — base system is fine. Finish post-boot:"
     say "      pacman -S gnome-shell gdm && systemctl enable gdm"

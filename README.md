@@ -7,7 +7,7 @@ A clean, modular, and programmable dotfiles ecosystem optimized for **Arch Linux
 ## 🚀 Key Features
 
 - **Privacy Hardened:** Telemetry, usage reporting, and "phoning home" are disabled system-wide (GNOME, VS Code, .NET, etc.).
-- **ThinkPad Optimized:** Hostname or hardware-detected profiles (`thinkpad-x1.sh`, `thinkpad-p15.sh`, or `laptop.sh`) with power-profiles-daemon, tablet auto-rotate, UKI re-signing for Secure Boot, and **s2idle** sleep (`mem_sleep_default=s2idle`; thermal is firmware-managed). Battery charge thresholds are documented in `docs/hardened-arch-gnome.md` (manual `thinkpad_acpi` sysfs).
+- **ThinkPad Optimized:** Hostname or hardware-detected profiles (`thinkpad-x1.sh`, `thinkpad-p15.sh`, or `laptop.sh`) with power-profiles-daemon, tablet auto-rotate, UKIs signed for Secure Boot (sbctl), and a tracked **s2idle** sleep pin (`mem_sleep_default=s2idle`; pair BIOS Sleep State with **Windows and Linux**, not **Linux**/S3 — see `docs/hardened-arch-gnome.md`). Thermal is firmware-managed. Battery charge thresholds are documented in the same guide (manual `thinkpad_acpi` sysfs).
 - **Elite-Tier Terminal:** Kitty & Ghostty with shared Zsh/Bash configs, real-time autocomplete, [Gruvbox Rainbow](https://starship.rs/presets/gruvbox-rainbow) Starship prompt.
 - **Neovim (Lazy.nvim):** A modular Lua configuration.
 
@@ -24,6 +24,7 @@ Zsh is the primary shell. Bash is fully supported for scripts and fallback sessi
 | `.shell-exports` | Environment variables (editor, pager, Android SDK, telemetry opt-outs, container CLI socket) |
 | `.shell-aliases` | Shared aliases (`v`, `as`, `ff`, etc.) |
 | `.shell-functions` | Shared functions (`mkcd`, `backup`); zsh-only OSC 7 CWD hook |
+| `.shell-git` | Git helpers and forgit settings |
 
 Both `~/.zshrc` and `~/.bashrc` source these files.
 
@@ -41,8 +42,6 @@ Both `~/.zshrc` and `~/.bashrc` source these files.
 | **forgit** | fzf git UI |
 
 **History:** **atuin** is initialized with `--disable-up-arrow` (sqlite). `↑`/`↓` stay on prefix history-search. **`Ctrl+R`:** Zsh loads atuin then `fzf --zsh`, so **fzf** owns `^R`; Bash loads `fzf --bash` then atuin, so **atuin** owns `^R`. Config: `stow/atuin/.config/atuin/config.toml`.
-
-**Shared files:** `.shell-{exports,aliases,functions,git}` sourced by both Zsh and Bash.
 
 ### Bash stack
 
@@ -91,6 +90,7 @@ After setup, prefer a **systemd user** persistent proxy (survives logout when li
 ```bash
 headroom install apply --preset persistent-service --runtime python --scope user \
   --providers auto --profile default --port 8787 --backend anthropic --mode token --no-telemetry
+loginctl enable-linger "$USER"   # once, so it survives logout
 systemctl --user status headroom-default.service   # enabled + active
 headroom doctor
 ```
@@ -113,7 +113,7 @@ Antigravity CLI (`agy`) and Kiro: point at `http://127.0.0.1:8787/v1` only if th
 
 This ThinkPad (Comet Lake) is **x86-64-v3**, not v4. Official extra/ packages stay generic `x86-64`. For local/AUR builds:
 
-* `stow/system/etc/makepkg.conf.d/99-x86-64-v3.conf` (via `sudo stow -t / system`)
+* `stow/system/etc/makepkg.conf.d/99-x86-64-v3.conf` (via `scripts/system-setup.sh`)
 * `stow/pacman/.config/pacman/makepkg.conf` (user overlay)
 * `.shell-exports` sets `GOAMD64=v3` and `RUSTFLAGS=-C target-cpu=x86-64-v3`
 
@@ -123,7 +123,7 @@ Rebuild compression libs used by pacman/tar:
 bash scripts/rebuild-v3.sh
 ```
 
-Packages are signed with a local rebuild-v3 key (imported into pacman). `pacman -Syu` puts extra/ binaries back when those packages update; re-run the script. ffmpeg/zlib are opt-in: `bash scripts/rebuild-v3.sh ffmpeg`.
+Packages are signed with a local rebuild-v3 key (`~/.local/share/rebuild-v3/gnupg`, local-signed into pacman; `pacman -Qi` shows Validated By: Signature). `pacman -Syu` puts extra/ binaries back when those packages update; re-run the script. ffmpeg/zlib are opt-in: `bash scripts/rebuild-v3.sh ffmpeg`.
 
 ### PhotoGIMP (GIMP Photoshop layout)
 
@@ -145,22 +145,9 @@ bash scripts/install-dash2dock.sh
 
 UUID `dash2dock-lite@icedman.github.com` is in `gnome/extensions.txt` and `gnome/dconf/user.conf`. EGO zip still declares Shell ≤50; the install script patches `metadata.json` for **Shell 51** (unofficial — may still break). Other non-AUR zips (blur, caffeine, clipboard) install via `scripts/fetch-gnome-extensions.sh` (`GNOME_EXT_FETCH=1 bash scripts/install-extensions.sh`). **Wayland:** log out → log in (`Meta.restart` is disabled). Prefs: `gnome-extensions prefs dash2dock-lite@icedman.github.com`.
 
-### Key functions
+### Shortcuts
 
-| Command | Action |
-|---------|--------|
-| `fe` | Fuzzy file → nvim |
-| `rge <pat>` | ripgrep → jump to line in nvim |
-| `gai` / `gshow` / `gco` | Interactive git add / log / branch checkout (`gco` fzf picker is Zsh; Bash keeps `git checkout`) |
-| `fcd` | Fuzzy directory jump |
-| `Ctrl+R` | History search: **fzf** on Zsh, **atuin** on Bash |
-| `Ctrl+T` / `Alt+C` | fzf file / directory picker |
-
-Modern aliases (when installed): `eza`, `bat`, `rg`, `fd`, `dust`, `duf`, `delta`, etc.
-
-### Zsh plugins (legacy note)
-
-Pacman `zsh-autocomplete` removed in v1.11 — replaced by zinit + fzf-tab.
+Shell functions (`fe`, `rge`, `gai`, `fcd`, …), `Ctrl+R` / `Ctrl+T` / `Alt+C`, terminal and GNOME keys: [gnome/keybindings.md](gnome/keybindings.md). Modern aliases (when installed): `eza`, `bat`, `rg`, `fd`, `dust`, `duf`, `delta`, etc.
 
 ### Starship
 
@@ -181,9 +168,9 @@ Legacy: `scripts/install-starship-crampack.sh` installs the previous Crampack pr
 
 ```text
 dotfiles/
-├── stow/            # GNU Stow packages → $HOME (system/ → / with sudo)
+├── stow/            # GNU Stow packages → $HOME (system/ copied to / by system-setup.sh)
 │   ├── bash/ zsh/   # shells; shared .shell-* under zsh/
-│   ├── system/      # /etc (i915, sleep, UFW, udev, Wayland env)
+│   ├── system/      # /etc template (i915, sleep, UFW, udev, Wayland env) — copied by scripts/system-setup.sh
 │   ├── zram/        # template only — copied by scripts/zram-setup.sh (never stow -t /)
 │   ├── gdm/         # template only — copied by scripts/gdm-setup.sh
 │   ├── kitty/ ghostty/ alacritty/ contour/ foot/ rio/ wezterm/
@@ -193,12 +180,13 @@ dotfiles/
 ├── packages/        # pacman.txt, flatpak.txt, browsers.txt, aur.txt
 ├── profiles/        # Hostname or hardware-detected tweaks
 ├── scripts/         # Installers + health checks (lib/ shared helpers)
+├── tests/           # Script tests (`tests/*.test.sh`, run in CI)
 ├── gnome/           # dconf snapshots, extensions.txt, keybindings.md
-├── docs/            # Hardened Arch + GNOME install guide
+├── docs/            # Hardened install guide + X1 purpose-stack guide
 ├── builds/          # Optional local PKGBUILDs (e.g. builds/st + scripts/build-st.sh)
 ├── skills/          # Agent skills shipped with the repo (e.g. ghidra-cli-host)
 ├── ai-rules/        # Shared AGENTS.md kit + git hooks (AGENTS.md → symlink)
-└── .github/         # CI (stow inventory, bash -n, markdownlint)
+└── .github/         # CI (stow inventory, bash -n, tests/, markdownlint)
 ```
 
 ---
@@ -211,6 +199,7 @@ dotfiles/
 | [CHANGELOG.md](CHANGELOG.md) | Version history |
 | [CONTRIBUTING.md](CONTRIBUTING.md) | Contribution guidelines |
 | [docs/hardened-arch-gnome.md](docs/hardened-arch-gnome.md) | Full Arch + GNOME install guide (ThinkPad X1) — automated by `scripts/arch-install.sh` |
+| [docs/fresh-install-coding-re.md](docs/fresh-install-coding-re.md) | Fresh install for coding, reverse engineering, malware analysis (this machine) |
 | [gnome/keybindings.md](gnome/keybindings.md) | Shell aliases and useful shortcuts |
 
 ---
@@ -233,14 +222,14 @@ no-op dry-run). Then continue with **1. Full Bootstrap** below to apply the
 dotfiles.
 
 ### 1. Full Bootstrap (Recommended)
-Installs packages, applies symlinks to `$HOME` and `/etc`, restores GNOME settings, and runs health checks.
+Installs packages, stows configs into `$HOME`, installs `stow/system/` into `/etc` as root-owned files, restores GNOME settings, and runs health checks.
 ```bash
 ./install.sh
 ```
 
 Machine profiles run first in `./install.sh` via `scripts/apply-profile.sh` (exactly one profile): `profiles/$(hostname).sh` if it exists, otherwise `scripts/detect-profile.sh` (ThinkPad X1 → `thinkpad-x1`, ThinkPad P15 → `thinkpad-p15`, other ThinkPads/laptop chassis → `laptop`). There is no `nvidia.sh`; Optimus setup is inside `profiles/thinkpad-p15.sh`.
 
-ThinkPad-specific system configs (`i915`, kernel cmdline, Wayland env) live in `stow/system/` and are applied with `./install.sh`. **`stow/system/etc/kernel/cmdline` is machine-specific:** it hardcodes this laptop's LUKS UUID (`rd.luks.name=…`). On another disk, keep the live `/etc/kernel/cmdline` (or rewrite the UUID) before stowing `system/`; do not copy that line blindly. After tuning, run `scripts/thinkpad-health.sh` and **reboot**.
+ThinkPad system configs (`i915`, kernel cmdline, sleep, UFW, Wayland env) live in `stow/system/` and are installed by `scripts/system-setup.sh` as **root-owned regular files**, never stow symlinks (re-run it after editing `stow/system/`). Why, and how the cmdline UUID is handled: [hardened guide — `system/` files](docs/hardened-arch-gnome.md#kernel-cmdline--system-files-installed-not-stowed). After tuning, run `scripts/thinkpad-health.sh` and **reboot**.
 
 #### Script execution order (fresh machine)
 
@@ -262,16 +251,24 @@ sbctl status && sbctl verify
 **Stage B — first boot (log into GNOME, open terminal, then):**
 ```text
 git clone https://github.com/HelllGuest/dotfiles.git ~/dotfiles
-cd ~/dotfiles && ./install.sh        # requires GNOME session for dconf/extensions
+cd ~/dotfiles
+bash scripts/p15-dotfiles-preflight.sh   # P15 only — optional readiness check
+./install.sh                             # requires GNOME session for dconf/extensions
+# hostname p15 → profiles/p15.sh → thinkpad-p15 (Optimus). Or re-run:
+# bash profiles/thinkpad-p15.sh
 exec zsh
-scripts/thinkpad-health.sh → reboot
+reboot                                   # required after NVIDIA/early-KMS profile
+prime-run glxinfo -B | grep -i renderer  # after reboot
+scripts/thinkpad-health.sh
 ```
 
 **What `./install.sh` runs, in order:**
 ```text
-apply-profile.sh (hostname or detect-profile.sh) → cleanup-input-overrides.sh
-→ pacman < packages/pacman.txt → install-flatpaks.sh → install-aur.sh (bootstraps paru)
-→ install-fonts.sh → stow (/etc system + $HOME; skips zram & gdm)
+cleanup-input-overrides.sh
+→ pacman < packages/pacman.txt
+→ apply-profile.sh (hostname e.g. p15, or detect-profile.sh — after packages so NVIDIA DKMS exists)
+→ install-flatpaks.sh → install-aur.sh (bootstraps paru)
+→ install-fonts.sh → stow ($HOME; system/ via system-setup.sh; skips zram & gdm)
 → fnm install/default 22 → atuin import → zram-setup.sh
 → gnome-session-setup.sh → location-setup.sh → gnome-console-setup.sh → ptyxis-setup.sh
 → gdm-setup.sh → git-setup.sh → nvim-setup.sh → headroom-setup.sh
@@ -285,7 +282,7 @@ apply-profile.sh (hostname or detect-profile.sh) → cleanup-input-overrides.sh
 > **existing** machine that still has tmpfs `/tmp`.
 
 ### 2. Config Only (No Root)
-Applies user-level symlinks only. Skips `zram`, `system`, and `gdm` (require root — use `install.sh`).
+Applies user-level symlinks only (removes unmodified `/etc/skel` copies such as `.bashrc` that would block stow). Skips `zram`, `system`, and `gdm` (require root — use `install.sh`).
 ```bash
 ./stow-only.sh
 ```
@@ -340,7 +337,6 @@ We take a "quiet by default" approach:
 - **GNOME Debloated:** Uses `gnome-shell` instead of the full `gnome` meta-package where possible.
 - **Zero Telemetry:** VS Code, GNOME usage stats, and technical reporting are disabled.
 - **Opt-Out Defaults:** Global environment variables in `.shell-exports` disable telemetry for development tools.
-- **Starship prompt:** Gruvbox Rainbow in `stow/starship/` (`palette = gruvbox_dark`). Optional legacy: `scripts/install-starship-crampack.sh`.
 
 ---
 
@@ -351,7 +347,8 @@ We take a "quiet by default" approach:
 | `Can't find an installed Node version matching …` on terminal open | **fnm** `--use-on-cd` + project `engines` / `.nvmrc` | `fnm install 22` or `fnm install` in project; or drop `--use-on-cd` in dotfiles |
 | `$FZF_DEFAULT_OPTS: unknown action: copy-selection` | fzf 0.72 lacks `copy-selection` | Fixed in dotfiles; `exec zsh` / `exec bash` |
 | `docker` tries Podman socket / `connect: no such file` | Stale `DOCKER_HOST` or Podman socket missing | Current `.shell-exports` auto-picks; `unset DOCKER_HOST`; enable `docker.service` |
-| `unsafe path transition /etc` during `pacman` | `/etc` owned by user, not root | `sudo chown root:root /etc && sudo chmod 755 /etc` |
+| `unsafe path transition /etc` during `pacman` | `/etc` owned by user (old `gdm-setup.sh` used `rsync -a`) | `bash scripts/gdm-setup.sh` (restores root + 755), or `sudo chown root:root /etc && sudo chmod 755 /etc` |
+| No network after boot; `ufw.service` failed | `/etc/ufw/before.rules` was a stow symlink into `$HOME` | `bash scripts/system-setup.sh` (installs real files, reloads ufw) |
 | Spoof location sync does nothing | `vpn-location-sync` failed under `pkexec` | `bash scripts/location-setup.sh`; panel → Sync spoofed location |
 | Touchpad clicks broken after old dotfiles | Legacy synaptics inhibit/udev | `bash scripts/cleanup-input-overrides.sh` (sudo), log out |
 | `headroom not installed` / `hr-claude` fails | Headroom not set up yet | `bash scripts/headroom-setup.sh` |
@@ -373,18 +370,16 @@ We take a "quiet by default" approach:
 |------|---------|
 | Full update | `sudo pacman -Syu && ./install.sh && bash scripts/post-update.sh` |
 | Health check | `~/dotfiles/scripts/check.sh` |
-| Docs lint | `~/dotfiles/scripts/lint-docs.sh` (CI also runs this + `all_stow_files.txt` + `bash -n`) |
+| Docs lint | `~/dotfiles/scripts/lint-docs.sh` (CI also runs this + `all_stow_files.txt` + `bash -n` + `tests/*.test.sh`) |
+| System files (`stow/system/`) | `bash scripts/system-setup.sh` |
 | Refresh stow inventory | `git add stow/…` then `bash scripts/list-stow-files.sh > all_stow_files.txt` (index only) |
 | Location sync | `vpn-location-sync` or Proton VPN panel → Sync spoofed location |
 | Optional st (suckless) | `bash scripts/build-st.sh` |
 | ghidra-cli | `bash scripts/install-ghidra-cli.sh` |
-
 | Legacy touchpad cleanup | `bash scripts/cleanup-input-overrides.sh` (sudo; old udev/inhibit only) |
-| Secure Boot | `sbctl status && sbctl verify` (after `enroll-keys -m`; re-sign UKIs if you ran `mkinitcpio -P` manually) |
-| Post-update sync | `~/dotfiles/scripts/post-update.sh` |
+| Secure Boot | `sbctl status && sbctl verify` (after `enroll-keys -m`; `mkinitcpio -P` re-signs UKIs via sbctl's hook) |
 | Backup GNOME | `~/dotfiles/scripts/backup-gsettings.sh` |
 | Move /tmp to disk | `sudo ~/dotfiles/scripts/tmp-to-disk.sh` then reboot (off RAM-capped tmpfs → btrfs `@tmp`) |
-| Starship preset | `scripts/install-starship-crampack.sh` |
 | Reload shell | `exec zsh` |
 | Install project Node (fnm) | `fnm install 22` or `fnm install` inside project |
 | Headroom (Claude / Cursor) | `bash scripts/headroom-setup.sh`; prefer `headroom-default.service`; then `hr-claude` / `hr-cursor` |

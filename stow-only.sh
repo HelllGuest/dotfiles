@@ -17,6 +17,9 @@ if ! command -v stow >/dev/null 2>&1; then
     chmod +x scripts/minimal-stow.sh
 fi
 
+# shellcheck source=scripts/lib/skel.sh
+source scripts/lib/skel.sh
+remove_unmodified_skel "$PWD/stow"
 cd stow || exit 1
 for dir in */; do
     dir=${dir%/}

@@ -41,60 +41,10 @@ Zsh also uses **fzf-tab** and **forgit** (`gfga`, `gfglo`, etc.).
 
 ---
 
-## Node.js (fnm)
+## Setup-only tools
 
-Shell hooks use **fnm** with `--use-on-cd` (see `stow/zsh/.zsh-plugins`, `stow/bash/.bashrc`). Opening a terminal in a project directory may prompt to install a pinned Node version from `.nvmrc`, `.node-version`, or `package.json` `engines.node`.
-
-```bash
-fnm install 22
-fnm default 22
-```
-
-Or run `fnm install` inside the project. Answer `N` to skip one-time install; install when ready to work in that repo.
-
----
-
-## Headroom (Claude / Cursor)
-
-Optional token compression proxy — install/upgrade once:
-
-```bash
-bash ~/dotfiles/scripts/headroom-setup.sh
-```
-
-Always-on (recommended): `headroom install apply --preset persistent-service … --no-telemetry` then `systemctl --user status headroom-default.service`.
-
-| Command | Use |
-|---------|-----|
-| `hr-claude` | Proxy + Claude Code in one terminal |
-| `hr-cursor` | Start proxy; paste Base URL into Cursor settings |
-| `hr-proxy` | One-shot proxy on port 8787 |
-
-If `headroom doctor` says Base URL env is unset, `source ~/.zshrc` or open a new terminal. See `README.md` for MCP, RTK, and Cursor notes.
-
----
-
-## PhotoGIMP
-
-Photoshop-like GIMP layout ([Diolinux/PhotoGIMP](https://github.com/Diolinux/PhotoGIMP)):
-
-```bash
-bash ~/dotfiles/scripts/install-photogimp.sh
-```
-
-App menu → **PhotoGIMP**, or `gimp`. Config lives in `~/.config/GIMP/<major.minor>` (not stowed).
-
----
-
-## Dash2Dock
-
-Animated dock ([Dash2Dock Animated](https://github.com/icedman/dash2dock-lite)):
-
-```bash
-bash ~/dotfiles/scripts/install-dash2dock.sh
-```
-
-Then **log out → log in** (Wayland). Prefs: `gnome-extensions prefs dash2dock-lite@icedman.github.com`.
+fnm Node pins, Headroom (`hr-claude` / `hr-cursor` / `hr-proxy`), PhotoGIMP, and
+Dash2Dock are documented in the [README](../README.md) shell section.
 
 ---
 

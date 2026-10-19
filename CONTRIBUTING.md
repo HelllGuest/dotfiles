@@ -25,7 +25,7 @@ Thank you for helping improve this setup. Follow these guidelines to keep the re
 - **fzf:** do not add `copy-selection` to `FZF_DEFAULT_OPTS` (unsupported in fzf 0.72); use per-invocation `--bind` with `wl-copy` / `xclip` if needed.
 - **Containers:** `DOCKER_HOST` in `.shell-exports` only when Podman socket exists; do not force Podman when Docker is the target runtime.
 - **x86-64-v3:** `stow/system/etc/makepkg.conf.d/99-x86-64-v3.conf` retunes local/AUR C/C++/Rust/Go builds for this Comet Lake CPU. User overlay: `stow/pacman/.config/pacman/makepkg.conf`. Rebuild hot extra/ packages with `scripts/rebuild-v3.sh` (default: zstd xz lz4), signed by a local rebuild-v3 key. Repo upgrades overwrite those packages; re-run the script. Do not use v4 (no AVX-512).
-- **Headroom:** optional pipx install/upgrade via `scripts/install-headroom.sh`; setup via `scripts/headroom-setup.sh`; shell entry points in `.shell-functions` (`hr-claude`, `hr-cursor`, `hr-proxy`) — do not also alias those names in `.shell-aliases`. Prefer `headroom install apply --preset persistent-service … --no-telemetry` over one-shot `hr-proxy` for always-on. Stowed shell rc may export `ANTHROPIC_BASE_URL` / `OPENAI_BASE_URL` for interactive shells; Cursor still needs manual Base URL paste in the IDE. RTK is separate (not under `~/.headroom/bin`). Document behavior in README / Phase 17c when changing setup scripts.
+- **Headroom:** optional pipx install/upgrade via `scripts/install-headroom.sh`; setup via `scripts/headroom-setup.sh`; shell entry points in `.shell-functions` (`hr-claude`, `hr-cursor`, `hr-proxy`) — do not also alias those names in `.shell-aliases`. Prefer `headroom install apply --preset persistent-service … --no-telemetry` over one-shot `hr-proxy` for always-on. Stowed shell rc may export `ANTHROPIC_BASE_URL` / `OPENAI_BASE_URL` for interactive shells; Cursor still needs manual Base URL paste in the IDE. RTK is separate (not under `~/.headroom/bin`). Document behavior in the README Headroom section when changing setup scripts.
 - **PhotoGIMP:** optional; `scripts/install-photogimp.sh` overwrites GIMP config under `~/.config/GIMP/<major.minor>`. Do not commit user GIMP config into stow.
 - **Dash2Dock:** install via `scripts/install-dash2dock.sh` (EGO zip, not stale AUR). Keep UUID in `gnome/extensions.txt` and `gnome/dconf/user.conf` `enabled-extensions`. Wayland: log out/in after install.
 - Do not reintroduce `.zsh-aliases` / `.zsh-exports` — use the `.shell-*` naming scheme.
@@ -34,8 +34,8 @@ Thank you for helping improve this setup. Follow these guidelines to keep the re
 ### Stow
 
 - User configs: `stow -R -t "$HOME" <package>` from the `stow/` directory.
-- System configs: `sudo stow -R -t / system` (via `install.sh`). **zram:** never stow to `/`; use `scripts/zram-setup.sh` (real file, not a `$HOME` symlink).
-- `stow/system/etc/kernel/cmdline` hardcodes this repo's LUKS UUID. Do not stow it onto another machine without rewriting `rd.luks.name=`.
+- System configs: `bash scripts/system-setup.sh` (via `install.sh`) installs `stow/system/` as root-owned regular files. Never `stow -t / system` or `stow -t / zram`: `/etc` symlinks into `$HOME` dangle at early boot and make root config user-writable. **zram:** `scripts/zram-setup.sh`.
+- X1-only files (`X1_ONLY` in `system-setup.sh`) install only on ThinkPad X1 hardware. `stow/system/etc/kernel/cmdline` is one of them: `system-setup.sh` rewrites `rd.luks.name=` to the booted LUKS UUID and rebuilds UKIs when it changes.
 - `install.sh` and `stow-only.sh` encode this logic — update docs if you change it.
 - Regenerate `all_stow_files.txt` after adding or removing stowed files:
   ```bash
@@ -46,8 +46,6 @@ Thank you for helping improve this setup. Follow these guidelines to keep the re
   Untracked files are omitted so CI matches a clean checkout. Do **not** use bare
   `find stow` (VSCodium Cache / foreign GNOME extensions). Kit `pre-commit` and
   CI both call `scripts/list-stow-files.sh`.
-- Markdown: `bash scripts/lint-docs.sh` (header spacing + tables). GitHub Actions
-  runs it; keep it out of `validate-configs.sh`.
 
 ### Machine profiles (`profiles/`)
 
@@ -55,7 +53,7 @@ Thank you for helping improve this setup. Follow these guidelines to keep the re
 - If no hostname match, `scripts/detect-profile.sh` picks from DMI product strings + chassis type: `thinkpad-x1`, `thinkpad-p15`, or `laptop` (no desktop/NVIDIA-only profile; no `lspci` in detect-profile).
 - `install.sh` → `apply-profile.sh` sources **exactly one** profile. Optimus/NVIDIA setup is inside `profiles/thinkpad-p15.sh` (`has_nvidia_gpu` in `scripts/lib/dmi.sh`). There is no `nvidia.sh`.
 - `profiles/laptop.sh` delegates to `thinkpad-x1.sh` only on X1 models.
-- `profiles/thinkpad-x1.sh` runs `mkinitcpio -P` when kernel cmdline changes; re-sign UKIs with `sbctl sign -s` when `/etc/sbctl/keys` exists (pacman hook does not run on manual rebuilds).
+- On ThinkPad X1 hardware, `system-setup.sh` (run after the profile) installs the X1-only `stow/system/` files (cmdline, i915, X1 sleep/logind, fingerprint rule), so `thinkpad-x1.sh` must not edit them. Other profiles skip those files and may manage their own (e.g. `thinkpad-p15.sh` appends `nvidia_drm.modeset=1`). Gating is by DMI hardware (`is_thinkpad_x1`), not hostname. UKI rebuilds go through `mkinitcpio -P`; sbctl's mkinitcpio post hook signs each rebuilt UKI.
 
 ### Packages (`packages/`)
 
@@ -84,7 +82,8 @@ Thank you for helping improve this setup. Follow these guidelines to keep the re
 |-------------|--------|
 | New shell feature / plugin | `README.md`, `CHANGELOG.md` |
 | New stow package | `README.md`, `all_stow_files.txt`, `CHANGELOG.md` |
-| Install script behavior | `README.md`, `docs/hardened-arch-gnome.md` |
+| Install script behavior | `README.md`, `docs/hardened-arch-gnome.md`, `docs/fresh-install-coding-re.md` (purpose stacks) |
+| `stow/system/` / `system-setup.sh` | `docs/hardened-arch-gnome.md` (Phase 1 `system/` files section), `tests/system-setup.test.sh`, `CHANGELOG.md` |
 | Profile / Secure Boot behavior | `README.md`, `docs/hardened-arch-gnome.md` (Phases 23, 27, 28), `CHANGELOG.md` |
 | Package list change | `CHANGELOG.md` |
 | GNOME / shortcut change | `gnome/keybindings.md`, `CHANGELOG.md` |
@@ -92,21 +91,25 @@ Thank you for helping improve this setup. Follow these guidelines to keep the re
 | Container CLI / `DOCKER_HOST` | `README.md`, `docs/hardened-arch-gnome.md`, `CHANGELOG.md` |
 | fzf / shell exports | `README.md`, `gnome/keybindings.md`, `CHANGELOG.md` |
 | fnm / Node version pins | `README.md`, `CHANGELOG.md`, troubleshooting table |
-| Headroom / AI proxy helpers | `README.md`, `docs/hardened-arch-gnome.md` (Phase 17c), `CHANGELOG.md` |
-| PhotoGIMP / GIMP | `README.md`, `docs/hardened-arch-gnome.md` (Phase 17d), `CHANGELOG.md` |
-| Dash2Dock / GNOME dock | `README.md`, `gnome/keybindings.md`, `docs/hardened-arch-gnome.md` (Phase 17e), `CHANGELOG.md` |
+| Headroom / AI proxy helpers | `README.md` (Headroom section), `CHANGELOG.md` |
+| PhotoGIMP / GIMP | `README.md` (PhotoGIMP section), `CHANGELOG.md` |
+| Dash2Dock / GNOME dock | `README.md` (Dash2Dock section), `CHANGELOG.md` |
 | Troubleshooting table | `README.md` when adding recurring install/shell issues |
-| CI / lint / stow inventory | `.github/workflows/ci.yml`, `scripts/lint-docs.sh`, `CHANGELOG.md` |
+| CI / lint / tests / stow inventory | `.github/workflows/ci.yml`, `scripts/lint-docs.sh`, `tests/`, `CHANGELOG.md` |
 
 ---
 
 ## Scripts
 
-- All scripts in `scripts/` must be executable (`chmod +x`). `bash -n` on
-  `scripts/**/*.sh`, `install.sh`, `stow-only.sh`, and `profiles/*.sh` runs in CI.
+- All scripts in `scripts/` and `tests/` must be executable (`chmod +x`). `bash -n`
+  on `scripts/**/*.sh`, `install.sh`, `stow-only.sh`, and `profiles/*.sh` runs in CI.
+- Tests: `tests/*.test.sh`, run by CI. `bash tests/system-setup.test.sh` runs
+  `system-setup.sh` against a fake root (`SYSTEM_ROOT`), no sudo.
+- Markdown: `bash scripts/lint-docs.sh` (header spacing + tables). CI runs it;
+  keep it out of `validate-configs.sh`.
 - Use `$HOME`-relative paths or repo-root detection — avoid hardcoding usernames.
 - Prefer `set -e` for install scripts; use guarded fallbacks where sudo may fail.
-- Shared helpers live in `scripts/lib/` (`dmi.sh`, `browsers.sh`, `input.sh`).
+- Shared helpers live in `scripts/lib/` (`dmi.sh`, `browsers.sh`, `input.sh`, `skel.sh`).
   Prefer sourcing those over copying snippets.
 
 ### Script map (keep flat; group by role)
@@ -118,7 +121,7 @@ Thank you for helping improve this setup. Follow these guidelines to keep the re
 | GNOME / desktop | `gnome-session-setup.sh`, `install-extensions.sh`, `fetch-gnome-extensions.sh`, `install-dash2dock.sh`, `gnome-console-setup.sh`, `ptyxis-setup.sh`, `gdm-setup.sh`, `backup-gsettings.sh`, `restore-gsettings.sh`, `reset-input-defaults.sh`, `cleanup-input-overrides.sh` |
 | Location / VPN | `location-setup.sh`, `vpn-location-sync.sh`, `proton-connectivity-check.sh`, `proton-seed-serverlist.sh` |
 | Dev tools | `git-setup.sh`, `nvim-setup.sh`, `headroom-setup.sh`, `install-headroom.sh`, `install-ghidra-cli.sh`, `install-photogimp.sh`, `install-starship-crampack.sh` (legacy), `browser-hardening.sh`, `privacy-hardener.sh` |
-| System | `zram-setup.sh`, `tmp-to-disk.sh`, `network-dns-setup.sh`, `fingerprint-setup.sh`, `thinkpad-health.sh`, `rebuild-v3.sh`, `build-st.sh` |
+| System | `system-setup.sh`, `zram-setup.sh`, `tmp-to-disk.sh`, `network-dns-setup.sh`, `fingerprint-setup.sh`, `thinkpad-health.sh`, `rebuild-v3.sh`, `build-st.sh` |
 | Validate | `check.sh`, `validate-configs.sh`, `lint-docs.sh`, `list-stow-files.sh`, `post-update.sh` |
 
 ---
@@ -130,7 +133,7 @@ Use [Conventional Commits](https://www.conventionalcommits.org/):
 ```
 feat: add foo palette
 fix: guard zsh hooks in shared shell functions
-docs: document zsh-autocomplete setup
+docs: document system-setup cmdline handling
 ```
 
 ---
