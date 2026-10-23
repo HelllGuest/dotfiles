@@ -112,11 +112,14 @@ bash scripts/p15-dotfiles-preflight.sh   # skip on X1
 # Explicit Optimus re-run if needed: bash profiles/thinkpad-p15.sh
 # AI tools (also run by install.sh when npm/ghidra present):
 #   bash scripts/sync-agent-skills.sh
-#   bash scripts/install-caveman.sh      # /caveman voice + skills
+#   bash scripts/install-coding-agents.sh   # OpenCode + Kimi CLIs + MCP
+#   bash scripts/install-caveman.sh         # /caveman voice + skills
 #   bash scripts/install-android-ui-skills.sh  # Compose + Material 3
 #   bash scripts/install-ghidra-cli.sh
-#   bash scripts/install-rea.sh          # optional: INSTALL_HOPPER=1
+#   bash scripts/install-rea.sh             # optional: INSTALL_HOPPER=1
+#   bash scripts/install-ecosystem-skills.sh  # cloudflare/emil/vercel/…
 #   bash scripts/sync-agent-skills.sh
+#   ONLY_CAVEMAN_OPENCODE=1 bash scripts/install-coding-agents.sh
 exec zsh
 bash scripts/thinkpad-health.sh
 reboot   # required after NVIDIA early KMS / nouveau blacklist

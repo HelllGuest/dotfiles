@@ -95,21 +95,20 @@ else
   unset DOCKER_HOST
 fi
 
-# Disable Telemetry
-export DOTNET_CLI_TELEMETRY_OPTOUT=1
-export POWERSHELL_TELEMETRY_OPTOUT=1
-export AZURE_CORE_COLLECT_TELEMETRY=0
-export STACK_TELEMETRY=0
-export DO_NOT_TRACK=1
-export NEXT_TELEMETRY_DISABLED=1
-export GATSBY_TELEMETRY_DISABLED=1
-export ASTRO_TELEMETRY_DISABLED=1
-export STRIPE_CLI_TELEMETRY_OPTOUT=1
-export NUXT_TELEMETRY_DISABLED=1
-export ANGULAR_DISABLE_CLI_PROMPTS=1
-export HOMEBREW_NO_ANALYTICS=1
-export VUE_CLI_TELEMETRY_OPTOUT=1
-export SAM_CLI_TELEMETRY=0
-export CHECKPOINT_DISABLE=1
-export ANTHROPIC_TELEMETRY=false
-export GOOGLE_API_USE_CLIENT_CERTIFICATE=false
+# Telemetry / analytics opt-out (single source: stow/privacy environment.d)
+# Also loaded for GUI apps via systemd ~/.config/environment.d/ (re-login).
+_telemetry_env="${XDG_CONFIG_HOME}/environment.d/90-telemetry-optout.conf"
+if [[ -f "$_telemetry_env" ]]; then
+  set -a
+  # shellcheck disable=SC1090
+  source "$_telemetry_env"
+  set +a
+else
+  # Minimal fallback before first stow/privacy-hardener run
+  export DO_NOT_TRACK=1
+  export DISABLE_TELEMETRY=1
+  export DOTNET_CLI_TELEMETRY_OPTOUT=1
+  export NEXT_TELEMETRY_DISABLED=1
+  export HEADROOM_TELEMETRY=off
+fi
+unset _telemetry_env

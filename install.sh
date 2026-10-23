@@ -134,7 +134,17 @@ if [ -f "scripts/sync-agent-skills.sh" ]; then
     bash scripts/sync-agent-skills.sh || echo "Agent skills pre-sync skipped."
 fi
 
-# 3.5b Caveman (terse voice + ultracave/megacave; pinned installer + SHA-256)
+# 3.5b OpenCode + Kimi CLIs + MCP configs (before caveman so opencode is detected)
+if [ -f "scripts/install-coding-agents.sh" ]; then
+    if command -v npm >/dev/null 2>&1; then
+        SKIP_CAVEMAN_OPENCODE=1 bash scripts/install-coding-agents.sh || \
+            echo "Coding agents failed — re-run: bash scripts/install-coding-agents.sh"
+    else
+        echo "Skipping OpenCode/Kimi (npm not on PATH)."
+    fi
+fi
+
+# 3.5c Caveman (terse voice + ultracave/megacave; pinned installer + SHA-256)
 if [ -f "scripts/install-caveman.sh" ]; then
     if command -v npm >/dev/null 2>&1; then
         SKIP_SKILL_SYNC=1 bash scripts/install-caveman.sh || \
@@ -144,7 +154,7 @@ if [ -f "scripts/install-caveman.sh" ]; then
     fi
 fi
 
-# 3.5c Android UI skills (Compose anti-slop + Material 3; pinned refs)
+# 3.5d Android UI skills (Compose anti-slop + Material 3; pinned refs)
 if [ -f "scripts/install-android-ui-skills.sh" ]; then
     if command -v npx >/dev/null 2>&1; then
         SKIP_SKILL_SYNC=1 bash scripts/install-android-ui-skills.sh || \
@@ -154,7 +164,7 @@ if [ -f "scripts/install-android-ui-skills.sh" ]; then
     fi
 fi
 
-# 3.5d ghidra-cli (optional Rust bridge; needs pacman ghidra + rust/cargo)
+# 3.5e ghidra-cli (optional Rust bridge; needs pacman ghidra + rust/cargo)
 if [ -f "scripts/install-ghidra-cli.sh" ]; then
     if pacman -Q ghidra >/dev/null 2>&1; then
         bash scripts/install-ghidra-cli.sh || \
@@ -164,7 +174,7 @@ if [ -f "scripts/install-ghidra-cli.sh" ]; then
     fi
 fi
 
-# 3.5e REA (reverse-engineer-anything MCP + jadx JAR; needs npm from fnm)
+# 3.5f REA (reverse-engineer-anything MCP + jadx JAR; needs npm from fnm)
 if [ -f "scripts/install-rea.sh" ]; then
     if command -v npm >/dev/null 2>&1; then
         bash scripts/install-rea.sh || echo "REA install failed — re-run: bash scripts/install-rea.sh"
@@ -173,9 +183,27 @@ if [ -f "scripts/install-rea.sh" ]; then
     fi
 fi
 
-# 3.5f Hub mirror after AI installers (caveman/android/REA/ghidra → Claude/Cursor)
+# 3.5g Third-party skill packs (cloudflare, emil, vercel, … — packages/agent-skills.txt)
+if [ -f "scripts/install-ecosystem-skills.sh" ]; then
+    if command -v npx >/dev/null 2>&1; then
+        SKIP_SKILL_SYNC=1 bash scripts/install-ecosystem-skills.sh || \
+            echo "Ecosystem skills failed — re-run: bash scripts/install-ecosystem-skills.sh"
+    else
+        echo "Skipping ecosystem skills (npx not on PATH)."
+    fi
+fi
+
+# 3.5h Hub mirror after AI installers (→ Claude/Cursor/OpenCode/Kimi)
 if [ -f "scripts/sync-agent-skills.sh" ]; then
     bash scripts/sync-agent-skills.sh || echo "Agent skills post-sync skipped."
+fi
+
+# 3.5i Caveman OpenCode plugin (after hub sync; coding-agents skipped this in 3.5b)
+if [ -f "scripts/install-coding-agents.sh" ] && command -v npm >/dev/null 2>&1; then
+    if [ -d "${XDG_CONFIG_HOME:-$HOME/.config}/opencode" ]; then
+        ONLY_CAVEMAN_OPENCODE=1 bash scripts/install-coding-agents.sh || \
+            echo "Caveman OpenCode plugin refresh skipped."
+    fi
 fi
 
 # 3.6 PhotoGIMP (Photoshop-like GIMP layout — optional)
@@ -193,18 +221,18 @@ if [ -f "scripts/install-extensions.sh" ]; then
     bash scripts/install-extensions.sh || echo "Extension enable skipped."
 fi
 
-# 4. Final Health Check
+# 4. Privacy Hardening (before health check so telemetry probes reflect final state)
+if [ -f "scripts/privacy-hardener.sh" ]; then
+    bash scripts/privacy-hardener.sh
+fi
+
+# 5. Final Health Check
 if [ -f "scripts/check.sh" ]; then
     bash scripts/check.sh
 fi
 
 if [ -f "scripts/validate-configs.sh" ]; then
     bash scripts/validate-configs.sh || echo "Config validation reported issues."
-fi
-
-# 5. Privacy Hardening
-if [ -f "scripts/privacy-hardener.sh" ]; then
-    bash scripts/privacy-hardener.sh
 fi
 
 echo "Installation complete!"

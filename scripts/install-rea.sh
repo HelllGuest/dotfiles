@@ -19,6 +19,8 @@ set -euo pipefail
 JADX_VER="0.7.1"
 JADX_SHA256="6e5eacf500b64292bfb73c49797c1958f6ee44646e43e868039ae7feb573ff75"
 JADX_URL="https://github.com/1013503897/jadx-headless-mcp/releases/download/v${JADX_VER}/jadx-headless-mcp-${JADX_VER}-all.jar"
+# Keep in sync with scripts/install-coding-agents.sh (REA_AGENTS_VERSION)
+REA_AGENTS_VERSION="${REA_AGENTS_VERSION:-6.7.0}"
 REA_DIR="${XDG_DATA_HOME:-$HOME/.local/share}/rea"
 JADX_JAR="${REA_DIR}/jadx-headless-mcp-${JADX_VER}-all.jar"
 GHIDRA_INSTALL_DIR="${GHIDRA_INSTALL_DIR:-/opt/ghidra}"
@@ -54,8 +56,8 @@ command -v curl >/dev/null 2>&1 || die "curl not found"
 JAVA_HOME_JDK="$(pick_jdk21)"
 say "JDK for REA/Ghidra: $JAVA_HOME_JDK"
 
-say "npm install -g rea-agents"
-npm install -g rea-agents
+say "npm install -g rea-agents@${REA_AGENTS_VERSION}"
+npm install -g "rea-agents@${REA_AGENTS_VERSION}"
 
 mkdir -p "$REA_DIR"
 if [[ -f "$JADX_JAR" ]]; then
@@ -83,7 +85,7 @@ export GHIDRA_INSTALL_DIR
 export REA_JADX_MCP_JAR="$JADX_JAR"
 [[ -x "$HOPPER_LAUNCHER_PATH" ]] && export HOPPER_LAUNCHER_PATH
 
-SETUP=(npx -y rea-agents@latest setup --all-detected --yes)
+SETUP=(npx -y "rea-agents@${REA_AGENTS_VERSION}" setup --all-detected --yes)
 if [[ "${INSTALL_HOPPER:-0}" == "1" ]]; then
   SETUP+=(--install-hopper)
   say "INSTALL_HOPPER=1 — setup will try Hopper package install"
@@ -94,11 +96,12 @@ say "rea setup --all-detected"
 # Ensure VSCodium gets REA (setup targets VS Code path only)
 VSCODIUM_MCP="${XDG_CONFIG_HOME:-$HOME/.config}/VSCodium/User/mcp.json"
 if [[ -f "$VSCODIUM_MCP" ]] || [[ -d "$(dirname "$VSCODIUM_MCP")" ]]; then
-  python3 - "$VSCODIUM_MCP" "$JAVA_HOME_JDK" "$GHIDRA_INSTALL_DIR" "$JADX_JAR" "$HOPPER_LAUNCHER_PATH" <<'PY'
+  python3 - "$VSCODIUM_MCP" "$JAVA_HOME_JDK" "$GHIDRA_INSTALL_DIR" "$JADX_JAR" \
+    "$HOPPER_LAUNCHER_PATH" "$REA_AGENTS_VERSION" <<'PY'
 import json, sys
 from pathlib import Path
 path = Path(sys.argv[1])
-java, ghidra, jadx, hopper = sys.argv[2:6]
+java, ghidra, jadx, hopper, rea_ver = sys.argv[2:7]
 env = {
     "JAVA_HOME": java,
     "GHIDRA_INSTALL_DIR": ghidra,
@@ -111,8 +114,9 @@ data = json.loads(path.read_text()) if path.is_file() else {"mcpServers": {}}
 servers = data.setdefault("mcpServers", {})
 rea = servers.setdefault("rea", {
     "command": "npx",
-    "args": ["-y", "rea-agents@latest", "mcp"],
+    "args": ["-y", f"rea-agents@{rea_ver}", "mcp"],
 })
+rea["args"] = ["-y", f"rea-agents@{rea_ver}", "mcp"]
 rea_env = rea.setdefault("env", {})
 rea_env.update(env)
 path.write_text(json.dumps(data, indent=2) + "\n")
@@ -151,6 +155,8 @@ json_paths = [
     home / ".qoder/settings.json",
     home / ".claude.json",
     home / ".config/opencode/opencode.json",
+    home / ".kimi-code/mcp.json",
+    home / ".kimi/mcp.json",
 ]
 
 def patch_entry(entry: dict) -> bool:

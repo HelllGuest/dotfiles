@@ -90,8 +90,9 @@ setopt HIST_VERIFY         # expand '!!'/'!$' onto the line, don't auto-run
 setopt HIST_FCNTL_LOCK     # safe history file locking (zsh 5.4+)
 setopt HIST_EXPIRE_DUPS_FIRST
 unsetopt FLOW_CONTROL      # free ^S/^Q for keybindings, not XON/XOFF
-# keep secrets out of saved history (space-prefix still works via HIST_IGNORE_SPACE)
-HISTORY_IGNORE='(*--password*|*--token*|*API_KEY*|*_TOKEN*|*SECRET*|*PASSWORD*|* -p [!-]*)'
+# Secrets out of zsh HISTFILE (space-prefix still via HIST_IGNORE_SPACE).
+# Prefer --flag / KEY= forms. Atuin DB uses its own history_filter.
+HISTORY_IGNORE='(*--password*|*--token*|*API_KEY=*|*_TOKEN=*|*PASSWORD=*|*SECRET=*|* -p [!-]*)'
 # tighten perms on history + secrets each session (best-effort)
 [[ -f "$HISTFILE" ]] && chmod 600 "$HISTFILE" 2>/dev/null
 [[ -f ~/.config/secrets/env ]] && chmod 600 ~/.config/secrets/env 2>/dev/null

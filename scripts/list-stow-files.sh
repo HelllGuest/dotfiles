@@ -21,5 +21,7 @@ if ! git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
   exit 1
 fi
 
-# Index only (no -o): excludes untracked + respects .gitignore for never-added junk
-git ls-files -- stow | sort
+# Index only (no -o): excludes untracked + respects .gitignore for never-added junk.
+# LC_ALL=C: stable order on Arch (UTF-8) and GitHub runners (often C) so CI
+# "Stow inventory freshness" does not fail on case/locale sort alone.
+git ls-files -- stow | LC_ALL=C sort

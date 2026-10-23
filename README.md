@@ -273,11 +273,15 @@ cleanup-input-overrides.sh
 → fnm install/default 22 → atuin import → zram-setup.sh
 → gnome-session-setup.sh → location-setup.sh → gnome-console-setup.sh → ptyxis-setup.sh
 → gdm-setup.sh → git-setup.sh → nvim-setup.sh → headroom-setup.sh
-→ sync-agent-skills.sh → install-caveman.sh (if npm) → install-android-ui-skills.sh (if npx)
-→ install-ghidra-cli.sh (if ghidra) → install-rea.sh (if npm) → sync-agent-skills.sh
+→ sync-agent-skills.sh → install-coding-agents.sh (OpenCode + Kimi + MCP; if npm)
+→ install-caveman.sh (if npm) → install-android-ui-skills.sh (if npx)
+→ install-ghidra-cli.sh (if ghidra) → install-rea.sh (if npm)
+→ install-ecosystem-skills.sh (packages/agent-skills.txt; if npx)
+→ sync-agent-skills.sh → caveman OpenCode plugin refresh
 → install-photogimp.sh
-→ install-dash2dock.sh → install-extensions.sh → check.sh → validate-configs.sh
+→ install-dash2dock.sh → install-extensions.sh
 → privacy-hardener.sh (incl. browser-hardening.sh)
+→ check.sh → validate-configs.sh
 ```
 
 > `scripts/tmp-to-disk.sh` is **not** part of this flow — `arch-install.sh` already
@@ -310,7 +314,7 @@ Key runtime dependencies (`scripts/check.sh` asserts binaries, shell tools, syml
 
 **AUR** (via `install-aur.sh`, bootstraps `paru` if needed): `blesh-git`, `curlie`, `forgit`, GNOME shell extensions, `vscodium-bin` (settings in `stow/vscode/`)
 
-**Flatpaks** (via `install-flatpaks.sh`): Brave, Zen, Google Chrome, LibreWolf, Proton VPN, Android Studio. Browser telemetry debloat: `scripts/browser-hardening.sh` (Chrome/Brave `/etc` policies; Zen `user.js` per profile + `/etc/firefox/policies`; LibreWolf upstream-hardened). Launch Zen once before re-running hardening if profiles are new.
+**Flatpaks** (via `install-flatpaks.sh`): Brave, Zen, Google Chrome, LibreWolf, Proton VPN, Android Studio. Browser telemetry debloat: `scripts/browser-hardening.sh` (Chrome/Brave `/etc` policies; Zen `user.js` per real profile + Flatpak `systemconfig` policies + `/etc/firefox/policies` for native; LibreWolf upstream + `librewolf.overrides.cfg`). Launch Zen once before re-running hardening if profiles are new.
 
 **Terminals:** `kitty` (primary; Super+Return), `ghostty`, optional stowed configs for `alacritty`, `contour`, `foot`, `rio`, `wezterm`, plus `gnome-console` (kgx) and `ptyxis`. Optional suckless `st`: `bash scripts/build-st.sh` (`builds/st/`).
 
@@ -339,7 +343,7 @@ Clipboard: selecting text auto-copies in kitty and ghostty (`copy_on_select`); i
 We take a "quiet by default" approach:
 - **GNOME Debloated:** Uses `gnome-shell` instead of the full `gnome` meta-package where possible.
 - **Zero Telemetry:** VS Code, GNOME usage stats, and technical reporting are disabled.
-- **Opt-Out Defaults:** Global environment variables in `.shell-exports` disable telemetry for development tools.
+- **Opt-Out Defaults:** Telemetry/analytics off via `stow/privacy` → `~/.config/environment.d/90-telemetry-optout.conf` (GUI session + `.shell-exports`). `scripts/privacy-hardener.sh` unifies GNOME, browsers, IDE/Claude merges, Flutter `reporting=0`, and Headroom/AI env. Re-run after upgrades: `bash scripts/privacy-hardener.sh`.
 
 ---
 
@@ -379,7 +383,9 @@ We take a "quiet by default" approach:
 | Refresh stow inventory | `git add stow/…` then `bash scripts/list-stow-files.sh > all_stow_files.txt` (index only) |
 | Location sync | `vpn-location-sync` or Proton VPN panel → Sync spoofed location |
 | Optional st (suckless) | `bash scripts/build-st.sh` |
-| Agent skills sync | `bash scripts/sync-agent-skills.sh` |
+| Agent skills sync | `bash scripts/sync-agent-skills.sh` (hub → Claude/Cursor/OpenCode/Kimi) |
+| OpenCode + Kimi | `bash scripts/install-coding-agents.sh` (pinned npm CLIs + MCP) |
+| Ecosystem skills | `bash scripts/install-ecosystem-skills.sh` (`packages/agent-skills.txt`) |
 | Caveman (`/caveman`) | `bash scripts/install-caveman.sh` |
 | Android UI skills | `bash scripts/install-android-ui-skills.sh` (Compose + Material 3) |
 | REA (MCP + jadx) | `bash scripts/install-rea.sh` (Hopper: `INSTALL_HOPPER=1`) |

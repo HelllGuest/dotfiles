@@ -1,8 +1,14 @@
 {
-    "telemetry.telemetryLevel": "off",
-    "telemetry.feedback.enabled": false,
-    "workbench.enableExperiments": false,
-    "workbench.settings.enableNaturalLanguageSearch": false,
-    "update.mode": "none",
-    "window.autoDetectColorScheme": true
+  "telemetry.telemetryLevel": "off",
+  "telemetry.enableTelemetry": false,
+  "telemetry.enableCrashReporter": false,
+  "telemetry.feedback.enabled": false,
+  "crashReporting.enabled": false,
+  "workbench.enableExperiments": false,
+  "workbench.settings.enableNaturalLanguageSearch": false,
+  "cursor.general.enableShadowWorkspace": false,
+  "cursor.general.allowAnonymousUsage": false,
+  "cursor.general.privacyMode": "enabled",
+  "update.mode": "manual",
+  "window.autoDetectColorScheme": true
 }

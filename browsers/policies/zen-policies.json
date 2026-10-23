@@ -2,10 +2,40 @@
   "policies": {
     "DisableTelemetry": true,
     "DisableFirefoxStudies": true,
+    "DisableFeedbackCommands": true,
     "DisableFeedbackScreenshots": true,
     "DisablePocket": true,
     "DisableSetDesktopBackground": true,
     "DisableDeveloperTools": false,
-    "OfferFirefoxToUseAsDefault": false
+    "OfferFirefoxToUseAsDefault": false,
+    "DontCheckDefaultBrowser": true,
+    "EnableTrackingProtection": {
+      "Value": true,
+      "Locked": false,
+      "Cryptomining": true,
+      "Fingerprinting": true
+    },
+    "Preferences": {
+      "datareporting.healthreport.uploadEnabled": {
+        "Value": false,
+        "Status": "locked"
+      },
+      "datareporting.policy.dataSubmissionEnabled": {
+        "Value": false,
+        "Status": "locked"
+      },
+      "toolkit.telemetry.enabled": {
+        "Value": false,
+        "Status": "locked"
+      },
+      "toolkit.telemetry.unified": {
+        "Value": false,
+        "Status": "locked"
+      },
+      "browser.ping-centre.telemetry": {
+        "Value": false,
+        "Status": "locked"
+      }
+    }
   }
 }

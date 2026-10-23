@@ -1,8 +1,10 @@
 # atuin — shell history manager (shared zsh/bash)
+# Privacy: no sync, no update phone-home, secrets filtered locally.
 
 dialect = "uk"
 auto_sync = false
 update_check = false
+secrets_filter = true
 search_mode = "fuzzy"
 filter_mode = "global"
 filter_mode_shell_up_arrow = "session"
@@ -16,6 +18,8 @@ exit_mode = "return-query"
 
 keymap_mode = "emacs"
 
+# Regexes (unanchored). Prefer flag/assignment forms — avoid bare "password"
+# so passwd / password-store still record.
 history_filter = [
   "^ls",
   "^ll",
@@ -27,4 +31,12 @@ history_filter = [
   "^q$",
   "^exit$",
   "^history",
+  "(?i)--password(\\s|=|$)",
+  "(?i)password=",
+  "(?i)--token(\\s|=|$)",
+  "(?i)--api[-_]?key(\\s|=|$)",
+  "(?i)API_KEY=",
+  "(?i)_TOKEN=",
+  "(?i)SECRET=",
+  "(?i)Bearer [A-Za-z0-9._-]+",
 ]

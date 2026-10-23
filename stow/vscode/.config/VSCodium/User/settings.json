@@ -14,5 +14,6 @@
   "telemetry.enableCrashReporter": false,
   "crashReporting.enabled": false,
   "cursor.general.enableShadowWorkspace": false,
-  "cursor.general.allowAnonymousUsage": false
+  "cursor.general.allowAnonymousUsage": false,
+  "cursor.general.privacyMode": "enabled"
 }

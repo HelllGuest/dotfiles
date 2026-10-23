@@ -12,13 +12,19 @@ export XDG_DATA_HOME="${XDG_DATA_HOME:-$HOME/.local/share}"
 export XDG_CACHE_HOME="${XDG_CACHE_HOME:-$HOME/.cache}"
 export XDG_STATE_HOME="${XDG_STATE_HOME:-$HOME/.local/state}"
 
+# Privacy / hardening (parity with zsh). umask 077 = owner-only for files
+# created in this interactive shell (same as zsh); not telemetry-specific.
+umask 077
 HISTFILE="${XDG_STATE_HOME}/bash/history"
 HISTSIZE=100000
 HISTFILESIZE=200000
 HISTCONTROL=ignoreboth:erasedups
-HISTIGNORE='ls:ll:la:cd:pwd:exit:clear:cl:q:history'
+# Colon patterns. Prefer --flag / KEY= forms (avoid bare password/SECRET globs).
+# Protects bash HISTFILE only; atuin has its own history_filter for the DB.
+HISTIGNORE='ls:ll:la:cd:pwd:exit:clear:cl:q:history:*--password*:*--token*:*API_KEY=*:*_TOKEN=*:*PASSWORD=*:*SECRET=*:*Bearer *'
 HISTTIMEFORMAT='%F %T  '
 mkdir -p "$(dirname "$HISTFILE")"
+[[ -f "$HISTFILE" ]] && chmod 600 "$HISTFILE" 2>/dev/null
 
 shopt -s histappend cmdhist histreedit autocd cdspell dirspell
 shopt -s checkwinsize globstar dotglob extglob nocaseglob checkjobs

@@ -75,6 +75,34 @@ check_agent_skill android-compose-design "bash scripts/install-android-ui-skills
 check_agent_skill material-3 "bash scripts/install-android-ui-skills.sh"
 check_agent_skill reverse-engineer-anything "bash scripts/install-rea.sh"
 
+OPENCODE_SKILLS="${XDG_CONFIG_HOME:-$HOME/.config}/opencode/skills"
+KIMI_SKILLS="${KIMI_CODE_HOME:-$HOME/.kimi-code}/skills"
+if [[ -f "${OPENCODE_SKILLS}/caveman/SKILL.md" ]]; then
+    echo "✓ OpenCode skills (caveman)"
+else
+    echo "○ OpenCode skills missing (bash scripts/sync-agent-skills.sh)"
+fi
+if [[ -f "${KIMI_SKILLS}/caveman/SKILL.md" ]]; then
+    echo "✓ Kimi Code skills (caveman)"
+else
+    echo "○ Kimi Code skills missing (bash scripts/sync-agent-skills.sh)"
+fi
+if command -v kimi >/dev/null 2>&1; then
+    echo "✓ kimi CLI ($(kimi --version 2>/dev/null | head -1))"
+else
+    echo "○ kimi CLI missing (npm i -g @moonshot-ai/kimi-code)"
+fi
+if command -v opencode >/dev/null 2>&1; then
+    echo "✓ opencode CLI ($(opencode --version 2>/dev/null | head -1))"
+else
+    echo "○ opencode CLI missing"
+fi
+if [[ -f "${KIMI_CODE_HOME:-$HOME/.kimi-code}/mcp.json" ]]; then
+    echo "✓ Kimi MCP config"
+else
+    echo "○ Kimi MCP config missing"
+fi
+
 if [ -d "${XDG_DATA_HOME:-$HOME/.local/share}/zinit/zinit.git" ]; then
     echo "✓ zinit is bootstrapped"
 else
@@ -214,10 +242,11 @@ else
     echo "✓ synaptics Mouse node not inhibited"
 fi
 
+# shellcheck source=lib/browsers.sh
+source "$REPO_ROOT/scripts/lib/browsers.sh"
+
 echo "--- Flatpaks ---"
 if command -v flatpak >/dev/null 2>&1; then
-    # shellcheck source=lib/browsers.sh
-    source "$REPO_ROOT/scripts/lib/browsers.sh"
     while IFS= read -r app; do
         [[ -n "$app" ]] || continue
         if flatpak list --app 2>/dev/null | grep -q "$app"; then
@@ -243,15 +272,186 @@ for policy in /etc/opt/chrome/policies/managed/00-privacy.json /etc/brave/polici
         echo "✗ $policy missing (run scripts/browser-hardening.sh)"
     fi
 done
-if [[ -f /etc/firefox/policies/policies.json ]]; then
-    echo "✓ /etc/firefox/policies/policies.json (Zen/Firefox)"
+if [[ -f /etc/opt/chrome/policies/managed/00-privacy.json ]] \
+  && grep -q '"CloudReportingEnabled": false' /etc/opt/chrome/policies/managed/00-privacy.json; then
+    echo "✓ Chrome CloudReportingEnabled=false"
+elif [[ -f /etc/opt/chrome/policies/managed/00-privacy.json ]]; then
+    echo "✗ Chrome CloudReportingEnabled missing (bash scripts/browser-hardening.sh)"
 else
-    echo "✗ /etc/firefox/policies/policies.json missing (run scripts/browser-hardening.sh)"
+    echo "✗ Chrome policy file missing (bash scripts/browser-hardening.sh)"
 fi
-if compgen -G "${HOME}/.var/app/app.zen_browser.zen/.zen"/*/user.js >/dev/null 2>&1; then
+if [[ -f /etc/brave/policies/managed/00-privacy.json ]] \
+  && grep -q '"CloudReportingEnabled": false' /etc/brave/policies/managed/00-privacy.json \
+  && grep -q '"BraveP3AEnabled": false' /etc/brave/policies/managed/00-privacy.json; then
+    echo "✓ Brave CloudReporting + P3A off"
+elif [[ -f /etc/brave/policies/managed/00-privacy.json ]]; then
+    echo "✗ Brave policies stale (bash scripts/browser-hardening.sh)"
+else
+    echo "✗ Brave policy file missing (bash scripts/browser-hardening.sh)"
+fi
+if [[ -f /etc/firefox/policies/policies.json ]] \
+  && grep -q '"DisableTelemetry": true' /etc/firefox/policies/policies.json; then
+    echo "✓ /etc/firefox/policies/policies.json DisableTelemetry"
+elif [[ -f /etc/firefox/policies/policies.json ]]; then
+    echo "✗ /etc/firefox/policies stale (bash scripts/browser-hardening.sh)"
+else
+    echo "✗ /etc/firefox/policies/policies.json missing (bash scripts/browser-hardening.sh)"
+fi
+zen_pol="$(zen_systemconfig_dir)/policies/policies.json"
+if [[ -f "$zen_pol" ]] && grep -q '"DisableTelemetry": true' "$zen_pol"; then
+    echo "✓ Zen Flatpak systemconfig DisableTelemetry"
+elif flatpak list --app 2>/dev/null | grep -q 'app\.zen_browser\.zen'; then
+    echo "✗ Zen Flatpak policies missing (run scripts/browser-hardening.sh)"
+else
+    echo "○ Zen Flatpak not installed"
+fi
+zen_userjs_ok=0
+if [[ -d "${HOME}/.var/app/app.zen_browser.zen/.zen" ]]; then
+    while IFS= read -r -d '' uj; do
+        prof="$(dirname "$uj")"
+        if [[ -f "$prof/prefs.js" ]]; then
+            zen_userjs_ok=1
+            break
+        fi
+    done < <(find "${HOME}/.var/app/app.zen_browser.zen/.zen" -mindepth 2 -maxdepth 2 -name user.js -print0 2>/dev/null)
+fi
+if [[ "$zen_userjs_ok" -eq 1 ]]; then
     echo "✓ Zen user.js deployed in profile(s)"
 elif flatpak list --app 2>/dev/null | grep -qE 'app\.zen_browser\.zen|io\.github\.zen_browser\.zen'; then
     echo "✗ Zen user.js missing — launch Zen once, then run scripts/browser-hardening.sh"
+fi
+if [[ -f "${HOME}/.var/app/app.zen_browser.zen/.zen/Profile Groups/user.js" ]]; then
+    echo "✗ stray Zen user.js under Profile Groups (re-run browser-hardening.sh)"
+fi
+lw_ov="${HOME}/.var/app/io.gitlab.librewolf-community/.librewolf/librewolf.overrides.cfg"
+if [[ -f "$lw_ov" ]] && grep -q 'toolkit.telemetry.enabled' "$lw_ov"; then
+    echo "✓ LibreWolf librewolf.overrides.cfg"
+elif flatpak list --app 2>/dev/null | grep -q 'io\.gitlab\.librewolf-community'; then
+    echo "✗ LibreWolf overrides missing (run scripts/browser-hardening.sh)"
+else
+    echo "○ LibreWolf Flatpak not installed"
+fi
+
+echo "--- Shell (bash/zsh) privacy ---"
+if grep -q '90-telemetry-optout.conf' "${HOME}/.shell-exports" 2>/dev/null \
+  || grep -q '90-telemetry-optout.conf' "$REPO_ROOT/stow/zsh/.shell-exports" 2>/dev/null; then
+    echo "✓ shell-exports sources telemetry-optout.conf"
+else
+    echo "✗ shell-exports missing telemetry-optout source"
+fi
+if grep -q 'umask 077' "${HOME}/.bashrc" 2>/dev/null \
+  || grep -q 'umask 077' "$REPO_ROOT/stow/bash/.bashrc" 2>/dev/null; then
+    echo "✓ bash umask 077"
+else
+    echo "✗ bash umask 077 missing"
+fi
+if grep -q '\*--password\*' "${HOME}/.bashrc" 2>/dev/null \
+  || grep -q '\*--password\*' "$REPO_ROOT/stow/bash/.bashrc" 2>/dev/null; then
+    echo "✓ bash HISTIGNORE secret filters (--flag / KEY=)"
+else
+    echo "✗ bash HISTIGNORE secret filters missing"
+fi
+if grep -q '\*password\*' "${HOME}/.bashrc" 2>/dev/null \
+  || grep -q '\*password\*' "$REPO_ROOT/stow/bash/.bashrc" 2>/dev/null; then
+    echo "✗ bash HISTIGNORE still has over-broad *password* (use *--password*)"
+fi
+if grep -q 'HISTORY_IGNORE' "${HOME}/.zsh-plugins" 2>/dev/null \
+  || grep -q 'HISTORY_IGNORE' "$REPO_ROOT/stow/zsh/.zsh-plugins" 2>/dev/null; then
+    echo "✓ zsh HISTORY_IGNORE secret filters"
+else
+    echo "✗ zsh HISTORY_IGNORE missing"
+fi
+atuin_cfg="${XDG_CONFIG_HOME:-$HOME/.config}/atuin/config.toml"
+if [[ -f "$atuin_cfg" ]] \
+  && grep -qE '^auto_sync\s*=\s*false' "$atuin_cfg" \
+  && grep -qE '^update_check\s*=\s*false' "$atuin_cfg" \
+  && grep -qE '^secrets_filter\s*=\s*true' "$atuin_cfg" \
+  && grep -q '(?i)--token' "$atuin_cfg"; then
+    echo "✓ atuin privacy keys + secret history_filter"
+else
+    echo "✗ atuin privacy keys/filters missing (stow atuin / bash scripts/privacy-hardener.sh)"
+fi
+# Bare "(?i)password" as whole pattern (not --password / password=)
+if grep -qE '"\(\?i\)password"' "$atuin_cfg" 2>/dev/null \
+  || grep -qE '"\(\?i\)password"' "$REPO_ROOT/stow/atuin/.config/atuin/config.toml" 2>/dev/null; then
+    echo "✗ atuin history_filter still has bare (?i)password (over-broad)"
+fi
+if grep -q 'LESSHISTFILE=-' "${HOME}/.shell-exports" 2>/dev/null \
+  || grep -q 'LESSHISTFILE=-' "$REPO_ROOT/stow/zsh/.shell-exports" 2>/dev/null; then
+    echo "✓ LESSHISTFILE=- (no less history file)"
+else
+    echo "○ LESSHISTFILE not disabled"
+fi
+
+echo "--- Telemetry / privacy ---"
+TELEMETRY_ENV_D="${XDG_CONFIG_HOME:-$HOME/.config}/environment.d/90-telemetry-optout.conf"
+if [[ -f "$TELEMETRY_ENV_D" ]]; then
+    echo "✓ $TELEMETRY_ENV_D"
+    for key in DO_NOT_TRACK DISABLE_TELEMETRY HEADROOM_TELEMETRY GOTELEMETRY NEXT_TELEMETRY_DISABLED; do
+        if grep -q "^${key}=" "$TELEMETRY_ENV_D"; then
+            echo "✓ env $key"
+        else
+            echo "✗ env $key missing in telemetry-optout.conf"
+        fi
+    done
+else
+    echo "✗ telemetry-optout.conf missing (stow privacy / bash scripts/privacy-hardener.sh)"
+fi
+if command -v gsettings >/dev/null 2>&1; then
+    if [[ "$(gsettings get org.gnome.desktop.privacy report-technical-problems 2>/dev/null)" == "false" ]]; then
+        echo "✓ GNOME report-technical-problems=false"
+    else
+        echo "✗ GNOME report-technical-problems not false (bash scripts/privacy-hardener.sh)"
+    fi
+fi
+if [[ -f "${HOME}/.dart-tool/dart-flutter-telemetry.config" ]] \
+  && grep -q '^reporting=0' "${HOME}/.dart-tool/dart-flutter-telemetry.config"; then
+    echo "✓ Flutter/Dart reporting=0"
+else
+    echo "○ Flutter telemetry config missing (optional: bash scripts/privacy-hardener.sh)"
+fi
+if [[ -f "${HOME}/.claude/settings.json" ]] \
+  && grep -q 'DISABLE_TELEMETRY' "${HOME}/.claude/settings.json"; then
+    echo "✓ Claude settings DISABLE_TELEMETRY"
+else
+    echo "○ Claude settings telemetry flags missing (ai-rules install / privacy-hardener)"
+fi
+cursor_settings="${XDG_CONFIG_HOME:-$HOME/.config}/Cursor/User/settings.json"
+if [[ -f "$cursor_settings" ]] \
+  && grep -q '"telemetry.telemetryLevel": "off"' "$cursor_settings"; then
+    echo "✓ Cursor telemetry.telemetryLevel=off"
+else
+    echo "○ Cursor telemetry off not confirmed"
+fi
+if [[ -f "$cursor_settings" ]] \
+  && grep -q '"cursor.general.privacyMode": "enabled"' "$cursor_settings"; then
+    echo "✓ Cursor privacyMode=enabled"
+else
+    echo "○ Cursor privacyMode not confirmed"
+fi
+if [[ -f "${HOME}/.gemini/settings.json" ]] \
+  && grep -q '"usageStatisticsEnabled": false' "${HOME}/.gemini/settings.json"; then
+    echo "✓ Gemini usageStatisticsEnabled=false"
+else
+    echo "○ Gemini usage stats opt-out not confirmed"
+fi
+opencode_settings="${XDG_CONFIG_HOME:-$HOME/.config}/opencode/opencode.json"
+if [[ -f "$opencode_settings" ]] \
+  && grep -q '"share": "disabled"' "$opencode_settings"; then
+    echo "✓ OpenCode share=disabled"
+else
+    echo "○ OpenCode share=disabled not confirmed"
+fi
+if [[ -f "$TELEMETRY_ENV_D" ]] && grep -q '^KIMI_DISABLE_TELEMETRY=' "$TELEMETRY_ENV_D"; then
+    echo "✓ env KIMI_DISABLE_TELEMETRY"
+else
+    echo "○ env KIMI_DISABLE_TELEMETRY missing"
+fi
+if [[ -f "${HOME}/.claude/settings.json" ]] \
+  && grep -q '"skipWebFetchPreflight": true' "${HOME}/.claude/settings.json"; then
+    echo "✓ Claude skipWebFetchPreflight=true"
+else
+    echo "○ Claude skipWebFetchPreflight not confirmed"
 fi
 
 echo "--- Proton VPN ---"

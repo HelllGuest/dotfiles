@@ -2,8 +2,12 @@
   "telemetry.telemetryLevel": "off",
   "telemetry.enableTelemetry": false,
   "telemetry.enableCrashReporter": false,
+  "telemetry.feedback.enabled": false,
   "crashReporting.enabled": false,
+  "workbench.enableExperiments": false,
+  "workbench.settings.enableNaturalLanguageSearch": false,
   "cursor.general.enableShadowWorkspace": false,
   "cursor.general.allowAnonymousUsage": false,
-  "update.mode": "manual"
+  "update.mode": "manual",
+  "cursor.general.privacyMode": "enabled"
 }
