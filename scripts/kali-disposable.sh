@@ -95,6 +95,14 @@ cmd_setup_host() {
   fi
   sudo_do virsh net-start default 2>/dev/null || true
   sudo_do virsh net-autostart default 2>/dev/null || true
+  # Boot race: bring virbr0 up after libvirt creates it (system-setup ships unit).
+  if [[ -f "$REPO_ROOT/stow/system/etc/systemd/system/virbr0-up.service" ]]; then
+    sudo_do install -Dm644 \
+      "$REPO_ROOT/stow/system/etc/systemd/system/virbr0-up.service" \
+      /etc/systemd/system/virbr0-up.service
+    sudo_do systemctl daemon-reload
+    sudo_do systemctl enable --now virbr0-up.service 2>/dev/null || true
+  fi
   sudo_do ip link set virbr0 up 2>/dev/null || true
   # UFW deny-routed blocks guest DHCP/NAT unless virbr0 is allowed.
   if command -v ufw >/dev/null 2>&1 && sudo_do ufw status 2>/dev/null | grep -qi 'Status: active'; then

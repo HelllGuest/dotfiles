@@ -1,0 +1,27 @@
+[Unit]
+Description=Bring up libvirt default NAT bridge (virbr0)
+Documentation=man:libvirt(1)
+# Bridge appears only after the default network starts.
+After=libvirtd.service virtnetworkd.service
+Wants=libvirtd.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+# Start default NAT (creates virbr0), then admin-up. Retry: libvirtd can lag.
+ExecStart=/bin/bash -c '\
+  virsh -c qemu:///system net-start default >/dev/null 2>&1 || true; \
+  for i in 1 2 3 4 5 6 7 8 9 10 11 12; do \
+    if ip link show virbr0 >/dev/null 2>&1; then \
+      ip link set virbr0 up; \
+      exit 0; \
+    fi; \
+    sleep 1; \
+  done; \
+  echo "virbr0 not present after wait" >&2; \
+  exit 1'
+Restart=on-failure
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target

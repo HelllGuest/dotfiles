@@ -38,6 +38,20 @@ grep -q 'ip link set virbr0 up' "$ROOT/scripts/kali-disposable.sh" \
   || fail "kali must bring virbr0 admin-up for NAT"
 grep -q '192.168.122.0/24' "$ROOT/scripts/kali-disposable.sh" \
   || fail "kali UFW must allow libvirt NAT subnet forward"
+grep -q 'virbr0-up.service' "$ROOT/scripts/kali-disposable.sh" \
+  || fail "kali setup must install virbr0-up.service"
+[[ -f "$ROOT/stow/system/etc/systemd/system/virbr0-up.service" ]] \
+  || fail "missing stow/system virbr0-up.service"
+grep -q 'net-start default' "$ROOT/stow/system/etc/systemd/system/virbr0-up.service" \
+  || fail "virbr0-up must start libvirt default network first"
+grep -q 'evolution-data-server' "$ROOT/packages/pacman.txt" \
+  || fail "pacman.txt must include evolution-data-server (CalendarServer)"
+grep -q 'wireless-regdb' "$ROOT/packages/pacman.txt" \
+  || fail "pacman.txt must include wireless-regdb"
+grep -q 'rd.driver.blacklist=nouveau' "$ROOT/profiles/thinkpad-p15.sh" \
+  || fail "thinkpad-p15 must blacklist nouveau on cmdline"
+grep -q 'install nouveau /bin/false' "$ROOT/profiles/thinkpad-p15.sh" \
+  || fail "thinkpad-p15 must block nouveau via modprobe install"
 grep -q 'guest_ipv4' "$ROOT/scripts/kali-disposable.sh" \
   || fail "kali start should resolve guest IPv4 (not stale leases)"
 grep -q 'PasswordAuthentication yes' "$ROOT/scripts/kali-disposable.sh" \

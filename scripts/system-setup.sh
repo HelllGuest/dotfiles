@@ -195,4 +195,9 @@ if [[ "$changed_list" == *" etc/kernel/cmdline "* || "$changed_list" == *" etc/m
     echo "Rebuilding UKIs (cmdline / modprobe.d changed)..."
     sudo mkinitcpio -P
 fi
+if [[ "$changed_list" == *" etc/systemd/system/virbr0-up.service "* ]]; then
+    echo "Enabling virbr0-up.service (libvirt NAT bridge)..."
+    sudo systemctl enable --now virbr0-up.service \
+      || echo "WARN: virbr0-up enable/start failed (libvirtd may be inactive)." >&2
+fi
 echo "Reboot to apply kernel cmdline, sleep and logind changes."

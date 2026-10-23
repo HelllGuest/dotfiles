@@ -36,6 +36,10 @@ gnome-shell
 gnome-shell-extensions
 gnome-software
 gnome-tweaks
+# gnome-shell CalendarServer needs libecal/libedataserver
+evolution-data-server
+# Wi-Fi regulatory.db (dmesg -2 without this)
+wireless-regdb
 gping
 grim
 htop
