@@ -33,7 +33,7 @@ Thank you for helping improve this setup. Follow these guidelines to keep the re
 
 ### Stow
 
-- User configs: `stow -R -t "$HOME" <package>` from the `stow/` directory.
+- User configs: `stow -R -t "$HOME" <package>` from the `stow/` directory. Do not re-add tracked repo-root convenience links (`.zshrc`, `.zsh-plugins`, `.config/*`); those are gitignored — stow owns the real trees under `stow/`.
 - System configs: `bash scripts/system-setup.sh` (via `install.sh`) installs `stow/system/` as root-owned regular files. Never `stow -t / system` or `stow -t / zram`: `/etc` symlinks into `$HOME` dangle at early boot and make root config user-writable. **zram:** `scripts/zram-setup.sh`.
 - X1-only files (`X1_ONLY` in `system-setup.sh`) install only on ThinkPad X1 hardware. `stow/system/etc/kernel/cmdline` is one of them: `system-setup.sh` rewrites `rd.luks.name=` to the booted LUKS UUID and rebuilds UKIs when it changes.
 - `install.sh` and `stow-only.sh` encode this logic — update docs if you change it.
@@ -58,7 +58,7 @@ Thank you for helping improve this setup. Follow these guidelines to keep the re
 ### Packages (`packages/`)
 
 - Keep `pacman.txt`, `aur.txt`, `flatpak.txt`, and `browsers.txt` in sync with configs that depend on them.
-- Browser policies live under `browsers/policies/` (`chromium-base.json` + per-browser extras); `scripts/lib/browsers.sh` merges and deploys them.
+- Browser policies: `browsers/policies/chromium-base.json` (Chrome uses this alone); optional brand overlays (`brave-extra.json`; omit file = base only). Zen: `zen-policies.json` + `browsers/zen/user.js`. LibreWolf: `browsers/librewolf/librewolf.overrides.cfg`. Deploy via `scripts/lib/browsers.sh` / `browser-hardening.sh`.
 - Shell plugin packages: pacman extras in `pacman.txt`; AUR plugins such as **forgit** and **blesh-git** belong in `aur.txt`.
 
 ### GNOME (`gnome/`)
@@ -92,6 +92,7 @@ Thank you for helping improve this setup. Follow these guidelines to keep the re
 | fzf / shell exports | `README.md`, `gnome/keybindings.md`, `CHANGELOG.md` |
 | fnm / Node version pins | `README.md`, `CHANGELOG.md`, troubleshooting table |
 | Headroom / AI proxy helpers | `README.md` (Headroom section), `CHANGELOG.md` |
+| Privacy / telemetry / browsers | `README.md` (Privacy + Flatpaks), `CONTRIBUTING.md` (packages), `docs/hardened-arch-gnome.md` (Phase 27), `stow/privacy`, `scripts/lib/telemetry.sh`, `CHANGELOG.md` |
 | PhotoGIMP / GIMP | `README.md` (PhotoGIMP section), `CHANGELOG.md` |
 | Dash2Dock / GNOME dock | `README.md` (Dash2Dock section), `CHANGELOG.md` |
 | Troubleshooting table | `README.md` when adding recurring install/shell issues |
@@ -109,7 +110,7 @@ Thank you for helping improve this setup. Follow these guidelines to keep the re
   keep it out of `validate-configs.sh`.
 - Use `$HOME`-relative paths or repo-root detection — avoid hardcoding usernames.
 - Prefer `set -e` for install scripts; use guarded fallbacks where sudo may fail.
-- Shared helpers live in `scripts/lib/` (`dmi.sh`, `browsers.sh`, `input.sh`, `skel.sh`).
+- Shared helpers live in `scripts/lib/` (`dmi.sh`, `browsers.sh`, `telemetry.sh`, `input.sh`, `skel.sh`).
   Prefer sourcing those over copying snippets.
 
 ### Script map (keep flat; group by role)

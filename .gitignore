@@ -55,11 +55,15 @@ secrets/
 .DS_Store
 Thumbs.db
 
-# Repo-root convenience symlinks (stow targets live in stow/)
+# Repo-root convenience symlinks (stow targets live in stow/; not tracked)
 /.bashrc
 /.shell-aliases
 /.shell-exports
 /.shell-functions
+/.shell-git
+/.zshrc
+/.zsh-plugins
+/.config/
 
 # Local package build trees (tracked sources live under builds/*/ )
 builds/*/src/

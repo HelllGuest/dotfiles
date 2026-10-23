@@ -1407,13 +1407,13 @@ cd ~/dotfiles
 * Apply exactly one machine profile: `profiles/$(hostname).sh` if present, otherwise `scripts/detect-profile.sh` (ThinkPad X1 → `thinkpad-x1`; ThinkPad P15 → `thinkpad-p15`; other ThinkPads/laptop chassis → `laptop`). Optimus/NVIDIA setup is inside `thinkpad-p15.sh` (no `nvidia.sh`).
 * Install packages from `packages/pacman.txt` (kernels, shells, terminals, CLI tools)
 * Install Flatpaks from `packages/flatpak.txt` (Brave, Zen, Chrome, LibreWolf, Proton VPN, Android Studio)
-* Deploy browser telemetry policies via `scripts/browser-hardening.sh` (Chrome/Brave `/etc` policies; Zen `user.js` into each `~/.var/app/app.zen_browser.zen/.zen/<profile>/` after first launch; LibreWolf upstream defaults)
+* Deploy browser telemetry via `scripts/browser-hardening.sh` (layout and per-browser notes: README Flatpaks section). Launch Zen once before re-running if profiles are new.
 * Install AUR packages from `packages/aur.txt` (bootstraps `paru` if no helper exists)
 * Stow configs to `$HOME` (skips `zram` and `gdm`); install `system/` into `/etc` as root-owned files via `scripts/system-setup.sh`
 * Materialize `zram-generator.conf` via `scripts/zram-setup.sh`
 * Apply GNOME session dconf from `gnome/dconf/user.conf`, enable extensions, location spoofing
 * Reset mouse/touchpad/keyboard to stock GNOME defaults (`scripts/reset-input-defaults.sh`); clean legacy touchpad udev/inhibit if present (`scripts/cleanup-input-overrides.sh`)
-* Configure GDM, Git, Neovim, and run health checks + privacy hardening
+* Configure GDM, Git, Neovim; run `bash scripts/privacy-hardener.sh` then `bash scripts/check.sh`
 * fnm, Headroom, PhotoGIMP, Dash2Dock (Wayland needs logout): see Phase 17b–17e
 * **Ptyxis** optional terminal rice via `scripts/ptyxis-setup.sh` (after Console setup)
 * **ghidra-cli** optional when pacman `ghidra` is installed (`scripts/install-ghidra-cli.sh`; failure does not abort `./install.sh`)

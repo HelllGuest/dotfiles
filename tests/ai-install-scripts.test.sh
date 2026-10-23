@@ -152,6 +152,56 @@ grep -q 'skipWebFetchPreflight' "$ROOT/ai-rules/claude-settings.json" \
   || fail "claude-settings missing skipWebFetchPreflight"
 grep -q 'privacyMode' "$ROOT/ai-rules/vscode-family-telemetry.json" \
   || fail "vscode-family-telemetry missing privacyMode"
+grep -q 'TELEMETRY_CURSOR_KEYS' "$ROOT/scripts/lib/telemetry.sh" \
+  || fail "telemetry.sh must keep Cursor keys separate from VS family"
+# Non-Cursor stow settings must not ship cursor.general.*
+for _ide in \
+  "$ROOT/stow/vscode/.config/Code/User/settings.json" \
+  "$ROOT/stow/vscode/.config/VSCodium/User/settings.json" \
+  "$ROOT/stow/antigravity/.config/Antigravity IDE/User/settings.json"
+do
+  grep -q 'cursor.general' "$_ide" \
+    && fail "non-Cursor settings must not contain cursor.general: $_ide"
+done
+unset _ide
+# Path gating: Cursor trees only; substring "cursor" must not qualify
+# shellcheck source=/dev/null
+source "$ROOT/scripts/lib/telemetry.sh"
+_ck() { telemetry_keys_for_settings_path "$1" | grep -c 'cursor\.general' || true; }
+[[ "$(_ck "$HOME/.config/Cursor/User/settings.json")" -eq 3 ]] \
+  || fail "Cursor path must include TELEMETRY_CURSOR_KEYS"
+[[ "$(_ck "$HOME/.cursor/User/settings.json")" -eq 3 ]] \
+  || fail ".cursor path must include TELEMETRY_CURSOR_KEYS"
+[[ "$(_ck "$ROOT/stow/cursor/.config/Cursor/User/settings.json")" -eq 3 ]] \
+  || fail "stow Cursor path must include TELEMETRY_CURSOR_KEYS"
+[[ "$(_ck "$HOME/.config/Code/User/settings.json")" -eq 0 ]] \
+  || fail "Code path must not include TELEMETRY_CURSOR_KEYS"
+[[ "$(_ck "/tmp/my-cursor-theme/Code/User/settings.json")" -eq 0 ]] \
+  || fail "substring 'cursor' must not unlock Cursor keys"
+unset -f _ck
+grep -q 'telemetry_is_cursor_settings_path' "$ROOT/scripts/lib/telemetry.sh" \
+  || fail "telemetry.sh must define telemetry_is_cursor_settings_path"
+grep -q 'cursor\.general' "$ROOT/scripts/check.sh" \
+  || fail "check.sh must flag cursor.general in non-Cursor settings"
+# Merge strips leftover cursor.general.* on non-Cursor settings
+_strip_dir="$(mktemp -d)"
+_strip_settings="$_strip_dir/User/settings.json"
+mkdir -p "$_strip_dir/User"
+printf '%s\n' '{
+  "editor.fontSize": 14,
+  "cursor.general.privacyMode": "enabled",
+  "cursor.general.allowAnonymousUsage": true,
+  "cursor.general.enableShadowWorkspace": true
+}' > "$_strip_settings"
+REPO_ROOT="$ROOT" telemetry_merge_vscode_settings "$_strip_settings" \
+  "$ROOT/ai-rules/vscode-family-telemetry.json" \
+  || fail "telemetry_merge_vscode_settings failed on strip fixture"
+grep -q 'cursor\.general' "$_strip_settings" \
+  && fail "merge must strip cursor.general.* from non-Cursor settings"
+grep -q '"editor.fontSize": 14' "$_strip_settings" \
+  || fail "merge must keep unrelated user keys when stripping"
+rm -rf "$_strip_dir"
+unset _strip_dir _strip_settings
 grep -q 'telemetry_ensure_gemini' "$ROOT/scripts/lib/telemetry.sh" \
   || fail "telemetry.sh missing gemini helper"
 grep -q 'telemetry_ensure_opencode' "$ROOT/scripts/lib/telemetry.sh" \
@@ -226,11 +276,17 @@ bash -n "$ROOT/scripts/browser-hardening.sh" || fail "bash -n browser-hardening.
 bash -n "$ROOT/scripts/lib/browsers.sh" || fail "bash -n browsers.sh"
 grep -q "arm64) printf 'aarch64'" "$ROOT/scripts/lib/browsers.sh" \
   || fail "flatpak_ext_arch must map arm64 to aarch64"
-# Merge still valid with empty chrome-extra
+# Chrome uses base only when chrome-extra.json is absent
+[[ ! -f "$ROOT/browsers/policies/chrome-extra.json" ]] \
+  || fail "chrome-extra.json stub should be removed (base-only Chrome policies)"
+jq -e '.CloudReportingEnabled == false and .DnsOverHttpsMode == "off"' \
+  "$ROOT/browsers/policies/chromium-base.json" >/dev/null \
+  || fail "chromium-base missing core privacy keys"
+# Optional extra still merges when present (Brave path)
 jq -s 'add' "$ROOT/browsers/policies/chromium-base.json" \
-  "$ROOT/browsers/policies/chrome-extra.json" \
-  | jq -e '.CloudReportingEnabled == false and .DnsOverHttpsMode == "off"' >/dev/null \
-  || fail "chrome policy merge broken"
+  "$ROOT/browsers/policies/brave-extra.json" \
+  | jq -e '.BraveP3AEnabled == false and .CloudReportingEnabled == false' >/dev/null \
+  || fail "brave policy merge broken"
 
 # Behavioral: kimi MCP merge preserves sibling servers
 python3 - <<'PY' || fail "kimi mcp merge simulation failed"

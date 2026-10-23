@@ -6,8 +6,5 @@
   "crashReporting.enabled": false,
   "workbench.enableExperiments": false,
   "workbench.settings.enableNaturalLanguageSearch": false,
-  "cursor.general.enableShadowWorkspace": false,
-  "cursor.general.allowAnonymousUsage": false,
-  "update.mode": "manual",
-  "cursor.general.privacyMode": "enabled"
+  "update.mode": "manual"
 }

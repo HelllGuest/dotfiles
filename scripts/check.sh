@@ -429,6 +429,19 @@ if [[ -f "$cursor_settings" ]] \
 else
     echo "○ Cursor privacyMode not confirmed"
 fi
+# cursor.general.* belong only on Cursor; leftover keys on other IDEs are a bug.
+for _non_cursor in \
+  "${XDG_CONFIG_HOME:-$HOME/.config}/Code/User/settings.json" \
+  "${XDG_CONFIG_HOME:-$HOME/.config}/VSCodium/User/settings.json" \
+  "${XDG_CONFIG_HOME:-$HOME/.config}/Antigravity IDE/User/settings.json" \
+  "${XDG_CONFIG_HOME:-$HOME/.config}/Antigravity/User/settings.json" \
+  "${XDG_CONFIG_HOME:-$HOME/.config}/Kiro/User/settings.json"
+do
+  if [[ -f "$_non_cursor" ]] && grep -q 'cursor\.general' "$_non_cursor"; then
+    echo "✗ cursor.general.* in non-Cursor settings: $_non_cursor (re-run privacy-hardener)"
+  fi
+done
+unset _non_cursor
 if [[ -f "${HOME}/.gemini/settings.json" ]] \
   && grep -q '"usageStatisticsEnabled": false' "${HOME}/.gemini/settings.json"; then
     echo "✓ Gemini usageStatisticsEnabled=false"

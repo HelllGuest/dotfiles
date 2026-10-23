@@ -177,7 +177,7 @@ dotfiles/
 │   ├── kitty/ ghostty/ alacritty/ contour/ foot/ rio/ wezterm/
 │   ├── nvim/ starship/ atuin/ git/ fastfetch/ proton-vpn/ …
 │   └── vscode/ cursor/ antigravity/ flutter/ npm/ htop/ …
-├── browsers/        # Chromium base + per-browser policy extras; Zen user.js
+├── browsers/        # chromium-base (+ brave-extra); zen-policies; Zen user.js; LibreWolf overrides
 ├── packages/        # pacman.txt, flatpak.txt, browsers.txt, aur.txt
 ├── profiles/        # Hostname or hardware-detected tweaks
 ├── scripts/         # Installers + health checks (lib/ shared helpers)
@@ -314,7 +314,7 @@ Key runtime dependencies (`scripts/check.sh` asserts binaries, shell tools, syml
 
 **AUR** (via `install-aur.sh`, bootstraps `paru` if needed): `blesh-git`, `curlie`, `forgit`, GNOME shell extensions, `vscodium-bin` (settings in `stow/vscode/`)
 
-**Flatpaks** (via `install-flatpaks.sh`): Brave, Zen, Google Chrome, LibreWolf, Proton VPN, Android Studio. Browser telemetry debloat: `scripts/browser-hardening.sh` (Chrome/Brave `/etc` policies; Zen `user.js` per real profile + Flatpak `systemconfig` policies + `/etc/firefox/policies` for native; LibreWolf upstream + `librewolf.overrides.cfg`). Launch Zen once before re-running hardening if profiles are new.
+**Flatpaks** (via `install-flatpaks.sh`): Brave, Zen, Google Chrome, LibreWolf, Proton VPN, Android Studio. Browser telemetry debloat: `scripts/browser-hardening.sh` (Chrome = `chromium-base` only; Brave = base + `brave-extra`; Zen `user.js` per real profile + Flatpak `systemconfig` + `/etc/firefox/policies` for native; LibreWolf upstream + `librewolf.overrides.cfg`). Launch Zen once before re-running hardening if profiles are new.
 
 **Terminals:** `kitty` (primary; Super+Return), `ghostty`, optional stowed configs for `alacritty`, `contour`, `foot`, `rio`, `wezterm`, plus `gnome-console` (kgx) and `ptyxis`. Optional suckless `st`: `bash scripts/build-st.sh` (`builds/st/`).
 
@@ -342,8 +342,7 @@ Clipboard: selecting text auto-copies in kitty and ghostty (`copy_on_select`); i
 
 We take a "quiet by default" approach:
 - **GNOME Debloated:** Uses `gnome-shell` instead of the full `gnome` meta-package where possible.
-- **Zero Telemetry:** VS Code, GNOME usage stats, and technical reporting are disabled.
-- **Opt-Out Defaults:** Telemetry/analytics off via `stow/privacy` → `~/.config/environment.d/90-telemetry-optout.conf` (GUI session + `.shell-exports`). `scripts/privacy-hardener.sh` unifies GNOME, browsers, IDE/Claude merges, Flutter `reporting=0`, and Headroom/AI env. Re-run after upgrades: `bash scripts/privacy-hardener.sh`.
+- **Opt-out defaults:** `stow/privacy` → `~/.config/environment.d/90-telemetry-optout.conf` (GUI session + `.shell-exports`). `scripts/privacy-hardener.sh` covers GNOME, browsers, IDE/Claude merges (Cursor-only `cursor.general.*` on Cursor trees; strips leftovers elsewhere), Flutter `reporting=0`, Headroom/AI. Re-run after upgrades: `bash scripts/privacy-hardener.sh`.
 
 ---
 

@@ -6,7 +6,7 @@ TELEMETRY_ENV_D="${XDG_CONFIG_HOME:-$HOME/.config}/environment.d/90-telemetry-op
 TELEMETRY_KIT_VS="${REPO_ROOT:-}/ai-rules/vscode-family-telemetry.json"
 TELEMETRY_FLUTTER_CFG="${HOME}/.dart-tool/dart-flutter-telemetry.config"
 
-# Only these keys are forced from the kit (never overwrite unrelated user prefs).
+# Shared VS Code-family telemetry keys (safe on Code / VSCodium / Antigravity / Kiro).
 TELEMETRY_VSCODE_KEYS=(
   telemetry.telemetryLevel
   telemetry.enableTelemetry
@@ -15,6 +15,10 @@ TELEMETRY_VSCODE_KEYS=(
   crashReporting.enabled
   workbench.enableExperiments
   workbench.settings.enableNaturalLanguageSearch
+)
+
+# Cursor-only (do not write into non-Cursor settings trees).
+TELEMETRY_CURSOR_KEYS=(
   cursor.general.enableShadowWorkspace
   cursor.general.allowAnonymousUsage
   cursor.general.privacyMode
@@ -24,37 +28,54 @@ telemetry_env_d_ok() {
   [[ -f "$TELEMETRY_ENV_D" ]]
 }
 
+# True only for Cursor app trees (not paths that merely contain "cursor").
+telemetry_is_cursor_settings_path() {
+  case "$1" in
+    */Cursor/*|*/.cursor/*) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
+telemetry_keys_for_settings_path() {
+  local settings="$1"
+  local keys=("${TELEMETRY_VSCODE_KEYS[@]}")
+  if telemetry_is_cursor_settings_path "$settings"; then
+    keys+=("${TELEMETRY_CURSOR_KEYS[@]}")
+  fi
+  printf '%s\n' "${keys[@]}"
+}
+
 # Merge only telemetry-related keys into settings.json (jq required).
+# Non-Cursor targets: also delete leftover cursor.general.* keys.
 telemetry_merge_vscode_settings() {
   local settings="$1"
   local kit="${2:-$TELEMETRY_KIT_VS}"
   [[ -f "$kit" ]] || return 1
   # Never create orphan IDE trees: parent User/ must already exist
   [[ -d "$(dirname "$settings")" ]] || return 1
+  command -v jq >/dev/null 2>&1 || return 1
+  local tmp keys_json strip_json
+  tmp="$(mktemp)"
+  keys_json="$(telemetry_keys_for_settings_path "$settings" | jq -R . | jq -s .)"
+  strip_json='[]'
+  if ! telemetry_is_cursor_settings_path "$settings"; then
+    strip_json="$(printf '%s\n' "${TELEMETRY_CURSOR_KEYS[@]}" | jq -R . | jq -s .)"
+  fi
   if [[ ! -f "$settings" ]]; then
-    # Seed only telemetry keys, not the whole kit file as sole settings
-    command -v jq >/dev/null 2>&1 || return 1
-    local tmp keys_json
-    tmp="$(mktemp)"
-    keys_json="$(printf '%s\n' "${TELEMETRY_VSCODE_KEYS[@]}" | jq -R . | jq -s .)"
     jq --argjson keys "$keys_json" '
       . as $kit
       | reduce $keys[] as $k ({}; .[$k] = $kit[$k])
       | with_entries(select(.value != null))
     ' "$kit" > "$tmp"
-    mv "$tmp" "$settings"
-    return 0
+  else
+    jq --argjson keys "$keys_json" --argjson strip "$strip_json" -s '
+      .[0] as $user | .[1] as $kit
+      | ($user * (
+          reduce $keys[] as $k ({}; if $kit[$k] != null then .[$k] = $kit[$k] else . end)
+        ))
+      | reduce $strip[] as $k (.; del(.[$k]))
+    ' "$settings" "$kit" > "$tmp"
   fi
-  command -v jq >/dev/null 2>&1 || return 1
-  local tmp keys_json
-  tmp="$(mktemp)"
-  keys_json="$(printf '%s\n' "${TELEMETRY_VSCODE_KEYS[@]}" | jq -R . | jq -s .)"
-  jq --argjson keys "$keys_json" -s '
-    .[0] as $user | .[1] as $kit
-    | $user * (
-        reduce $keys[] as $k ({}; if $kit[$k] != null then .[$k] = $kit[$k] else . end)
-      )
-  ' "$settings" "$kit" > "$tmp"
   mv "$tmp" "$settings"
 }
 

@@ -5,6 +5,7 @@
 
 BROWSERS_LIST="${REPO_ROOT}/packages/browsers.txt"
 CHROMIUM_BASE="${REPO_ROOT}/browsers/policies/chromium-base.json"
+# Optional Chrome brand overlay (omit file = chromium-base only).
 CHROME_EXTRA="${REPO_ROOT}/browsers/policies/chrome-extra.json"
 BRAVE_EXTRA="${REPO_ROOT}/browsers/policies/brave-extra.json"
 ZEN_POLICY_SRC="${REPO_ROOT}/browsers/policies/zen-policies.json"
@@ -67,8 +68,8 @@ deploy_file_policy() {
 
 deploy_chromium_policy() {
   local extra="$1" dest="$2"
-  if [[ ! -f "$CHROMIUM_BASE" || ! -f "$extra" ]]; then
-    echo "WARN: missing chromium policy parts for $dest" >&2
+  if [[ ! -f "$CHROMIUM_BASE" ]]; then
+    echo "WARN: missing chromium base policy $CHROMIUM_BASE" >&2
     return 1
   fi
   if ! command -v jq >/dev/null 2>&1; then
@@ -79,7 +80,14 @@ deploy_chromium_policy() {
     echo "⚠ need sudo for $dest (re-run: bash scripts/browser-hardening.sh)" >&2
     return 1
   fi
-  if ! jq -s 'add' "$CHROMIUM_BASE" "$extra" | _browser_sudo tee "$dest" >/dev/null; then
+  # Brand extra is optional (empty/missing → base only).
+  local merged
+  if [[ -n "$extra" && -f "$extra" ]]; then
+    merged="$(jq -s 'add' "$CHROMIUM_BASE" "$extra")"
+  else
+    merged="$(jq '.' "$CHROMIUM_BASE")"
+  fi
+  if ! printf '%s\n' "$merged" | _browser_sudo tee "$dest" >/dev/null; then
     echo "⚠ need sudo to write $dest" >&2
     return 1
   fi
