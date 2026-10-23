@@ -57,8 +57,8 @@ stow/system/etc/kernel/cmdline
 stow/system/etc/makepkg.conf.d/99-x86-64-v3.conf
 stow/system/etc/modprobe.d/i915.conf
 stow/system/etc/polkit-1/rules.d/50-vpn-location-sync.rules
-stow/system/etc/systemd/logind.conf.d/thinkpad-x1.conf
-stow/system/etc/systemd/sleep.conf.d/thinkpad-x1.conf
+stow/system/etc/systemd/logind.conf.d/thinkpad-lid.conf
+stow/system/etc/systemd/sleep.conf.d/s2idle.conf
 stow/system/etc/systemd/system/waydroid-nat.service
 stow/system/etc/udev/rules.d/72-fingerprint-disable.rules
 stow/system/etc/ufw/before.rules

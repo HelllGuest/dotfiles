@@ -13,8 +13,31 @@ Defined in `stow/zsh/.shell-aliases` (shared by Zsh and Bash):
 | `v` | `nvim` |
 | `as` | `flatpak run com.google.AndroidStudio` |
 | `ff` | `fastfetch` |
+| `kali` / `kali-up` / `kali-wipe` / `kali-stop` / `kali-st` | Disposable Kali (see below) |
 
 Modern CLI aliases (when installed): `eza`, `bat`, `rg`, `fd`, etc.
+
+### Disposable Kali
+
+Defined in `stow/zsh/.shell-aliases` when
+`~/dotfiles/scripts/kali-disposable.sh` exists. Full lab notes:
+[fresh-install-coding-re.md](../docs/fresh-install-coding-re.md#disposable-kali).
+
+| Alias | Action |
+|-------|--------|
+| `kali <cmd>` | `scripts/kali-disposable.sh` (`setup` / `start` / `stop` / `wipe` / `status` / `fetch`) |
+| `kali-up` | New ephemeral overlay + boot **isolated** (no guest WAN) |
+| `kali-up-nat` | Same with NAT (updates / cloud-init) |
+| `kali-wipe` | Destroy domain + delete overlay; base untouched |
+| `kali-stop` | Power off; keep overlay |
+| `kali-st` | Status |
+
+```bash
+kali setup          # once: packages + download base
+kali-up             # isolated session (samples)
+kali-up-nat         # NAT when guest needs internet
+kali-wipe           # reset to clean base
+```
 
 ---
 

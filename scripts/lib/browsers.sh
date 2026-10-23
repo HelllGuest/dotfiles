@@ -37,9 +37,11 @@ zen_systemconfig_dir() {
     "${XDG_DATA_HOME:-$HOME/.local/share}" "$ZEN_FLATPAK_ID" "$(flatpak_ext_arch)"
 }
 
-# sudo: prompt on TTY; -n (no hang) otherwise.
+# sudo: askpass when SUDO_ASKPASS set; else TTY prompt; else -n (no hang).
 _browser_sudo() {
-  if [[ -t 0 ]]; then
+  if [[ -n "${SUDO_ASKPASS:-}" ]]; then
+    sudo -A "$@"
+  elif [[ -t 0 ]]; then
     sudo "$@"
   else
     sudo -n "$@"

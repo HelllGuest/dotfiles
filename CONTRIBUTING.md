@@ -121,7 +121,7 @@ Thank you for helping improve this setup. Follow these guidelines to keep the re
 | Packages | `install-flatpaks.sh`, `install-aur.sh`, `bootstrap-aur.sh`, `install-fonts.sh` |
 | GNOME / desktop | `gnome-session-setup.sh`, `install-extensions.sh`, `fetch-gnome-extensions.sh`, `install-dash2dock.sh`, `gnome-console-setup.sh`, `ptyxis-setup.sh`, `gdm-setup.sh`, `backup-gsettings.sh`, `restore-gsettings.sh`, `reset-input-defaults.sh`, `cleanup-input-overrides.sh` |
 | Location / VPN | `location-setup.sh`, `vpn-location-sync.sh`, `proton-connectivity-check.sh`, `proton-seed-serverlist.sh` |
-| Dev tools | `git-setup.sh`, `nvim-setup.sh`, `headroom-setup.sh`, `install-headroom.sh`, `sync-agent-skills.sh`, `install-coding-agents.sh`, `install-ecosystem-skills.sh`, `install-caveman.sh`, `install-android-ui-skills.sh`, `install-rea.sh`, `install-ghidra-cli.sh`, `install-photogimp.sh`, `browser-hardening.sh`, `privacy-hardener.sh` (`lib/telemetry.sh`, `stow/privacy`) |
+| Dev tools | `git-setup.sh`, `nvim-setup.sh`, `headroom-setup.sh`, `install-headroom.sh`, `sync-agent-skills.sh`, `install-coding-agents.sh`, `install-ecosystem-skills.sh`, `install-caveman.sh`, `install-android-ui-skills.sh`, `install-rea.sh`, `install-re-skills.sh` (`packages/agent-skills-re.txt`), `install-re-extras.sh` (`packages/re-extra.txt`), `install-ghidra-cli.sh`, `install-photogimp.sh`, `browser-hardening.sh`, `privacy-hardener.sh` (`lib/telemetry.sh`, `stow/privacy`) |
 | System | `system-setup.sh`, `zram-setup.sh`, `tmp-to-disk.sh`, `network-dns-setup.sh`, `fingerprint-setup.sh`, `thinkpad-health.sh`, `rebuild-v3.sh`, `build-st.sh` |
 | Validate | `check.sh`, `validate-configs.sh`, `lint-docs.sh`, `list-stow-files.sh`, `post-update.sh` |
 

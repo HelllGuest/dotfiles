@@ -149,6 +149,8 @@ UUID `dash2dock-lite@icedman.github.com` is in `gnome/extensions.txt` and `gnome
 
 Shell functions (`fe`, `rge`, `gai`, `fcd`, …), `Ctrl+R` / `Ctrl+T` / `Alt+C`, terminal and GNOME keys: [gnome/keybindings.md](gnome/keybindings.md). Modern aliases (when installed): `eza`, `bat`, `rg`, `fd`, `dust`, `duf`, `delta`, etc.
 
+Disposable Kali lab (libvirt overlay): `kali-up` / `kali-wipe` / `kali-stop` / `kali-st` / `kali` — see [keybindings](gnome/keybindings.md#disposable-kali) and [fresh-install RE guide](docs/fresh-install-coding-re.md#disposable-kali).
+
 ### Starship
 
 Uses the **Gruvbox Rainbow** preset (official [starship preset](https://starship.rs/presets/gruvbox-rainbow)) with Nerd Font symbols. Config: `stow/starship/.config/starship.toml`.
@@ -276,6 +278,7 @@ cleanup-input-overrides.sh
 → sync-agent-skills.sh → install-coding-agents.sh (OpenCode + Kimi + MCP; if npm)
 → install-caveman.sh (if npm) → install-android-ui-skills.sh (if npx)
 → install-ghidra-cli.sh (if ghidra) → install-rea.sh (if npm)
+→ install-re-skills.sh (leanrea / RE playbooks / Android RE / Ghidra loop)
 → install-ecosystem-skills.sh (packages/agent-skills.txt; if npx)
 → sync-agent-skills.sh → caveman OpenCode plugin refresh
 → install-photogimp.sh
@@ -322,7 +325,7 @@ Run `scripts/gnome-console-setup.sh` / `scripts/ptyxis-setup.sh` for Console/Pty
 
 Clipboard: selecting text auto-copies in kitty and ghostty (`copy_on_select`); in kitty, right-click also copies the selection (Shift+right-click extends it).
 
-**Ghidra:** pacman `ghidra` + `bash scripts/install-ghidra-cli.sh` (cargo CLI; host skill under `skills/ghidra-cli-host/`). GUI: `ghidra-gui` (cargo `ghidra` shadows `/usr/bin/ghidra`).
+**Ghidra / RE AI:** pacman `ghidra` + `bash scripts/install-ghidra-cli.sh` (cargo CLI; host skill under `skills/ghidra-cli-host/`). GUI: `ghidra-gui` (cargo `ghidra` shadows `/usr/bin/ghidra`). REA MCP: `bash scripts/install-rea.sh`. Extra agent skills: `bash scripts/install-re-skills.sh`. Optional host tools: `bash scripts/install-re-extras.sh`. Details: [fresh-install RE guide](docs/fresh-install-coding-re.md#ai-reverse-engineering-mcp--skills).
 
 **GDM:** `scripts/gdm-setup.sh` copies greeter config to `/etc` (not stow — GDM cannot read `$HOME`), enables Wayland, compiles greeter dconf, and enables `gdm.service`. Greeter changes appear after **reboot** (or `sudo systemctl restart gdm`, which logs you out). Optional fingerprint: `scripts/fingerprint-setup.sh`.
 
@@ -355,6 +358,7 @@ We take a "quiet by default" approach:
 | `docker` tries Podman socket / `connect: no such file` | Stale `DOCKER_HOST` or Podman socket missing | Current `.shell-exports` auto-picks; `unset DOCKER_HOST`; enable `docker.service` |
 | `unsafe path transition /etc` during `pacman` | `/etc` owned by user (old `gdm-setup.sh` used `rsync -a`) | `bash scripts/gdm-setup.sh` (restores root + 755), or `sudo chown root:root /etc && sudo chmod 755 /etc` |
 | No network after boot; `ufw.service` failed | `/etc/ufw/before.rules` was a stow symlink into `$HOME` | `bash scripts/system-setup.sh` (installs real files, reloads ufw) |
+| `ufw allow OpenSSH` → could not find profile | Arch UFW has no OpenSSH app profile (Ubuntu-only name) | `sudo ufw allow 22/tcp comment 'ssh'` then `sudo ufw reload`; enable `sshd` |
 | Spoof location sync does nothing | `vpn-location-sync` failed under `pkexec` | `bash scripts/location-setup.sh`; panel → Sync spoofed location |
 | Touchpad clicks broken after old dotfiles | Legacy synaptics inhibit/udev | `bash scripts/cleanup-input-overrides.sh` (sudo), log out |
 | Ghostty needs 2 clicks / fails from app grid | systemd `notify-reload` vs late SIGUSR2 ([#14394](https://github.com/ghostty-org/ghostty/discussions/14394)) | Stow `ghostty` drop-in sets `Type=notify`; `systemctl --user daemon-reload` |
@@ -388,6 +392,8 @@ We take a "quiet by default" approach:
 | Caveman (`/caveman`) | `bash scripts/install-caveman.sh` |
 | Android UI skills | `bash scripts/install-android-ui-skills.sh` (Compose + Material 3) |
 | REA (MCP + jadx) | `bash scripts/install-rea.sh` (Hopper: `INSTALL_HOPPER=1`) |
+| RE skills (leanrea, …) | `bash scripts/install-re-skills.sh` |
+| RE host extras (jadx, rizin, …) | `bash scripts/install-re-extras.sh` |
 | ghidra-cli | `bash scripts/install-ghidra-cli.sh` |
 | Legacy touchpad cleanup | `bash scripts/cleanup-input-overrides.sh` (sudo; old udev/inhibit only) |
 | Secure Boot | `sbctl status && sbctl verify` (after `enroll-keys -m`; `mkinitcpio -P` re-signs UKIs via sbctl's hook) |

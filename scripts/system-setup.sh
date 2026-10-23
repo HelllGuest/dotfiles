@@ -10,7 +10,7 @@
 # * Backs up a differing existing file to /var/backups/dotfiles-system/<stamp>/.
 # * Parent dirs of managed files are made root-owned and world-readable
 #   (a 700 dir from a umask-077 copy hides e.g. environment.d from the session).
-# * X1_ONLY files (cmdline, i915, X1 sleep/logind, fingerprint port rule) are
+# * X1_ONLY files (cmdline, i915, fingerprint port rule) are
 #   installed on ThinkPad X1 hardware only; other profiles (e.g. thinkpad-p15)
 #   keep and edit their own. Elsewhere their old stow symlinks are removed, except
 #   cmdline, which is materialized as a real file (UKIs need one to boot).
@@ -53,8 +53,6 @@ LOCATION_OWNED=(
 X1_ONLY=(
     etc/kernel/cmdline
     etc/modprobe.d/i915.conf
-    etc/systemd/logind.conf.d/thinkpad-x1.conf
-    etc/systemd/sleep.conf.d/thinkpad-x1.conf
     etc/udev/rules.d/72-fingerprint-disable.rules
 )
 

@@ -57,7 +57,7 @@ check "stowed file replaced by regular file" \
 check "folded dir replaced by real dir" \
     test -d "$root/etc/systemd/sleep.conf.d" -a ! -L "$root/etc/systemd/sleep.conf.d"
 check "folded dir content installed" \
-    cmp -s "$SRC/etc/systemd/sleep.conf.d/thinkpad-x1.conf" "$root/etc/systemd/sleep.conf.d/thinkpad-x1.conf"
+    cmp -s "$SRC/etc/systemd/sleep.conf.d/s2idle.conf" "$root/etc/systemd/sleep.conf.d/s2idle.conf"
 check "identical file not reported as installed" \
     bash -c '! grep -q "Installed /etc/modprobe.d/i915.conf" <<<"$1"' _ "$out"
 check "drifted file installed" \
@@ -97,8 +97,10 @@ check "non-X1: own cmdline untouched" \
     grep -q "nvidia_drm.modeset=1" "$root3/etc/kernel/cmdline"
 check "non-X1: stale X1 i915 symlink removed" \
     test ! -e "$root3/etc/modprobe.d/i915.conf" -a ! -L "$root3/etc/modprobe.d/i915.conf"
-check "non-X1: folded X1 sleep dir removed" \
-    test ! -e "$root3/etc/systemd/sleep.conf.d"
+check "non-X1: s2idle sleep drop-in installed" \
+    cmp -s "$SRC/etc/systemd/sleep.conf.d/s2idle.conf" "$root3/etc/systemd/sleep.conf.d/s2idle.conf"
+check "non-X1: lid logind drop-in installed" \
+    cmp -s "$SRC/etc/systemd/logind.conf.d/thinkpad-lid.conf" "$root3/etc/systemd/logind.conf.d/thinkpad-lid.conf"
 check "non-X1: X1 fingerprint rule not installed" \
     test ! -e "$root3/etc/udev/rules.d/72-fingerprint-disable.rules"
 check "non-X1: generic files still installed" \

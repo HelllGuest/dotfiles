@@ -1,0 +1,23 @@
+# Reverse-engineering Agent Skills for `scripts/install-re-skills.sh`
+# One GitHub owner/repo per line (optional @ref). Lines starting with # ignored.
+# REA MCP + reverse-engineer-anything skill: scripts/install-rea.sh (not here).
+# ghidra-cli-host: repo skills/ (synced by sync-agent-skills.sh).
+
+# Lean CLI-first RE (no MCP); complements REA for cheap triage
+aicodeking/leanrea
+
+# Broad playbooks + triage scripts (native/APK/Electron/firmware/…)
+EncidXVII/claude-reverse-engineering-skill
+
+# Android APK/XAPK API recovery (jadx)
+SimoneAvogadro/android-reverse-engineering-skill
+
+# Ghidra apply→cascade→verify loop (MCP / PyGhidra)
+GeReV/ghidra-iterative-re
+
+# Firmware / IoT: extract → static → Ghidra → emulate → report (OrbitCurve)
+OrbitCurve/firmware-reverse-engineering
+
+# OWASP-ish firmware pentest playbook (install only this skill from the mega pack)
+# Installed via: npx skills add zhaoxuya520/reverse-skill --skill firmware-pentest …
+# (not a full-pack line — selective install in docs / host setup)

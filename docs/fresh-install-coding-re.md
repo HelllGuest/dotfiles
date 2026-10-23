@@ -46,8 +46,8 @@ loads.
 1. **Coding** — zsh/bash, Neovim, VSCodium / Cursor, Flutter + Android Studio,
    Node (fnm), Rust / Python (pipx). Go and Docker are goals too, but install
    them separately (not in `packages/pacman.txt`; see Coding stack below).
-2. **Reverse engineering** — Ghidra (+ ghidra-cli), plus optional jadx / gdb /
-   binwalk / Android tooling; host notes in
+2. **Reverse engineering** — Ghidra (+ ghidra-cli), REA MCP, RE agent skills,
+   plus optional host tools (`packages/re-extra.txt`); host notes in
    [`skills/ghidra-cli-host/`](../skills/ghidra-cli-host/).
 3. **Malware analysis** — host stays clean; samples only in disposable VMs.
    Extra triage packages below are optional and not all listed in
@@ -117,6 +117,8 @@ bash scripts/p15-dotfiles-preflight.sh   # skip on X1
 #   bash scripts/install-android-ui-skills.sh  # Compose + Material 3
 #   bash scripts/install-ghidra-cli.sh
 #   bash scripts/install-rea.sh             # optional: INSTALL_HOPPER=1
+#   bash scripts/install-re-skills.sh       # leanrea + RE playbooks + Android + Ghidra loop
+#   bash scripts/install-re-extras.sh       # optional host pkgs (jadx, rizin, …)
 #   bash scripts/install-ecosystem-skills.sh  # cloudflare/emil/vercel/…
 #   bash scripts/sync-agent-skills.sh
 #   ONLY_CAVEMAN_OPENCODE=1 bash scripts/install-coding-agents.sh
@@ -195,19 +197,55 @@ ghidra-gui   # GUI; cargo `ghidra` on PATH shadows /usr/bin/ghidra
 
 ### Official extras (optional; none are in `pacman.txt`)
 
-A pure `./install.sh` does **not** install these RE/malware-lab companions
-(QEMU/libvirt: see [Host virtualization](#host-virtualization)):
+Manifest: [`packages/re-extra.txt`](../packages/re-extra.txt). Installer:
 
 ```bash
-sudo pacman -S --needed \
-  jadx gdb binwalk android-tools \
-  rizin rz-cutter rz-ghidra hexyl yara strace ltrace smali
+bash scripts/install-re-extras.sh
+# same as:
+# sudo pacman -S --needed jadx gdb binwalk android-tools rizin rz-cutter \
+#   rz-ghidra hexyl yara strace ltrace smali radare2
 ```
+
+QEMU/libvirt: see [Host virtualization](#host-virtualization) / [Disposable Kali](#disposable-kali).
 
 ### AUR extras (optional; use paru/yay after `install-aur.sh`)
 
 ```bash
 paru -S --needed imhex-bin android-apktool-bin
+```
+
+### AI reverse-engineering (MCP + skills)
+
+`./install.sh` already runs REA + RE skills when npm/npx are available.
+
+| Layer | What | Install |
+|-------|------|---------|
+| **REA** | MCP + CLI across native / JS / .NET / web / Android; uses your Ghidra/jadx | `bash scripts/install-rea.sh` |
+| **leanrea** | Small skill: shell-tool RE, no MCP (cheap triage) | `bash scripts/install-re-skills.sh` |
+| **reverse-engineering** | Playbooks + triage scripts (EncidXVII) | same |
+| **android-reverse-engineering** | APK/XAPK API recovery (jadx) | same |
+| **ghidra-iterative-re** | Safe Ghidra apply→verify loop | same |
+| **firmware-extraction** / **firmware-static-analysis** / **firmware-emulation** / **ghidra-re** / **firmware-security-reports** | Firmware/IoT unpack → analyze → emulate (OrbitCurve) | same |
+| **ghidra-cli-host** | This machine’s Ghidra CLI footguns | repo `skills/` + sync |
+
+Firmware host tools (squashfs, mtd-utils, flashrom, uboot-tools, qemu-user-static, …)
+are in [`packages/re-extra.txt`](../packages/re-extra.txt) via `install-re-extras.sh`.
+Prefer **unblob** then binwalk for nested images (pipx/`paru` if not in repos).
+
+Manifest: [`packages/agent-skills-re.txt`](../packages/agent-skills-re.txt).
+
+Optional native-only MCP (not installed by default; REA already bridges Ghidra):
+
+* [LaurieWired/GhidraMCP](https://github.com/LaurieWired/GhidraMCP)
+* [bethington/ghidra-mcp](https://github.com/bethington/ghidra-mcp)
+* IDA: [mrexodia/ida-pro-mcp](https://github.com/mrexodia/ida-pro-mcp) (needs IDA Pro)
+
+Survey (Oct 2026): [AI RE tools compared](https://dev.to/leemie8848/ai-reverse-engineering-tools-compared-rea-ida-mcp-ghidramcp-and-friends-oct-2026-3hfl).
+
+```bash
+bash scripts/install-rea.sh
+bash scripts/install-re-skills.sh
+bash ~/dotfiles/scripts/check.sh   # ○/✓ for leanrea, reverse-engineering, …
 ```
 
 ### Ghidra footguns on this machine
@@ -254,6 +292,38 @@ virt-manager
 
 Use UEFI (OVMF) guests. Prefer a Linux analysis guest; add a Windows guest only
 if you accept licensing and risk.
+
+### Disposable Kali
+
+Immutable qcow2 base + ephemeral session overlay. `wipe` deletes the overlay
+and undefines the domain; base stays clean. Script:
+`scripts/kali-disposable.sh`. Shell aliases (after stow / `reload`):
+
+| Alias | Action |
+|-------|--------|
+| `kali` | Pass-through to the script (`kali setup`, `kali status`, …) |
+| `kali-up` | `start --isolated` — new overlay, no guest WAN |
+| `kali-up-nat` | `start --nat` — when guest needs internet |
+| `kali-wipe` | Destroy domain + delete overlay |
+| `kali-stop` | Power off; keep overlay |
+| `kali-st` | Status |
+
+```bash
+bash scripts/kali-disposable.sh setup    # once: libvirt pkgs + download base
+# re-login / newgrp libvirt
+kali-up                                  # isolated (samples)
+kali-up-nat                              # NAT for apt/cloud-init
+kali-st
+kali-wipe                                # back to clean base
+```
+
+Also listed in [gnome/keybindings.md](../gnome/keybindings.md#disposable-kali).
+
+Base: `/var/lib/libvirt/images/kali-disposable/kali-base.qcow2` (system qemu
+cannot read `$HOME`). Each `start` rebuilds `kali-session.qcow2` unless
+`KEEP_OVERLAY=1`. No host shares. Defaults: NAT, 4096 MiB RAM, 4 vCPU
+(`KALI_RAM_MB` / `KALI_VCPUS` / `KALI_NET` / `KALI_VM_DIR` override). Cloud
+login is often `kali`/`kali` — change after first boot.
 
 ### Optional host triage (static / inert only)
 

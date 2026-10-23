@@ -1,6 +1,12 @@
 # Changelog
 
 ## [Unreleased]
+- Host RE extras on P15 path: triage pkgs (clamav/upx/wireshark/mitmproxy/nmap), AUR imhex+apktool, frida-tools+jefferson+unblob (pipx), firmwalker mirror + GhidraMCP tree under `~/tools`, `firmware-pentest` skill, `kali-up` defaults to isolated (`kali-up-nat` for WAN), battery charge 70–80 via tmpfiles, SSH key auth, browser-hardening honors `SUDO_ASKPASS`.
+- RE AI stack: `scripts/install-re-skills.sh` + `packages/agent-skills-re.txt` (leanrea, EncidXVII reverse-engineering, Android RE, ghidra-iterative-re, OrbitCurve firmware-RE); `scripts/install-re-extras.sh` + `packages/re-extra.txt` (jadx/rizin/… + squashfs/mtd/flashrom/uboot/qemu-user-static); wired after REA in `install.sh`; `check.sh` probes RE + firmware skills. Docs in fresh-install RE guide.
+- Disposable Kali lab: `scripts/kali-disposable.sh` (libvirt + immutable qcow2 base + ephemeral overlay; `wipe` resets). Shell aliases `kali` / `kali-up` / `kali-wipe` / `kali-stop` / `kali-st`. Docs: README Shortcuts, `gnome/keybindings.md#disposable-kali`, `docs/fresh-install-coding-re.md#disposable-kali`.
+- Sleep: `s2idle.conf` + `thinkpad-lid.conf` install on all hosts (was X1-only `thinkpad-x1.conf`); MemorySleepMode=s2idle. On AC: no idle sleep (`sleep-inactive-ac-type=nothing`) and no lid sleep (`HandleLidSwitchExternalPower=ignore`); battery still idle/lid suspends. Drop obsolete GNOME `lid-close-*` keys (gone in current gnome-settings-daemon).
+- zram: raise generator cap to `min(ram / 2, 32768)` (was 8192) for high-RAM hosts like P15.
+- Docs: UFW SSH on Arch uses `ufw allow 22/tcp` (no `OpenSSH` app profile); hardened Phase 13 + README troubleshooting.
 - Base cleanup: untrack root convenience symlinks (`.zshrc`, `.zsh-plugins`, `.config/*` → stow only; gitignore); drop empty `chrome-extra.json` (Chrome = `chromium-base` only); Cursor-only keys via `*/Cursor/*` + `*/.cursor/*` (merge strips leftovers on non-Cursor; `check.sh` flags foreign keys); wipe local `builds/st` makepkg outputs; drop unused `install-starship-crampack.sh` (README keeps upstream Crampack one-liner); `.gitignore` covers Claude Code runtime under `.claude/`.
 - Docs: README owns browser policy detail; hardened Phase 27 points at README Flatpaks; CONTRIBUTING privacy row + `scripts/lib/telemetry.sh`; Privacy bullets de-duplicated; Unreleased no longer retells Cursor/chrome-extra (see Base cleanup).
 - CI: `list-stow-files.sh` uses `LC_ALL=C sort` so `all_stow_files.txt` matches GitHub runners (fixes false “Stow inventory freshness” failures from locale sort).

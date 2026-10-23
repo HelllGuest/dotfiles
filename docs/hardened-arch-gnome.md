@@ -763,7 +763,7 @@ Contents:
 
 ```ini
 [zram0]
-zram-size = min(ram / 2, 8192)
+zram-size = min(ram / 2, 32768)
 compression-algorithm = zstd
 swap-priority = 100
 fs-type = swap
@@ -846,13 +846,19 @@ Default behavior:
 * **deny incoming** — All inbound connections rejected unless explicitly allowed
 * **allow outgoing** — All outbound connections permitted
 
-Add SSH rule (if needed):
+Add SSH rule (if needed). Arch’s UFW package usually has **no** `OpenSSH` app
+profile (`ufw app list` will not list it; `ufw allow OpenSSH` fails with
+“Could not find a profile matching 'OpenSSH'”). Allow the port instead:
 
 ```bash
-ufw allow ssh
+sudo ufw allow 22/tcp comment 'ssh'
+sudo ufw reload
+sudo systemctl enable --now sshd
 ```
 
-Enable:
+Confirm with `sudo ufw status` and `ss -tlnp | grep ':22'`. Prefer key auth over passwords.
+
+Enable UFW at boot (if not already):
 
 ```bash
 systemctl enable ufw.service

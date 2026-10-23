@@ -183,6 +183,16 @@ if [ -f "scripts/install-rea.sh" ]; then
     fi
 fi
 
+# 3.5f2 RE agent skills (leanrea, reverse-engineering, android-RE, ghidra-iterative-re)
+if [ -f "scripts/install-re-skills.sh" ]; then
+    if command -v npx >/dev/null 2>&1; then
+        SKIP_SKILL_SYNC=1 bash scripts/install-re-skills.sh || \
+            echo "RE skills failed — re-run: bash scripts/install-re-skills.sh"
+    else
+        echo "Skipping RE skills (npx not on PATH)."
+    fi
+fi
+
 # 3.5g Third-party skill packs (cloudflare, emil, vercel, … — packages/agent-skills.txt)
 if [ -f "scripts/install-ecosystem-skills.sh" ]; then
     if command -v npx >/dev/null 2>&1; then

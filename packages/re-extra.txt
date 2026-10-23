@@ -1,0 +1,29 @@
+# Optional host RE / triage packages (not in pacman.txt).
+# Install: bash scripts/install-re-extras.sh
+# Keep malware detonation in disposable VMs (kali-up); these are static/host tools.
+# Prefer jdk11-openjdk over jre11 (conflict). Either satisfies java-runtime=11 for jadx.
+
+jdk11-openjdk
+jadx
+gdb
+binwalk
+android-tools
+rizin
+rz-cutter
+rz-ghidra
+hexyl
+yara
+strace
+ltrace
+smali
+radare2
+
+# Firmware / embedded image unpack + flash / bootloader helpers
+squashfs-tools
+mtd-utils
+flashrom
+uboot-tools
+lzop
+qemu-user-static
+qemu-user-static-binfmt
+arm-none-eabi-binutils
