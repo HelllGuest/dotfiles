@@ -27,15 +27,16 @@ Defined in `stow/zsh/.shell-aliases` when
 |-------|--------|
 | `kali <cmd>` | `scripts/kali-disposable.sh` (`setup` / `start` / `stop` / `wipe` / `status` / `fetch`) |
 | `kali-up` | New ephemeral overlay + boot **isolated** (no guest WAN) |
-| `kali-up-nat` | Same with NAT (updates / cloud-init) |
+| `kali-up-nat` | Same with NAT (updates / cloud-init); prints Guest IP for SSH |
 | `kali-wipe` | Destroy domain + delete overlay; base untouched |
 | `kali-stop` | Power off; keep overlay |
 | `kali-st` | Status |
 
 ```bash
-kali setup          # once: packages + download base
+kali setup          # once: packages + download base + UFW/virbr0
 kali-up             # isolated session (samples)
 kali-up-nat         # NAT when guest needs internet
+# ssh kali@<Guest IP>   # default password kali — change it
 kali-wipe           # reset to clean base
 ```
 

@@ -236,6 +236,11 @@ if [ -f "scripts/privacy-hardener.sh" ]; then
     bash scripts/privacy-hardener.sh
 fi
 
+# 4.5 Tailscale + UFW (optional; no-op if ufw inactive / tailscale absent)
+if [ -f "scripts/ufw-tailscale.sh" ] && command -v tailscale >/dev/null 2>&1; then
+    bash scripts/ufw-tailscale.sh || echo "Tailscale UFW rules skipped."
+fi
+
 # 5. Final Health Check
 if [ -f "scripts/check.sh" ]; then
     bash scripts/check.sh

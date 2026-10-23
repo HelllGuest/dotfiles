@@ -53,11 +53,14 @@ Thank you for helping improve this setup. Follow these guidelines to keep the re
 - If no hostname match, `scripts/detect-profile.sh` picks from DMI product strings + chassis type: `thinkpad-x1`, `thinkpad-p15`, or `laptop` (no desktop/NVIDIA-only profile; no `lspci` in detect-profile).
 - `install.sh` installs `packages/pacman.txt` first, then `apply-profile.sh` sources **exactly one** profile (NVIDIA/Optimus packages must exist before `thinkpad-p15` enables services / rebuilds UKIs). Optimus setup is inside `profiles/thinkpad-p15.sh` (`has_nvidia_gpu` in `scripts/lib/dmi.sh`). There is no `nvidia.sh`.
 - `profiles/laptop.sh` delegates to `thinkpad-x1.sh` only on X1 models.
-- On ThinkPad X1 hardware, `system-setup.sh` (run after the profile) installs the X1-only `stow/system/` files (cmdline, i915, X1 sleep/logind, fingerprint rule), so `thinkpad-x1.sh` must not edit them. Other profiles skip those files and may manage their own (e.g. `thinkpad-p15.sh` appends `nvidia_drm.modeset=1`). Gating is by DMI hardware (`is_thinkpad_x1`), not hostname. UKI rebuilds go through `mkinitcpio -P`; sbctl's mkinitcpio post hook signs each rebuilt UKI.
+- On ThinkPad X1 hardware, `system-setup.sh` (run after the profile) installs the X1-only `stow/system/` files (cmdline, i915, fingerprint rule), so `thinkpad-x1.sh` must not edit them. Other profiles skip those files and may manage their own (e.g. `thinkpad-p15.sh` writes `/etc/modprobe.d/nvidia.conf`, appends `nvidia_drm.modeset=1` and `rd.driver.blacklist=nouveau` to `/etc/kernel/cmdline`, then rebuilds UKIs). Gating is by DMI hardware (`is_thinkpad_x1`), not hostname. UKI rebuilds go through `mkinitcpio -P`; sbctl's mkinitcpio post hook signs each rebuilt UKI. A live `/proc/cmdline` without those flags means reboot (or UKI rebuild) was skipped.
+- `stow/system/etc/systemd/system/virbr0-up.service` starts the libvirt `default` network then brings `virbr0` up (boot race fix). `system-setup.sh` enables it when the unit file changes; `scripts/kali-disposable.sh setup` also installs/enables it.
 
 ### Packages (`packages/`)
 
 - Keep `pacman.txt`, `aur.txt`, `flatpak.txt`, and `browsers.txt` in sync with configs that depend on them.
+- `evolution-data-server` — required by `gnome-shell-calendar-server` (`libecal` / `libedataserver`).
+- `wireless-regdb` — provides `/usr/lib/firmware/regulatory.db` (Wi-Fi regdomain).
 - Browser policies: `browsers/policies/chromium-base.json` (Chrome uses this alone); optional brand overlays (`brave-extra.json`; omit file = base only). Zen: `zen-policies.json` + `browsers/zen/user.js`. LibreWolf: `browsers/librewolf/librewolf.overrides.cfg`. Deploy via `scripts/lib/browsers.sh` / `browser-hardening.sh`.
 - Shell plugin packages: pacman extras in `pacman.txt`; AUR plugins such as **forgit** and **blesh-git** belong in `aur.txt`.
 

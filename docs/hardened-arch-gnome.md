@@ -887,6 +887,42 @@ This service ensures the masquerade rule is added exactly once and survives `ufw
 If container forwarding fails, check `/etc/default/ufw` and set
 `DEFAULT_FORWARD_POLICY="ACCEPT"` if it is still `DROP`.
 
+## Tailscale + UFW
+
+Tailscale’s default `netfilter-mode=on` already accepts `tailscale0` in its own
+chains ([docs](https://tailscale.com/docs/reference/netfilter-modes)). For a
+locked-down host (`ufw default deny incoming`) still add UFW rules so policy is
+visible and works if netfilter mode is `off`:
+
+```bash
+bash scripts/ufw-tailscale.sh
+# equivalent:
+#   sudo ufw allow in on tailscale0
+#   sudo ufw allow 41641/udp comment 'tailscale-wg'
+#   sudo ufw route allow in on tailscale0
+#   sudo ufw route allow out on tailscale0
+```
+
+`./install.sh` runs this when `tailscale` is on PATH. Official lock-down guide:
+[Secure Ubuntu with UFW](https://tailscale.com/docs/how-to/secure-ubuntu-server-with-ufw).
+
+## Libvirt disposable Kali (virbr0 NAT)
+
+UFW’s default **deny routed** blocks guest DHCP/NAT. Prefer narrow allows over
+global `DEFAULT_FORWARD_POLICY=ACCEPT`. `scripts/kali-disposable.sh setup` /
+`start --nat` add:
+
+* `ufw allow in|out on virbr0`
+* `ufw route allow` guest↔guest on `virbr0` and guest→host WAN ifaces
+* `ufw route allow from 192.168.122.0/24`
+
+Boot unit `virbr0-up.service` (from `stow/system/`, installed by
+`system-setup.sh` / kali `setup`) runs `virsh net-start default` then
+`ip link set virbr0 up` after `libvirtd` (avoids `Cannot find device virbr0`
+when the oneshot races the bridge). Check: `systemctl status virbr0-up`.
+
+Lab usage: [fresh-install RE — Disposable Kali](fresh-install-coding-re.md#disposable-kali).
+
 ---
 
 # PHASE 14 — THINKPAD OPTIMIZATION

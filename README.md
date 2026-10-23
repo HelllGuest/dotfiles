@@ -149,7 +149,7 @@ UUID `dash2dock-lite@icedman.github.com` is in `gnome/extensions.txt` and `gnome
 
 Shell functions (`fe`, `rge`, `gai`, `fcd`, …), `Ctrl+R` / `Ctrl+T` / `Alt+C`, terminal and GNOME keys: [gnome/keybindings.md](gnome/keybindings.md). Modern aliases (when installed): `eza`, `bat`, `rg`, `fd`, `dust`, `duf`, `delta`, etc.
 
-Disposable Kali lab (libvirt overlay): `kali-up` / `kali-wipe` / `kali-stop` / `kali-st` / `kali` — see [keybindings](gnome/keybindings.md#disposable-kali) and [fresh-install RE guide](docs/fresh-install-coding-re.md#disposable-kali).
+Disposable Kali lab (libvirt overlay): `kali-up` (isolated) / `kali-up-nat` / `kali-wipe` / `kali-stop` / `kali-st` / `kali` — see [keybindings](gnome/keybindings.md#disposable-kali) and [fresh-install RE guide](docs/fresh-install-coding-re.md#disposable-kali). NAT needs `virbr0-up.service` + UFW virbr0 rules (kali `setup` / system-setup).
 
 ### Starship
 
@@ -260,8 +260,10 @@ bash scripts/p15-dotfiles-preflight.sh   # P15 only — optional readiness check
 # hostname p15 → profiles/p15.sh → thinkpad-p15 (Optimus). Or re-run:
 # bash profiles/thinkpad-p15.sh
 exec zsh
-reboot                                   # required after NVIDIA/early-KMS profile
-prime-run glxinfo -B | grep -i renderer  # after reboot
+reboot                                   # UKI must embed nvidia_drm.modeset + nouveau blacklist
+# after reboot (P15): expect Kernel driver in use: nvidia
+lspci -nnk -d 10de: | grep -A2 'Kernel driver'
+prime-run nvidia-smi -L
 scripts/thinkpad-health.sh
 ```
 

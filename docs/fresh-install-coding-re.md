@@ -124,15 +124,19 @@ bash scripts/p15-dotfiles-preflight.sh   # skip on X1
 #   ONLY_CAVEMAN_OPENCODE=1 bash scripts/install-coding-agents.sh
 exec zsh
 bash scripts/thinkpad-health.sh
-reboot   # required after NVIDIA early KMS / nouveau blacklist
+reboot   # required: UKI must embed nvidia_drm.modeset=1 + rd.driver.blacklist=nouveau
+# after reboot (P15 Optimus):
+tr ' ' '\n' </proc/cmdline | grep -E 'nvidia_drm|blacklist=nouveau'
+lspci -nnk -d 10de: | grep -A2 'Kernel driver'   # expect: nvidia (not nouveau)
+prime-run nvidia-smi -L
 ```
 
 Step order: [README — what `./install.sh` runs](../README.md#script-execution-order-fresh-machine).
 
-`stow/system/` (kernel cmdline, sleep, logind, i915, makepkg v3, UFW, udev) is
-installed by `scripts/system-setup.sh` as root-owned files, not stowed; the
-X1-only files (cmdline, i915, sleep, logind, fingerprint rule) install on X1
-hardware only; the cmdline gets this machine's booted LUKS UUID. Details:
+`stow/system/` (kernel cmdline, sleep, logind, i915, makepkg v3, UFW, udev,
+`virbr0-up.service`) is installed by `scripts/system-setup.sh` as root-owned
+files, not stowed; the X1-only files (cmdline, i915, fingerprint rule) install
+on X1 hardware only; the cmdline gets this machine's booted LUKS UUID. Details:
 [hardened-arch-gnome.md — `system/` files](hardened-arch-gnome.md#kernel-cmdline--system-files-installed-not-stowed).
 Firewall check: [Verify Firewall](hardened-arch-gnome.md#verify-firewall).
 
@@ -302,18 +306,19 @@ and undefines the domain; base stays clean. Script:
 | Alias | Action |
 |-------|--------|
 | `kali` | Pass-through to the script (`kali setup`, `kali status`, …) |
-| `kali-up` | `start` (default **isolated**) — new overlay, no guest WAN |
-| `kali-up-nat` | `start --nat` — when guest needs internet |
+| `kali-up` | `start --isolated` — new overlay, **no guest WAN** (samples) |
+| `kali-up-nat` | `start --nat` — guest DHCP + internet (apt / cloud-init) |
 | `kali-wipe` | Destroy domain + delete overlay |
 | `kali-stop` | Power off; keep overlay |
 | `kali-st` | Status |
 
 ```bash
-bash scripts/kali-disposable.sh setup    # once: libvirt pkgs + download base
+bash scripts/kali-disposable.sh setup    # once: libvirt pkgs + download base + UFW/virbr0
 # re-login / newgrp libvirt
 kali-up                                  # isolated (samples)
 kali-up-nat                              # NAT for apt/cloud-init
 kali-st
+# NAT: script prints Guest IP; ssh kali@<ip>  (default password kali — change it)
 kali-wipe                                # back to clean base
 ```
 
@@ -321,9 +326,16 @@ Also listed in [gnome/keybindings.md](../gnome/keybindings.md#disposable-kali).
 
 Base: `/var/lib/libvirt/images/kali-disposable/kali-base.qcow2` (system qemu
 cannot read `$HOME`). Each `start` rebuilds `kali-session.qcow2` unless
-`KEEP_OVERLAY=1`. No host shares. Defaults: NAT, 4096 MiB RAM, 4 vCPU
-(`KALI_RAM_MB` / `KALI_VCPUS` / `KALI_NET` / `KALI_VM_DIR` override). Cloud
-login is often `kali`/`kali` — change after first boot.
+`KEEP_OVERLAY=1`. No host shares. Defaults: **isolated** net, 4096 MiB RAM,
+4 vCPU (`KALI_RAM_MB` / `KALI_VCPUS` / `KALI_NET` / `KALI_VM_DIR` override).
+
+**NAT / UFW:** `setup` and `start --nat` allow traffic on `virbr0`, forward guest
+subnet `192.168.122.0/24`, and bring the bridge up. Boot unit
+`virbr0-up.service` (from `stow/system/`, also installed by `setup`) starts the
+libvirt `default` network then `ip link set virbr0 up` so the bridge exists
+after reboot. Cloud-init NoCloud seed sets hostname `kali-disposable`, enables
+password SSH, and uses a fresh `instance-id` each overlay. Default login
+`kali`/`kali` — change after first SSH.
 
 ### Optional host triage (static / inert only)
 
@@ -335,14 +347,36 @@ inside the guest.
 sudo pacman -S --needed clamav upx wireshark-qt tcpdump mitmproxy nmap   # + yara/binwalk above
 ```
 
+### CPE / home gateway without a firmware file (e.g. Brovi H155-381)
+
+**Brovi H155-381** is a 5G CPE (Brovi/ZOWEE). Admin UI is usually
+`http://192.168.8.1`. [Vendor support](https://www.brovi-tech.com/service.php)
+ships manuals/DoC, **not** a public `.bin`. Updates are **OTA** from
+ZOWEE/carrier.
+
+Without an image, leanrea cannot unpack a rootfs. Do this instead:
+
+1. About/System: record **software version** + hardware revision.
+2. Update page: if “check update” downloads a package, save it from the browser
+   Network tab (analyze offline — do not flash unknown builds).
+3. Export config backup; open offline for leftover secrets.
+4. Disable WAN/remote admin if present; change Wi‑Fi + admin passwords.
+5. From LAN only: `nmap -sV <router-ip>` for open services.
+
+When you have a `.bin`/`.zip`: `unblob -e out file` (or `binwalk -e`), then
+`/leanrea` + firmware-static-analysis on `out/`. Prefer `kali-up` (isolated)
+for untrusted images. Carrier/region builds differ — wrong flash can brick the
+modem.
+
 ---
 
 ## Hardware constraints (keep these in mind)
 
-* **16 GiB RAM** — avoid heavy parallel builds plus a large VM plus Ghidra.
-* **iGPU only** — no CUDA; GPU-heavy ML/RE is a poor fit.
+* **16 GiB RAM (X1)** — avoid heavy parallel builds plus a large VM plus Ghidra.
+* **P15 Optimus** — Intel iGPU primary + NVIDIA Quadro via `prime-run`; after
+  install, reboot so UKI drops `nouveau` and binds `nvidia`.
 * **Comet Lake = x86-64-v3** — never target v4 in makepkg / `RUSTFLAGS`.
-* **Yoga convertible** — tablet rotate / sensors via profile + `iio-sensor-proxy`.
+* **Yoga convertible (X1)** — tablet rotate / sensors via profile + `iio-sensor-proxy`.
 * **zram** — helps under memory pressure; still plan workloads.
 
 ---

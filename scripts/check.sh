@@ -477,6 +477,31 @@ else
     echo "○ Claude skipWebFetchPreflight not confirmed"
 fi
 
+echo "--- Tailscale / UFW ---"
+if command -v tailscale >/dev/null 2>&1; then
+    echo "✓ tailscale installed"
+    _ufw_st=""
+    if command -v ufw >/dev/null 2>&1; then
+      if sudo -n true 2>/dev/null; then
+        _ufw_st="$(sudo -n ufw status 2>/dev/null || true)"
+      else
+        _ufw_st="$(ufw status 2>/dev/null || true)"
+      fi
+    fi
+    if echo "$_ufw_st" | grep -qi 'Status: active'; then
+        if echo "$_ufw_st" | grep -qi 'tailscale0'; then
+            echo "✓ UFW allows tailscale0"
+        else
+            echo "○ UFW active but no tailscale0 rule — bash scripts/ufw-tailscale.sh"
+        fi
+    else
+        echo "○ ufw inactive, missing, or needs sudo (Tailscale netfilter may still protect)"
+    fi
+    unset _ufw_st
+else
+    echo "○ tailscale not installed"
+fi
+
 echo "--- Proton VPN ---"
 if [ -f "$REPO_ROOT/scripts/proton-connectivity-check.sh" ]; then
     bash "$REPO_ROOT/scripts/proton-connectivity-check.sh" 2>/dev/null || echo "⚠ Proton API unreachable (run scripts/proton-connectivity-check.sh)"

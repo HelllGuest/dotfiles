@@ -1,6 +1,8 @@
 # Changelog
 
 ## [Unreleased]
+- Tailscale: `packages/pacman.txt` + `scripts/ufw-tailscale.sh` (allow `tailscale0` / `41641/udp` / route); wired in `install.sh` + `check.sh`; hardened-guide section. Docs: Brovi H155-381 CPE admin-only RE path (no public firmware).
+- Docs: Kali default **isolated** (was wrongly NAT); NAT/UFW/`virbr0-up` + cloud-init SSH notes; P15 post-reboot NVIDIA checks; libvirt firewall section in hardened guide; CONTRIBUTING packages/`virbr0-up`/cmdline flags.
 - Host log fixes: `evolution-data-server` + `wireless-regdb` in `pacman.txt` (CalendarServer libs, Wi-Fi `regulatory.db`); `virbr0-up.service` in `stow/system` waits for libvirt default net (fixes boot race `Cannot find device virbr0`); kali setup installs/enables the unit.
 - P15 Optimus: harden nouveau kill (`install nouveau /bin/false`, `rd.driver.blacklist=nouveau` on cmdline) so proprietary NVIDIA binds after reboot; rebuild UKI embeds `/etc/kernel/cmdline`. Kali UFW also allows `192.168.122.0/24` forward.
 - Double-check fixes: RE skills manifest supports `owner/repo:skill` (firmware-pentest); check.sh probes security-reports+pentest; Kali default net isolated + cloud-init seed for DHCP; UFW `virbr0` forward + WAN route + admin-up so guest NAT/SSH works; print lease by hostname/`domifaddr` (not stale IPs); cloud-init forces password SSH + unique instance-id; clamav-freshclam + BAT-only charge tmpfiles in install-re-extras; gnome-session stow `--adopt`/soft-fail; drop Cursor keys from Code/VSCodium; `tests/kali-disposable.test.sh`.

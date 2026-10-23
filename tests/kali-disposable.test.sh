@@ -52,6 +52,15 @@ grep -q 'rd.driver.blacklist=nouveau' "$ROOT/profiles/thinkpad-p15.sh" \
   || fail "thinkpad-p15 must blacklist nouveau on cmdline"
 grep -q 'install nouveau /bin/false' "$ROOT/profiles/thinkpad-p15.sh" \
   || fail "thinkpad-p15 must block nouveau via modprobe install"
+[[ -x "$ROOT/scripts/ufw-tailscale.sh" ]] || fail "ufw-tailscale.sh missing/not executable"
+grep -q 'allow in on tailscale0' "$ROOT/scripts/ufw-tailscale.sh" \
+  || fail "ufw-tailscale must allow tailscale0"
+grep -q '^tailscale$' "$ROOT/packages/pacman.txt" \
+  || fail "pacman.txt must list tailscale"
+grep -q 'ufw-tailscale.sh' "$ROOT/install.sh" \
+  || fail "install.sh must call ufw-tailscale.sh"
+grep -q 'Brovi H155-381' "$ROOT/docs/fresh-install-coding-re.md" \
+  || fail "fresh-install docs must mention Brovi H155-381 CPE path"
 grep -q 'guest_ipv4' "$ROOT/scripts/kali-disposable.sh" \
   || fail "kali start should resolve guest IPv4 (not stale leases)"
 grep -q 'PasswordAuthentication yes' "$ROOT/scripts/kali-disposable.sh" \
