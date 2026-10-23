@@ -3,7 +3,7 @@
 #
 # Pattern: one gold qcow2 (base). Each session boots a throwaway overlay.
 # wipe/stop deletes the overlay → back to clean base. No host shares.
-# Network default: libvirt NAT (not bridged). Use --isolated for no guest WAN.
+# Network default: isolated (no guest WAN). Use --nat for updates / cloud-init.
 #
 # Usage:
 #   bash scripts/kali-disposable.sh setup          # packages + download base
@@ -18,7 +18,7 @@
 #                   (system qemu cannot read $HOME; keep disks here)
 #   KALI_RAM_MB     default: 4096
 #   KALI_VCPUS      default: 4
-#   KALI_NET        nat | isolated | none   (default: nat)
+#   KALI_NET        nat | isolated | none   (default: isolated)
 
 set -euo pipefail
 
@@ -29,7 +29,7 @@ BASE_IMG="$VM_DIR/kali-base.qcow2"
 OVERLAY="$VM_DIR/kali-session.qcow2"
 RAM_MB="${KALI_RAM_MB:-4096}"
 VCPUS="${KALI_VCPUS:-4}"
-NET_MODE="${KALI_NET:-nat}"
+NET_MODE="${KALI_NET:-isolated}"
 
 ensure_vm_dir() {
   if [[ ! -d "$VM_DIR" ]]; then
@@ -95,9 +95,62 @@ cmd_setup_host() {
   fi
   sudo_do virsh net-start default 2>/dev/null || true
   sudo_do virsh net-autostart default 2>/dev/null || true
+  sudo_do ip link set virbr0 up 2>/dev/null || true
+  # UFW deny-routed blocks guest DHCP/NAT unless virbr0 is allowed.
+  if command -v ufw >/dev/null 2>&1 && sudo_do ufw status 2>/dev/null | grep -qi 'Status: active'; then
+    sudo_do ufw allow in on virbr0 2>/dev/null || true
+    sudo_do ufw allow out on virbr0 2>/dev/null || true
+    sudo_do ufw route allow in on virbr0 out on virbr0 2>/dev/null || true
+    local iface
+    for iface in /sys/class/net/*; do
+      iface="${iface##*/}"
+      case "$iface" in
+        lo|virbr*|vnet*|docker*|br-*|tun*|tap*|wg*|zt*) continue ;;
+      esac
+      sudo_do ufw route allow in on virbr0 out on "$iface" 2>/dev/null || true
+    done
+  fi
   sudo_do usermod -aG libvirt,kvm "$USER"
   ensure_vm_dir
   echo "✓ packages + libvirtd. Log out/in (or: newgrp libvirt) before start."
+}
+
+# Ensure default NAT is usable (UFW often leaves virbr0 isolated / DOWN).
+ensure_nat_forward() {
+  [[ "$NET_MODE" == nat ]] || return 0
+  virsh_u net-start default 2>/dev/null || true
+  # Admin-up even with NO-CARRIER; carrier appears when a guest tap attaches.
+  sudo_do ip link set virbr0 up >/dev/null 2>&1 || true
+  if command -v ufw >/dev/null 2>&1 && sudo_do ufw status 2>/dev/null | grep -qi 'Status: active'; then
+    sudo_do ufw allow in on virbr0 >/dev/null 2>&1 || true
+    sudo_do ufw allow out on virbr0 >/dev/null 2>&1 || true
+    sudo_do ufw route allow in on virbr0 out on virbr0 >/dev/null 2>&1 || true
+    # Guest → host WAN (apt/updates). DEFAULT_FORWARD_POLICY=DROP otherwise.
+    local iface
+    for iface in /sys/class/net/*; do
+      iface="${iface##*/}"
+      case "$iface" in
+        lo|virbr*|vnet*|docker*|br-*|tun*|tap*|wg*|zt*) continue ;;
+      esac
+      sudo_do ufw route allow in on virbr0 out on "$iface" >/dev/null 2>&1 || true
+    done
+  fi
+}
+
+# Best-effort guest IPv4 on default/kali-isolated (hostname lease or domifaddr).
+guest_ipv4() {
+  local ip=""
+  ip="$(virsh_u domifaddr "$VM_NAME" source=lease 2>/dev/null \
+    | awk '/ipv4/ {print $4}' | cut -d/ -f1 | head -1)" || true
+  if [[ -z "$ip" ]]; then
+    ip="$(virsh_u net-dhcp-leases default 2>/dev/null \
+      | awk '/kali-disposable/ {print $5}' | cut -d/ -f1 | head -1)" || true
+  fi
+  if [[ -z "$ip" ]]; then
+    ip="$(virsh_u net-dhcp-leases kali-isolated 2>/dev/null \
+      | awk '/kali-disposable/ {print $5}' | cut -d/ -f1 | head -1)" || true
+  fi
+  printf '%s' "$ip"
 }
 
 cmd_fetch_base() {
@@ -177,6 +230,7 @@ cmd_start() {
   ensure_vm_dir
   [[ -f "$BASE_IMG" ]] || die "no base image — run: $0 setup"
   groups | grep -qw libvirt || die "user not in libvirt group — log out/in after setup"
+  ensure_nat_forward
 
   # Always disposable: new overlay each start unless KEEP_OVERLAY=1
   if [[ "${KEEP_OVERLAY:-0}" != "1" ]]; then
@@ -199,6 +253,55 @@ cmd_start() {
     virsh_u start "$VM_NAME"
   else
     echo "→ importing disposable domain ($RAM_MB MiB, ${VCPUS} vCPU, net=$NET_MODE)"
+    # Kali genericcloud needs cloud-init NoCloud seed or networking never comes up.
+    local ci_dir ci_user ci_meta
+    ci_dir="$(mktemp -d "${TMPDIR:-/tmp}/kali-ci.XXXXXX")"
+    ci_user="$ci_dir/user-data"
+    ci_meta="$ci_dir/meta-data"
+    cat >"$ci_user" <<'EOF'
+#cloud-config
+hostname: kali-disposable
+manage_etc_hosts: true
+ssh_pwauth: true
+disable_root: false
+chpasswd:
+  expire: false
+  users:
+    - {name: kali, password: kali, type: text}
+users:
+  - default
+  - name: kali
+    gecos: Kali
+    groups: [adm, sudo, dialout]
+    sudo: ALL=(ALL) NOPASSWD:ALL
+    shell: /bin/bash
+    lock_passwd: false
+    plain_text_passwd: kali
+write_files:
+  - path: /etc/ssh/sshd_config.d/99-kali-disposable.conf
+    permissions: "0644"
+    content: |
+      PasswordAuthentication yes
+      KbdInteractiveAuthentication yes
+      PermitRootLogin no
+network:
+  version: 2
+  ethernets:
+    id0:
+      match: {name: "en*"}
+      dhcp4: true
+    id1:
+      match: {name: "eth*"}
+      dhcp4: true
+packages:
+  - openssh-server
+runcmd:
+  - systemctl enable --now ssh || systemctl enable --now sshd || true
+  - systemctl reload ssh 2>/dev/null || systemctl reload sshd 2>/dev/null || true
+EOF
+    # Fresh instance-id each overlay so cloud-init always re-runs.
+    printf 'instance-id: kali-disposable-%s\nlocal-hostname: kali-disposable\n' \
+      "$(date +%s)" >"$ci_meta"
     # shellcheck disable=SC2046
     virt-install \
       --connect "$(uri)" \
@@ -210,15 +313,32 @@ cmd_start() {
       --disk "path=$OVERLAY,format=qcow2,bus=virtio" \
       --os-variant debian12 \
       $(net_args) \
+      --cloud-init "user-data=${ci_user},meta-data=${ci_meta}" \
       --graphics spice \
       --video virtio \
+      --console pty,target_type=serial \
       --noautoconsole \
       --quiet
+    rm -rf "$ci_dir"
   fi
+
+  # Carrier + lease can lag a few seconds after virt-install returns.
+  sudo_do ip link set virbr0 up >/dev/null 2>&1 || true
+  local gip=""
+  for _ in 1 2 3 4 5 6; do
+    gip="$(guest_ipv4)"
+    [[ -n "$gip" ]] && break
+    sleep 2
+  done
 
   echo "✓ $VM_NAME running (URI=$(uri))"
   echo "  GUI: virt-manager → $VM_NAME   or:  virsh -c $(uri) console $VM_NAME"
-  echo "  Default Kali cloud user is often 'kali'/'kali' — change password after first login."
+  echo "  Cloud login: kali / kali — change after first login."
+  if [[ -n "$gip" ]]; then
+    echo "  Guest IP: $gip   (ssh kali@$gip)"
+  else
+    echo "  Guest IP: (pending DHCP — virsh net-dhcp-leases default)"
+  fi
   echo "  Disposable wipe:  $0 wipe"
 }
 

@@ -1,5 +1,6 @@
 # Reverse-engineering Agent Skills for `scripts/install-re-skills.sh`
 # One GitHub owner/repo per line (optional @ref). Lines starting with # ignored.
+# Optional skill filter: owner/repo:skill1,skill2  (else installs --skill '*')
 # REA MCP + reverse-engineer-anything skill: scripts/install-rea.sh (not here).
 # ghidra-cli-host: repo skills/ (synced by sync-agent-skills.sh).
 
@@ -18,6 +19,5 @@ GeReV/ghidra-iterative-re
 # Firmware / IoT: extract → static → Ghidra → emulate → report (OrbitCurve)
 OrbitCurve/firmware-reverse-engineering
 
-# OWASP-ish firmware pentest playbook (install only this skill from the mega pack)
-# Installed via: npx skills add zhaoxuya520/reverse-skill --skill firmware-pentest …
-# (not a full-pack line — selective install in docs / host setup)
+# Selective skill from mega pack (OWASP FSTM-style firmware pentest)
+zhaoxuya520/reverse-skill:firmware-pentest

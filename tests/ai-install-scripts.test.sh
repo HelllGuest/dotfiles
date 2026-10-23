@@ -12,7 +12,10 @@ for f in \
   "$ROOT/scripts/install-android-ui-skills.sh" \
   "$ROOT/scripts/install-rea.sh" \
   "$ROOT/scripts/install-coding-agents.sh" \
-  "$ROOT/scripts/install-ecosystem-skills.sh"
+  "$ROOT/scripts/install-ecosystem-skills.sh" \
+  "$ROOT/scripts/install-re-skills.sh" \
+  "$ROOT/scripts/install-re-extras.sh" \
+  "$ROOT/scripts/kali-disposable.sh"
 do
   [[ -f "$f" ]] || fail "missing $f"
   [[ -x "$f" ]] || fail "not executable: $f"
@@ -20,6 +23,7 @@ do
 done
 
 [[ -f "$ROOT/packages/agent-skills.txt" ]] || fail "missing packages/agent-skills.txt"
+[[ -f "$ROOT/packages/agent-skills-re.txt" ]] || fail "missing packages/agent-skills-re.txt"
 grep -q 'cloudflare/skills' "$ROOT/packages/agent-skills.txt" \
   || fail "agent-skills manifest missing cloudflare pack"
 

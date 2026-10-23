@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
-# install-re-skills.sh — reverse-engineering Agent Skills (leanrea, playbooks, Android, Ghidra loop)
+# install-re-skills.sh — reverse-engineering Agent Skills (leanrea, playbooks, Android, Ghidra, firmware)
 #
 # Reads packages/agent-skills-re.txt. Installs globally via skills CLI for
 # Cursor, Claude Code, OpenCode, and Kimi Code CLI when present.
+# Manifest lines: owner/repo  or  owner/repo:skill1,skill2
 # REA MCP + reverse-engineer-anything: scripts/install-rea.sh (separate).
 #
 # Env:
@@ -53,10 +54,25 @@ mapfile -t PACKS < <(
 [[ ${#PACKS[@]} -gt 0 ]] || die "no packs in $AGENT_SKILLS_RE_FILE"
 
 failed=0
-for pack in "${PACKS[@]}"; do
-  say "skills add ${pack} (global)"
-  if ! npx --yes skills add "$pack" --skill '*' -g -y "${AGENTS[@]}" 2>&1; then
-    warn "failed: $pack"
+for entry in "${PACKS[@]}"; do
+  pack="${entry%%:*}"
+  skills_spec=""
+  if [[ "$entry" == *:* ]]; then
+    skills_spec="${entry#*:}"
+  fi
+  skill_args=(--skill '*')
+  if [[ -n "$skills_spec" ]]; then
+    skill_args=()
+    IFS=',' read -ra _sks <<<"$skills_spec"
+    for s in "${_sks[@]}"; do
+      s="${s// /}"
+      [[ -n "$s" ]] && skill_args+=(--skill "$s")
+    done
+    [[ ${#skill_args[@]} -gt 0 ]] || skill_args=(--skill '*')
+  fi
+  say "skills add ${pack} ${skill_args[*]} (global)"
+  if ! npx --yes skills add "$pack" "${skill_args[@]}" -g -y "${AGENTS[@]}" 2>&1; then
+    warn "failed: $entry"
     failed=$((failed + 1))
   fi
 done

@@ -302,7 +302,7 @@ and undefines the domain; base stays clean. Script:
 | Alias | Action |
 |-------|--------|
 | `kali` | Pass-through to the script (`kali setup`, `kali status`, …) |
-| `kali-up` | `start --isolated` — new overlay, no guest WAN |
+| `kali-up` | `start` (default **isolated**) — new overlay, no guest WAN |
 | `kali-up-nat` | `start --nat` — when guest needs internet |
 | `kali-wipe` | Destroy domain + delete overlay |
 | `kali-stop` | Power off; keep overlay |

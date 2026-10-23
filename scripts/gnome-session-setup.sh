@@ -16,9 +16,15 @@ sudo systemctl enable --now iio-sensor-proxy.service 2>/dev/null || true
 
 mkdir -p "$HOME/.config"
 cd "$STOW_DIR" || exit 1
-stow -R -t "$HOME" gnome-session
-stow -R -t "$HOME" proton-vpn 2>/dev/null || stow -t "$HOME" proton-vpn
-chmod +x "$HOME/.config/gnome-session/scripts/tablet-mode-handler.sh"
+# --adopt: reclaim absolute/foreign symlinks left by prior installs (extensions etc.)
+if ! stow -R --adopt -t "$HOME" gnome-session 2>/dev/null; then
+  echo "⚠ stow gnome-session conflicted — continuing (dconf/extensions still apply)" >&2
+fi
+if ! stow -R --adopt -t "$HOME" proton-vpn 2>/dev/null; then
+  stow -t "$HOME" proton-vpn 2>/dev/null || \
+    echo "⚠ stow proton-vpn skipped (extension likely already present)" >&2
+fi
+chmod +x "$HOME/.config/gnome-session/scripts/tablet-mode-handler.sh" 2>/dev/null || true
 
 if [[ -f "$REPO_ROOT/gnome/dconf/user.conf" ]]; then
   echo "→ Applying session dconf..."
