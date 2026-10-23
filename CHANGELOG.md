@@ -1,6 +1,7 @@
 # Changelog
 
 ## [Unreleased]
+- P15 Optimus: harden nouveau kill (`install nouveau /bin/false`, `rd.driver.blacklist=nouveau` on cmdline) so proprietary NVIDIA binds after reboot; rebuild UKI embeds `/etc/kernel/cmdline`. Kali UFW also allows `192.168.122.0/24` forward.
 - Double-check fixes: RE skills manifest supports `owner/repo:skill` (firmware-pentest); check.sh probes security-reports+pentest; Kali default net isolated + cloud-init seed for DHCP; UFW `virbr0` forward + WAN route + admin-up so guest NAT/SSH works; print lease by hostname/`domifaddr` (not stale IPs); cloud-init forces password SSH + unique instance-id; clamav-freshclam + BAT-only charge tmpfiles in install-re-extras; gnome-session stow `--adopt`/soft-fail; drop Cursor keys from Code/VSCodium; `tests/kali-disposable.test.sh`.
 - Host RE extras on P15 path: triage pkgs (clamav/upx/wireshark/mitmproxy/nmap), AUR imhex+apktool, frida-tools+jefferson+unblob (pipx), firmwalker mirror + GhidraMCP tree under `~/tools`, `firmware-pentest` skill, `kali-up` defaults to isolated (`kali-up-nat` for WAN), battery charge 70–80 via tmpfiles, SSH key auth, browser-hardening honors `SUDO_ASKPASS`.
 - RE AI stack: `scripts/install-re-skills.sh` + `packages/agent-skills-re.txt` (leanrea, EncidXVII reverse-engineering, Android RE, ghidra-iterative-re, OrbitCurve firmware-RE); `scripts/install-re-extras.sh` + `packages/re-extra.txt` (jadx/rizin/… + squashfs/mtd/flashrom/uboot/qemu-user-static); wired after REA in `install.sh`; `check.sh` probes RE + firmware skills. Docs in fresh-install RE guide.

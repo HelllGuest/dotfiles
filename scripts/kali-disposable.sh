@@ -109,6 +109,7 @@ cmd_setup_host() {
       esac
       sudo_do ufw route allow in on virbr0 out on "$iface" 2>/dev/null || true
     done
+    sudo_do ufw route allow from 192.168.122.0/24 2>/dev/null || true
   fi
   sudo_do usermod -aG libvirt,kvm "$USER"
   ensure_vm_dir
@@ -134,6 +135,8 @@ ensure_nat_forward() {
       esac
       sudo_do ufw route allow in on virbr0 out on "$iface" >/dev/null 2>&1 || true
     done
+    # Belt: subnet allow even if iface name changes (wifi rename).
+    sudo_do ufw route allow from 192.168.122.0/24 >/dev/null 2>&1 || true
   fi
 }
 

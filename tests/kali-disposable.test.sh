@@ -36,6 +36,8 @@ grep -q 'ufw route allow in on virbr0' "$ROOT/scripts/kali-disposable.sh" \
   || fail "kali setup/start must allow UFW forward on virbr0"
 grep -q 'ip link set virbr0 up' "$ROOT/scripts/kali-disposable.sh" \
   || fail "kali must bring virbr0 admin-up for NAT"
+grep -q '192.168.122.0/24' "$ROOT/scripts/kali-disposable.sh" \
+  || fail "kali UFW must allow libvirt NAT subnet forward"
 grep -q 'guest_ipv4' "$ROOT/scripts/kali-disposable.sh" \
   || fail "kali start should resolve guest IPv4 (not stale leases)"
 grep -q 'PasswordAuthentication yes' "$ROOT/scripts/kali-disposable.sh" \

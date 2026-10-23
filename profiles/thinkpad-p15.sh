@@ -47,6 +47,8 @@ if has_nvidia_gpu; then
     sudo install -Dm644 /dev/stdin /etc/modprobe.d/nvidia.conf <<'EOF'
 # ThinkPad P15 Gen 1 — NVIDIA Optimus (managed by profiles/thinkpad-p15.sh)
 blacklist nouveau
+blacklist nvidiafb
+install nouveau /bin/false
 options nvidia_drm modeset=1 fbdev=1
 options nvidia NVreg_DynamicPowerManagement=0x02
 options nvidia NVreg_PreserveVideoMemoryAllocations=1
@@ -63,10 +65,16 @@ EOF
         sudo sed -i -E 's/^MODULES=\(\s+/MODULES=(/' /etc/mkinitcpio.conf
     fi
 
-    # 5. Kernel cmdline: nvidia_drm.modeset=1 (belt-and-suspenders with modprobe.d).
-    if [ -f /etc/kernel/cmdline ] && ! grep -q 'nvidia_drm.modeset=1' /etc/kernel/cmdline; then
-        echo "Appending nvidia_drm.modeset=1 to /etc/kernel/cmdline..."
-        sudo sed -i 's/[[:space:]]*$/ nvidia_drm.modeset=1/' /etc/kernel/cmdline
+    # 5. Kernel cmdline: modeset + early nouveau blacklist (UKI embeds /etc/kernel/cmdline).
+    if [ -f /etc/kernel/cmdline ]; then
+        if ! grep -q 'nvidia_drm.modeset=1' /etc/kernel/cmdline; then
+            echo "Appending nvidia_drm.modeset=1 to /etc/kernel/cmdline..."
+            sudo sed -i 's/[[:space:]]*$/ nvidia_drm.modeset=1/' /etc/kernel/cmdline
+        fi
+        if ! grep -q 'rd.driver.blacklist=nouveau' /etc/kernel/cmdline; then
+            echo "Appending rd.driver.blacklist=nouveau to /etc/kernel/cmdline..."
+            sudo sed -i 's/[[:space:]]*$/ rd.driver.blacklist=nouveau/' /etc/kernel/cmdline
+        fi
     fi
 
     # 6. Suspend/resume: NVIDIA's services preserve VRAM across sleep (fixes the
