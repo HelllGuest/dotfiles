@@ -56,6 +56,7 @@ stow/system/etc/geolocation
 stow/system/etc/kernel/cmdline
 stow/system/etc/makepkg.conf.d/99-x86-64-v3.conf
 stow/system/etc/modprobe.d/i915.conf
+stow/system/etc/polkit-1/rules.d/50-kali-lan-host-prep.rules
 stow/system/etc/polkit-1/rules.d/50-vpn-location-sync.rules
 stow/system/etc/systemd/logind.conf.d/thinkpad-lid.conf
 stow/system/etc/systemd/sleep.conf.d/s2idle.conf

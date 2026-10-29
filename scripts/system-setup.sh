@@ -47,6 +47,7 @@ LOCATION_OWNED=(
     etc/geoclue/conf.d/99-static-dubai.conf
     etc/NetworkManager/dispatcher.d/99-vpn-location
     etc/polkit-1/rules.d/50-vpn-location-sync.rules
+    etc/polkit-1/rules.d/50-kali-lan-host-prep.rules
 )
 
 # Tuned for the ThinkPad X1 Yoga Gen 5 (Comet Lake iGPU, its USB port layout).

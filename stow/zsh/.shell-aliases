@@ -98,6 +98,9 @@ if [[ -f $HOME/dotfiles/scripts/kali-disposable.sh ]]; then
   # Default start is isolated (no guest WAN) for sample work; use kali-up-nat for updates.
   alias kali-up="bash $HOME/dotfiles/scripts/kali-disposable.sh start --isolated"
   alias kali-up-nat="bash $HOME/dotfiles/scripts/kali-disposable.sh start --nat"
+  alias kali-up-lan="bash $HOME/dotfiles/scripts/kali-disposable.sh start --lan"
+  alias kali-lan="bash $HOME/dotfiles/scripts/kali-disposable.sh attach-lan"
+  alias kali-lan-check="bash $HOME/dotfiles/scripts/kali-disposable.sh lan-check"
   alias kali-wipe="bash $HOME/dotfiles/scripts/kali-disposable.sh wipe"
   alias kali-stop="bash $HOME/dotfiles/scripts/kali-disposable.sh stop"
   alias kali-st="bash $HOME/dotfiles/scripts/kali-disposable.sh status"

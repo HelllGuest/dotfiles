@@ -75,8 +75,61 @@ grep -q 'install-re-skills.sh' "$ROOT/install.sh" \
   || fail "install.sh must call install-re-skills.sh"
 grep -q 'kali-up-nat' "$ROOT/stow/zsh/.shell-aliases" \
   || fail "kali-up-nat alias missing"
+grep -q 'kali-up-lan' "$ROOT/stow/zsh/.shell-aliases" \
+  || fail "kali-up-lan alias missing"
+grep -q 'attach-lan' "$ROOT/stow/zsh/.shell-aliases" \
+  || fail "kali-lan attach-lan alias missing"
 grep -q 'start --isolated' "$ROOT/stow/zsh/.shell-aliases" \
   || fail "kali-up must default to isolated"
+grep -q "mode='bridge'" "$ROOT/scripts/kali-disposable.sh" \
+  || fail "kali LAN must use macvtap bridge mode"
+grep -q 'KALI_LAN_IFACE' "$ROOT/scripts/kali-disposable.sh" \
+  || fail "kali must honor KALI_LAN_IFACE"
+grep -q '20-lan-eth1.network' "$ROOT/scripts/kali-disposable.sh" \
+  || fail "cloud-init must seed eth1 DHCP for physical LAN"
+grep -q 'UseDNS=no' "$ROOT/scripts/kali-disposable.sh" \
+  || fail "LAN eth1 must ignore CPE DNS (npm sinkhole)"
+grep -q '99-kali-public-dns.conf' "$ROOT/scripts/kali-disposable.sh" \
+  || fail "guest must pin public DNS for npm/registry"
+grep -q '05-kali-eth1.network' "$ROOT/scripts/kali-disposable.sh" \
+  || fail "eth1 unit must sort before netplan (05-)"
+grep -q 'accept-ra: false' "$ROOT/scripts/kali-disposable.sh" \
+  || fail "eth1 must disable RA DNS injection"
+grep -q 'UseGateway=no' "$ROOT/scripts/kali-disposable.sh" \
+  || fail "eth1 must not install LAN default gateway (dual-default with NAT/wifi)"
+grep -q 'use-routes: false' "$ROOT/scripts/kali-disposable.sh" \
+  || fail "netplan eth1 must use-routes false"
+grep -q 'ip addr flush' "$ROOT/scripts/kali-lan-host-prep.sh" \
+  || fail "kali-lan-host-prep must flush RJ45 addrs so wifi keeps default"
+grep -q 'lan-check' "$ROOT/scripts/kali-disposable.sh" \
+  || fail "kali must expose lan-check"
+[[ -f "$ROOT/stow/system/etc/polkit-1/rules.d/50-kali-lan-host-prep.rules" ]] \
+  || fail "missing polkit rule for kali-lan-host-prep"
+grep -q 'kali-lan-check\|lan-check' "$ROOT/stow/zsh/.shell-aliases" \
+  || fail "kali-lan-check alias missing"
+grep -q 'attach-lan' "$ROOT/scripts/kali-disposable.sh" \
+  || fail "kali must expose attach-lan command"
+grep -q 'ensure_guest_lan_dhcp' "$ROOT/scripts/kali-disposable.sh" \
+  || fail "kali must seed eth1 DHCP on attach (not only cloud-init)"
+grep -q 'restore_lan_nm' "$ROOT/scripts/kali-disposable.sh" \
+  || fail "kali wipe must restore NetworkManager on LAN iface"
+grep -q 'resolve_lan_iface' "$ROOT/scripts/kali-disposable.sh" \
+  || fail "kali must resolve/validate LAN iface"
+grep -q 'managed yes' "$ROOT/scripts/kali-disposable.sh" \
+  || fail "kali must re-manage LAN iface after wipe"
+help_out="$(bash "$ROOT/scripts/kali-disposable.sh" help 2>&1 || true)"
+echo "$help_out" | grep -q 'KALI_LAN_IFACE' \
+  || fail "help must document KALI_LAN_IFACE"
+echo "$help_out" | grep -q 'nat+lan\|attach-lan\|--lan' \
+  || fail "help must document LAN mode"
+# Empty --lan-iface must fail closed (not treat /sys/class/net/ as valid).
+ec=0
+empty_out="$(bash "$ROOT/scripts/kali-disposable.sh" attach-lan --lan-iface "" 2>&1)" || ec=$?
+[[ "$ec" -ne 0 ]] || fail "empty --lan-iface must exit non-zero"
+echo "$empty_out" | grep -qiE 'non-empty|empty|LAN iface' \
+  || fail "empty --lan-iface must error clearly (got: $empty_out)"
+grep -q 'kali-up-lan\|kali-up-nat\|kali-lan' "$ROOT/gnome/keybindings.md" \
+  || fail "keybindings summary must list kali-up-lan"
 grep -q 'clamav-freshclam' "$ROOT/scripts/install-re-extras.sh" \
   || fail "install-re-extras must enable clamav-freshclam"
 grep -q 'charge_control_start_threshold' "$ROOT/scripts/install-re-extras.sh" \

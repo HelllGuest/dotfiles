@@ -308,6 +308,8 @@ and undefines the domain; base stays clean. Script:
 | `kali` | Pass-through to the script (`kali setup`, `kali status`, …) |
 | `kali-up` | `start --isolated` — new overlay, **no guest WAN** (samples) |
 | `kali-up-nat` | `start --nat` — guest DHCP + internet (apt / cloud-init) |
+| `kali-up-lan` | `start --lan` — NAT + physical ethernet (`enp0s31f6` macvtap → guest eth1) |
+| `kali-lan` | `attach-lan` — add physical LAN NIC to a running guest |
 | `kali-wipe` | Destroy domain + delete overlay |
 | `kali-stop` | Power off; keep overlay |
 | `kali-st` | Status |
@@ -317,10 +319,20 @@ bash scripts/kali-disposable.sh setup    # once: libvirt pkgs + download base + 
 # re-login / newgrp libvirt
 kali-up                                  # isolated (samples)
 kali-up-nat                              # NAT for apt/cloud-init
+kali-up-lan                              # NAT + physical RJ45 (needs cable on host NIC)
+# or: kali-lan                           # hot-attach LAN to already-running guest
 kali-st
 # NAT: script prints Guest IP; ssh kali@<ip>  (default password kali — change it)
 kali-wipe                                # back to clean base
 ```
+
+**Physical LAN:** `--lan` / `attach-lan` sets `nat+lan`: NAT eth0 plus host
+`KALI_LAN_IFACE` (default `enp0s31f6`, else first ethernet) as guest eth1 via
+macvtap bridge mode. Dual defaults break LAN: host RJ45 must have **no IP**
+(wifi keeps default — `scripts/kali-lan-host-prep.sh` / `pkexec kali-lan-host-prep`);
+guest eth1 gets DHCP on the LAN **without** gateway/DNS/routes (NAT eth0 is
+the only default). Verify with `kali lan-check`. Public DNS on eth0. Cable
+required for eth1; NAT works without one.
 
 Also listed in [gnome/keybindings.md](../gnome/keybindings.md#disposable-kali).
 

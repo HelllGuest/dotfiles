@@ -1,6 +1,7 @@
 # Changelog
 
 ## [Unreleased]
+- Kali disposable physical LAN: macvtap eth1; host RJ45 flushed (`kali-lan-host-prep` + polkit); guest eth1 DHCP without gateway/DNS; `lan-check`; dual-gateway/wifi clash fixed; aliases `kali-up-lan` / `kali-lan` / `kali-lan-check`.
 - Tailscale: `packages/pacman.txt` + `scripts/ufw-tailscale.sh` (allow `tailscale0` / `41641/udp` / route); wired in `install.sh` + `check.sh`; hardened-guide section. Docs: Brovi H155-381 CPE admin-only RE path (no public firmware).
 - Docs: Kali default **isolated** (was wrongly NAT); NAT/UFW/`virbr0-up` + cloud-init SSH notes; P15 post-reboot NVIDIA checks; libvirt firewall section in hardened guide; CONTRIBUTING packages/`virbr0-up`/cmdline flags.
 - Host log fixes: `evolution-data-server` + `wireless-regdb` in `pacman.txt` (CalendarServer libs, Wi-Fi `regulatory.db`); `virbr0-up.service` in `stow/system` waits for libvirt default net (fixes boot race `Cannot find device virbr0`); kali setup installs/enables the unit.

@@ -8,17 +8,23 @@
 # Usage:
 #   bash scripts/kali-disposable.sh setup          # packages + download base
 #   bash scripts/kali-disposable.sh start           # new overlay + boot
+#   bash scripts/kali-disposable.sh start --nat     # NAT only (virbr0)
+#   bash scripts/kali-disposable.sh start --lan     # NAT + physical ethernet
+#   bash scripts/kali-disposable.sh attach-lan      # add LAN NIC to running VM
+#   bash scripts/kali-disposable.sh lan-check       # verify guest LAN reachability
 #   bash scripts/kali-disposable.sh stop            # power off, keep overlay
 #   bash scripts/kali-disposable.sh wipe            # destroy VM + delete overlay
 #   bash scripts/kali-disposable.sh status
-#   bash scripts/kali-disposable.sh console         # serial/virsh console hint
 #
 # Env:
 #   KALI_VM_DIR     default: /var/lib/libvirt/images/kali-disposable
 #                   (system qemu cannot read $HOME; keep disks here)
 #   KALI_RAM_MB     default: 4096
 #   KALI_VCPUS      default: 4
-#   KALI_NET        nat | isolated | none   (default: isolated)
+#   KALI_NET        nat | isolated | none | nat+lan   (default: isolated)
+#                   nat+lan = NAT eth0 + physical NIC via macvtap (see KALI_LAN_IFACE)
+#                   (alias: lan → nat+lan)
+#   KALI_LAN_IFACE  physical ethernet for nat+lan (default: enp0s31f6, else first ether)
 
 set -euo pipefail
 
@@ -30,6 +36,9 @@ OVERLAY="$VM_DIR/kali-session.qcow2"
 RAM_MB="${KALI_RAM_MB:-4096}"
 VCPUS="${KALI_VCPUS:-4}"
 NET_MODE="${KALI_NET:-isolated}"
+LAN_IFACE="${KALI_LAN_IFACE:-enp0s31f6}"
+LAN_IFACE_SET=0
+[[ -n "${KALI_LAN_IFACE:-}" ]] && LAN_IFACE_SET=1
 
 ensure_vm_dir() {
   if [[ ! -d "$VM_DIR" ]]; then
@@ -218,8 +227,216 @@ EOF
       fi
       echo "--network network=kali-isolated"
       ;;
-    nat|*) echo "--network network=default" ;;
+    # Primary virtio NIC on libvirt NAT; physical LAN attached after define.
+    nat+lan|nat|*) echo "--network network=default" ;;
   esac
+}
+
+normalize_net_mode() {
+  case "$NET_MODE" in
+    lan) NET_MODE=nat+lan ;;
+  esac
+}
+
+# Resolve LAN_IFACE: reject empty; keep explicit choice; else default or first ether.
+resolve_lan_iface() {
+  if [[ -z "$LAN_IFACE" ]]; then
+    die "LAN iface empty — pass --lan-iface IFACE or set KALI_LAN_IFACE"
+  fi
+  if [[ -d "/sys/class/net/$LAN_IFACE" ]]; then
+    return 0
+  fi
+  if [[ "$LAN_IFACE_SET" == "1" ]]; then
+    die "missing host LAN iface $LAN_IFACE (set KALI_LAN_IFACE to a real NIC)"
+  fi
+  local path name picked=""
+  for path in /sys/class/net/*; do
+    name="${path##*/}"
+    case "$name" in
+      lo|virbr*|docker*|br-*|veth*|wlan*|wl*|wwan*|tailscale*|macvtap*|vnet*|tun*|tap*) continue ;;
+    esac
+    [[ -d "$path/wireless" ]] && continue
+    [[ -e "$path/type" && "$(cat "$path/type" 2>/dev/null || echo)" == "1" ]] || continue
+    picked="$name"
+    break
+  done
+  [[ -n "$picked" ]] || die "no physical LAN iface found — set KALI_LAN_IFACE=…"
+  echo "→ default $LAN_IFACE missing; using $picked"
+  LAN_IFACE="$picked"
+}
+
+restore_lan_nm() {
+  # attach_lan_iface may set managed no; wipe returns the NIC to NetworkManager.
+  command -v nmcli >/dev/null 2>&1 || return 0
+  [[ -n "$LAN_IFACE" && -d "/sys/class/net/$LAN_IFACE" ]] || return 0
+  nmcli device set "$LAN_IFACE" managed yes >/dev/null 2>&1 || true
+}
+
+lan_eth1_unit_body() {
+  # eth1 is LAN L2/L3 access only. WiFi/NAT (eth0) keeps the sole default gateway.
+  # Dual defaults (LAN CPE + NAT) break routing/DNS when the cable is plugged.
+  # Also ignore CPE DNS/RA (sinkholes e.g. registry.npmjs.org → 172.31.255.254).
+  # Filename 05- beats netplan's 10-netplan-eth1.network.
+  cat <<'EOF'
+[Match]
+Name=eth1
+[Network]
+DHCP=yes
+IPv6AcceptRA=no
+DNSDefaultRoute=no
+[DHCPv4]
+UseDNS=no
+UseDomains=no
+UseGateway=no
+UseRoutes=no
+[DHCPv6]
+UseDNS=no
+UseDomains=no
+UseGateway=no
+UseRoutes=no
+EOF
+}
+
+resolved_public_dns_body() {
+  cat <<'EOF'
+[Resolve]
+DNS=1.1.1.1 8.8.8.8
+FallbackDNS=1.0.0.1 9.9.9.9
+EOF
+}
+
+# Seed eth1 DHCP + public DNS on guests that predate cloud-init write_files.
+ensure_guest_lan_dhcp() {
+  local unit_path="/etc/systemd/network/05-kali-eth1.network"
+  local dns_path="/etc/systemd/resolved.conf.d/99-kali-public-dns.conf"
+  local gip="" body dns_body tmp_unit tmp_dns
+  local ssh_opts=(-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=5)
+  body="$(lan_eth1_unit_body)"
+  dns_body="$(resolved_public_dns_body)"
+
+  seed_guest_dns_via_ssh() {
+    local ssh=(ssh "${ssh_opts[@]}" "kali@$gip")
+    [[ "${1:-}" == "sshpass" ]] && ssh=(sshpass -p kali ssh "${ssh_opts[@]}" "kali@$gip")
+    "${ssh[@]}" "sudo mkdir -p /etc/systemd/resolved.conf.d /etc/systemd/network" 2>/dev/null || return 1
+    printf '%s\n' "$body" | "${ssh[@]}" "sudo tee $unit_path >/dev/null" 2>/dev/null || return 1
+    printf '%s\n' "$dns_body" | "${ssh[@]}" "sudo tee $dns_path >/dev/null" 2>/dev/null || return 1
+    "${ssh[@]}" "sudo rm -f /etc/systemd/network/20-lan-eth1.network /etc/systemd/network/21-lan-eth1-byname.network; sudo systemctl restart systemd-networkd systemd-resolved 2>/dev/null || true; resolvectl flush-caches 2>/dev/null || true" 2>/dev/null || return 1
+  }
+
+  if virsh_u domstate "$VM_NAME" 2>/dev/null | grep -qi running; then
+    gip="$(guest_ipv4)"
+    if [[ -z "$gip" ]]; then
+      echo "  note: no guest NAT IP yet — eth1 DHCP unit may need: kali-wipe && kali-up-lan"
+      return 0
+    fi
+    if command -v sshpass >/dev/null 2>&1 && seed_guest_dns_via_ssh sshpass; then
+      echo "✓ seeded guest LAN DNS ($unit_path + public resolvers) via ssh (kali@$gip)"
+      return 0
+    fi
+    if seed_guest_dns_via_ssh; then
+      echo "✓ seeded guest LAN DNS ($unit_path + public resolvers) via ssh (kali@$gip)"
+      return 0
+    fi
+    echo "  note: could not ssh to kali@$gip to seed eth1 DNS (install sshpass or use kali-wipe && kali-up-lan)"
+    return 0
+  fi
+
+  # Offline overlay: inject with virt-customize when available.
+  if [[ -f "$OVERLAY" ]] && command -v virt-customize >/dev/null 2>&1; then
+    tmp_unit="$(mktemp)"; tmp_dns="$(mktemp)"
+    printf '%s\n' "$body" >"$tmp_unit"
+    printf '%s\n' "$dns_body" >"$tmp_dns"
+    if virt-customize -q -a "$OVERLAY" \
+      --mkdir /etc/systemd/resolved.conf.d \
+      --upload "$tmp_unit:$unit_path" \
+      --upload "$tmp_dns:$dns_path" 2>/dev/null; then
+      echo "✓ seeded $unit_path + public DNS into overlay via virt-customize"
+    else
+      echo "  note: virt-customize seed failed — use kali-wipe && kali-up-lan for eth1 DNS"
+    fi
+    rm -f "$tmp_unit" "$tmp_dns"
+  fi
+}
+
+host_prep_lan_iface() {
+  resolve_lan_iface
+  local prep="$REPO_ROOT/scripts/kali-lan-host-prep.sh"
+  [[ -x "$prep" ]] || die "missing $prep"
+  # Prefer installed pkexec helper (wheel polkit); fall back to sudo.
+  if [[ -x /usr/local/bin/kali-lan-host-prep ]]; then
+    if pkexec /usr/local/bin/kali-lan-host-prep "$LAN_IFACE"; then
+      return 0
+    fi
+  fi
+  if sudo_do bash "$prep" "$LAN_IFACE"; then
+    return 0
+  fi
+  # Fail closed when parent still has IPv4 — macvtap cannot share a polluted NIC.
+  if ip -4 -o addr show dev "$LAN_IFACE" 2>/dev/null | grep -q .; then
+    cat >&2 <<EOF
+ERROR: host $LAN_IFACE still has IPv4 (often a broken /0 from NM "Wired connection").
+That blocks Kali macvtap from reaching LAN peers. Fix once on the host:
+
+  sudo bash $prep $LAN_IFACE
+  sudo install -m0755 -o root -g root $prep /usr/local/bin/kali-lan-host-prep
+  sudo install -m0644 -o root -g root \\
+    $REPO_ROOT/stow/system/etc/polkit-1/rules.d/50-kali-lan-host-prep.rules \\
+    /etc/polkit-1/rules.d/50-kali-lan-host-prep.rules
+
+Then: kali attach-lan && kali lan-check
+EOF
+    return 1
+  fi
+  # No IPv4 left — good enough even if sudo failed mid-way.
+  sudo_do ip link set "$LAN_IFACE" up >/dev/null 2>&1 \
+    || ip link set "$LAN_IFACE" up >/dev/null 2>&1 \
+    || true
+}
+
+# Attach host physical ethernet into the guest via macvtap (bridge mode).
+# Guest sees it as eth1 when NAT eth0 is also present. Needs cable/carrier
+# on LAN_IFACE for DHCP on the physical LAN. Host RJ45 has no IP (wifi gateway).
+attach_lan_iface() {
+  case "$NET_MODE" in
+    nat+lan) ;;
+    *) return 0 ;;
+  esac
+  virsh_u dominfo "$VM_NAME" >/dev/null 2>&1 \
+    || die "domain $VM_NAME not defined — start the guest first"
+  resolve_lan_iface
+  host_prep_lan_iface || die "host LAN prep failed — Kali cannot use the physical LAN"
+
+  if virsh_u dumpxml "$VM_NAME" 2>/dev/null | grep -q "dev='$LAN_IFACE'"; then
+    echo "✓ LAN macvtap already attached ($LAN_IFACE)"
+    ensure_guest_lan_dhcp
+    if ! ip -br link show "$LAN_IFACE" 2>/dev/null | grep -q 'LOWER_UP'; then
+      echo "  note: $LAN_IFACE has no carrier — plug ethernet cable for guest eth1 DHCP"
+    fi
+    return 0
+  fi
+
+  local xml
+  xml="$(mktemp)"
+  trap 'rm -f "$xml"' RETURN
+  cat >"$xml" <<EOF
+<interface type='direct'>
+  <source dev='$LAN_IFACE' mode='bridge'/>
+  <model type='virtio'/>
+</interface>
+EOF
+  if virsh_u domstate "$VM_NAME" 2>/dev/null | grep -qi running; then
+    virsh_u attach-device "$VM_NAME" "$xml" --live --persistent
+  else
+    virsh_u attach-device "$VM_NAME" "$xml" --config
+  fi
+  rm -f "$xml"
+  trap - RETURN
+  echo "✓ attached physical LAN $LAN_IFACE → guest (macvtap bridge mode)"
+  echo "  note: NetworkManager left unmanaged on $LAN_IFACE until wipe"
+  ensure_guest_lan_dhcp
+  if ! ip -br link show "$LAN_IFACE" 2>/dev/null | grep -q 'LOWER_UP'; then
+    echo "  note: $LAN_IFACE has no carrier — plug ethernet cable for guest eth1 DHCP"
+  fi
 }
 
 cmd_wipe() {
@@ -231,6 +448,13 @@ cmd_wipe() {
       || virsh_u undefine "$VM_NAME" 2>/dev/null || true
   fi
   rm -f "$OVERLAY"
+  # Best-effort: restore NM on known iface without dying if absent.
+  if [[ -n "$LAN_IFACE" && -d "/sys/class/net/$LAN_IFACE" ]]; then
+    restore_lan_nm
+  elif [[ -d /sys/class/net/enp0s31f6 ]]; then
+    LAN_IFACE=enp0s31f6
+    restore_lan_nm
+  fi
   echo "✓ wiped session overlay; base untouched: $BASE_IMG"
 }
 
@@ -295,20 +519,79 @@ write_files:
       PasswordAuthentication yes
       KbdInteractiveAuthentication yes
       PermitRootLogin no
+  - path: /etc/systemd/network/05-kali-eth1.network
+    permissions: "0644"
+    content: |
+      [Match]
+      Name=eth1
+      [Network]
+      DHCP=yes
+      IPv6AcceptRA=no
+      DNSDefaultRoute=no
+      [DHCPv4]
+      UseDNS=no
+      UseDomains=no
+      UseGateway=no
+      UseRoutes=no
+      [DHCPv6]
+      UseDNS=no
+      UseDomains=no
+      UseGateway=no
+      UseRoutes=no
+  - path: /etc/systemd/resolved.conf.d/99-kali-public-dns.conf
+    permissions: "0644"
+    content: |
+      [Resolve]
+      DNS=1.1.1.1 8.8.8.8
+      FallbackDNS=1.0.0.1 9.9.9.9
+  - path: /etc/netplan/99-kali-dns.yaml
+    permissions: "0600"
+    content: |
+      network:
+        version: 2
+        renderer: networkd
+        ethernets:
+          eth0:
+            dhcp4: true
+            nameservers:
+              addresses: [1.1.1.1, 8.8.8.8]
+          eth1:
+            dhcp4: true
+            accept-ra: false
+            dhcp4-overrides:
+              use-dns: false
+              use-domains: false
+              use-routes: false
 network:
   version: 2
   ethernets:
     id0:
+      match: {name: "eth0"}
+      dhcp4: true
+      nameservers:
+        addresses: [1.1.1.1, 8.8.8.8]
+    id1:
+      match: {name: "eth1"}
+      dhcp4: true
+      accept-ra: false
+      dhcp4-overrides:
+        use-dns: false
+        use-domains: false
+        use-routes: false
+    id2:
       match: {name: "en*"}
       dhcp4: true
-    id1:
-      match: {name: "eth*"}
-      dhcp4: true
+      nameservers:
+        addresses: [1.1.1.1, 8.8.8.8]
 packages:
   - openssh-server
 runcmd:
   - systemctl enable --now ssh || systemctl enable --now sshd || true
   - systemctl reload ssh 2>/dev/null || systemctl reload sshd 2>/dev/null || true
+  - netplan apply 2>/dev/null || true
+  - systemctl restart systemd-networkd 2>/dev/null || true
+  - systemctl restart systemd-resolved 2>/dev/null || true
+  - resolvectl flush-caches 2>/dev/null || true
 EOF
     # Fresh instance-id each overlay so cloud-init always re-runs.
     printf 'instance-id: kali-disposable-%s\nlocal-hostname: kali-disposable\n' \
@@ -335,6 +618,7 @@ EOF
 
   # Carrier + lease can lag a few seconds after virt-install returns.
   sudo_do ip link set virbr0 up >/dev/null 2>&1 || true
+  attach_lan_iface
   local gip=""
   for _ in 1 2 3 4 5 6; do
     gip="$(guest_ipv4)"
@@ -346,10 +630,16 @@ EOF
   echo "  GUI: virt-manager → $VM_NAME   or:  virsh -c $(uri) console $VM_NAME"
   echo "  Cloud login: kali / kali — change after first login."
   if [[ -n "$gip" ]]; then
-    echo "  Guest IP: $gip   (ssh kali@$gip)"
+    echo "  Guest IP (NAT): $gip   (ssh kali@$gip)"
   else
     echo "  Guest IP: (pending DHCP — virsh net-dhcp-leases default)"
   fi
+  case "$NET_MODE" in
+    nat+lan)
+      echo "  Physical LAN: $LAN_IFACE → guest eth1 (macvtap). Plug cable if no carrier."
+      echo "  NM: $LAN_IFACE unmanaged until wipe (macvtap)."
+      ;;
+  esac
   echo "  Disposable wipe:  $0 wipe"
 }
 
@@ -364,25 +654,89 @@ cmd_status() {
   echo "BASE=$( [[ -f $BASE_IMG ]] && echo present || echo missing ) $BASE_IMG"
   echo "OVERLAY=$( [[ -f $OVERLAY ]] && echo present || echo missing ) $OVERLAY"
   echo "NET=$NET_MODE RAM=${RAM_MB}M VCPUS=$VCPUS URI=$(uri 2>/dev/null || echo ?)"
+  echo "LAN_IFACE=$LAN_IFACE $(ip -br link show "$LAN_IFACE" 2>/dev/null || echo missing)"
   if command -v virsh >/dev/null; then
     virsh_u dominfo "$VM_NAME" 2>/dev/null || echo "domain: not defined"
+    if virsh_u dumpxml "$VM_NAME" 2>/dev/null | grep -q "dev='$LAN_IFACE'"; then
+      echo "LAN: macvtap attached ($LAN_IFACE → guest eth1)"
+    else
+      echo "LAN: not attached (kali attach-lan / start --lan)"
+    fi
   fi
   [[ -f "$BASE_IMG" ]] && qemu-img info "$BASE_IMG" 2>/dev/null | head -6
   [[ -f "$OVERLAY" ]] && qemu-img info "$OVERLAY" 2>/dev/null | head -8
 }
 
+cmd_lan_check() {
+  need virsh
+  resolve_lan_iface
+  local gip host_v4 guest_lan="" gw="" ok=1
+  echo "HOST_IFACE=$LAN_IFACE $(ip -br link show "$LAN_IFACE" 2>/dev/null || echo missing)"
+  if ip -4 -o addr show dev "$LAN_IFACE" 2>/dev/null | grep -q .; then
+    echo "FAIL: host $LAN_IFACE still has IPv4 (blocks macvtap):"
+    ip -4 addr show dev "$LAN_IFACE" | sed 's/^/  /'
+    echo "  fix: sudo bash $REPO_ROOT/scripts/kali-lan-host-prep.sh $LAN_IFACE"
+    ok=0
+  else
+    echo "PASS: host $LAN_IFACE has no IPv4 (good for macvtap)"
+  fi
+  if virsh_u dumpxml "$VM_NAME" 2>/dev/null | grep -q "dev='$LAN_IFACE'"; then
+    echo "PASS: macvtap attached to $LAN_IFACE"
+  else
+    echo "FAIL: macvtap not attached — kali attach-lan / kali-up-lan"
+    ok=0
+  fi
+  gip="$(guest_ipv4)"
+  if [[ -z "$gip" ]]; then
+    echo "FAIL: no guest NAT IP"
+    ok=0
+  else
+    echo "PASS: guest NAT $gip"
+    local ssh=(ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=5)
+    local run=(sshpass -p kali "${ssh[@]}" "kali@$gip")
+    command -v sshpass >/dev/null || run=("${ssh[@]}" -o BatchMode=yes "kali@$gip")
+    if out="$("${run[@]}" 'ip -4 -br addr show eth1; ip -4 route show default; ping -c1 -W2 $(ip -4 route show default | awk "/default/{print \$3; exit}") >/dev/null && echo GW_OK' 2>/dev/null)"; then
+      echo "$out" | sed 's/^/  /'
+      guest_lan="$(echo "$out" | awk '/^eth1/{print $3}' | head -1)"
+      echo "PASS: guest eth1 present (${guest_lan:-?})"
+      echo "$out" | grep -q GW_OK && echo "PASS: guest default gw reachable (NAT)" \
+        || { echo "FAIL: guest default gw ping"; ok=0; }
+      if "${run[@]}" 'ping -c1 -W2 192.168.8.1 >/dev/null' 2>/dev/null; then
+        echo "PASS: guest → LAN gateway 192.168.8.1 via eth1"
+      else
+        echo "FAIL: guest cannot ping 192.168.8.1 on eth1"
+        ok=0
+      fi
+    else
+      echo "FAIL: cannot ssh into guest as kali@$gip"
+      ok=0
+    fi
+  fi
+  [[ "$ok" -eq 1 ]] || die "lan-check failed"
+  echo "✓ Kali LAN access OK"
+}
+
 cmd_setup() {
   cmd_setup_host
+  # Install host LAN prep helper + polkit (needs sudo once).
+  if [[ -f "$REPO_ROOT/scripts/kali-lan-host-prep.sh" ]]; then
+    sudo_do install -m 0755 -o root -g root \
+      "$REPO_ROOT/scripts/kali-lan-host-prep.sh" /usr/local/bin/kali-lan-host-prep || true
+    sudo_do install -m 0644 -o root -g root \
+      "$REPO_ROOT/stow/system/etc/polkit-1/rules.d/50-kali-lan-host-prep.rules" \
+      /etc/polkit-1/rules.d/50-kali-lan-host-prep.rules || true
+  fi
   cmd_fetch_base
   cmd_status
   echo
   echo "Next: newgrp libvirt   # or re-login"
-  echo "      bash $REPO_ROOT/scripts/kali-disposable.sh start"
+  echo "      bash $REPO_ROOT/scripts/kali-disposable.sh start --lan"
+  echo "      bash $REPO_ROOT/scripts/kali-disposable.sh lan-check"
   echo "      bash $REPO_ROOT/scripts/kali-disposable.sh wipe   # after work"
 }
 
 usage() {
-  sed -n '2,20p' "$0" | sed 's/^# \{0,1\}//'
+  sed -n '2,26p' "$0" | sed 's/^# \{0,1\}//'
 }
 
 main() {
@@ -392,20 +746,30 @@ main() {
     case "$1" in
       --isolated) NET_MODE=isolated; shift ;;
       --nat) NET_MODE=nat; shift ;;
+      --lan|--nat-lan) NET_MODE=nat+lan; shift ;;
       --none) NET_MODE=none; shift ;;
       --keep) KEEP_OVERLAY=1; shift ;;
+      --lan-iface)
+        [[ -n "${2:-}" ]] || die "--lan-iface needs a non-empty interface name"
+        LAN_IFACE="$2"
+        LAN_IFACE_SET=1
+        shift 2
+        ;;
       *) break ;;
     esac
   done
+  normalize_net_mode
   case "$cmd" in
     setup) cmd_setup "$@" ;;
     start) cmd_start "$@" ;;
     stop) cmd_stop "$@" ;;
     wipe) cmd_wipe "$@" ;;
     status) cmd_status "$@" ;;
+    attach-lan) NET_MODE=nat+lan; attach_lan_iface ;;
+    lan-check) cmd_lan_check "$@" ;;
     fetch) cmd_fetch_base "$@" ;;
     ""|-h|--help|help) usage ;;
-    *) die "unknown command: $cmd (setup|start|stop|wipe|status)" ;;
+    *) die "unknown command: $cmd (setup|start|stop|wipe|status|attach-lan|lan-check)" ;;
   esac
 }
 

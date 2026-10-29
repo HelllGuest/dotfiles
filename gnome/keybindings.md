@@ -13,7 +13,7 @@ Defined in `stow/zsh/.shell-aliases` (shared by Zsh and Bash):
 | `v` | `nvim` |
 | `as` | `flatpak run com.google.AndroidStudio` |
 | `ff` | `fastfetch` |
-| `kali` / `kali-up` / `kali-wipe` / `kali-stop` / `kali-st` | Disposable Kali (see below) |
+| `kali` / `kali-up` / `kali-up-nat` / `kali-up-lan` / `kali-lan` / `kali-wipe` / `kali-stop` / `kali-st` | Disposable Kali (see below) |
 
 Modern CLI aliases (when installed): `eza`, `bat`, `rg`, `fd`, etc.
 
@@ -25,9 +25,12 @@ Defined in `stow/zsh/.shell-aliases` when
 
 | Alias | Action |
 |-------|--------|
-| `kali <cmd>` | `scripts/kali-disposable.sh` (`setup` / `start` / `stop` / `wipe` / `status` / `fetch`) |
+| `kali <cmd>` | `scripts/kali-disposable.sh` (`setup` / `start` / `stop` / `wipe` / `status` / `attach-lan` / `fetch`) |
 | `kali-up` | New ephemeral overlay + boot **isolated** (no guest WAN) |
 | `kali-up-nat` | Same with NAT (updates / cloud-init); prints Guest IP for SSH |
+| `kali-up-lan` | NAT + physical ethernet (macvtap → guest eth1) |
+| `kali-lan` | Hot-attach physical LAN to running guest |
+| `kali-lan-check` | Verify host RJ45 clean + guest eth1 → LAN gw |
 | `kali-wipe` | Destroy domain + delete overlay; base untouched |
 | `kali-stop` | Power off; keep overlay |
 | `kali-st` | Status |
@@ -36,6 +39,7 @@ Defined in `stow/zsh/.shell-aliases` when
 kali setup          # once: packages + download base + UFW/virbr0
 kali-up             # isolated session (samples)
 kali-up-nat         # NAT when guest needs internet
+kali-up-lan         # NAT + RJ45 (plug cable into host enp0s31f6)
 # ssh kali@<Guest IP>   # default password kali — change it
 kali-wipe           # reset to clean base
 ```
