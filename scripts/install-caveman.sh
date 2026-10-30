@@ -58,10 +58,9 @@ if command -v claude >/dev/null 2>&1; then
 fi
 
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-if [[ "${SKIP_SKILL_SYNC:-0}" != "1" && -f "$REPO_ROOT/scripts/sync-agent-skills.sh" ]]; then
-  say "mirror skills into agents/claude/cursor hubs"
-  bash "$REPO_ROOT/scripts/sync-agent-skills.sh" || true
-fi
+# shellcheck source=lib/agent-skills.sh
+source "$REPO_ROOT/scripts/lib/agent-skills.sh"
+agent_skills_maybe_sync "$REPO_ROOT"
 
 say "install-caveman done"
 echo "  activate in chat: /caveman   (or /ultracave /megacave)"

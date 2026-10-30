@@ -121,28 +121,37 @@ fi
 
 echo "==> VS Code family telemetry (Cursor / Antigravity / Kiro / VSCodium)"
 TELEMETRY_KIT="$TARGET/vscode-family-telemetry.json"
+# Shared merge (also used by scripts/lib/telemetry.sh via this kit file).
+# shellcheck source=lib/vscode-settings-merge.sh
+source "$TARGET/lib/vscode-settings-merge.sh"
 merge_vscode_settings() {
   local settings="$1"
   local label="$2"
-  mkdir -p "$(dirname "$settings")"
-  if [[ ! -f "$settings" ]]; then
-    cp "$TELEMETRY_KIT" "$settings"
-    echo "  wrote $label"
-    return
+  local user_dir parent_ide
+  user_dir="$(dirname "$settings")"
+  parent_ide="$(dirname "$user_dir")"
+  # Create User/ only if the IDE config root already exists (no orphan trees).
+  if [[ ! -d "$user_dir" && -d "$parent_ide" ]]; then
+    mkdir -p "$user_dir"
   fi
   if ! command -v jq >/dev/null 2>&1; then
     echo "  ! jq missing; skip merge for $label"
     return
   fi
-  TMP_VS="$(mktemp)"
-  jq -s '.[0] * .[1]' "$settings" "$TELEMETRY_KIT" > "$TMP_VS"
-  mv "$TMP_VS" "$settings"
-  echo "  merged telemetry into $label"
+  if vscode_merge_settings_telemetry "$settings" "$TELEMETRY_KIT"; then
+    if [[ -f "$settings" ]]; then
+      echo "  merged telemetry into $label"
+    fi
+  fi
 }
 
-# Discover common settings.json locations (create/merge only real User dirs)
+# Discover common settings.json locations (IDE root or User/ must exist)
 while IFS= read -r spath; do
   [[ -n "$spath" ]] || continue
+  _user="$(dirname "$spath")"
+  _ide="$(dirname "$_user")"
+  [[ -d "$_user" || -d "$_ide" ]] || continue
+  unset _user _ide
   merge_vscode_settings "$spath" "$spath"
 done <<EOF
 ${XDG_CONFIG_HOME:-$HOME/.config}/Cursor/User/settings.json
@@ -153,11 +162,16 @@ ${XDG_CONFIG_HOME:-$HOME/.config}/Code/User/settings.json
 ${XDG_CONFIG_HOME:-$HOME/.config}/VSCodium/User/settings.json
 EOF
 
-# Optional: stow-managed VS Code settings if present in a dotfiles checkout
-STOW_CODE="$HOME/dotfiles/stow/vscode/.config/Code/User/settings.json"
-if [[ -f "$STOW_CODE" ]] || [[ -d "$(dirname "$STOW_CODE")" ]]; then
-  merge_vscode_settings "$STOW_CODE" "dotfiles stow vscode settings"
-fi
+# Optional: stow-managed VS Code / VSCodium settings if present in a checkout
+for STOW_SETTINGS in \
+  "$HOME/dotfiles/stow/vscode/.config/Code/User/settings.json" \
+  "$HOME/dotfiles/stow/vscode/.config/VSCodium/User/settings.json"
+do
+  if [[ -f "$STOW_SETTINGS" ]]; then
+    merge_vscode_settings "$STOW_SETTINGS" "dotfiles stow $(basename "$(dirname "$(dirname "$(dirname "$STOW_SETTINGS")")")") settings"
+  fi
+done
+unset STOW_SETTINGS
 
 echo "==> Kiro CLI telemetry"
 if command -v kiro-cli >/dev/null 2>&1; then

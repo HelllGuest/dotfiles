@@ -119,7 +119,7 @@ bash scripts/p15-dotfiles-preflight.sh   # skip on X1
 #   bash scripts/install-rea.sh             # optional: INSTALL_HOPPER=1
 #   bash scripts/install-re-skills.sh       # leanrea + RE playbooks + Android + Ghidra loop
 #   bash scripts/install-re-extras.sh       # optional host pkgs (jadx, rizin, …)
-#   bash scripts/install-ecosystem-skills.sh  # cloudflare/emil/vercel/…
+#   bash scripts/install-ecosystem-skills.sh  # packages/agent-skills.txt (Meson/QEMU, Arch triage, web quality, …; owner/repo:skill OK)
 #   bash scripts/sync-agent-skills.sh
 #   ONLY_CAVEMAN_OPENCODE=1 bash scripts/install-coding-agents.sh
 exec zsh

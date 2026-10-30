@@ -19,5 +19,8 @@ GeReV/ghidra-iterative-re
 # Firmware / IoT: extract → static → Ghidra → emulate → report (OrbitCurve)
 OrbitCurve/firmware-reverse-engineering
 
-# Selective skill from mega pack (OWASP FSTM-style firmware pentest)
-zhaoxuya520/reverse-skill:firmware-pentest
+# Selective skills from mega pack (firmware / malware / mobile / Windows / forensics)
+zhaoxuya520/reverse-skill:firmware-pentest,malware-analysis,mobile-reverse,windows-ad,digital-forensics,macos-reverse,protocol-reverse
+
+# Memory forensics (Windows malware lab)
+wshobson/agents:memory-forensics

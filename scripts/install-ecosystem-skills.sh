@@ -2,6 +2,7 @@
 # install-ecosystem-skills.sh — pinned third-party Agent Skills packs (fresh Arch)
 #
 # Reads packages/agent-skills.txt and installs each pack globally via skills CLI.
+# Manifest lines: owner/repo  or  owner/repo:skill1,skill2  (else --skill '*').
 # Targets Cursor, Claude Code, OpenCode, and Kimi Code CLI when present.
 # Caveman / Compose / Material 3 stay in their dedicated installers.
 #
@@ -20,52 +21,14 @@ AGENT_SKILLS_FILE="${AGENT_SKILLS_FILE:-$REPO_ROOT/packages/agent-skills.txt}"
 export DISABLE_TELEMETRY="${DISABLE_TELEMETRY:-1}"
 export PATH="${HOME}/.npm-global/bin:${HOME}/.local/bin:${PATH}"
 
-die() { echo "error: $*" >&2; exit 1; }
-say() { printf '>> %s\n' "$*"; }
-warn() { echo "warning: $*" >&2; }
+# shellcheck source=lib/agent-skills.sh
+source "$REPO_ROOT/scripts/lib/agent-skills.sh"
 
-command -v npx >/dev/null 2>&1 || die "npx required (fnm/node first)"
-[[ -f "$AGENT_SKILLS_FILE" ]] || die "missing manifest: $AGENT_SKILLS_FILE"
+command -v npx >/dev/null 2>&1 || agent_skills_die "npx required (fnm/node first)"
 
-# Ensure detect paths exist so skills CLI can link agents
-mkdir -p \
-  "${HOME}/.cursor/skills" \
-  "${HOME}/.claude/skills" \
-  "${XDG_CONFIG_HOME:-$HOME/.config}/opencode/skills" \
-  "${XDG_CONFIG_HOME:-$HOME/.config}/agents/skills" \
-  "${KIMI_CODE_HOME:-$HOME/.kimi-code}/skills" \
-  "${HOME}/.kimi" \
-  "${HOME}/.agents/skills"
-_kimi_skills="${KIMI_CODE_HOME:-$HOME/.kimi-code}/skills"
-_link="${HOME}/.kimi/skills"
-if [[ -d "$_link" && ! -L "$_link" ]]; then
-  warn "replace real dir with symlink: $_link"
-  rm -rf "$_link"
-fi
-ln -sfnT "$_kimi_skills" "$_link"
-unset _kimi_skills _link
+agent_skills_prepare_dirs
+agent_skills_install_manifest "$AGENT_SKILLS_FILE"
+agent_skills_maybe_sync "$REPO_ROOT"
 
-AGENTS=(-a cursor -a claude-code -a opencode -a kimi-code-cli)
-
-mapfile -t PACKS < <(
-  sed -e 's/#.*//' -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//' "$AGENT_SKILLS_FILE" \
-    | awk 'NF'
-)
-[[ ${#PACKS[@]} -gt 0 ]] || die "no packs in $AGENT_SKILLS_FILE"
-
-failed=0
-for pack in "${PACKS[@]}"; do
-  say "skills add ${pack} (global)"
-  if ! npx --yes skills add "$pack" --skill '*' -g -y "${AGENTS[@]}" 2>&1; then
-    warn "failed: $pack"
-    failed=$((failed + 1))
-  fi
-done
-
-if [[ "${SKIP_SKILL_SYNC:-0}" != "1" && -f "$REPO_ROOT/scripts/sync-agent-skills.sh" ]]; then
-  say "mirror hub → claude/cursor/opencode/kimi"
-  bash "$REPO_ROOT/scripts/sync-agent-skills.sh" || true
-fi
-
-say "install-ecosystem-skills done ($(( ${#PACKS[@]} - failed ))/${#PACKS[@]} packs ok)"
-[[ "$failed" -eq 0 ]] || exit 1
+agent_skills_say "install-ecosystem-skills done ($((AGENT_SKILLS_PACK_COUNT - AGENT_SKILLS_FAILED))/${AGENT_SKILLS_PACK_COUNT} packs ok)"
+[[ "$AGENT_SKILLS_FAILED" -eq 0 ]] || exit 1

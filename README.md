@@ -281,7 +281,7 @@ cleanup-input-overrides.sh
 → install-caveman.sh (if npm) → install-android-ui-skills.sh (if npx)
 → install-ghidra-cli.sh (if ghidra) → install-rea.sh (if npm)
 → install-re-skills.sh (leanrea / RE playbooks / Android RE / Ghidra loop)
-→ install-ecosystem-skills.sh (packages/agent-skills.txt; if npx)
+→ install-ecosystem-skills.sh (packages/agent-skills.txt; owner/repo or owner/repo:skill; if npx)
 → sync-agent-skills.sh → caveman OpenCode plugin refresh
 → install-photogimp.sh
 → install-dash2dock.sh → install-extensions.sh
@@ -390,7 +390,7 @@ We take a "quiet by default" approach:
 | Optional st (suckless) | `bash scripts/build-st.sh` |
 | Agent skills sync | `bash scripts/sync-agent-skills.sh` (hub → Claude/Cursor/OpenCode/Kimi) |
 | OpenCode + Kimi | `bash scripts/install-coding-agents.sh` (pinned npm CLIs + MCP) |
-| Ecosystem skills | `bash scripts/install-ecosystem-skills.sh` (`packages/agent-skills.txt`) |
+| Ecosystem skills | `bash scripts/install-ecosystem-skills.sh` (`packages/agent-skills.txt`; optional `owner/repo:skill1,skill2`) |
 | Caveman (`/caveman`) | `bash scripts/install-caveman.sh` |
 | Android UI skills | `bash scripts/install-android-ui-skills.sh` (Compose + Material 3) |
 | REA (MCP + jadx) | `bash scripts/install-rea.sh` (Hopper: `INSTALL_HOPPER=1`) |

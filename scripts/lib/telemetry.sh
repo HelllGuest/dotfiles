@@ -1,48 +1,45 @@
 # shellcheck shell=bash
 # lib/telemetry.sh — shared paths + helpers for privacy / telemetry opt-out
-# Sourced by privacy-hardener.sh (REPO_ROOT must be set by caller).
+# Sourced by privacy-hardener.sh (REPO_ROOT preferred; else inferred from this file).
+
+# Prefer caller REPO_ROOT; if unset or missing kit lib, infer from this file
+# (scripts/lib → repo root). Wrong REPO_ROOT must not break privacy-hardener.
+_telemetry_infer_root() {
+  cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd
+}
+if [[ -z "${REPO_ROOT:-}" ]]; then
+  REPO_ROOT="$(_telemetry_infer_root)"
+fi
 
 TELEMETRY_ENV_D="${XDG_CONFIG_HOME:-$HOME/.config}/environment.d/90-telemetry-optout.conf"
-TELEMETRY_KIT_VS="${REPO_ROOT:-}/ai-rules/vscode-family-telemetry.json"
+TELEMETRY_KIT_VS="${REPO_ROOT}/ai-rules/vscode-family-telemetry.json"
 TELEMETRY_FLUTTER_CFG="${HOME}/.dart-tool/dart-flutter-telemetry.config"
 
-# Shared VS Code-family telemetry keys (safe on Code / VSCodium / Antigravity / Kiro).
-TELEMETRY_VSCODE_KEYS=(
-  telemetry.telemetryLevel
-  telemetry.enableTelemetry
-  telemetry.enableCrashReporter
-  telemetry.feedback.enabled
-  crashReporting.enabled
-  workbench.enableExperiments
-  workbench.settings.enableNaturalLanguageSearch
-)
+# Single implementation: ai-rules/lib/vscode-settings-merge.sh (kit + privacy-hardener).
+_TELEMETRY_MERGE_LIB="${REPO_ROOT}/ai-rules/lib/vscode-settings-merge.sh"
+if [[ ! -f "$_TELEMETRY_MERGE_LIB" ]]; then
+  REPO_ROOT="$(_telemetry_infer_root)"
+  TELEMETRY_KIT_VS="${REPO_ROOT}/ai-rules/vscode-family-telemetry.json"
+  _TELEMETRY_MERGE_LIB="${REPO_ROOT}/ai-rules/lib/vscode-settings-merge.sh"
+fi
+unset -f _telemetry_infer_root
+# shellcheck source=../../ai-rules/lib/vscode-settings-merge.sh
+[[ -f "$_TELEMETRY_MERGE_LIB" ]] || {
+  echo "error: missing $_TELEMETRY_MERGE_LIB (dotfiles ai-rules/lib required)" >&2
+  return 1 2>/dev/null || exit 1
+}
+# shellcheck disable=SC1090
+source "$_TELEMETRY_MERGE_LIB"
+unset _TELEMETRY_MERGE_LIB
 
-# Cursor-only (do not write into non-Cursor settings trees).
-TELEMETRY_CURSOR_KEYS=(
-  cursor.general.enableShadowWorkspace
-  cursor.general.allowAnonymousUsage
-  cursor.general.privacyMode
-)
+# Stable aliases for callers / tests.
+TELEMETRY_VSCODE_KEYS=("${VSCODE_TELEMETRY_FAMILY_KEYS[@]}")
+TELEMETRY_CURSOR_KEYS=("${VSCODE_TELEMETRY_CURSOR_KEYS[@]}")
+telemetry_is_cursor_settings_path() { vscode_is_cursor_settings_path "$@"; }
+telemetry_keys_for_settings_path() { vscode_telemetry_keys_for_path "$@"; }
 
 telemetry_env_d_ok() {
   [[ -f "$TELEMETRY_ENV_D" ]]
-}
-
-# True only for Cursor app trees (not paths that merely contain "cursor").
-telemetry_is_cursor_settings_path() {
-  case "$1" in
-    */Cursor/*|*/.cursor/*) return 0 ;;
-    *) return 1 ;;
-  esac
-}
-
-telemetry_keys_for_settings_path() {
-  local settings="$1"
-  local keys=("${TELEMETRY_VSCODE_KEYS[@]}")
-  if telemetry_is_cursor_settings_path "$settings"; then
-    keys+=("${TELEMETRY_CURSOR_KEYS[@]}")
-  fi
-  printf '%s\n' "${keys[@]}"
 }
 
 # Merge only telemetry-related keys into settings.json (jq required).
@@ -50,33 +47,7 @@ telemetry_keys_for_settings_path() {
 telemetry_merge_vscode_settings() {
   local settings="$1"
   local kit="${2:-$TELEMETRY_KIT_VS}"
-  [[ -f "$kit" ]] || return 1
-  # Never create orphan IDE trees: parent User/ must already exist
-  [[ -d "$(dirname "$settings")" ]] || return 1
-  command -v jq >/dev/null 2>&1 || return 1
-  local tmp keys_json strip_json
-  tmp="$(mktemp)"
-  keys_json="$(telemetry_keys_for_settings_path "$settings" | jq -R . | jq -s .)"
-  strip_json='[]'
-  if ! telemetry_is_cursor_settings_path "$settings"; then
-    strip_json="$(printf '%s\n' "${TELEMETRY_CURSOR_KEYS[@]}" | jq -R . | jq -s .)"
-  fi
-  if [[ ! -f "$settings" ]]; then
-    jq --argjson keys "$keys_json" '
-      . as $kit
-      | reduce $keys[] as $k ({}; .[$k] = $kit[$k])
-      | with_entries(select(.value != null))
-    ' "$kit" > "$tmp"
-  else
-    jq --argjson keys "$keys_json" --argjson strip "$strip_json" -s '
-      .[0] as $user | .[1] as $kit
-      | ($user * (
-          reduce $keys[] as $k ({}; if $kit[$k] != null then .[$k] = $kit[$k] else . end)
-        ))
-      | reduce $strip[] as $k (.; del(.[$k]))
-    ' "$settings" "$kit" > "$tmp"
-  fi
-  mv "$tmp" "$settings"
+  vscode_merge_settings_telemetry "$settings" "$kit"
 }
 
 telemetry_vscode_targets() {

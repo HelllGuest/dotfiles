@@ -67,8 +67,12 @@ grep -q 'PasswordAuthentication yes' "$ROOT/scripts/kali-disposable.sh" \
   || fail "cloud-init must force ssh password auth"
 grep -q 'owner/repo:skill1,skill2' "$ROOT/scripts/install-re-skills.sh" \
   || fail "install-re-skills must document selective skill filter"
+grep -q 'lib/agent-skills.sh' "$ROOT/scripts/install-re-skills.sh" \
+  || fail "install-re-skills must source lib/agent-skills.sh"
 grep -q 'firmware-pentest' "$ROOT/scripts/check.sh" \
   || fail "check.sh must probe firmware-pentest"
+grep -q 'memory-forensics' "$ROOT/scripts/check.sh" \
+  || fail "check.sh must probe memory-forensics"
 grep -q 'firmware-security-reports' "$ROOT/scripts/check.sh" \
   || fail "check.sh must probe firmware-security-reports"
 grep -q 'install-re-skills.sh' "$ROOT/install.sh" \

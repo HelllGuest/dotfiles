@@ -1,5 +1,6 @@
 # Global Agent Skills packs for `scripts/install-ecosystem-skills.sh`
 # One GitHub owner/repo per line (optional @ref). Lines starting with # ignored.
+# Optional skill filter: owner/repo:skill1,skill2  (else installs --skill '*')
 # Caveman / android-compose / material-3 / ghidra-cli installed by dedicated
 # scripts — not listed here. Safe to re-run; skills CLI updates in place.
 
@@ -11,3 +12,22 @@ anthropics/skills
 mattpocock/skills
 vercel-labs/agent-skills
 vercel-labs/skills
+
+# Browser automation (web / nexstore / Blog smoke)
+vercel-labs/agent-browser
+
+# Singularity DE + firmware/iOS QEMU (Meson/Ninja + QEMU/KVM + ELF/GDB)
+mohitmishra786/low-level-dev-skills:meson,ninja,qemu-kvm,qemu-for-kernel-development,qemu-embedded-simulation,elf-inspection,gdb
+
+# Hardened Arch host + daily git / debug / review habits
+addyosmani/agent-skills:security-and-hardening,git-workflow-and-versioning,debugging-and-error-recovery,performance-optimization,code-review-and-quality
+github/awesome-copilot:arch-linux-triage
+
+# Web storefronts (nexstore / Blog / cart) quality + SEO beyond marketing pack
+addyosmani/web-quality-skills:seo,performance,accessibility,core-web-vitals,web-quality-audit
+
+# Workflow discipline (debug → verify → review)
+obra/superpowers:systematic-debugging,verification-before-completion,requesting-code-review,brainstorming,writing-plans
+
+# PDF tooling + security docs + Playwright (python PDF / web)
+openai/skills:pdf,security-best-practices,playwright

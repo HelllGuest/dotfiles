@@ -40,8 +40,66 @@ grep -q 'KIMI_NPM_SPEC:-@moonshot-ai/kimi-code@2.3.0' \
   "$ROOT/scripts/install-coding-agents.sh" || fail "kimi npm pin missing"
 grep -q 'ONLY_CAVEMAN_OPENCODE' "$ROOT/scripts/install-coding-agents.sh" \
   || fail "coding-agents opencode-plugin mode missing"
-grep -q 'kimi-code-cli' "$ROOT/scripts/install-ecosystem-skills.sh" \
-  || fail "ecosystem skills must target kimi-code-cli"
+grep -q 'owner/repo:skill1,skill2' "$ROOT/scripts/install-ecosystem-skills.sh" \
+  || fail "install-ecosystem-skills must document selective skill filter"
+grep -q 'mohitmishra786/low-level-dev-skills' "$ROOT/packages/agent-skills.txt" \
+  || fail "agent-skills must include low-level (Meson/QEMU) pack"
+grep -q 'vercel-labs/agent-browser' "$ROOT/packages/agent-skills.txt" \
+  || fail "agent-skills must include agent-browser"
+grep -q 'wshobson/agents:memory-forensics' "$ROOT/packages/agent-skills-re.txt" \
+  || fail "agent-skills-re must include memory-forensics"
+# Selective filter parse (same as install-ecosystem / install-re)
+_parse_entry() {
+  local entry=$1 pack skills_spec
+  pack="${entry%%:*}"
+  skills_spec=""
+  [[ "$entry" == *:* ]] && skills_spec="${entry#*:}"
+  printf '%s\t%s\n' "$pack" "$skills_spec"
+}
+[[ "$(_parse_entry 'owner/repo')" == $'owner/repo\t' ]] \
+  || fail "ecosystem parse: bare owner/repo"
+[[ "$(_parse_entry 'owner/repo:a,b')" == $'owner/repo\ta,b' ]] \
+  || fail "ecosystem parse: owner/repo:skill1,skill2"
+[[ "$(_parse_entry 'owner/repo@v1:a')" == $'owner/repo@v1\ta' ]] \
+  || fail "ecosystem parse: owner/repo@ref:skill"
+unset -f _parse_entry
+grep -q 'malware-analysis' "$ROOT/scripts/check.sh" \
+  || fail "check.sh must probe malware-analysis"
+grep -q 'memory-forensics' "$ROOT/scripts/check.sh" \
+  || fail "check.sh must probe memory-forensics"
+grep -q 'vscode-settings-merge.sh' "$ROOT/ai-rules/install.sh" \
+  || fail "ai-rules/install.sh must source shared vscode-settings-merge.sh"
+grep -q 'vscode_is_cursor_settings_path' "$ROOT/ai-rules/lib/vscode-settings-merge.sh" \
+  || fail "vscode-settings-merge must gate Cursor-only keys"
+[[ -f "$ROOT/scripts/lib/agent-skills.sh" ]] \
+  || fail "missing scripts/lib/agent-skills.sh (must be committed)"
+[[ -f "$ROOT/ai-rules/lib/vscode-settings-merge.sh" ]] \
+  || fail "missing ai-rules/lib/vscode-settings-merge.sh (must be committed)"
+grep -q 'lib/agent-skills.sh' "$ROOT/scripts/install-ecosystem-skills.sh" \
+  || fail "ecosystem installer must source lib/agent-skills.sh"
+grep -q 'lib/agent-skills.sh' "$ROOT/scripts/install-re-skills.sh" \
+  || fail "RE skills installer must source lib/agent-skills.sh"
+# Wrong REPO_ROOT must still load merge lib via BASH_SOURCE fallback
+_bad_root="$(
+  REPO_ROOT=/tmp bash -c "
+    source '$ROOT/scripts/lib/telemetry.sh'
+    echo \"\$REPO_ROOT\"
+    type telemetry_merge_vscode_settings >/dev/null
+  "
+)" || fail "telemetry.sh must recover from wrong REPO_ROOT"
+[[ "$_bad_root" == "$ROOT" ]] \
+  || fail "telemetry fallback REPO_ROOT want $ROOT got $_bad_root"
+unset _bad_root
+# Shared parse helper (source lib; avoid nameref-self names)
+# shellcheck source=/dev/null
+source "$ROOT/scripts/lib/agent-skills.sh"
+parsed_pack=""; parsed_args=()
+agent_skills_parse_entry 'owner/repo:a,b' parsed_pack parsed_args
+[[ "$parsed_pack" == "owner/repo" && "${parsed_args[*]}" == "--skill a --skill b" ]] \
+  || fail "agent_skills_parse_entry failed for owner/repo:a,b"
+unset parsed_pack parsed_args
+grep -q 'kimi-code-cli' "$ROOT/scripts/lib/agent-skills.sh" \
+  || fail "agent-skills lib must target kimi-code-cli"
 
 grep -q '9a9f6c4f7afff72a4d38304add19b2eb740693e5' \
   "$ROOT/scripts/install-android-ui-skills.sh" || fail "compose commit pin missing"

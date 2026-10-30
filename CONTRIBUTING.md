@@ -113,7 +113,7 @@ Thank you for helping improve this setup. Follow these guidelines to keep the re
   keep it out of `validate-configs.sh`.
 - Use `$HOME`-relative paths or repo-root detection — avoid hardcoding usernames.
 - Prefer `set -e` for install scripts; use guarded fallbacks where sudo may fail.
-- Shared helpers live in `scripts/lib/` (`dmi.sh`, `browsers.sh`, `telemetry.sh`, `input.sh`, `skel.sh`).
+- Shared helpers live in `scripts/lib/` (`dmi.sh`, `browsers.sh`, `telemetry.sh`, `agent-skills.sh`, `input.sh`, `skel.sh`). VS Code settings telemetry merge lives once in `ai-rules/lib/vscode-settings-merge.sh` (sourced by `telemetry.sh` + `ai-rules/install.sh`).
   Prefer sourcing those over copying snippets.
 
 ### Script map (keep flat; group by role)

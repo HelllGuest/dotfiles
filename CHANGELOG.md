@@ -1,6 +1,8 @@
 # Changelog
 
 ## [Unreleased]
+- Dedup scripts: `scripts/lib/agent-skills.sh` shared by ecosystem + RE skill installers; `ai-rules/lib/vscode-settings-merge.sh` single VS Code telemetry merge (telemetry.sh + ai-rules/install.sh). Telemetry falls back to inferred repo root if `REPO_ROOT` is wrong; ai-rules creates `User/` only when the IDE config root already exists.
+- Agent skills (usage-aligned): ecosystem installer supports `owner/repo:skill` filters; packs for Meson/QEMU, Arch triage, hardening/git, web quality, agent-browser, superpowers workflows, OpenAI pdf/playwright; RE adds malware/mobile/Windows/forensics + memory-forensics. `check.sh` probes new skills. `ai-rules/install.sh` no longer merges `cursor.general.*` into Code/VSCodium (strips leftovers; was polluting stow + live settings via `sync-agent-skills`).
 - Kali disposable physical LAN: macvtap eth1; host RJ45 flushed (`kali-lan-host-prep` + polkit); guest eth1 DHCP without gateway/DNS; `lan-check`; dual-gateway/wifi clash fixed; aliases `kali-up-lan` / `kali-lan` / `kali-lan-check`.
 - Tailscale: `packages/pacman.txt` + `scripts/ufw-tailscale.sh` (allow `tailscale0` / `41641/udp` / route); wired in `install.sh` + `check.sh`; hardened-guide section. Docs: Brovi H155-381 CPE admin-only RE path (no public firmware).
 - Docs: Kali default **isolated** (was wrongly NAT); NAT/UFW/`virbr0-up` + cloud-init SSH notes; P15 post-reboot NVIDIA checks; libvirt firewall section in hardened guide; CONTRIBUTING packages/`virbr0-up`/cmdline flags.
