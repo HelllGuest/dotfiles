@@ -282,17 +282,58 @@ mkdir -p /etc/kernel
 # "Windows and Linux" pairs with mem_sleep_default=s2idle.
 echo "rd.luks.name=${LUKS_UUID}=cryptroot root=/dev/mapper/cryptroot rootflags=subvol=@ rw quiet loglevel=3 mem_sleep_default=s2idle apparmor=1 security=apparmor amd_iommu=on amd_pstate=active" > /etc/kernel/cmdline
 
-# Charge window 70–80 — keep in sync with scripts/lib/thinkpad-charge-thresholds.conf
-mkdir -p /etc/tmpfiles.d
+# Charge window 70–80. tmpfiles can race before thinkpad_acpi exposes BAT*;
+# oneshot After=multi-user.target waits/retries. No-op on VM without BAT.
+# Keep w-lines in sync with scripts/lib/thinkpad-charge-thresholds.conf
+mkdir -p /etc/tmpfiles.d /usr/local/lib/t14s
 cat > /etc/tmpfiles.d/thinkpad-charge-thresholds.conf <<'EOF'
 # ThinkPad charge thresholds 70–80 (PPD host; no TLP).
-# Canonical BAT0 template for bare-metal installers (arch-install-t14s.sh /
-# HelllGuest/t14s-arch-install). Live hosts: prefer
-# scripts/thinkpad-charge-thresholds.sh (discovers all BAT*, refreshes this path).
-# Keep installer heredocs in sync with this file (tests/thinkpad-t14s.test.sh).
+# Best-effort at boot; see thinkpad-charge-thresholds.service if BAT* appears late.
 w /sys/class/power_supply/BAT0/charge_control_start_threshold - - - - 70
 w /sys/class/power_supply/BAT0/charge_control_end_threshold - - - - 80
 EOF
+cat > /usr/local/lib/t14s/apply-charge-thresholds.sh <<'EOF'
+#!/usr/bin/env bash
+# Wait for thinkpad_acpi BAT* charge_control_*, then apply 70–80. Exit 0 if absent (VM).
+set -euo pipefail
+START=70 END=80
+for _ in $(seq 1 60); do
+  shopt -s nullglob
+  found=(/sys/class/power_supply/BAT*/charge_control_end_threshold)
+  shopt -u nullglob
+  ((${#found[@]} > 0)) && break
+  sleep 1
+done
+shopt -s nullglob
+for bat in /sys/class/power_supply/BAT*; do
+  [[ -d $bat ]] || continue
+  if [[ -e $bat/charge_control_start_threshold ]]; then
+    printf '%s\n' "$START" >"$bat/charge_control_start_threshold" || true
+  fi
+  if [[ -e $bat/charge_control_end_threshold ]]; then
+    printf '%s\n' "$END" >"$bat/charge_control_end_threshold" || true
+  fi
+done
+shopt -u nullglob
+exit 0
+EOF
+chmod 755 /usr/local/lib/t14s/apply-charge-thresholds.sh
+cat > /etc/systemd/system/thinkpad-charge-thresholds.service <<'EOF'
+[Unit]
+Description=ThinkPad battery charge thresholds (70-80)
+Documentation=file:///usr/local/lib/t14s/apply-charge-thresholds.sh
+After=multi-user.target
+# Do not use ConditionPathExists*: BAT* may appear after early boot.
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/lib/t14s/apply-charge-thresholds.sh
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target
+EOF
+systemctl enable thinkpad-charge-thresholds.service
 
 # UKI presets: linux-lts (primary) + linux-hardened (fallback)
 # reuse ESP: clear stale UKIs + loader entries before rebuild (multiboot-safe names)

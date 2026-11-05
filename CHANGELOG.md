@@ -1,6 +1,7 @@
 # Changelog
 
 ## [Unreleased]
+- T14s charge: installers seed tmpfiles **and** `thinkpad-charge-thresholds.service` (`After=multi-user.target`, wait for BAT* sysfs; no-op on VM). Public `t14s-arch-install` aligned.
 - Docs: host-audit remediation paths — sleep drift → `system-setup.sh` + reboot; charge tmpfiles + `CHARGE_START`/`END`; Podman-first disable `docker.service`; Chrome user/system Flatpak; troubleshooting rows for pacman.txt gaps / browser-hardening sudo.
 - T14s addons: `packages/thinkpad-t14s.txt` + `scripts/lib/thinkpad-charge-thresholds.conf` (installer heredoc sync-tested); `scripts/thinkpad-charge-thresholds.sh`; profile + `arch-install-t14s.sh`; `check.sh` probe. Docs Phase 14 / README structure. Public `t14s-arch-install` aligned. Skip ryzenadj/TLP/thermald.
 - Podman-first agent sandboxes: `podman` stack in `pacman.txt`; `scripts/agent-run.sh`; `stow/containers` (`no_new_privileges`); `.shell-exports` keeps Podman `DOCKER_HOST` with `FORCE_DOCKER=1` escape; Phase 17 / README / fresh-install docs aligned (Docker no longer primary).

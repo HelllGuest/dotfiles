@@ -60,6 +60,10 @@ grep -q 'vulkan-radeon' "$ROOT/scripts/arch-install-t14s.sh" \
   || fail "arch-install-t14s must pacstrap vulkan-radeon"
 grep -q 'thinkpad-charge-thresholds.conf' "$ROOT/scripts/arch-install-t14s.sh" \
   || fail "arch-install-t14s must ship charge tmpfiles"
+grep -q 'thinkpad-charge-thresholds.service' "$ROOT/scripts/arch-install-t14s.sh" \
+  || fail "arch-install-t14s must enable charge oneshot"
+grep -q 'After=multi-user.target' "$ROOT/scripts/arch-install-t14s.sh" \
+  || fail "charge oneshot must After=multi-user.target"
 # Installer heredoc must match canonical BAT0 template (w-lines)
 while IFS= read -r line; do
   [[ "$line" == w\ * ]] || continue
