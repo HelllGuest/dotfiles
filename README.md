@@ -7,7 +7,7 @@ A clean, modular, and programmable dotfiles ecosystem optimized for **Arch Linux
 ## 🚀 Key Features
 
 - **Privacy Hardened:** Telemetry, usage reporting, and "phoning home" are disabled system-wide (GNOME, VS Code, .NET, etc.).
-- **ThinkPad Optimized:** Hostname or hardware-detected profiles (`thinkpad-x1.sh`, `thinkpad-p15.sh`, or `laptop.sh`) with power-profiles-daemon, tablet auto-rotate, UKIs signed for Secure Boot (sbctl), and a tracked **s2idle** sleep pin (`mem_sleep_default=s2idle`; pair BIOS Sleep State with **Windows and Linux**, not **Linux**/S3 — see `docs/hardened-arch-gnome.md`). Thermal is firmware-managed. Battery charge thresholds are documented in the same guide (manual `thinkpad_acpi` sysfs).
+- **ThinkPad Optimized:** Hostname or hardware-detected profiles (`thinkpad-x1.sh`, `thinkpad-p15.sh`, `thinkpad-t14s.sh`, or `laptop.sh`) with power-profiles-daemon, UKIs signed for Secure Boot (sbctl), and a tracked **s2idle** sleep pin (`mem_sleep_default=s2idle`; pair BIOS Sleep State with **Windows and Linux**, not **Linux**/S3 — see `docs/hardened-arch-gnome.md`). X1 Yoga also gets tablet auto-rotate (`iio-sensor-proxy`). Thermal is firmware-managed. Charge window **70–80** via `scripts/thinkpad-charge-thresholds.sh` (tmpfiles; used by T14s profile + `install-re-extras.sh`).
 - **Elite-Tier Terminal:** Kitty & Ghostty with shared Zsh/Bash configs, real-time autocomplete, [Gruvbox Rainbow](https://starship.rs/presets/gruvbox-rainbow) Starship prompt.
 - **Neovim (Lazy.nvim):** A modular Lua configuration.
 
@@ -49,11 +49,19 @@ Both `~/.zshrc` and `~/.bashrc` source these files.
 - Same **fzf**, **zoxide**, **atuin**, **direnv**, **starship** as zsh
 - **fzf** preview binds: `Ctrl+F` / `Ctrl+B` page preview; no global `Ctrl+Y` copy bind (fzf 0.72 lacks `copy-selection` — pass `--bind` per invocation if needed)
 
-### Containers (Docker / Podman)
+### Containers (Podman-first; Docker optional)
 
-`.shell-exports` sets `DOCKER_HOST` only when the Podman socket exists (`$XDG_RUNTIME_DIR/podman/podman.sock`). Otherwise it is unset so the **Docker** daemon (`/var/run/docker.sock`) is used. Install Docker with `pacman -S docker docker-compose`, enable `docker.service`, and add your user to the `docker` group. After `newgrp docker` or a fresh login, `docker ps` should work without `sudo`.
+**Default for AI agents / sandboxes:** rootless **Podman** (`packages/pacman.txt`). After install:
 
-For Podman-only setups, enable `podman.socket` and ensure the socket path above exists — see [docs/hardened-arch-gnome.md](docs/hardened-arch-gnome.md) Phase 17.
+```bash
+mkdir -p ~/.local/share/containers/storage && chattr +C ~/.local/share/containers/storage
+systemctl --user enable --now podman.socket
+# optional: loginctl enable-linger "$USER"  # keeps socket after logout
+```
+
+`.shell-exports` sets `DOCKER_HOST` to the Podman socket when it exists, so `docker` talks to Podman. That is intentional. Escape hatch for a real Docker daemon: `FORCE_DOCKER=1` (with `/var/run/docker.sock`), or stop `podman.socket`.
+
+Hardened one-shot runs: `scripts/agent-run.sh <project-dir> <image> [cmd…]` (read-only, cap-drop ALL, network none by default; never mounts runtime sockets). User defaults: `stow/containers` → `~/.config/containers/containers.conf`. Full notes: [Phase 17](docs/hardened-arch-gnome.md#phase-17--rootless-podman).
 
 ### Node.js (fnm)
 
@@ -171,26 +179,31 @@ Optional older **Crampack** presets (not in this repo):
 
 ```text
 dotfiles/
-├── stow/            # GNU Stow packages → $HOME (system/ copied to / by system-setup.sh)
+├── install.sh       # First-boot orchestrator (pacman → profile → stow → agents…)
+├── stow/            # GNU Stow packages → $HOME (system/zram/gdm via setup scripts, not stow -t /)
 │   ├── bash/ zsh/   # shells; shared .shell-* under zsh/
-│   ├── system/      # /etc template (i915, sleep, UFW, udev, Wayland env) — copied by scripts/system-setup.sh
-│   ├── zram/        # template only — copied by scripts/zram-setup.sh (never stow -t /)
-│   ├── gdm/         # template only — copied by scripts/gdm-setup.sh
+│   ├── system/      # /etc template (i915, sleep, UFW, udev, Wayland) → system-setup.sh
+│   ├── containers/  # rootless Podman containers.conf
+│   ├── privacy/     # telemetry opt-out environment.d
+│   ├── zram/ gdm/   # templates → zram-setup.sh / gdm-setup.sh
 │   ├── kitty/ ghostty/ alacritty/ contour/ foot/ rio/ wezterm/
-│   ├── nvim/ starship/ atuin/ git/ fastfetch/ proton-vpn/ …
-│   └── vscode/ cursor/ antigravity/ flutter/ npm/ htop/ …
-├── browsers/        # chromium-base (+ brave-extra); zen-policies; Zen user.js; LibreWolf overrides
-├── packages/        # pacman.txt, flatpak.txt, browsers.txt, aur.txt
-├── profiles/        # Hostname or hardware-detected tweaks
-├── scripts/         # Installers + health checks (lib/ shared helpers)
-├── tests/           # Script tests (`tests/*.test.sh`, run in CI)
-├── gnome/           # dconf snapshots, extensions.txt, keybindings.md
-├── docs/            # Hardened install guide + X1 purpose-stack guide
-├── builds/          # Optional local PKGBUILDs (e.g. builds/st + scripts/build-st.sh)
-├── skills/          # Agent skills shipped with the repo (e.g. ghidra-cli-host)
-├── ai-rules/        # Shared AGENTS.md kit + git hooks (AGENTS.md → symlink)
+│   └── nvim/ starship/ atuin/ git/ vscode/ cursor/ … 
+├── browsers/        # chromium-base (+ brave-extra); zen; LibreWolf
+├── packages/        # pacman.txt, flatpak.txt, aur.txt, re-extra.txt, thinkpad-t14s.txt, …
+├── profiles/        # thinkpad-x1 | thinkpad-p15 | thinkpad-t14s | laptop | p15
+├── scripts/         # Installers, setup, check (lib/ = dmi, charge conf, shared helpers)
+├── tests/           # Smoke tests (`*.test.sh`, CI)
+├── gnome/           # dconf, extensions.txt, keybindings.md
+├── docs/            # hardened-arch-gnome.md + fresh-install-coding-re.md
+├── builds/          # Optional local PKGBUILDs (e.g. builds/st)
+├── skills/          # Host skills (ghidra-cli-host, obscura-host)
+├── ai-rules/        # Shared AGENTS.md kit + git hooks
 └── .github/         # CI (stow inventory, bash -n, tests/, markdownlint)
 ```
+
+Layout stays flat on purpose: GNU Stow package roots, curl-able installers, and
+`packages/*.txt` manifests. Do not nest `scripts/` by feature — keep
+`CONTRIBUTING.md` script map as the index.
 
 ---
 
@@ -201,8 +214,8 @@ dotfiles/
 | [README.md](README.md) | Overview, shell setup, installation |
 | [CHANGELOG.md](CHANGELOG.md) | Version history |
 | [CONTRIBUTING.md](CONTRIBUTING.md) | Contribution guidelines |
-| [docs/hardened-arch-gnome.md](docs/hardened-arch-gnome.md) | Full Arch + GNOME install guide (ThinkPad X1) — automated by `scripts/arch-install.sh` |
-| [docs/fresh-install-coding-re.md](docs/fresh-install-coding-re.md) | Fresh install for coding, reverse engineering, malware analysis (this machine) |
+| [docs/hardened-arch-gnome.md](docs/hardened-arch-gnome.md) | Full Arch + GNOME guide — `arch-install.sh` (X1) / `arch-install-t14s.sh` (21CQ/21CR) |
+| [docs/fresh-install-coding-re.md](docs/fresh-install-coding-re.md) | Purpose stacks (coding / RE / malware lab); T14s note for AMD path |
 | [gnome/keybindings.md](gnome/keybindings.md) | Shell aliases and useful shortcuts |
 
 ---
@@ -217,12 +230,14 @@ LUKS2 (argon2id) + Btrfs subvolumes (incl. disk-backed `@tmp`) + `linux-lts`
 ```bash
 # from the Arch ISO (UEFI, as root). AUTO wipe, or MANUAL with EFI optional/reuse.
 bash <(curl -fsSL https://raw.githubusercontent.com/HelllGuest/dotfiles/main/scripts/arch-install.sh)
+
+# ThinkPad T14s Gen 3 AMD (21CQ/21CR) — same stack, AMD cmdline/hostname:
+bash <(curl -fsSL https://raw.githubusercontent.com/HelllGuest/dotfiles/main/scripts/arch-install-t14s.sh)
 ```
-It mirrors [docs/hardened-arch-gnome.md](docs/hardened-arch-gnome.md). Rehearse it
-in a UEFI VM first — `scripts/arch-install-vmtest.sh` (OVMF qemu, serves the
-installer over loopback; host disks untouched; this is a full VM install, not a
-no-op dry-run). Then continue with **1. Full Bootstrap** below to apply the
-dotfiles.
+Generic path mirrors [docs/hardened-arch-gnome.md](docs/hardened-arch-gnome.md).
+Rehearse in a UEFI VM first — `scripts/arch-install-vmtest.sh` (OVMF qemu; host
+disks untouched). T14s script in VM: `INSTALLER=arch-install-t14s.sh scripts/arch-install-vmtest.sh`
+(confirm past the DMI warn). Then continue with **1. Full Bootstrap** below.
 
 ### 1. Full Bootstrap (Recommended)
 Installs packages, stows configs into `$HOME`, installs `stow/system/` into `/etc` as root-owned files, restores GNOME settings, and runs health checks.
@@ -230,9 +245,9 @@ Installs packages, stows configs into `$HOME`, installs `stow/system/` into `/et
 ./install.sh
 ```
 
-Machine profiles run in `./install.sh` via `scripts/apply-profile.sh` **after** `packages/pacman.txt` (exactly one profile): `profiles/$(hostname).sh` if it exists, otherwise `scripts/detect-profile.sh` (ThinkPad X1 → `thinkpad-x1`, ThinkPad P15 → `thinkpad-p15`, other ThinkPads/laptop chassis → `laptop`). Pacman first so Optimus/NVIDIA packages exist before `thinkpad-p15` enables services and rebuilds UKIs. There is no `nvidia.sh`; Optimus setup is inside `profiles/thinkpad-p15.sh`.
+Machine profiles run in `./install.sh` via `scripts/apply-profile.sh` **after** `packages/pacman.txt` (exactly one profile): `profiles/$(hostname).sh` if it exists, otherwise `scripts/detect-profile.sh` (ThinkPad X1 → `thinkpad-x1`, ThinkPad P15 → `thinkpad-p15`, ThinkPad T14s → `thinkpad-t14s`, other ThinkPads/laptop chassis → `laptop`). Pacman first so Optimus/NVIDIA packages exist before `thinkpad-p15` enables services and rebuilds UKIs. There is no `nvidia.sh`; Optimus setup is inside `profiles/thinkpad-p15.sh`.
 
-ThinkPad system configs (`i915`, kernel cmdline, sleep, UFW, Wayland env) live in `stow/system/` and are installed by `scripts/system-setup.sh` as **root-owned regular files**, never stow symlinks (re-run it after editing `stow/system/`). Why, and how the cmdline UUID is handled: [hardened guide — `system/` files](docs/hardened-arch-gnome.md#kernel-cmdline--system-files-installed-not-stowed). After tuning, run `scripts/thinkpad-health.sh` and **reboot**.
+ThinkPad system configs (`i915`, kernel cmdline, sleep, UFW, Wayland env) live in `stow/system/` and are installed by `scripts/system-setup.sh` as **root-owned regular files**, never stow symlinks (re-run it after editing `stow/system/`). Why, and how the cmdline UUID is handled: [hardened guide — `system/` files](docs/hardened-arch-gnome.md#kernel-cmdline--system-files-installed-not-stowed). After tuning on **X1**, run `scripts/thinkpad-health.sh` (i915-focused) and **reboot**. On **T14s Gen 3 AMD**, skip that script; check `cat /sys/power/mem_sleep`, `lscpu | grep -i ryzen`, `grep -E 'amd_iommu|amd_pstate' /proc/cmdline`, and charge thresholds under `/sys/class/power_supply/BAT*/charge_control_*_threshold` instead. Installer + profile pull `mesa` / `vulkan-radeon` / `fprintd` (libva via mesa).
 
 #### Script execution order (fresh machine)
 
@@ -240,6 +255,7 @@ ThinkPad system configs (`i915`, kernel cmdline, sleep, UFW, Wayland env) live i
 ```text
 scripts/arch-install-vmtest.sh   # optional: full UEFI VM install (host disks untouched)
 scripts/arch-install.sh          # LUKS + Btrfs(@tmp) + UKI(lts/hardened) + systemd-boot + sbctl + minimal GNOME
+scripts/arch-install-t14s.sh     # T14s Gen 3 AMD (21CQ/21CR): amd_iommu + amd_pstate + mesa/vulkan-radeon
 → reboot, remove ISO
 ```
 
@@ -264,7 +280,8 @@ reboot                                   # UKI must embed nvidia_drm.modeset + n
 # after reboot (P15): expect Kernel driver in use: nvidia
 lspci -nnk -d 10de: | grep -A2 'Kernel driver'
 prime-run nvidia-smi -L
-scripts/thinkpad-health.sh
+scripts/thinkpad-health.sh       # X1 only (i915); T14s: check amd_iommu/amd_pstate + mem_sleep
+scripts/thinkpad-charge-thresholds.sh  # optional re-run; T14s profile + install-re-extras already call it
 ```
 
 **What `./install.sh` runs, in order:**
@@ -280,6 +297,7 @@ cleanup-input-overrides.sh
 → sync-agent-skills.sh → install-coding-agents.sh (OpenCode + Kimi + MCP; if npm)
 → install-caveman.sh (if npm) → install-android-ui-skills.sh (if npx)
 → install-ghidra-cli.sh (if ghidra) → install-rea.sh (if npm)
+→ install-obscura.sh (headless browser + MCP)
 → install-re-skills.sh (leanrea / RE playbooks / Android RE / Ghidra loop)
 → install-ecosystem-skills.sh (packages/agent-skills.txt; owner/repo or owner/repo:skill; if npx)
 → sync-agent-skills.sh → caveman OpenCode plugin refresh
@@ -394,6 +412,7 @@ We take a "quiet by default" approach:
 | Caveman (`/caveman`) | `bash scripts/install-caveman.sh` |
 | Android UI skills | `bash scripts/install-android-ui-skills.sh` (Compose + Material 3) |
 | REA (MCP + jadx) | `bash scripts/install-rea.sh` (Hopper: `INSTALL_HOPPER=1`) |
+| Obscura (CDP/MCP) | `bash scripts/install-obscura.sh` ([docs](https://docs.obscura.sh/)) |
 | RE skills (leanrea, …) | `bash scripts/install-re-skills.sh` |
 | RE host extras (jadx, rizin, …) | `bash scripts/install-re-extras.sh` |
 | ghidra-cli | `bash scripts/install-ghidra-cli.sh` |

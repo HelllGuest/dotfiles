@@ -69,6 +69,16 @@ nvidia-open-dkms
 nvidia-prime
 nvidia-utils
 playerctl
+# Rootless Podman stack (AI agent sandboxes; see Phase 17 + scripts/agent-run.sh)
+podman
+podman-compose
+buildah
+skopeo
+crun
+netavark
+aardvark-dns
+passt
+catatonit
 power-profiles-daemon
 python-pipx
 procs

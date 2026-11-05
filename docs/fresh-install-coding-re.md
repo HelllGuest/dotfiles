@@ -12,9 +12,18 @@ install; it does not replace it.
 
 Automation:
 
-* Bare metal: [`scripts/arch-install.sh`](../scripts/arch-install.sh)
-* VM rehearsal: [`scripts/arch-install-vmtest.sh`](../scripts/arch-install-vmtest.sh)
+* Bare metal (X1 / generic): [`scripts/arch-install.sh`](../scripts/arch-install.sh)
+* Bare metal (T14s Gen 3 AMD, 21CQ/21CR): [`scripts/arch-install-t14s.sh`](../scripts/arch-install-t14s.sh)
+* VM rehearsal: [`scripts/arch-install-vmtest.sh`](../scripts/arch-install-vmtest.sh) (`INSTALLER=arch-install-t14s.sh` for the AMD script)
 * After first GNOME login: [`../install.sh`](../install.sh)
+
+**T14s Gen 3 AMD note:** this guide’s verified table is the X1 Yoga. On a
+**21CQ/21CR** T14s, use the AMD installer, then `./install.sh` (detect →
+`thinkpad-t14s`). Expect `amd_iommu` / `amd_pstate`, `mesa` + `vulkan-radeon`,
+`fprintd`, and charge thresholds **70–80** via
+[`scripts/thinkpad-charge-thresholds.sh`](../scripts/thinkpad-charge-thresholds.sh).
+Skip `thinkpad-health.sh` (i915-only). Details:
+[hardened Phase 14](hardened-arch-gnome.md#phase-14-thinkpad-optimization).
 
 ---
 
@@ -44,8 +53,8 @@ loads.
 ## Purpose of this workstation
 
 1. **Coding** — zsh/bash, Neovim, VSCodium / Cursor, Flutter + Android Studio,
-   Node (fnm), Rust / Python (pipx). Go and Docker are goals too, but install
-   them separately (not in `packages/pacman.txt`; see Coding stack below).
+   Node (fnm), Rust / Python (pipx), rootless Podman (agent sandboxes;
+   `packages/pacman.txt`). Go is optional and separate (see Coding stack below).
 2. **Reverse engineering** — Ghidra (+ ghidra-cli), REA MCP, RE agent skills,
    plus optional host tools (`packages/re-extra.txt`); host notes in
    [`skills/ghidra-cli-host/`](../skills/ghidra-cli-host/).
@@ -160,29 +169,34 @@ Firewall check: [Verify Firewall](hardened-arch-gnome.md#verify-firewall).
 | AI (optional) | `bash scripts/headroom-setup.sh`, then `hr-claude` / `hr-cursor` |
 | Local builds | x86-64-v3 makepkg drop-in; `bash scripts/rebuild-v3.sh` after big upgrades |
 
-### Not in `packages/pacman.txt` (install separately)
+### Containers (Podman — in `pacman.txt`)
 
-Docker and Go are common on this workstation but are **not** pulled by
-`./install.sh`. Add them after Stage B:
+After Stage B / `./install.sh`, finish Podman storage + socket (Phase 17):
 
 ```bash
-sudo pacman -S --needed docker docker-compose go
-sudo systemctl enable --now docker
-sudo usermod -aG docker "$USER"
-# newgrp docker   # or log out/in
+mkdir -p ~/.local/share/containers/storage && chattr +C ~/.local/share/containers/storage
+systemctl --user enable --now podman.socket
+bash ~/dotfiles/scripts/agent-run.sh /tmp alpine:3.20 echo ok   # optional smoke
 ```
 
-Shell already picks `DOCKER_HOST` only when a Podman socket exists; with Docker
-enabled and Podman idle, the CLI uses `/var/run/docker.sock`. Prefer Docker over
-Podman unless you intentionally enable `podman.socket`.
+`DOCKER_HOST` prefers Podman when `podman.socket` is up. Real Docker daemon for
+one shell: `FORCE_DOCKER=1`.
+
+### Not in `packages/pacman.txt` (install separately)
+
+Go is optional and not pulled by `./install.sh`:
+
+```bash
+sudo pacman -S --needed go
+```
 
 Sanity checks:
 
 ```bash
 ~/dotfiles/scripts/check.sh
 fnm current
-docker ps
-go version
+podman info   # Rootless: true
+go version    # if installed
 ```
 
 ---

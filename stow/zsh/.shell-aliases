@@ -18,10 +18,19 @@ alias ln='ln -iv'
 
 # ── Modern replacements (fallback to classic) ───────────────
 if _has eza; then
-    alias ls='eza --icons --group-directories-first'
-    alias ll='eza -la --icons --git --group-directories-first'
-    alias la='eza -la --icons --git --group-directories-first'
-    alias lt='eza --tree --level=2 --icons --git'
+    # Shared flags expanded at define-time (bash + zsh safe).
+    _eza='--icons --group-directories-first --hyperlink=auto'
+    alias ls="eza ${_eza}"
+    alias l="eza -l --header --smart-group --git --color-scale=age ${_eza}"
+    alias ll="eza -la --header --smart-group --git --color-scale=age ${_eza}"
+    alias la="eza -a ${_eza}"
+    alias lm="eza -l --header --smart-group --git --sort=modified --color-scale=age ${_eza}"
+    alias lS="eza -l --header --smart-group --git --sort=size --color-scale=size ${_eza}"
+    alias lr="eza -l --header --smart-group --git-repos --color-scale=age ${_eza}"
+    alias lt="eza --tree --level=2 --git --git-ignore ${_eza}"
+    alias lt3="eza --tree --level=3 --git --git-ignore ${_eza}"
+    alias tree="eza --tree --git --git-ignore ${_eza}"
+    unset _eza
 else
     alias ls='ls --color=auto'
     alias ll='ls -la --color=auto'

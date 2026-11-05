@@ -136,8 +136,10 @@ grep -q 'kali-up-lan\|kali-up-nat\|kali-lan' "$ROOT/gnome/keybindings.md" \
   || fail "keybindings summary must list kali-up-lan"
 grep -q 'clamav-freshclam' "$ROOT/scripts/install-re-extras.sh" \
   || fail "install-re-extras must enable clamav-freshclam"
-grep -q 'charge_control_start_threshold' "$ROOT/scripts/install-re-extras.sh" \
-  || fail "install-re-extras must set charge thresholds for existing BATs"
+grep -q 'thinkpad-charge-thresholds.sh' "$ROOT/scripts/install-re-extras.sh" \
+  || fail "install-re-extras must call thinkpad-charge-thresholds.sh"
+grep -q 'charge_control_start_threshold' "$ROOT/scripts/thinkpad-charge-thresholds.sh" \
+  || fail "thinkpad-charge-thresholds.sh must write charge_control_start_threshold"
 grep -q 'SUDO_ASKPASS' "$ROOT/scripts/lib/browsers.sh" \
   || fail "browsers.sh must honor SUDO_ASKPASS"
 if grep -q 'cursor.general' "$ROOT/stow/vscode/.config/VSCodium/User/settings.json"; then

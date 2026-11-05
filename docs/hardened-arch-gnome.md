@@ -34,7 +34,11 @@ This guide prioritizes:
 > ```bash
 > bash <(curl -fsSL https://raw.githubusercontent.com/HelllGuest/dotfiles/main/scripts/arch-install.sh)
 > ```
-> Rehearse first in a UEFI VM with [`scripts/arch-install-vmtest.sh`](../scripts/arch-install-vmtest.sh) (full install on a virtual disk; host disks untouched). The manual phases below remain the reference for what it does and for customizing.
+> **ThinkPad T14s Gen 3 AMD** (type **21CQ/21CR**): use [`scripts/arch-install-t14s.sh`](../scripts/arch-install-t14s.sh) instead — same stack with `amd_iommu` / `amd_pstate`, `amd-ucode` (not `intel_iommu`), plus `mesa` / `vulkan-radeon` / `fprintd` / `sof-firmware`. After first-boot `./install.sh`, `profiles/thinkpad-t14s.sh` repairs Intel cmdline leftovers and applies charge thresholds (see Phase 14).
+> ```bash
+> bash <(curl -fsSL https://raw.githubusercontent.com/HelllGuest/dotfiles/main/scripts/arch-install-t14s.sh)
+> ```
+> Rehearse first in a UEFI VM with [`scripts/arch-install-vmtest.sh`](../scripts/arch-install-vmtest.sh) (full install on a virtual disk; host disks untouched). For the T14s script: `INSTALLER=arch-install-t14s.sh scripts/arch-install-vmtest.sh` (confirm past the DMI warn in the VM). The manual phases below remain the reference for what it does and for customizing.
 
 > **Dotfiles:** After completing this guide, continue with [PHASE 27 — Dotfiles Setup](#phase-27--dotfiles-setup) or jump to the [dotfiles README](../README.md) for shell and maintenance. For coding, reverse engineering, and malware-lab purpose stacks on this ThinkPad, see [fresh-install-coding-re.md](fresh-install-coding-re.md).
 
@@ -927,9 +931,10 @@ Lab usage: [fresh-install RE — Disposable Kali](fresh-install-coding-re.md#dis
 
 # PHASE 14 — THINKPAD OPTIMIZATION
 
-PPD, `sof-firmware`, `alsa-ucm-conf`, `fprintd`, and `iio-sensor-proxy` come from
-Phase 10 (`iio-sensor-proxy` and `fprintd` are D-Bus activated — do not enable
-them). Optional power diagnostics:
+PPD, `sof-firmware`, `alsa-ucm-conf`, `fprintd`, and (X1 Yoga)
+`iio-sensor-proxy` come from Phase 10 / the matching installer
+(`iio-sensor-proxy` and `fprintd` are D-Bus activated — do not enable them).
+Optional power diagnostics:
 
 ```bash
 pacman -S powertop
@@ -938,22 +943,40 @@ pacman -S powertop
 **Power stack note:** this system uses **power-profiles-daemon (PPD)** only.
 
 * **TLP is *not* used** — it conflicts with PPD (`PLATFORM_PROFILE.../CPU_ENERGY_PERF_POLICY... not set because power-profiles-daemon is running`). Do not install `tlp`/`tlp-rdw`.
-* **thermald is *not* used** — on the X1 it self-exits every boot (`[dytc_lapmode] present: Thermald can't run on this platform`); thermal is firmware-managed (Intel DPTF). Leave it uninstalled/disabled.
+* **thermald is *not* used** — on the X1 it self-exits every boot (`[dytc_lapmode] present: Thermald can't run on this platform`); thermal is firmware-managed (Intel DPTF / AMD DYTC on T14s). Leave it uninstalled/disabled.
+* **Skip `ryzenadj`** on T14s Gen 3 AMD PRO — EC often locks SMU; not part of the profile.
+
+**T14s Gen 3 AMD (21CQ/21CR)** extras (installer + `profiles/thinkpad-t14s.sh`):
+
+* Cmdline: `amd_iommu=on` `amd_pstate=active` (strip any `intel_iommu` / `i915.*` leftovers; rebuild UKI)
+* GPU / FP packages: `packages/thinkpad-t14s.txt` (`mesa` + `vulkan-radeon` + `fprintd`; VA-API via mesa `Provides`)
+* Charge window 70–80: installer seeds `scripts/lib/thinkpad-charge-thresholds.conf`; live refresh via `scripts/thinkpad-charge-thresholds.sh` (also `install-re-extras.sh`)
+* No Yoga tablet rotate stack; keep fingerprint enabled (do not install the X1 fingerprint-disable udev rule)
 
 ---
 
 # Configure Battery Thresholds
 
 Without TLP, set ThinkPad charge thresholds via the `thinkpad_acpi` sysfs
-interface:
+interface. Prefer the shared helper (writes live sysfs +
+`/etc/tmpfiles.d/thinkpad-charge-thresholds.conf`). Auto-applied by
+`profiles/thinkpad-t14s.sh` and `scripts/install-re-extras.sh`; safe to re-run
+on X1/P15:
+
+```bash
+bash scripts/thinkpad-charge-thresholds.sh
+# optional: CHARGE_START=75 CHARGE_END=80 bash scripts/thinkpad-charge-thresholds.sh
+```
+
+Manual equivalent:
 
 ```bash
 echo 70 | tee /sys/class/power_supply/BAT0/charge_control_start_threshold
 echo 80 | tee /sys/class/power_supply/BAT0/charge_control_end_threshold
 ```
 
-Persist across reboots with a small systemd unit or udev rule (sysfs values
-reset on boot), e.g. a `oneshot` service that writes both files.
+Sysfs values reset on boot; the tmpfiles drop-in re-applies them. Only batteries
+that expose `charge_control_*_threshold` are touched.
 
 ---
 
@@ -1006,31 +1029,57 @@ installs the full list, including any that failed in the installer chroot.
 
 # PHASE 17 — ROOTLESS PODMAN
 
-Install:
+Primary container runtime for **AI agent sandboxes** on this workstation.
+Packages are in `packages/pacman.txt` (`podman`, `podman-compose`, `buildah`,
+`skopeo`, `crun`, `netavark`, `aardvark-dns`, `passt`, `catatonit`).
 
 ```bash
-pacman -S podman
+# Already covered by ./install.sh + pacman.txt; manual:
+sudo pacman -S --needed podman podman-compose buildah skopeo crun \
+  netavark aardvark-dns passt catatonit
 ```
 
-IMPORTANT:
-
-Apply No-COW BEFORE creating containers.
+IMPORTANT: apply No-COW **before** the first pull (and re-apply after first use
+if children lost `C`):
 
 ```bash
 mkdir -p ~/.local/share/containers/storage
 chattr +C ~/.local/share/containers/storage
+# after first pull/run, retrofit children if needed:
+chattr -R +C ~/.local/share/containers/storage
 ```
 
-Podman-only setups: enable the socket (`~/.shell-exports` then sets
-`DOCKER_HOST` automatically after `exec zsh`):
+Enable the user socket (`.shell-exports` then points `DOCKER_HOST` at Podman —
+intentional; `docker` CLI → Podman):
 
 ```bash
 systemctl --user enable --now podman.socket
+# optional: keep socket after logout (larger post-logout surface)
+# loginctl enable-linger "$USER"
 ```
 
-With **Docker** instead (typical here), leave Podman stopped: `DOCKER_HOST` stays
-unset and the CLI talks to `/var/run/docker.sock`. Docker install steps:
-[fresh-install-coding-re.md — Coding stack](fresh-install-coding-re.md#not-in-packagespacmantxt-install-separately).
+Hardened agent runs (preferred over raw `podman run`):
+
+```bash
+bash scripts/agent-run.sh ~/src/my-job alpine:3.20 sh
+# AGENT_NET=pasta bash scripts/agent-run.sh ~/src/my-job alpine:3.20  # allow egress
+```
+
+Never mount `$XDG_RUNTIME_DIR/podman/podman.sock` or `/var/run/docker.sock`
+into an agent container.
+
+User defaults: stow package `containers` →
+`~/.config/containers/containers.conf` (`no_new_privileges`, stock seccomp).
+Pull policy on Arch remains distro default (`insecureAcceptAnything`); pin image
+**digests** for untrusted agent workloads.
+
+AppArmor: Podman may report `apparmorEnabled: false` on this host while still
+using seccomp. Treat AppArmor as unused for containers unless you add a real
+profile.
+
+Optional leftover **Docker** daemon: keep installed if you want, but agent path
+is Podman. Real dockerd for one shell: `FORCE_DOCKER=1`. Do not install
+`podman-docker` alongside `docker` (pacman conflict).
 
 ---
 
@@ -1572,6 +1621,8 @@ systemctl status earlyoom
 ```bash
 cat /sys/class/power_supply/BAT0/charge_control_start_threshold
 cat /sys/class/power_supply/BAT0/charge_control_end_threshold
+# expect 70 and 80 (or your CHARGE_START / CHARGE_END)
+cat /etc/tmpfiles.d/thinkpad-charge-thresholds.conf
 ```
 
 ---

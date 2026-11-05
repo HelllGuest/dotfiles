@@ -2,7 +2,7 @@
 # detect-profile.sh — suggest profiles/*.sh from hardware (sysfs first, no sudo).
 # Usage:
 #   detect-profile.sh → primary profile name (stdout)
-# Order: thinkpad-x1 → thinkpad-p15 → laptop (other ThinkPads / laptop chassis).
+# Order: thinkpad-x1 → thinkpad-p15 → thinkpad-t14s → laptop (other ThinkPads / chassis).
 
 set -euo pipefail
 
@@ -17,6 +17,11 @@ fi
 
 if is_thinkpad_p15; then
   printf '%s\n' thinkpad-p15
+  exit 0
+fi
+
+if is_thinkpad_t14s; then
+  printf '%s\n' thinkpad-t14s
   exit 0
 fi
 

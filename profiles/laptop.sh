@@ -14,6 +14,14 @@ if is_thinkpad_x1; then
     fi
 fi
 
+if is_thinkpad_t14s; then
+    if [ -f "profiles/thinkpad-t14s.sh" ]; then
+        # shellcheck source=/dev/null
+        source "profiles/thinkpad-t14s.sh"
+        exit 0
+    fi
+fi
+
 # General laptop tools (non-ThinkPad)
 sudo pacman -S --needed --noconfirm power-profiles-daemon brightnessctl
 sudo systemctl enable --now power-profiles-daemon

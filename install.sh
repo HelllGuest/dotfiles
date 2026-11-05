@@ -183,6 +183,11 @@ if [ -f "scripts/install-rea.sh" ]; then
     fi
 fi
 
+# 3.5f1 Obscura headless browser + MCP (OpenCode/Cursor/Claude)
+if [ -f "scripts/install-obscura.sh" ]; then
+    bash scripts/install-obscura.sh || echo "Obscura install failed — re-run: bash scripts/install-obscura.sh"
+fi
+
 # 3.5f2 RE agent skills (leanrea, reverse-engineering, android-RE, ghidra-iterative-re)
 if [ -f "scripts/install-re-skills.sh" ]; then
     if command -v npx >/dev/null 2>&1; then

@@ -1,21 +1,27 @@
 #!/usr/bin/env bash
-# arch-install-vmtest.sh — dry-run arch-install.sh in a UEFI qemu VM (no real disks).
+# arch-install-vmtest.sh — dry-run an Arch installer in a UEFI qemu VM (no real disks).
 #
 # Boots the Arch ISO in an OVMF/UEFI VM with a blank virtual disk, and serves the
-# local arch-install.sh over loopback so you can run the real installer end-to-end
-# against /dev/vda only. Nothing on your physical machine is touched.
+# local installer script over loopback so you can run it end-to-end against
+# /dev/vda only. Nothing on your physical machine is touched.
 #
 #   ~/dotfiles/scripts/arch-install-vmtest.sh
+#   INSTALLER=arch-install-t14s.sh ~/dotfiles/scripts/arch-install-vmtest.sh
 #   # inside the VM's ISO shell:
 #   bash <(curl -fsSL http://10.0.2.2:8000/arch-install.sh)
+#   # or for T14s AMD script (confirm past DMI warn in the VM):
+#   bash <(curl -fsSL http://10.0.2.2:8000/arch-install-t14s.sh)
 #
-# Env overrides: WORK, DISK_SIZE (80G: full ./install.sh needs ~40G), RAM (4096), PORT (8000), ISO, FRESH=1
+# Env overrides: INSTALLER (arch-install.sh|arch-install-t14s.sh), WORK, DISK_SIZE
+#   (80G: full ./install.sh needs ~40G), RAM (4096), PORT (8000), ISO, FRESH=1
 set -euo pipefail
 say(){ printf '\e[1;34m>>\e[0m %s\n' "$*"; }
 die(){ printf '\e[1;31mERR\e[0m %s\n' "$*" >&2; exit 1; }
 
 SCRIPTS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-[[ -f "$SCRIPTS_DIR/arch-install.sh" ]] || die "arch-install.sh not found next to this script"
+INSTALLER=${INSTALLER:-arch-install.sh}
+[[ $INSTALLER == */* || $INSTALLER == *..* ]] && die "INSTALLER must be a basename under scripts/"
+[[ -f "$SCRIPTS_DIR/$INSTALLER" ]] || die "$INSTALLER not found next to this script"
 WORK=${WORK:-$HOME/arch-vmtest}
 DISK="$WORK/test-disk.qcow2"
 DISK_SIZE=${DISK_SIZE:-80G}
@@ -66,14 +72,17 @@ cat <<EOF
 
   ┌─ VM smoke test ─────────────────────────────────────────────┐
    Inside the VM's Arch ISO root shell, run the installer:
-     ${0##*/} serves it at http://10.0.2.2:$PORT/arch-install.sh
+     ${0##*/} serves scripts/ at http://10.0.2.2:$PORT/
+     Active INSTALLER=${INSTALLER}
 
-     bash <(curl -fsSL http://10.0.2.2:$PORT/arch-install.sh)
+     bash <(curl -fsSL http://10.0.2.2:$PORT/${INSTALLER})
 
    • Disk mode: AUTO · target: /dev/vda (the ONLY disk in the VM)
    • Tests: partition+format, LUKS, btrfs(+@tmp), UKIs, systemd-boot
+   • T14s script: confirm past DMI warn (VM has no 21CQ/21CR); AMD ucode OK
    • After 'reboot', remove ISO: VM boot menu → disk, expect GDM
    • Reset between runs:  FRESH=1 ${0##*/}
+   • T14s: INSTALLER=arch-install-t14s.sh ${0##*/}
    • Virtual disk: $DISK
   └─────────────────────────────────────────────────────────────┘
 

@@ -113,6 +113,18 @@ if command -v opencode >/dev/null 2>&1; then
 else
     echo "○ opencode CLI missing"
 fi
+if command -v obscura >/dev/null 2>&1; then
+    echo "✓ obscura ($(obscura --version 2>/dev/null | head -1))"
+else
+    echo "○ obscura missing (bash scripts/install-obscura.sh)"
+fi
+opencode_json="${XDG_CONFIG_HOME:-$HOME/.config}/opencode/opencode.json"
+if [[ -f "$opencode_json" ]] && grep -q '"obscura"' "$opencode_json"; then
+    echo "✓ OpenCode MCP obscura"
+else
+    echo "○ OpenCode MCP obscura missing (bash scripts/install-obscura.sh)"
+fi
+check_agent_skill obscura-host "bash scripts/install-obscura.sh"
 if [[ -f "${KIMI_CODE_HOME:-$HOME/.kimi-code}/mcp.json" ]]; then
     echo "✓ Kimi MCP config"
 else
@@ -514,5 +526,31 @@ if [ -f "$REPO_ROOT/scripts/proton-connectivity-check.sh" ]; then
 else
     echo "✗ proton-connectivity-check.sh missing"
 fi
+
+echo "--- ThinkPad charge thresholds ---"
+_charge="$REPO_ROOT/scripts/thinkpad-charge-thresholds.sh"
+if [[ -f "$_charge" ]]; then
+    if bash -n "$_charge" 2>/dev/null; then
+        echo "✓ thinkpad-charge-thresholds.sh (syntax OK)"
+    else
+        echo "✗ thinkpad-charge-thresholds.sh bash -n failed"
+    fi
+    if [[ -r /sys/class/power_supply/BAT0/charge_control_start_threshold ]]; then
+        _cs="$(cat /sys/class/power_supply/BAT0/charge_control_start_threshold 2>/dev/null || true)"
+        _ce="$(cat /sys/class/power_supply/BAT0/charge_control_end_threshold 2>/dev/null || true)"
+        echo "  BAT0 live: start=${_cs:-?} end=${_ce:-?}"
+        unset _cs _ce
+    else
+        echo "  ○ no BAT0 charge_control_* (non-ThinkPad or module not loaded)"
+    fi
+    if [[ -f /etc/tmpfiles.d/thinkpad-charge-thresholds.conf ]]; then
+        echo "✓ /etc/tmpfiles.d/thinkpad-charge-thresholds.conf present"
+    else
+        echo "○ charge tmpfiles not installed (bash scripts/thinkpad-charge-thresholds.sh)"
+    fi
+else
+    echo "✗ thinkpad-charge-thresholds.sh missing"
+fi
+unset _charge
 
 echo "Health check finished."

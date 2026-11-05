@@ -84,13 +84,16 @@ for skill_dir in "$KIT_SKILLS"/*/; do
 done
 shopt -u nullglob
 
-# Host skill from this repo (ghidra-cli-host) — keep agents copy fresh
-HOST_SKILL="${REPO_ROOT}/skills/ghidra-cli-host"
-if [[ -f "$HOST_SKILL/SKILL.md" ]]; then
-  rm -rf "${AGENTS}/ghidra-cli-host"
-  cp -a "$HOST_SKILL" "${AGENTS}/ghidra-cli-host"
-  echo "  refreshed agents/ghidra-cli-host"
-fi
+# Host skills from this repo — keep agents copies fresh
+for _host_skill in ghidra-cli-host obscura-host; do
+  HOST_SKILL="${REPO_ROOT}/skills/${_host_skill}"
+  if [[ -f "$HOST_SKILL/SKILL.md" ]]; then
+    rm -rf "${AGENTS}/${_host_skill}"
+    cp -a "$HOST_SKILL" "${AGENTS}/${_host_skill}"
+    echo "  refreshed agents/${_host_skill}"
+  fi
+done
+unset _host_skill HOST_SKILL
 
 say "mirror $AGENTS → claude + cursor + opencode + kimi"
 shopt -s nullglob

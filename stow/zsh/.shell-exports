@@ -86,8 +86,12 @@ case "${RUSTFLAGS:-} " in
     *) export RUSTFLAGS="${RUSTFLAGS:+$RUSTFLAGS }-C target-cpu=x86-64-v3" ;;
 esac
 
-# Container CLI socket — prefer Podman when its socket exists, else Docker.
-if [[ -S "${XDG_RUNTIME_DIR}/podman/podman.sock" ]]; then
+# Container CLI socket — Podman-first for agent sandboxes when podman.socket is up.
+# `docker` then talks to Podman (intentional). Real dockerd: FORCE_DOCKER=1
+# (and /var/run/docker.sock present), or: systemctl --user stop podman.socket
+if [[ -n ${FORCE_DOCKER:-} && -S /var/run/docker.sock ]]; then
+  unset DOCKER_HOST
+elif [[ -S "${XDG_RUNTIME_DIR}/podman/podman.sock" ]]; then
   export DOCKER_HOST="unix://${XDG_RUNTIME_DIR}/podman/podman.sock"
 elif [[ -S /var/run/docker.sock ]]; then
   unset DOCKER_HOST

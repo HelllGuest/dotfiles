@@ -50,9 +50,10 @@ Thank you for helping improve this setup. Follow these guidelines to keep the re
 ### Machine profiles (`profiles/`)
 
 - Optional hostname override: `profiles/$(hostname).sh` (e.g. `thinkpad-x1.sh`).
-- If no hostname match, `scripts/detect-profile.sh` picks from DMI product strings + chassis type: `thinkpad-x1`, `thinkpad-p15`, or `laptop` (no desktop/NVIDIA-only profile; no `lspci` in detect-profile).
+- If no hostname match, `scripts/detect-profile.sh` picks from DMI product strings + chassis type: `thinkpad-x1`, `thinkpad-p15`, `thinkpad-t14s`, or `laptop` (no desktop/NVIDIA-only profile; no `lspci` in detect-profile).
 - `install.sh` installs `packages/pacman.txt` first, then `apply-profile.sh` sources **exactly one** profile (NVIDIA/Optimus packages must exist before `thinkpad-p15` enables services / rebuilds UKIs). Optimus setup is inside `profiles/thinkpad-p15.sh` (`has_nvidia_gpu` in `scripts/lib/dmi.sh`). There is no `nvidia.sh`.
-- `profiles/laptop.sh` delegates to `thinkpad-x1.sh` only on X1 models.
+- `profiles/laptop.sh` delegates to `thinkpad-x1.sh` on X1 models and `thinkpad-t14s.sh` when DMI type is **21CQ/21CR** (`is_thinkpad_t14s`; other T14s gens do not match).
+- Bare-metal AMD T14s Gen 3: use `scripts/arch-install-t14s.sh` (not the generic `arch-install.sh`) so cmdline gets `amd_iommu`/`amd_pstate`, pacstrap uses `amd-ucode`, and desktop pulls packages listed in `packages/thinkpad-t14s.txt` (`mesa`/`vulkan-radeon`/`fprintd`). Installer seeds BAT0 charge tmpfiles from `scripts/lib/thinkpad-charge-thresholds.conf` (keep heredoc in sync). After `./install.sh`, `profiles/thinkpad-t14s.sh` refreshes thresholds via `scripts/thinkpad-charge-thresholds.sh`. VM: `INSTALLER=arch-install-t14s.sh scripts/arch-install-vmtest.sh`.
 - On ThinkPad X1 hardware, `system-setup.sh` (run after the profile) installs the X1-only `stow/system/` files (cmdline, i915, fingerprint rule), so `thinkpad-x1.sh` must not edit them. Other profiles skip those files and may manage their own (e.g. `thinkpad-p15.sh` writes `/etc/modprobe.d/nvidia.conf`, appends `nvidia_drm.modeset=1` and `rd.driver.blacklist=nouveau` to `/etc/kernel/cmdline`, then rebuilds UKIs). Gating is by DMI hardware (`is_thinkpad_x1`), not hostname. UKI rebuilds go through `mkinitcpio -P`; sbctl's mkinitcpio post hook signs each rebuilt UKI. A live `/proc/cmdline` without those flags means reboot (or UKI rebuild) was skipped.
 - `stow/system/etc/systemd/system/virbr0-up.service` starts the libvirt `default` network then brings `virbr0` up (boot race fix). `system-setup.sh` enables it when the unit file changes; `scripts/kali-disposable.sh setup` also installs/enables it.
 
@@ -120,12 +121,13 @@ Thank you for helping improve this setup. Follow these guidelines to keep the re
 
 | Role | Scripts |
 |------|---------|
-| Bootstrap | `install.sh`, `stow-only.sh`, `minimal-stow.sh`, `arch-install.sh`, `arch-install-vmtest.sh`, `apply-profile.sh`, `detect-profile.sh` |
+| Bootstrap | `install.sh`, `stow-only.sh`, `minimal-stow.sh`, `arch-install.sh`, `arch-install-t14s.sh`, `arch-install-vmtest.sh`, `apply-profile.sh`, `detect-profile.sh` |
+| Containers | `agent-run.sh` (hardened rootless Podman); stow `containers` → `~/.config/containers/containers.conf` |
 | Packages | `install-flatpaks.sh`, `install-aur.sh`, `bootstrap-aur.sh`, `install-fonts.sh` |
 | GNOME / desktop | `gnome-session-setup.sh`, `install-extensions.sh`, `fetch-gnome-extensions.sh`, `install-dash2dock.sh`, `gnome-console-setup.sh`, `ptyxis-setup.sh`, `gdm-setup.sh`, `backup-gsettings.sh`, `restore-gsettings.sh`, `reset-input-defaults.sh`, `cleanup-input-overrides.sh` |
 | Location / VPN | `location-setup.sh`, `vpn-location-sync.sh`, `proton-connectivity-check.sh`, `proton-seed-serverlist.sh` |
-| Dev tools | `git-setup.sh`, `nvim-setup.sh`, `headroom-setup.sh`, `install-headroom.sh`, `sync-agent-skills.sh`, `install-coding-agents.sh`, `install-ecosystem-skills.sh`, `install-caveman.sh`, `install-android-ui-skills.sh`, `install-rea.sh`, `install-re-skills.sh` (`packages/agent-skills-re.txt`), `install-re-extras.sh` (`packages/re-extra.txt`), `install-ghidra-cli.sh`, `install-photogimp.sh`, `browser-hardening.sh`, `privacy-hardener.sh` (`lib/telemetry.sh`, `stow/privacy`) |
-| System | `system-setup.sh`, `zram-setup.sh`, `tmp-to-disk.sh`, `network-dns-setup.sh`, `fingerprint-setup.sh`, `thinkpad-health.sh`, `rebuild-v3.sh`, `build-st.sh` |
+| Dev tools | `git-setup.sh`, `nvim-setup.sh`, `headroom-setup.sh`, `install-headroom.sh`, `sync-agent-skills.sh`, `install-coding-agents.sh`, `install-ecosystem-skills.sh`, `install-caveman.sh`, `install-android-ui-skills.sh`, `install-rea.sh`, `install-re-skills.sh` (`packages/agent-skills-re.txt`), `install-re-extras.sh` (`packages/re-extra.txt`), `install-ghidra-cli.sh`, `install-obscura.sh` (Obscura CDP/MCP), `install-photogimp.sh`, `browser-hardening.sh`, `privacy-hardener.sh` (`lib/telemetry.sh`, `stow/privacy`) |
+| System | `system-setup.sh`, `zram-setup.sh`, `tmp-to-disk.sh`, `network-dns-setup.sh`, `fingerprint-setup.sh`, `thinkpad-health.sh`, `thinkpad-charge-thresholds.sh` (70–80 tmpfiles; T14s profile + `install-re-extras.sh`), `rebuild-v3.sh`, `build-st.sh` |
 | Validate | `check.sh`, `validate-configs.sh`, `lint-docs.sh`, `list-stow-files.sh`, `post-update.sh` |
 
 ---

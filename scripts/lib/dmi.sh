@@ -3,8 +3,9 @@
 
 dmi_field() {
   local f="$1"
-  if [[ -r "/sys/class/dmi/id/$f" ]]; then
-    cat "/sys/class/dmi/id/$f"
+  local root="${DMI_SYSFS_ROOT:-/sys/class/dmi/id}"
+  if [[ -r "$root/$f" ]]; then
+    cat "$root/$f"
   elif command -v dmidecode >/dev/null 2>&1; then
     dmidecode -s "$f" 2>/dev/null || true
   fi
@@ -23,6 +24,14 @@ is_thinkpad_x1() {
 
 is_thinkpad_p15() {
   echo "$(dmi_label)" | grep -qiE 'ThinkPad[[:space:]]*P15|P15[[:space:]]+Gen'
+}
+
+# T14s Gen 3 AMD only — machine type 21CQ / 21CR (MTM e.g. 21CRS1PU00).
+# Other T14s gens (Intel or later AMD types) must not match.
+is_thinkpad_t14s() {
+  local blob
+  blob="$(dmi_label) $(dmi_field product_sku) $(dmi_field product_name)"
+  echo "$blob" | grep -qiE '21CQ|21CR'
 }
 
 is_laptop_chassis() {
