@@ -150,9 +150,12 @@ on X1 hardware only; the cmdline gets this machine's booted LUKS UUID. Details:
 Firewall check: [Verify Firewall](hardened-arch-gnome.md#verify-firewall).
 
 **Sleep drift:** repo files pin `mem_sleep_default=s2idle` and
-`MemorySleepMode=s2idle`. A live host may still show `s2idle [deep]` if
-`system-setup.sh` never ran or cmdline was edited to `deep`. Check
-`/proc/cmdline` and `/sys/power/mem_sleep` after changes.
+`MemorySleepMode=s2idle`. A live host may still show `s2idle [deep]` (deep
+active) if BIOS is **Linux**/S3, `system-setup.sh` never ran, or cmdline was
+edited to `deep`. Fix: BIOS → **Windows and Linux**, then
+`bash scripts/system-setup.sh`, **reboot**, re-check
+`/proc/cmdline` + `/sys/power/mem_sleep` (want `[s2idle] deep`).
+See [Verify sleep](hardened-arch-gnome.md#verify-sleep-s2idle).
 
 ---
 
@@ -179,8 +182,14 @@ systemctl --user enable --now podman.socket
 bash ~/dotfiles/scripts/agent-run.sh /tmp alpine:3.20 echo ok   # optional smoke
 ```
 
-`DOCKER_HOST` prefers Podman when `podman.socket` is up. Real Docker daemon for
-one shell: `FORCE_DOCKER=1`.
+`DOCKER_HOST` prefers Podman when `podman.socket` is up. If `docker` package is
+also installed, disable the system daemon so it does not fight Podman:
+
+```bash
+sudo systemctl disable --now docker.service docker.socket
+```
+
+Real Docker daemon for one shell: `FORCE_DOCKER=1`.
 
 ### Not in `packages/pacman.txt` (install separately)
 

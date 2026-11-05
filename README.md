@@ -59,7 +59,14 @@ systemctl --user enable --now podman.socket
 # optional: loginctl enable-linger "$USER"  # keeps socket after logout
 ```
 
-`.shell-exports` sets `DOCKER_HOST` to the Podman socket when it exists, so `docker` talks to Podman. That is intentional. Escape hatch for a real Docker daemon: `FORCE_DOCKER=1` (with `/var/run/docker.sock`), or stop `podman.socket`.
+`.shell-exports` sets `DOCKER_HOST` to the Podman socket when it exists, so `docker` talks to Podman. That is intentional. If the `docker` package is installed, disable the system daemon so Podman stays primary:
+
+```bash
+sudo systemctl disable --now docker.service docker.socket
+systemctl --user enable --now podman.socket
+```
+
+Escape hatch for a real Docker daemon: `FORCE_DOCKER=1` (with `/var/run/docker.sock`), or stop `podman.socket`.
 
 Hardened one-shot runs: `scripts/agent-run.sh <project-dir> <image> [cmd…]` (read-only, cap-drop ALL, network none by default; never mounts runtime sockets). User defaults: `stow/containers` → `~/.config/containers/containers.conf`. Full notes: [Phase 17](docs/hardened-arch-gnome.md#phase-17--rootless-podman).
 
@@ -337,7 +344,7 @@ Key runtime dependencies (`scripts/check.sh` asserts binaries, shell tools, syml
 
 **AUR** (via `install-aur.sh`, bootstraps `paru` if needed): `blesh-git`, `curlie`, `forgit`, GNOME shell extensions, `vscodium-bin` (settings in `stow/vscode/`)
 
-**Flatpaks** (via `install-flatpaks.sh`): Brave, Zen, Google Chrome, LibreWolf, Proton VPN, Android Studio. Browser telemetry debloat: `scripts/browser-hardening.sh` (Chrome = `chromium-base` only; Brave = base + `brave-extra`; Zen `user.js` per real profile + Flatpak `systemconfig` + `/etc/firefox/policies` for native; LibreWolf upstream + `librewolf.overrides.cfg`). Launch Zen once before re-running hardening if profiles are new.
+**Flatpaks** (via `install-flatpaks.sh`): Brave, Zen, Google Chrome, LibreWolf, Proton VPN, Android Studio. Chrome may be `--system` or `--user`; both satisfy `check.sh` / hardening presence checks. Browser telemetry debloat: `scripts/browser-hardening.sh` (Chrome = `chromium-base` only; Brave = base + `brave-extra`; Zen `user.js` per real profile + Flatpak `systemconfig` + `/etc/firefox/policies` for native; LibreWolf upstream + `librewolf.overrides.cfg`). Launch Zen once before re-running hardening if profiles are new. `/etc` policy paths need sudo.
 
 **Terminals:** `kitty` (primary; Super+Return), `ghostty`, optional stowed configs for `alacritty`, `contour`, `foot`, `rio`, `wezterm`, plus `gnome-console` (kgx) and `ptyxis`. Optional suckless `st`: `bash scripts/build-st.sh` (`builds/st/`).
 
@@ -375,7 +382,11 @@ We take a "quiet by default" approach:
 |---------|--------|-----|
 | `Can't find an installed Node version matching …` on terminal open | **fnm** `--use-on-cd` + project `engines` / `.nvmrc` | `fnm install 22` or `fnm install` in project; or drop `--use-on-cd` in dotfiles |
 | `$FZF_DEFAULT_OPTS: unknown action: copy-selection` | fzf 0.72 lacks `copy-selection` | Fixed in dotfiles; `exec zsh` / `exec bash` |
-| `docker` tries Podman socket / `connect: no such file` | Stale `DOCKER_HOST` or Podman socket missing | Current `.shell-exports` auto-picks; `unset DOCKER_HOST`; enable `docker.service` |
+| `docker` tries Podman socket / `connect: no such file` | Stale `DOCKER_HOST` or Podman socket missing | `systemctl --user enable --now podman.socket`; new shell; or `FORCE_DOCKER=1` for real dockerd |
+| `s2idle [deep]` / `mem_sleep_default=deep` after upgrades | Cmdline or BIOS drifted from s2idle pin | BIOS Sleep = Windows and Linux; `bash scripts/system-setup.sh`; reboot |
+| Charge thresholds reset every boot | No `/etc/tmpfiles.d/thinkpad-charge-thresholds.conf` | `bash scripts/thinkpad-charge-thresholds.sh` (optional `CHARGE_START`/`CHARGE_END`) |
+| `check.sh`: Chrome / Brave policies ✗ | `/etc` policy files missing or stale | `bash scripts/browser-hardening.sh` (needs sudo for `/etc`) |
+| `evolution-data-server` / `wireless-regdb` missing | Listed in `pacman.txt` but not installed | `sudo pacman -S --needed evolution-data-server wireless-regdb` |
 | `unsafe path transition /etc` during `pacman` | `/etc` owned by user (old `gdm-setup.sh` used `rsync -a`) | `bash scripts/gdm-setup.sh` (restores root + 755), or `sudo chown root:root /etc && sudo chmod 755 /etc` |
 | No network after boot; `ufw.service` failed | `/etc/ufw/before.rules` was a stow symlink into `$HOME` | `bash scripts/system-setup.sh` (installs real files, reloads ufw) |
 | `ufw allow OpenSSH` → could not find profile | Arch UFW has no OpenSSH app profile (Ubuntu-only name) | `sudo ufw allow 22/tcp comment 'ssh'` then `sudo ufw reload`; enable `sshd` |

@@ -965,7 +965,8 @@ on X1/P15:
 
 ```bash
 bash scripts/thinkpad-charge-thresholds.sh
-# optional: CHARGE_START=75 CHARGE_END=80 bash scripts/thinkpad-charge-thresholds.sh
+# keep a custom window (example used on some hosts):
+# CHARGE_START=75 CHARGE_END=80 bash scripts/thinkpad-charge-thresholds.sh
 ```
 
 Manual equivalent:
@@ -976,7 +977,9 @@ echo 80 | tee /sys/class/power_supply/BAT0/charge_control_end_threshold
 ```
 
 Sysfs values reset on boot; the tmpfiles drop-in re-applies them. Only batteries
-that expose `charge_control_*_threshold` are touched.
+that expose `charge_control_*_threshold` are touched. If live thresholds exist
+but `/etc/tmpfiles.d/thinkpad-charge-thresholds.conf` is missing, re-run the
+helper (needs sudo). `scripts/check.sh` reports this gap.
 
 ---
 
@@ -1077,9 +1080,19 @@ AppArmor: Podman may report `apparmorEnabled: false` on this host while still
 using seccomp. Treat AppArmor as unused for containers unless you add a real
 profile.
 
-Optional leftover **Docker** daemon: keep installed if you want, but agent path
-is Podman. Real dockerd for one shell: `FORCE_DOCKER=1`. Do not install
-`podman-docker` alongside `docker` (pacman conflict).
+Optional leftover **Docker** package: fine to keep for rare `FORCE_DOCKER=1`
+use. If both are installed, **disable the system daemon** so Podman stays
+default (otherwise `docker.service` owns `/var/run/docker.sock` and confuses
+checks):
+
+```bash
+sudo systemctl disable --now docker.service docker.socket
+systemctl --user enable --now podman.socket
+# new shell, or: export DOCKER_HOST=unix://$XDG_RUNTIME_DIR/podman/podman.sock
+```
+
+Real dockerd for one shell: `FORCE_DOCKER=1`. Do not install `podman-docker`
+alongside `docker` (pacman conflict).
 
 ---
 
@@ -1561,7 +1574,15 @@ mem_sleep_default=s2idle
 ```
 
 If you see `s2idle [deep]` and/or `mem_sleep_default=deep`, the live cmdline or
-BIOS Sleep State has drifted from the repo pin.
+BIOS Sleep State has drifted from the repo pin. Repair:
+
+1. BIOS Sleep State = **Windows and Linux** (not **Linux** / S3).
+2. `bash scripts/system-setup.sh` (rewrites `/etc/kernel/cmdline` from
+   `stow/system/`, installs `s2idle.conf` + lid drop-in, rebuilds UKIs).
+3. **Reboot**, then re-check `/proc/cmdline` and `/sys/power/mem_sleep`.
+   Expect bracket on **s2idle**: `[s2idle] deep`.
+
+Cmdline backups land under `/var/backups/dotfiles-system/<timestamp>/`.
 
 ---
 
@@ -1621,8 +1642,8 @@ systemctl status earlyoom
 ```bash
 cat /sys/class/power_supply/BAT0/charge_control_start_threshold
 cat /sys/class/power_supply/BAT0/charge_control_end_threshold
-# expect 70 and 80 (or your CHARGE_START / CHARGE_END)
-cat /etc/tmpfiles.d/thinkpad-charge-thresholds.conf
+# expect 70 and 80 (or your CHARGE_START / CHARGE_END, e.g. 75/80)
+test -f /etc/tmpfiles.d/thinkpad-charge-thresholds.conf && cat /etc/tmpfiles.d/thinkpad-charge-thresholds.conf
 ```
 
 ---
