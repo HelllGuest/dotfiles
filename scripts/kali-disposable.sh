@@ -663,8 +663,9 @@ cmd_status() {
       echo "LAN: not attached (kali attach-lan / start --lan)"
     fi
   fi
-  [[ -f "$BASE_IMG" ]] && qemu-img info "$BASE_IMG" 2>/dev/null | head -6
-  [[ -f "$OVERLAY" ]] && qemu-img info "$OVERLAY" 2>/dev/null | head -8
+  if [[ -f "$BASE_IMG" ]]; then qemu-img info "$BASE_IMG" 2>/dev/null | head -6; fi
+  if [[ -f "$OVERLAY" ]]; then qemu-img info "$OVERLAY" 2>/dev/null | head -8; fi
+  return 0
 }
 
 cmd_lan_check() {
