@@ -86,28 +86,29 @@ valid_timezone America && fail "timezone America (dir) should fail" || true
 if [[ -f /usr/share/zoneinfo/leapseconds ]]; then
   valid_timezone leapseconds && fail "timezone leapseconds should fail (not TZif)" || true
 fi
+valid_timezone Factory && fail "timezone Factory should fail" || true
 if [[ -f /usr/share/zoneinfo/posixrules ]]; then
-  valid_timezone posixrules || fail "timezone posixrules should pass (TZif)"
+  valid_timezone posixrules && fail "timezone posixrules should fail" || true
 fi
-# Locale/keymap: fixture overrides so ubuntu-latest CI does not need host maps.
+# Locale/keymap: fixture overrides (gated) so ubuntu-latest CI does not need host maps.
 mkdir -p "$TMP/id/keymaps" "$TMP/id/bin"
 printf '%s\n' 'en_US.UTF-8 UTF-8' '#de_DE.UTF-8 UTF-8' >"$TMP/id/locales"
 : >"$TMP/id/keymaps/us.map.gz"
-LOCALE_FILES="$TMP/id/locales" valid_locale en_US.UTF-8 \
+IDENTITY_OVERRIDES=1 LOCALE_FILES="$TMP/id/locales" valid_locale en_US.UTF-8 \
   || fail "locale en_US.UTF-8 should pass (fixture)"
-LOCALE_FILES="$TMP/id/locales" valid_locale de_DE.UTF-8 \
+IDENTITY_OVERRIDES=1 LOCALE_FILES="$TMP/id/locales" valid_locale de_DE.UTF-8 \
   || fail "locale de_DE.UTF-8 (commented) should pass (fixture)"
-LOCALE_FILES="$TMP/id/locales" valid_locale NotA_Locale \
+IDENTITY_OVERRIDES=1 LOCALE_FILES="$TMP/id/locales" valid_locale NotA_Locale \
   && fail "locale NotA_Locale should fail" || true
-KEYMAP_DIR="$TMP/id/keymaps" valid_keymap us \
+IDENTITY_OVERRIDES=1 KEYMAP_DIR="$TMP/id/keymaps" valid_keymap us \
   || fail "keymap us should pass (fixture)"
-KEYMAP_DIR="$TMP/id/keymaps" valid_keymap not-a-real-keymap-zz \
+IDENTITY_OVERRIDES=1 KEYMAP_DIR="$TMP/id/keymaps" valid_keymap not-a-real-keymap-zz \
   && fail "keymap bogus should fail" || true
-KEYMAP_DIR="$TMP/id/keymaps" valid_keymap '*' \
+IDENTITY_OVERRIDES=1 KEYMAP_DIR="$TMP/id/keymaps" valid_keymap '*' \
   && fail "keymap glob * should fail" || true
-KEYMAP_DIR="$TMP/id/keymaps" valid_keymap 'u?' \
+IDENTITY_OVERRIDES=1 KEYMAP_DIR="$TMP/id/keymaps" valid_keymap 'u?' \
   && fail "keymap glob u? should fail" || true
-KEYMAP_DIR="$TMP/id/keymaps" valid_keymap '[a-z]*' \
+IDENTITY_OVERRIDES=1 KEYMAP_DIR="$TMP/id/keymaps" valid_keymap '[a-z]*' \
   && fail "keymap glob [a-z]* should fail" || true
 # localectl path: fixed-string match (u. must not regex-match us;
 # ... must not regex-match three-letter names like dvo)

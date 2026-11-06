@@ -3,9 +3,12 @@
 # Canonical copy: tests source this file. Installers embed the same function
 # bodies so each script stays a single curl-able file (no runtime source).
 #
-# Optional overrides (honoured wherever set; tests use them, ISO normally does not):
+# Test fixtures only when T14S_IDENTITY_OVERRIDES=1 (or IDENTITY_OVERRIDES=1):
 #   LOCALE_FILES  — space-separated locale list paths (replaces SUPPORTED/locale.gen)
-#   KEYMAP_DIR    — keymap tree for find / fixtures (skips localectl when set)
+#   KEYMAP_DIR    — keymap tree for find / fixtures
+#
+# Note: public t14s-arch-install keeps its own copies (FQDN hostnames, + in
+# keymaps, T14S_IDENTITY_OVERRIDES only). Do not assume byte-identical parity.
 
 valid_hostname() {
   local h="$1"
@@ -27,6 +30,9 @@ valid_timezone() {
   local tz="$1" f magic
   [[ $tz != *..* ]] || return 1
   [[ $tz =~ ^[A-Za-z_]+(/[A-Za-z0-9_+-]+)*$ ]] || return 1
+  case $tz in
+    Factory|leapseconds|posixrules|localtime|iso3166.tab|zone.tab|zonenow.tab|tzdata.zi) return 1 ;;
+  esac
   f="/usr/share/zoneinfo/$tz"
   [[ -f $f ]] || return 1
   # Zone files start with TZif; reject leapseconds / plain text tables.
@@ -38,7 +44,7 @@ valid_locale() {
   local loc="$1" f line name
   local -a files=()
   [[ -n $loc ]] || return 1
-  if [[ -n ${LOCALE_FILES:-} ]]; then
+  if [[ ${T14S_IDENTITY_OVERRIDES:-${IDENTITY_OVERRIDES:-0}} == 1 && -n ${LOCALE_FILES:-} ]]; then
     # shellcheck disable=SC2206
     files=(${LOCALE_FILES})
   else
@@ -56,26 +62,17 @@ valid_locale() {
 }
 
 valid_keymap() {
-  local km="$1" root
-  # Literal name only — never pass glob metacharacters to find -name.
+  local km="$1" root=/usr/share/kbd/keymaps
+  # Literal name only — never pass glob/regex metacharacters to find/grep.
   [[ $km =~ ^[A-Za-z0-9_.-]+$ ]] || return 1
-  # Test override: fixture dir wins (CI without console keymaps).
-  if [[ -n ${KEYMAP_DIR:-} ]]; then
+  if [[ ${T14S_IDENTITY_OVERRIDES:-${IDENTITY_OVERRIDES:-0}} == 1 && -n ${KEYMAP_DIR:-} ]]; then
     root="$KEYMAP_DIR"
-    [[ -d $root ]] || return 1
-    find "$root" -type f \
-      \( -name "${km}.map" -o -name "${km}.map.gz" \
-         -o -name "${km}.kmap" -o -name "${km}.kmap.gz" \) \
-      2>/dev/null | grep -q .
-    return $?
   fi
   if command -v localectl >/dev/null 2>&1; then
-    # localectl present: its answer is final (no find fallthrough).
-    localectl list-keymaps 2>/dev/null | grep -qxF -- "$km"
-    return $?
+    localectl list-keymaps 2>/dev/null | grep -qxF -- "$km" && return 0
+    # Not listed: still accept an exact on-disk map. Charset is safe.
   fi
-  # Fallback only when localectl is missing (non-ISO hosts).
-  root=/usr/share/kbd/keymaps
+  # Directory check only for find fallback (Ubuntu CI often has no kbd keymaps tree).
   [[ -d $root ]] || return 1
   find "$root" -type f \
     \( -name "${km}.map" -o -name "${km}.map.gz" \
