@@ -7,7 +7,7 @@ A clean, modular, and programmable dotfiles ecosystem optimized for **Arch Linux
 ## 🚀 Key Features
 
 - **Privacy Hardened:** Telemetry, usage reporting, and "phoning home" are disabled system-wide (GNOME, VS Code, .NET, etc.).
-- **ThinkPad Optimized:** Hostname or hardware-detected profiles (`thinkpad-x1.sh`, `thinkpad-p15.sh`, `thinkpad-t14s.sh`, or `laptop.sh`) with power-profiles-daemon, UKIs signed for Secure Boot (sbctl), and a tracked **s2idle** sleep pin (`mem_sleep_default=s2idle`; pair BIOS Sleep State with **Windows and Linux**, not **Linux**/S3 — see `docs/hardened-arch-gnome.md`). X1 Yoga also gets tablet auto-rotate (`iio-sensor-proxy`). Thermal is firmware-managed. Charge window **70–80** via `scripts/thinkpad-charge-thresholds.sh` (tmpfiles; used by T14s profile + `install-re-extras.sh`).
+- **ThinkPad Optimized:** Hostname or hardware-detected profiles (`thinkpad-x1.sh`, `thinkpad-p15.sh`, `thinkpad-t14s.sh`, or `laptop.sh`) with power-profiles-daemon, UKIs signed for Secure Boot (sbctl), and a tracked **s2idle** sleep pin (`mem_sleep_default=s2idle`; pair BIOS Sleep State with **Windows and Linux**, not **Linux**/S3 — see `docs/hardened-arch-gnome.md`). X1 Yoga also gets tablet auto-rotate (`iio-sensor-proxy`). Thermal is firmware-managed. Charge window **70–80** via `scripts/thinkpad-charge-thresholds.sh` (tmpfiles + `thinkpad-charge-thresholds.service` for late BAT*; used by T14s profile + `install-re-extras.sh`).
 - **Elite-Tier Terminal:** Kitty & Ghostty with shared Zsh/Bash configs, real-time autocomplete, [Gruvbox Rainbow](https://starship.rs/presets/gruvbox-rainbow) Starship prompt.
 - **Neovim (Lazy.nvim):** A modular Lua configuration.
 
@@ -288,7 +288,7 @@ reboot                                   # UKI must embed nvidia_drm.modeset + n
 lspci -nnk -d 10de: | grep -A2 'Kernel driver'
 prime-run nvidia-smi -L
 scripts/thinkpad-health.sh       # X1 only (i915); T14s: check amd_iommu/amd_pstate + mem_sleep
-scripts/thinkpad-charge-thresholds.sh  # optional re-run; T14s profile + install-re-extras already call it
+scripts/thinkpad-charge-thresholds.sh  # tmpfiles + late-boot service; profile / install-re-extras call it
 ```
 
 **What `./install.sh` runs, in order:**
@@ -384,7 +384,7 @@ We take a "quiet by default" approach:
 | `$FZF_DEFAULT_OPTS: unknown action: copy-selection` | fzf 0.72 lacks `copy-selection` | Fixed in dotfiles; `exec zsh` / `exec bash` |
 | `docker` tries Podman socket / `connect: no such file` | Stale `DOCKER_HOST` or Podman socket missing | `systemctl --user enable --now podman.socket`; new shell; or `FORCE_DOCKER=1` for real dockerd |
 | `s2idle [deep]` / `mem_sleep_default=deep` after upgrades | Cmdline or BIOS drifted from s2idle pin | BIOS Sleep = Windows and Linux; `bash scripts/system-setup.sh`; reboot |
-| Charge thresholds reset every boot | No `/etc/tmpfiles.d/thinkpad-charge-thresholds.conf` | `bash scripts/thinkpad-charge-thresholds.sh` (optional `CHARGE_START`/`CHARGE_END`) |
+| Charge thresholds reset every boot | Missing tmpfiles **and/or** late-boot unit (`thinkpad_acpi` BAT* can appear after tmpfiles) | `bash scripts/thinkpad-charge-thresholds.sh` (optional `CHARGE_START`/`CHARGE_END`; installs tmpfiles + `thinkpad-charge-thresholds.service`) |
 | `check.sh`: Chrome / Brave policies ✗ | `/etc` policy files missing or stale | `bash scripts/browser-hardening.sh` (needs sudo for `/etc`) |
 | `evolution-data-server` / `wireless-regdb` missing | Listed in `pacman.txt` but not installed | `sudo pacman -S --needed evolution-data-server wireless-regdb` |
 | `unsafe path transition /etc` during `pacman` | `/etc` owned by user (old `gdm-setup.sh` used `rsync -a`) | `bash scripts/gdm-setup.sh` (restores root + 755), or `sudo chown root:root /etc && sudo chmod 755 /etc` |

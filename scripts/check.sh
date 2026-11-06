@@ -543,10 +543,28 @@ if [[ -f "$_charge" ]]; then
     else
         echo "  ○ no BAT0 charge_control_* (non-ThinkPad or module not loaded)"
     fi
-    if [[ -f /etc/tmpfiles.d/thinkpad-charge-thresholds.conf ]]; then
-        echo "✓ /etc/tmpfiles.d/thinkpad-charge-thresholds.conf present"
-    else
-        echo "○ charge tmpfiles not installed (bash scripts/thinkpad-charge-thresholds.sh)"
+    # Only nag about missing persistence on hosts that expose BAT charge controls.
+    if [[ -r /sys/class/power_supply/BAT0/charge_control_start_threshold ]]; then
+      if [[ -f /etc/tmpfiles.d/thinkpad-charge-thresholds.conf ]]; then
+          echo "✓ /etc/tmpfiles.d/thinkpad-charge-thresholds.conf present"
+      else
+          echo "○ charge tmpfiles not installed (bash scripts/thinkpad-charge-thresholds.sh)"
+      fi
+      if [[ -f /etc/systemd/system/thinkpad-charge-thresholds.service ]]; then
+          echo "✓ thinkpad-charge-thresholds.service unit present"
+          if systemctl is-enabled thinkpad-charge-thresholds.service >/dev/null 2>&1; then
+              echo "✓ thinkpad-charge-thresholds.service enabled"
+          else
+              echo "○ thinkpad-charge-thresholds.service not enabled (re-run helper)"
+          fi
+      else
+          echo "○ charge late-boot unit missing (bash scripts/thinkpad-charge-thresholds.sh)"
+      fi
+      if [[ -x /usr/local/lib/thinkpad/apply-charge-thresholds.sh ]]; then
+          echo "✓ /usr/local/lib/thinkpad/apply-charge-thresholds.sh present"
+      else
+          echo "○ apply-charge-thresholds.sh missing (re-run helper)"
+      fi
     fi
 else
     echo "✗ thinkpad-charge-thresholds.sh missing"

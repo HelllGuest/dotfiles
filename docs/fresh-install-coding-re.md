@@ -23,7 +23,7 @@ Automation:
 `fprintd`, and charge thresholds **70–80** via
 [`scripts/thinkpad-charge-thresholds.sh`](../scripts/thinkpad-charge-thresholds.sh).
 Skip `thinkpad-health.sh` (i915-only). Details:
-[hardened Phase 14](hardened-arch-gnome.md#phase-14-thinkpad-optimization).
+[hardened Phase 14](hardened-arch-gnome.md#phase-14--thinkpad-optimization).
 
 ---
 

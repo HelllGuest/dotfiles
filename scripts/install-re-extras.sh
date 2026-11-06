@@ -58,7 +58,8 @@ if pacman -Q clamav >/dev/null 2>&1; then
   fi
 fi
 
-# ThinkPad charge window 70–80 (only batteries that exist)
+# ThinkPad charge window 70–80 when BAT* charge_control_* exists.
+# No BAT: helper plain-skips unless ThinkPad DMI (late thinkpad_acpi seed only).
 bash "${REPO_ROOT}/scripts/thinkpad-charge-thresholds.sh" \
   || say "warning: charge thresholds skipped (sudo/sysfs?)"
 

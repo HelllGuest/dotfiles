@@ -950,7 +950,12 @@ pacman -S powertop
 
 * Cmdline: `amd_iommu=on` `amd_pstate=active` (strip any `intel_iommu` / `i915.*` leftovers; rebuild UKI)
 * GPU / FP packages: `packages/thinkpad-t14s.txt` (`mesa` + `vulkan-radeon` + `fprintd`; VA-API via mesa `Provides`)
-* Charge window 70–80: installer seeds `scripts/lib/thinkpad-charge-thresholds.conf`; live refresh via `scripts/thinkpad-charge-thresholds.sh` (also `install-re-extras.sh`)
+* Charge window 70–80: `arch-install-t14s.sh` seeds tmpfiles from
+  `scripts/lib/thinkpad-charge-thresholds.conf` **and** enables
+  `thinkpad-charge-thresholds.service` (waits for late BAT* sysfs; apply script
+  under `/usr/local/lib/thinkpad/`). Live refresh via
+  `scripts/thinkpad-charge-thresholds.sh` (also `install-re-extras.sh` /
+  `profiles/thinkpad-t14s.sh`) installs both tmpfiles and the service.
 * No Yoga tablet rotate stack; keep fingerprint enabled (do not install the X1 fingerprint-disable udev rule)
 
 ---
@@ -959,9 +964,13 @@ pacman -S powertop
 
 Without TLP, set ThinkPad charge thresholds via the `thinkpad_acpi` sysfs
 interface. Prefer the shared helper (writes live sysfs +
-`/etc/tmpfiles.d/thinkpad-charge-thresholds.conf`). Auto-applied by
-`profiles/thinkpad-t14s.sh` and `scripts/install-re-extras.sh`; safe to re-run
-on X1/P15:
+`/etc/tmpfiles.d/thinkpad-charge-thresholds.conf` + late-boot
+`thinkpad-charge-thresholds.service`). Auto-applied by
+`profiles/thinkpad-t14s.sh` and `scripts/install-re-extras.sh`. Safe to re-run
+on X1/P15 (live BAT* → write + persist). On desktop/VM/non-ThinkPad with no
+BAT*, the helper plain-skips (no unit). Only ThinkPad DMI may seed BAT0
+tmpfiles + service when charge_control_* is not visible yet (late
+`thinkpad_acpi`; enable uses `start --no-block` so the helper does not wait):
 
 ```bash
 bash scripts/thinkpad-charge-thresholds.sh
@@ -976,10 +985,22 @@ echo 70 | tee /sys/class/power_supply/BAT0/charge_control_start_threshold
 echo 80 | tee /sys/class/power_supply/BAT0/charge_control_end_threshold
 ```
 
-Sysfs values reset on boot; the tmpfiles drop-in re-applies them. Only batteries
-that expose `charge_control_*_threshold` are touched. If live thresholds exist
-but `/etc/tmpfiles.d/thinkpad-charge-thresholds.conf` is missing, re-run the
-helper (needs sudo). `scripts/check.sh` reports this gap.
+Sysfs values reset on boot. Two layers re-apply them on ThinkPad hosts:
+
+1. **tmpfiles** (`/etc/tmpfiles.d/thinkpad-charge-thresholds.conf`) — early boot,
+   best-effort (mode 644).
+2. **`thinkpad-charge-thresholds.service`** — `After=multi-user.target`, waits up
+   to ~60s for `BAT*/charge_control_*` (`thinkpad_acpi` can appear late). Apply
+   script: `/usr/local/lib/thinkpad/apply-charge-thresholds.sh`. Exits 0 if BAT*
+   never appears (so a mistaken enable is cheap after the first wait). Desktops,
+   VMs, and non-ThinkPad laptops without charge sysfs do not get this unit —
+   the helper skips unless ThinkPad DMI allows a no-BAT seed.
+
+Only batteries that expose `charge_control_*_threshold` are touched. If live
+thresholds exist but tmpfiles and/or the unit are missing, re-run the helper
+(needs sudo). Upgrading from an older installer: the helper removes legacy
+`/usr/local/lib/t14s/apply-charge-thresholds.sh` when it rewrites the unit.
+`scripts/check.sh` reports gaps.
 
 ---
 
@@ -1643,7 +1664,11 @@ systemctl status earlyoom
 cat /sys/class/power_supply/BAT0/charge_control_start_threshold
 cat /sys/class/power_supply/BAT0/charge_control_end_threshold
 # expect 70 and 80 (or your CHARGE_START / CHARGE_END, e.g. 75/80)
-test -f /etc/tmpfiles.d/thinkpad-charge-thresholds.conf && cat /etc/tmpfiles.d/thinkpad-charge-thresholds.conf
+# tmpfiles is mode 644 (readable without sudo)
+test -f /etc/tmpfiles.d/thinkpad-charge-thresholds.conf \
+  && cat /etc/tmpfiles.d/thinkpad-charge-thresholds.conf
+systemctl is-enabled thinkpad-charge-thresholds.service
+test -x /usr/local/lib/thinkpad/apply-charge-thresholds.sh
 ```
 
 ---

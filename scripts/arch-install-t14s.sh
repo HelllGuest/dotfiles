@@ -34,6 +34,83 @@ part_of() { # $1 disk, $2 num -> partition path (nvme/mmc need 'p')
   [[ $d == *nvme* || $d == *mmcblk* || $d == *loop* ]] && printf '%sp%s' "$d" "$n" || printf '%s%s' "$d" "$n"
 }
 
+# Identity validators (keep in sync with scripts/lib/install-identity.sh).
+valid_hostname() {
+  local h="$1"
+  # RFC 1123: labels start/end alnum; hyphen only mid; 1–63 chars total.
+  [[ $h =~ ^[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?$ ]]
+}
+
+valid_username() {
+  local u="$1"
+  [[ $u =~ ^[a-z_][a-z0-9_-]*$ ]] || return 1
+  (( ${#u} <= 32 )) || return 1
+  # Reject names already in passwd or group (root/bin/nobody/wheel on the ISO).
+  id "$u" &>/dev/null && return 1
+  getent group "$u" >/dev/null 2>&1 && return 1
+  return 0
+}
+
+valid_timezone() {
+  local tz="$1" f magic
+  [[ $tz != *..* ]] || return 1
+  [[ $tz =~ ^[A-Za-z_]+(/[A-Za-z0-9_+-]+)*$ ]] || return 1
+  f="/usr/share/zoneinfo/$tz"
+  [[ -f $f ]] || return 1
+  # Zone files start with TZif; reject leapseconds / plain text tables.
+  magic="$(head -c4 "$f" 2>/dev/null || true)"
+  [[ $magic == TZif ]]
+}
+
+valid_locale() {
+  local loc="$1" f line name
+  local -a files=()
+  [[ -n $loc ]] || return 1
+  if [[ -n ${LOCALE_FILES:-} ]]; then
+    # shellcheck disable=SC2206
+    files=(${LOCALE_FILES})
+  else
+    files=(/usr/share/i18n/SUPPORTED /etc/locale.gen)
+  fi
+  for f in "${files[@]}"; do
+    [[ -r $f ]] || continue
+    while read -r line || [[ -n $line ]]; do
+      [[ $line =~ ^[[:space:]]*#?([A-Za-z0-9_.@-]+)[[:space:]] ]] || continue
+      name="${BASH_REMATCH[1]}"
+      [[ $name == "$loc" ]] && return 0
+    done <"$f"
+  done
+  return 1
+}
+
+valid_keymap() {
+  local km="$1" root
+  # Literal name only — never pass glob metacharacters to find -name.
+  [[ $km =~ ^[A-Za-z0-9_.-]+$ ]] || return 1
+  # Test override: fixture dir wins (CI without console keymaps).
+  if [[ -n ${KEYMAP_DIR:-} ]]; then
+    root="$KEYMAP_DIR"
+    [[ -d $root ]] || return 1
+    find "$root" -type f \
+      \( -name "${km}.map" -o -name "${km}.map.gz" \
+         -o -name "${km}.kmap" -o -name "${km}.kmap.gz" \) \
+      2>/dev/null | grep -q .
+    return $?
+  fi
+  if command -v localectl >/dev/null 2>&1; then
+    # localectl present: its answer is final (no find fallthrough).
+    localectl list-keymaps 2>/dev/null | grep -qxF -- "$km"
+    return $?
+  fi
+  # Fallback only when localectl is missing (non-ISO hosts).
+  root=/usr/share/kbd/keymaps
+  [[ -d $root ]] || return 1
+  find "$root" -type f \
+    \( -name "${km}.map" -o -name "${km}.map.gz" \
+       -o -name "${km}.kmap" -o -name "${km}.kmap.gz" \) \
+    2>/dev/null | grep -q .
+}
+
 # ── 0. preflight ────────────────────────────────────────────
 [[ $EUID -eq 0 ]] || die "run as root (from the Arch ISO)"
 [[ -d /sys/firmware/efi/efivars ]] || die "not booted in UEFI mode — enable UEFI and reboot the ISO"
@@ -52,7 +129,7 @@ cryptsetup close cryptroot 2>/dev/null || true
 cat <<EOF
 
 ${cR}╔══════════════════════════════════════════════════════════════╗
-║  T14s Gen 3 AMD ARCH INSTALLER — DESTROYS DATA ON DISK        ║
+║  T14s Gen 3 AMD ARCH INSTALLER — DESTROYS DATA ON DISK       ║
 ╚══════════════════════════════════════════════════════════════╝${c0}
 Machine: ThinkPad T14s Gen 3 AMD (Type 21CQ/21CR) — Rembrandt + amdgpu
 Stack:   LUKS2 + Btrfs(+@tmp) + linux-lts/hardened + UKI + systemd-boot
@@ -63,19 +140,21 @@ EOF
 _dmi="$(cat /sys/class/dmi/id/product_family /sys/class/dmi/id/product_version \
           /sys/class/dmi/id/product_name /sys/class/dmi/id/product_sku 2>/dev/null \
         | tr '\n' ' ')"
-if ! echo "$_dmi" | grep -qiE '21CQ|21CR'; then
+if echo "$_dmi" | grep -qiE '21CQ|21CR'; then
+  ok "target profile: T14s Gen 3 AMD (21CQ/21CR)"
+else
   warn "DMI is not T14s Gen 3 AMD type 21CQ/21CR: ${_dmi:-unknown}"
   warn "Continue only if intentional (VM rehearsal / forced). Other T14s gens: use arch-install.sh."
   confirm "continue on this hardware anyway?" || die "aborted — use scripts/arch-install.sh for other machines"
+  warn "continuing without DMI match — AMD profile still applied"
 fi
-ok "target profile: T14s Gen 3 AMD (21CQ/21CR)"
 
 # ── 1. choose disk ──────────────────────────────────────────
 say "block devices:"; lsblk -dpo NAME,SIZE,MODEL | grep -vE 'loop|sr0' || true
 DISK="$(ask 'Target disk (e.g. /dev/nvme0n1): ')"
 [[ -b $DISK ]] || die "not a block device: $DISK"
 
-# ── 2. partition strategy ───────────────────────────────────
+# ── 2. partition strategy (AUTO wipe deferred until after identity) ──
 echo
 say "partition mode:"
 echo "  1) AUTO  — wipe ALL of $DISK, create 2G EFI + LUKS root"
@@ -83,19 +162,15 @@ echo "  2) MANUAL — pick existing partitions (EFI optional: format or reuse)"
 MODE="$(ask 'choose [1/2]: ' 1)"
 
 FORMAT_EFI=1
+DO_AUTO_PART=0
 if [[ $MODE == 1 ]]; then
   warn "AUTO mode ERASES the ENTIRE disk $DISK — including any Windows / other-OS partitions on it."
   lsblk "$DISK" || true
   echo "Type the disk path to confirm total wipe:"
   [[ "$(ask 'confirm disk: ')" == "$DISK" ]] || die "disk confirmation mismatch — aborting"
   confirm "ERASE $DISK now?" || die "aborted"
-  say "partitioning $DISK (GPT: 2G ESP + LUKS)"
-  sgdisk --zap-all "$DISK" >/dev/null
-  sgdisk -n1:0:+2G   -t1:ef00 -c1:EFI       "$DISK" >/dev/null
-  sgdisk -n2:0:0     -t2:8309 -c2:cryptroot "$DISK" >/dev/null
-  partprobe "$DISK"; udevadm settle 2>/dev/null || sleep 2
-  EFI_PART="$(part_of "$DISK" 1)"
-  ROOT_PART="$(part_of "$DISK" 2)"
+  DO_AUTO_PART=1
+  # Paths assigned after deferred sgdisk (step 5).
 else
   say "current layout:"; lsblk -po NAME,SIZE,FSTYPE,PARTTYPENAME "$DISK" || true
   ROOT_PART="$(ask 'ROOT partition to LUKS-format (e.g. /dev/nvme0n1p2): ')"
@@ -124,8 +199,8 @@ else
   warn "ROOT $ROOT_PART will be ERASED (LUKS format)."
   [[ $FORMAT_EFI == 1 ]] && warn "EFI $EFI_PART will be FORMATTED (FAT32)." || say "EFI $EFI_PART will be REUSED (kept, multiboot-safe)."
   confirm "proceed with these partitions?" || die "aborted"
+  ok "EFI=$EFI_PART  ROOT=$ROOT_PART  (format_efi=$FORMAT_EFI)"
 fi
-ok "EFI=$EFI_PART  ROOT=$ROOT_PART  (format_efi=$FORMAT_EFI)"
 
 # ── 3. luks passphrase ──────────────────────────────────────
 while :; do
@@ -135,12 +210,32 @@ while :; do
   warn "empty or mismatch — retry"
 done
 
-# ── 4. identity ─────────────────────────────────────────────
-HOSTNAME="$(ask 'hostname: ' thinkpad-t14s)"
-TIMEZONE="$(ask 'timezone (Region/City): ' America/New_York)"
-LOCALE="$(ask 'locale: ' en_US.UTF-8)"
-KEYMAP="$(ask 'console keymap: ' us)"
-USERNAME="$(ask 'username: ')"
+# ── 4. identity (validated before any wipe / LUKS) ──────────
+while :; do
+  HOSTNAME="$(ask 'hostname: ' thinkpad-t14s)"
+  valid_hostname "$HOSTNAME" && break
+  warn "invalid hostname (RFC 1123: start/end alnum, hyphen mid, ≤63)"
+done
+while :; do
+  TIMEZONE="$(ask 'timezone (Region/City): ' America/New_York)"
+  valid_timezone "$TIMEZONE" && break
+  warn "timezone not found under /usr/share/zoneinfo — retry (e.g. America/New_York)"
+done
+while :; do
+  LOCALE="$(ask 'locale: ' en_US.UTF-8)"
+  valid_locale "$LOCALE" && break
+  warn "locale not in SUPPORTED/locale.gen — retry (e.g. en_US.UTF-8)"
+done
+while :; do
+  KEYMAP="$(ask 'console keymap: ' us)"
+  valid_keymap "$KEYMAP" && break
+  warn "keymap not listed by localectl — retry (e.g. us)"
+done
+while :; do
+  USERNAME="$(ask 'username: ')"
+  valid_username "$USERNAME" && break
+  warn "invalid username (^[a-z_][a-z0-9_-]*\$, ≤32, not an existing account)"
+done
 while :; do
   USER_PASS="$(ask_secret "password for $USERNAME: ")"
   USER_PASS2="$(ask_secret 'repeat: ')"
@@ -156,6 +251,16 @@ DESKTOP="$(ask 'install minimal GNOME desktop? [Y/n]: ' Y)"
 ENROLL_SB="$(ask 'enroll Secure Boot keys now if firmware in Setup Mode? [y/N]: ' N)"
 
 # ── 5. encrypt + filesystems ────────────────────────────────
+if (( DO_AUTO_PART == 1 )); then
+  say "partitioning $DISK (GPT: 2G ESP + LUKS)"
+  sgdisk --zap-all "$DISK" >/dev/null
+  sgdisk -n1:0:+2G   -t1:ef00 -c1:EFI       "$DISK" >/dev/null
+  sgdisk -n2:0:0     -t2:8309 -c2:cryptroot "$DISK" >/dev/null
+  partprobe "$DISK"; udevadm settle 2>/dev/null || sleep 2
+  EFI_PART="$(part_of "$DISK" 1)"
+  ROOT_PART="$(part_of "$DISK" 2)"
+  ok "EFI=$EFI_PART  ROOT=$ROOT_PART  (format_efi=$FORMAT_EFI)"
+fi
 say "LUKS2 format (argon2id) on $ROOT_PART"
 wipefs -a "$ROOT_PART" >/dev/null 2>&1 || true   # clear stale signatures (dirty/reused disk)
 printf '%s' "$LUKS_PASS" | cryptsetup luksFormat --type luks2 --pbkdf argon2id --batch-mode "$ROOT_PART" -
@@ -283,20 +388,28 @@ mkdir -p /etc/kernel
 echo "rd.luks.name=${LUKS_UUID}=cryptroot root=/dev/mapper/cryptroot rootflags=subvol=@ rw quiet loglevel=3 mem_sleep_default=s2idle apparmor=1 security=apparmor amd_iommu=on amd_pstate=active" > /etc/kernel/cmdline
 
 # Charge window 70–80. tmpfiles can race before thinkpad_acpi exposes BAT*;
-# oneshot After=multi-user.target waits/retries. No-op on VM without BAT.
+# oneshot After=multi-user.target waits/retries. Apply exits 0 if no BAT*
+# (VM); enable here does not block on the wait (Type=oneshot at boot only).
 # Keep w-lines in sync with scripts/lib/thinkpad-charge-thresholds.conf
-mkdir -p /etc/tmpfiles.d /usr/local/lib/t14s
+# Keep apply/unit bodies in sync with scripts/lib/*.tmpl (tests/thinkpad-t14s.test.sh).
+mkdir -p /etc/tmpfiles.d /usr/local/lib/thinkpad
 cat > /etc/tmpfiles.d/thinkpad-charge-thresholds.conf <<'EOF'
 # ThinkPad charge thresholds 70–80 (PPD host; no TLP).
 # Best-effort at boot; see thinkpad-charge-thresholds.service if BAT* appears late.
 w /sys/class/power_supply/BAT0/charge_control_start_threshold - - - - 70
 w /sys/class/power_supply/BAT0/charge_control_end_threshold - - - - 80
 EOF
-cat > /usr/local/lib/t14s/apply-charge-thresholds.sh <<'EOF'
+chmod 644 /etc/tmpfiles.d/thinkpad-charge-thresholds.conf
+# Body must match scripts/lib/apply-charge-thresholds.sh.tmpl with START/END=70/80.
+cat > /usr/local/lib/thinkpad/apply-charge-thresholds.sh <<'EOF'
 #!/usr/bin/env bash
-# Wait for thinkpad_acpi BAT* charge_control_*, then apply 70–80. Exit 0 if absent (VM).
+# Wait for thinkpad_acpi BAT* charge_control_*, then apply 70-80.
+# Exit 0 if absent (VM / no battery sysfs).
+# Canonical template: scripts/lib/apply-charge-thresholds.sh.tmpl
+# Rendered by thinkpad-charge-thresholds.sh; keep arch-install-t14s.sh in sync (tests).
 set -euo pipefail
-START=70 END=80
+START=70
+END=80
 for _ in $(seq 1 60); do
   shopt -s nullglob
   found=(/sys/class/power_supply/BAT*/charge_control_end_threshold)
@@ -317,22 +430,24 @@ done
 shopt -u nullglob
 exit 0
 EOF
-chmod 755 /usr/local/lib/t14s/apply-charge-thresholds.sh
+chmod 755 /usr/local/lib/thinkpad/apply-charge-thresholds.sh
+# Body must match scripts/lib/thinkpad-charge-thresholds.service.tmpl (70/80 + path).
 cat > /etc/systemd/system/thinkpad-charge-thresholds.service <<'EOF'
 [Unit]
 Description=ThinkPad battery charge thresholds (70-80)
-Documentation=file:///usr/local/lib/t14s/apply-charge-thresholds.sh
+Documentation=file:///usr/local/lib/thinkpad/apply-charge-thresholds.sh
 After=multi-user.target
 # Do not use ConditionPathExists*: BAT* may appear after early boot.
 
 [Service]
 Type=oneshot
-ExecStart=/usr/local/lib/t14s/apply-charge-thresholds.sh
+ExecStart=/usr/local/lib/thinkpad/apply-charge-thresholds.sh
 RemainAfterExit=yes
 
 [Install]
 WantedBy=multi-user.target
 EOF
+chmod 644 /etc/systemd/system/thinkpad-charge-thresholds.service
 systemctl enable thinkpad-charge-thresholds.service
 
 # UKI presets: linux-lts (primary) + linux-hardened (fallback)
@@ -531,12 +646,14 @@ cryptsetup close cryptroot
 cat <<EOF
 
 ${cG}╔══════════════════════════════════════════════════════════════╗
-║  T14s Gen 3 AMD — INSTALL COMPLETE                            ║
+║  T14s Gen 3 AMD — INSTALL COMPLETE                           ║
 ╚══════════════════════════════════════════════════════════════╝${c0}
  • Reboot, remove the ISO:   ${cY}reboot${c0}
  • Boot menu: Arch Linux (LTS) default · Hardened as fallback.
  • Verify after boot: ${cY}lscpu | grep -i ryzen${c0} · ${cY}cat /sys/power/mem_sleep${c0}
    (expect s2idle bracketed; BIOS Sleep = Windows and Linux).
+   Charge: ${cY}systemctl is-active thinkpad-charge-thresholds.service${c0}
+   ${cY}cat /sys/class/power_supply/BAT0/charge_control_end_threshold${c0} (expect 80).
  • Secure Boot: keys created + binaries signed. To ENABLE:
      1) BIOS → clear Secure Boot keys → Setup Mode
      2) booted OS:  ${cY}sudo sbctl enroll-keys -m${c0}
@@ -548,6 +665,12 @@ ${cG}╔════════════════════════
    (default ${cY}thinkpad-t14s${c0} → profiles/thinkpad-t14s.sh; else DMI 21CQ/21CR detect):
      ${cY}git clone https://github.com/HelllGuest/dotfiles.git ~/dotfiles${c0}
      ${cY}cd ~/dotfiles && ./install.sh${c0}
- • First login is via GDM (Wayland). Verify: ${cY}~/dotfiles/scripts/check.sh${c0}
 EOF
+if [[ ${DESKTOP^^} != N* ]]; then
+  printf ' • First login via GDM (Wayland) if GNOME installed cleanly.\n'
+  printf '   Console login still works if GDM was skipped or incomplete.\n'
+else
+  printf ' • Desktop skipped — log in on a virtual console (getty) as %s.\n' "$USERNAME"
+fi
+printf ' • Verify: %s~/dotfiles/scripts/check.sh%s\n' "$cY" "$c0"
 ok "done — reboot when ready"

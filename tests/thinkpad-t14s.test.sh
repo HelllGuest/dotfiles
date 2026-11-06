@@ -4,12 +4,15 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 fail() { echo "FAIL: $*" >&2; exit 1; }
+TMP="$(mktemp -d)"
+trap 'rm -rf "$TMP"' EXIT
 
 for f in \
   "$ROOT/scripts/arch-install-t14s.sh" \
   "$ROOT/profiles/thinkpad-t14s.sh" \
   "$ROOT/scripts/thinkpad-charge-thresholds.sh" \
   "$ROOT/scripts/lib/dmi.sh" \
+  "$ROOT/scripts/lib/install-identity.sh" \
   "$ROOT/scripts/lib/thinkpad-charge-thresholds.conf" \
   "$ROOT/packages/thinkpad-t14s.txt" \
   "$ROOT/scripts/detect-profile.sh"
@@ -36,6 +39,112 @@ grep -qE 'intel_iommu=on' "$ROOT/scripts/arch-install-t14s.sh" \
 # Soft DMI gate must require type codes (not bare T14s name)
 grep -qF "grep -qiE '21CQ|21CR'" "$ROOT/scripts/arch-install-t14s.sh" \
   || fail "installer DMI soft-check must require 21CQ|21CR"
+grep -qF 'DO_AUTO_PART=1' "$ROOT/scripts/arch-install-t14s.sh" \
+  || fail "AUTO wipe must be deferred (DO_AUTO_PART) until after identity"
+# Identity validators: real inputs via shared lib; drift-check vs installers
+IDLIB="$ROOT/scripts/lib/install-identity.sh"
+[[ -f $IDLIB ]] || fail "missing $IDLIB"
+# shellcheck source=scripts/lib/install-identity.sh
+source "$IDLIB"
+extract_fn() { # $1 file $2 name — body including signature
+  awk -v n="$2" '
+    $0 ~ "^" n "\\(\\)" {grab=1}
+    grab {print; if ($0 == "}") exit}
+  ' "$1"
+}
+for fn in valid_hostname valid_username valid_timezone valid_locale valid_keymap; do
+  for inst in \
+    "$ROOT/scripts/arch-install-t14s.sh" \
+    "$ROOT/scripts/arch-install.sh"
+  do
+    diff -u <(extract_fn "$IDLIB" "$fn") <(extract_fn "$inst" "$fn") >/dev/null \
+      || fail "drift: $fn differs between install-identity.sh and $(basename "$inst")"
+  done
+done
+valid_hostname thinkpad-t14s || fail "hostname thinkpad-t14s should pass"
+valid_hostname a || fail "hostname a should pass"
+valid_hostname -bad && fail "hostname -bad should fail" || true
+valid_hostname bad- && fail "hostname bad- should fail" || true
+valid_hostname 'bad..host' && fail "hostname bad..host should fail" || true
+valid_username root && fail "username root should fail" || true
+valid_username bin && fail "username bin should fail" || true
+valid_username nobody && fail "username nobody should fail" || true
+for _g in wheel audio video users; do
+  if getent group "$_g" >/dev/null 2>&1; then
+    valid_username "$_g" && fail "username $_g (group) should fail" || true
+  fi
+done
+_long40='aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'
+valid_username "$_long40" && fail "username len 40 should fail" || true
+_fresh="t14sid$$"
+valid_username "$_fresh" || fail "username $_fresh should pass"
+valid_timezone America/New_York || fail "timezone America/New_York should pass"
+valid_timezone UTC || fail "timezone UTC should pass"
+valid_timezone '../../../etc/passwd' && fail "timezone path traversal should fail" || true
+valid_timezone zone.tab && fail "timezone zone.tab should fail" || true
+valid_timezone America && fail "timezone America (dir) should fail" || true
+if [[ -f /usr/share/zoneinfo/leapseconds ]]; then
+  valid_timezone leapseconds && fail "timezone leapseconds should fail (not TZif)" || true
+fi
+if [[ -f /usr/share/zoneinfo/posixrules ]]; then
+  valid_timezone posixrules || fail "timezone posixrules should pass (TZif)"
+fi
+# Locale/keymap: fixture overrides so ubuntu-latest CI does not need host maps.
+mkdir -p "$TMP/id/keymaps" "$TMP/id/bin"
+printf '%s\n' 'en_US.UTF-8 UTF-8' '#de_DE.UTF-8 UTF-8' >"$TMP/id/locales"
+: >"$TMP/id/keymaps/us.map.gz"
+LOCALE_FILES="$TMP/id/locales" valid_locale en_US.UTF-8 \
+  || fail "locale en_US.UTF-8 should pass (fixture)"
+LOCALE_FILES="$TMP/id/locales" valid_locale de_DE.UTF-8 \
+  || fail "locale de_DE.UTF-8 (commented) should pass (fixture)"
+LOCALE_FILES="$TMP/id/locales" valid_locale NotA_Locale \
+  && fail "locale NotA_Locale should fail" || true
+KEYMAP_DIR="$TMP/id/keymaps" valid_keymap us \
+  || fail "keymap us should pass (fixture)"
+KEYMAP_DIR="$TMP/id/keymaps" valid_keymap not-a-real-keymap-zz \
+  && fail "keymap bogus should fail" || true
+KEYMAP_DIR="$TMP/id/keymaps" valid_keymap '*' \
+  && fail "keymap glob * should fail" || true
+KEYMAP_DIR="$TMP/id/keymaps" valid_keymap 'u?' \
+  && fail "keymap glob u? should fail" || true
+KEYMAP_DIR="$TMP/id/keymaps" valid_keymap '[a-z]*' \
+  && fail "keymap glob [a-z]* should fail" || true
+# localectl path: fixed-string match (u. must not regex-match us;
+# ... must not regex-match three-letter names like dvo)
+cat >"$TMP/id/bin/localectl" <<'EOF'
+#!/bin/sh
+[ "$1" = list-keymaps ] || exit 1
+printf '%s\n' us uk dvo
+EOF
+chmod +x "$TMP/id/bin/localectl"
+# shellcheck disable=SC2016  # intentional single-quoted bash -c body
+env -u KEYMAP_DIR PATH="$TMP/id/bin:/usr/bin:/bin" bash -c '
+  source "$0"
+  valid_keymap us || exit 11
+  valid_keymap dvo || exit 14
+  valid_keymap u. && exit 12
+  valid_keymap "..." && exit 13
+  exit 0
+' "$IDLIB" || fail "stub localectl: us/dvo pass / u. and ... must fail (grep -F)"
+# shellcheck disable=SC2016  # intentional literal $USERNAME in installer source
+grep -qF 'valid_username "$USERNAME"' "$ROOT/scripts/arch-install-t14s.sh" \
+  || fail "installer must call valid_username before wipe"
+# ok profile only on DMI match branch (not after override YES)
+awk '
+  /ok "target profile: T14s Gen 3 AMD \(21CQ\/21CR\)"/ {
+    if (prev !~ /21CQ\|21CR/) { print "FAIL: ok profile not gated by DMI"; exit 1 }
+    found=1
+  }
+  { prev=$0 }
+  END { if (!found) { print "FAIL: missing ok profile"; exit 1 } }
+' "$ROOT/scripts/arch-install-t14s.sh" \
+  || fail "ok target profile must only print on DMI match"
+grep -qF 'First login via GDM (Wayland) if GNOME installed cleanly' \
+  "$ROOT/scripts/arch-install-t14s.sh" \
+  || fail "finish text must not hard-claim GDM"
+grep -qF 'systemctl is-active thinkpad-charge-thresholds.service' \
+  "$ROOT/scripts/arch-install-t14s.sh" \
+  || fail "finish summary should mention charge service"
 
 # Profile repairs generic-install Intel leftovers
 grep -q 'intel_iommu=' "$ROOT/profiles/thinkpad-t14s.sh" \
@@ -64,14 +173,58 @@ grep -q 'thinkpad-charge-thresholds.service' "$ROOT/scripts/arch-install-t14s.sh
   || fail "arch-install-t14s must enable charge oneshot"
 grep -q 'After=multi-user.target' "$ROOT/scripts/arch-install-t14s.sh" \
   || fail "charge oneshot must After=multi-user.target"
+grep -q '/usr/local/lib/thinkpad/apply-charge-thresholds.sh' "$ROOT/scripts/arch-install-t14s.sh" \
+  || fail "installer apply path must be /usr/local/lib/thinkpad/"
+grep -q '/usr/local/lib/t14s/' "$ROOT/scripts/arch-install-t14s.sh" \
+  && fail "installer must not use legacy /usr/local/lib/t14s/" || true
 # Installer heredoc must match canonical BAT0 template (w-lines)
 while IFS= read -r line; do
   [[ "$line" == w\ * ]] || continue
   grep -qF "$line" "$ROOT/scripts/arch-install-t14s.sh" \
     || fail "arch-install-t14s heredoc missing conf line: $line"
 done <"$ROOT/scripts/lib/thinkpad-charge-thresholds.conf"
+# Apply/unit heredocs must match rendered templates (parity; curl installer embeds copy)
+for f in \
+  "$ROOT/scripts/lib/apply-charge-thresholds.sh.tmpl" \
+  "$ROOT/scripts/lib/thinkpad-charge-thresholds.service.tmpl"
+do
+  [[ -f $f ]] || fail "missing template $f"
+done
+_rend="$ROOT/scripts/lib"
+_exp_apply="$(mktemp)"
+_exp_unit="$(mktemp)"
+sed -e 's|@@START@@|70|g' -e 's|@@END@@|80|g' -e \
+  's|@@APPLY@@|/usr/local/lib/thinkpad/apply-charge-thresholds.sh|g' \
+  "$_rend/apply-charge-thresholds.sh.tmpl" >"$_exp_apply"
+sed -e 's|@@START@@|70|g' -e 's|@@END@@|80|g' -e \
+  's|@@APPLY@@|/usr/local/lib/thinkpad/apply-charge-thresholds.sh|g' \
+  "$_rend/thinkpad-charge-thresholds.service.tmpl" >"$_exp_unit"
+# Every non-empty line from rendered templates must appear in the installer.
+while IFS= read -r line; do
+  [[ -n $line ]] || continue
+  grep -qF "$line" "$ROOT/scripts/arch-install-t14s.sh" \
+    || fail "installer apply heredoc drifted from template: $line"
+done <"$_exp_apply"
+while IFS= read -r line; do
+  [[ -n $line ]] || continue
+  grep -qF "$line" "$ROOT/scripts/arch-install-t14s.sh" \
+    || fail "installer unit heredoc drifted from template: $line"
+done <"$_exp_unit"
+rm -f "$_exp_apply" "$_exp_unit"
 grep -q 'POWER_SUPPLY_ROOT' "$ROOT/scripts/thinkpad-charge-thresholds.sh" \
   || fail "charge helper must support POWER_SUPPLY_ROOT for tests"
+grep -q 'thinkpad-charge-thresholds.service' "$ROOT/scripts/thinkpad-charge-thresholds.sh" \
+  || fail "charge helper must install late-boot service"
+grep -q '/usr/local/lib/thinkpad/' "$ROOT/scripts/thinkpad-charge-thresholds.sh" \
+  || fail "helper default apply path must be /usr/local/lib/thinkpad/"
+grep -q 'install -m' "$ROOT/scripts/thinkpad-charge-thresholds.sh" \
+  || fail "helper must install with explicit mode (not raw 0600 mktemp copy)"
+# Generic installer must NOT claim charge setup
+grep -q 'thinkpad-charge-thresholds' "$ROOT/scripts/arch-install.sh" \
+  && fail "arch-install.sh must not seed charge thresholds (T14s installer only)" || true
+grep -q 'systemctl is-enabled thinkpad-charge-thresholds.service' \
+  "$ROOT/docs/hardened-arch-gnome.md" \
+  || fail "Verify Battery Thresholds must check service enabled"
 
 # vmtest INSTALLER override
 grep -q 'INSTALLER=' "$ROOT/scripts/arch-install-vmtest.sh" \
@@ -94,9 +247,6 @@ mock_dmi() {
     shift 2
   done
 }
-
-TMP="$(mktemp -d)"
-trap 'rm -rf "$TMP"' EXIT
 
 # Positive: 21CR MTM
 mock_dmi "$TMP/cr" \
@@ -194,5 +344,161 @@ if POWER_SUPPLY_ROOT="$PSY" CHARGE_TMPFILES="$TMP/bad.conf" CHARGE_START=80 CHAR
     bash "$ROOT/scripts/thinkpad-charge-thresholds.sh" 2>/dev/null; then
   fail "START>=END must exit non-zero"
 fi
+
+# Late-boot service install (test paths; no systemctl)
+APPLY_OUT="$TMP/apply-charge-thresholds.sh"
+UNIT_OUT="$TMP/thinkpad-charge-thresholds.service"
+out_svc="$(
+  POWER_SUPPLY_ROOT="$PSY" CHARGE_TMPFILES="$CONF_OUT" \
+    CHARGE_APPLY_SCRIPT="$APPLY_OUT" CHARGE_SERVICE_UNIT="$UNIT_OUT" \
+    CHARGE_SKIP_SYSTEMCTL=1 CHARGE_START=70 CHARGE_END=80 \
+    bash "$ROOT/scripts/thinkpad-charge-thresholds.sh" 2>&1
+)" || fail "charge helper service install failed: $out_svc"
+[[ -x "$APPLY_OUT" ]] || fail "apply script not installed executable"
+# Modes: conf/unit 0644 (not mktemp 0600); apply 0755
+_mode() { stat -c '%a' "$1" 2>/dev/null || stat -f '%OLp' "$1"; }
+[[ "$(_mode "$CONF_OUT")" == 644 ]] || fail "tmpfiles conf must be mode 644 (got $(_mode "$CONF_OUT"))"
+[[ "$(_mode "$UNIT_OUT")" == 644 ]] || fail "unit must be mode 644 (got $(_mode "$UNIT_OUT"))"
+[[ "$(_mode "$APPLY_OUT")" == 755 ]] || fail "apply must be mode 755 (got $(_mode "$APPLY_OUT"))"
+grep -q 'START=70' "$APPLY_OUT" || fail "apply script must embed START"
+grep -q 'END=80' "$APPLY_OUT" || fail "apply script must embed END"
+grep -q 'After=multi-user.target' "$UNIT_OUT" \
+  || fail "unit must After=multi-user.target"
+grep -q "ExecStart=${APPLY_OUT}" "$UNIT_OUT" \
+  || fail "unit must ExecStart apply script"
+bash -n "$APPLY_OUT" || fail "generated apply script bash -n failed"
+# Rendered apply must match template
+diff -u \
+  <(sed -e 's|@@START@@|70|g' -e 's|@@END@@|80|g' \
+      "$ROOT/scripts/lib/apply-charge-thresholds.sh.tmpl") \
+  "$APPLY_OUT" >/dev/null \
+  || fail "helper apply output drifted from template"
+# CHARGE_SKIP_SERVICE skips unit even with explicit paths
+rm -f "$APPLY_OUT" "$UNIT_OUT"
+POWER_SUPPLY_ROOT="$PSY" CHARGE_TMPFILES="$CONF_OUT" \
+  CHARGE_APPLY_SCRIPT="$APPLY_OUT" CHARGE_SERVICE_UNIT="$UNIT_OUT" \
+  CHARGE_SKIP_SERVICE=1 CHARGE_SKIP_SYSTEMCTL=1 \
+  bash "$ROOT/scripts/thinkpad-charge-thresholds.sh" >/dev/null \
+  || fail "CHARGE_SKIP_SERVICE run failed"
+[[ ! -e "$APPLY_OUT" ]] || fail "CHARGE_SKIP_SERVICE must not install apply script"
+
+# No BAT yet + ThinkPad DMI → seed BAT0 + unit; stub systemctl proves non-block.
+PSY_EMPTY="$TMP/psy_empty"
+CONF_SEED="$TMP/seed.conf"
+APPLY_SEED="$TMP/seed-apply.sh"
+UNIT_SEED="$TMP/seed.service"
+SCTCTL_LOG="$TMP/systemctl.log"
+BIN_STUB="$TMP/bin"
+mkdir -p "$PSY_EMPTY/BAT0" "$BIN_STUB"
+# Record argv; pass-through sudo (strip -A from SUDO_ASKPASS hosts).
+cat >"$BIN_STUB/sudo" <<'STUB'
+#!/usr/bin/env bash
+while [[ $# -gt 0 ]]; do
+  case $1 in
+    -A|-n|-E) shift ;;
+    *) break ;;
+  esac
+done
+exec "$@"
+STUB
+cat >"$BIN_STUB/systemctl" <<'STUB'
+#!/usr/bin/env bash
+printf '%s\n' "$*" >>"${SCTCTL_LOG:?}"
+exit 0
+STUB
+chmod 755 "$BIN_STUB/sudo" "$BIN_STUB/systemctl"
+: >"$SCTCTL_LOG"
+export SCTCTL_LOG
+mock_dmi "$TMP/seed_dmi" \
+  product_family "ThinkPad T14s Gen 3" \
+  product_sku "21CRS1PU00" \
+  chassis_type "10"
+out_seed="$(
+  DMI_SYSFS_ROOT="$TMP/seed_dmi" \
+  POWER_SUPPLY_ROOT="$PSY_EMPTY" CHARGE_TMPFILES="$CONF_SEED" \
+    CHARGE_APPLY_SCRIPT="$APPLY_SEED" CHARGE_SERVICE_UNIT="$UNIT_SEED" \
+    SCTCTL_LOG="$SCTCTL_LOG" PATH="$BIN_STUB:$PATH" \
+    env -u SUDO_ASKPASS \
+    bash "$ROOT/scripts/thinkpad-charge-thresholds.sh" 2>&1
+)" || fail "no-BAT service seed failed: $out_seed"
+echo "$out_seed" | grep -qi 'seed BAT0\|late-boot' \
+  || fail "no-BAT+ThinkPad must say seed/late-boot: $out_seed"
+grep -q 'BAT0/charge_control_start_threshold' "$CONF_SEED" \
+  || fail "no-BAT seed must write BAT0 tmpfiles"
+[[ -x "$APPLY_SEED" && -f "$UNIT_SEED" ]] || fail "no-BAT seed must install unit+apply"
+grep -qx 'enable thinkpad-charge-thresholds.service' "$SCTCTL_LOG" \
+  || fail "seed must systemctl enable (got: $(tr '\n' ';' <"$SCTCTL_LOG"))"
+grep -qx 'start --no-block thinkpad-charge-thresholds.service' "$SCTCTL_LOG" \
+  || fail "seed must systemctl start --no-block (got: $(tr '\n' ';' <"$SCTCTL_LOG"))"
+grep -qE '(^| )--now( |$)' "$SCTCTL_LOG" \
+  && fail "seed must not use enable --now (would block 60s)" || true
+
+# Live BAT path uses enable --now (behavior, not source grep)
+: >"$SCTCTL_LOG"
+CONF_LIVE="$TMP/live.conf"
+APPLY_LIVE="$TMP/live-apply.sh"
+UNIT_LIVE="$TMP/live.service"
+out_live="$(
+  DMI_SYSFS_ROOT="$TMP/seed_dmi" \
+  POWER_SUPPLY_ROOT="$PSY" CHARGE_TMPFILES="$CONF_LIVE" \
+    CHARGE_APPLY_SCRIPT="$APPLY_LIVE" CHARGE_SERVICE_UNIT="$UNIT_LIVE" \
+    SCTCTL_LOG="$SCTCTL_LOG" PATH="$BIN_STUB:$PATH" \
+    env -u SUDO_ASKPASS \
+    bash "$ROOT/scripts/thinkpad-charge-thresholds.sh" 2>&1
+)" || fail "live-BAT service install failed: $out_live"
+grep -qx 'enable --now thinkpad-charge-thresholds.service' "$SCTCTL_LOG" \
+  || fail "live BAT must systemctl enable --now (got: $(tr '\n' ';' <"$SCTCTL_LOG"))"
+grep -q 'start --no-block' "$SCTCTL_LOG" \
+  && fail "live BAT must not use start --no-block" || true
+
+# Desktop/VM + no BAT + service hooks → plain skip
+mock_dmi "$TMP/desk_dmi" \
+  product_family "QEMU Virtual Machine" \
+  product_name "Standard PC" \
+  chassis_type "1"
+CONF_DESK="$TMP/desk.conf"
+APPLY_DESK="$TMP/desk-apply.sh"
+UNIT_DESK="$TMP/desk.service"
+out_desk="$(
+  DMI_SYSFS_ROOT="$TMP/desk_dmi" \
+  POWER_SUPPLY_ROOT="$PSY_EMPTY" CHARGE_TMPFILES="$CONF_DESK" \
+    CHARGE_APPLY_SCRIPT="$APPLY_DESK" CHARGE_SERVICE_UNIT="$UNIT_DESK" \
+    CHARGE_SKIP_SYSTEMCTL=1 \
+    bash "$ROOT/scripts/thinkpad-charge-thresholds.sh" 2>&1
+)" || fail "desktop no-BAT must exit 0: $out_desk"
+echo "$out_desk" | grep -qi 'skip' || fail "desktop no-BAT must skip: $out_desk"
+[[ ! -e "$CONF_DESK" && ! -e "$APPLY_DESK" && ! -e "$UNIT_DESK" ]] \
+  || fail "desktop no-BAT must not install conf/unit/apply"
+
+# Non-ThinkPad laptop chassis + no BAT → skip (not a late-acpi race)
+mock_dmi "$TMP/dell_dmi" \
+  product_family "Latitude" \
+  product_name "Latitude 7420" \
+  chassis_type "10"
+CONF_DELL="$TMP/dell.conf"
+APPLY_DELL="$TMP/dell-apply.sh"
+UNIT_DELL="$TMP/dell.service"
+out_dell="$(
+  DMI_SYSFS_ROOT="$TMP/dell_dmi" \
+  POWER_SUPPLY_ROOT="$PSY_EMPTY" CHARGE_TMPFILES="$CONF_DELL" \
+    CHARGE_APPLY_SCRIPT="$APPLY_DELL" CHARGE_SERVICE_UNIT="$UNIT_DELL" \
+    CHARGE_SKIP_SYSTEMCTL=1 \
+    bash "$ROOT/scripts/thinkpad-charge-thresholds.sh" 2>&1
+)" || fail "non-ThinkPad laptop no-BAT must exit 0: $out_dell"
+echo "$out_dell" | grep -qi 'skip' || fail "non-ThinkPad laptop must skip: $out_dell"
+[[ ! -e "$CONF_DELL" && ! -e "$APPLY_DELL" && ! -e "$UNIT_DELL" ]] \
+  || fail "non-ThinkPad laptop must not install conf/unit/apply"
+
+# Templates must be tracked in git when this tree is a checkout (skip tarballs)
+if git -C "$ROOT" rev-parse >/dev/null 2>&1; then
+  git -C "$ROOT" ls-files --error-unmatch \
+    scripts/lib/apply-charge-thresholds.sh.tmpl \
+    scripts/lib/thinkpad-charge-thresholds.service.tmpl >/dev/null \
+    || fail "git-add scripts/lib/*.tmpl before commit (fresh clones need them)"
+fi
+
+# Docs: Phase 14 anchor uses double hyphen (em dash in heading)
+grep -q 'phase-14--thinkpad-optimization' "$ROOT/docs/fresh-install-coding-re.md" \
+  || fail "fresh-install must link Phase 14 with double-hyphen anchor"
 
 echo "PASS: thinkpad-t14s tests"

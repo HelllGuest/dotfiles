@@ -33,6 +33,83 @@ part_of() { # $1 disk, $2 num -> partition path (nvme/mmc need 'p')
   [[ $d == *nvme* || $d == *mmcblk* || $d == *loop* ]] && printf '%sp%s' "$d" "$n" || printf '%s%s' "$d" "$n"
 }
 
+# Identity validators (keep in sync with scripts/lib/install-identity.sh).
+valid_hostname() {
+  local h="$1"
+  # RFC 1123: labels start/end alnum; hyphen only mid; 1–63 chars total.
+  [[ $h =~ ^[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?$ ]]
+}
+
+valid_username() {
+  local u="$1"
+  [[ $u =~ ^[a-z_][a-z0-9_-]*$ ]] || return 1
+  (( ${#u} <= 32 )) || return 1
+  # Reject names already in passwd or group (root/bin/nobody/wheel on the ISO).
+  id "$u" &>/dev/null && return 1
+  getent group "$u" >/dev/null 2>&1 && return 1
+  return 0
+}
+
+valid_timezone() {
+  local tz="$1" f magic
+  [[ $tz != *..* ]] || return 1
+  [[ $tz =~ ^[A-Za-z_]+(/[A-Za-z0-9_+-]+)*$ ]] || return 1
+  f="/usr/share/zoneinfo/$tz"
+  [[ -f $f ]] || return 1
+  # Zone files start with TZif; reject leapseconds / plain text tables.
+  magic="$(head -c4 "$f" 2>/dev/null || true)"
+  [[ $magic == TZif ]]
+}
+
+valid_locale() {
+  local loc="$1" f line name
+  local -a files=()
+  [[ -n $loc ]] || return 1
+  if [[ -n ${LOCALE_FILES:-} ]]; then
+    # shellcheck disable=SC2206
+    files=(${LOCALE_FILES})
+  else
+    files=(/usr/share/i18n/SUPPORTED /etc/locale.gen)
+  fi
+  for f in "${files[@]}"; do
+    [[ -r $f ]] || continue
+    while read -r line || [[ -n $line ]]; do
+      [[ $line =~ ^[[:space:]]*#?([A-Za-z0-9_.@-]+)[[:space:]] ]] || continue
+      name="${BASH_REMATCH[1]}"
+      [[ $name == "$loc" ]] && return 0
+    done <"$f"
+  done
+  return 1
+}
+
+valid_keymap() {
+  local km="$1" root
+  # Literal name only — never pass glob metacharacters to find -name.
+  [[ $km =~ ^[A-Za-z0-9_.-]+$ ]] || return 1
+  # Test override: fixture dir wins (CI without console keymaps).
+  if [[ -n ${KEYMAP_DIR:-} ]]; then
+    root="$KEYMAP_DIR"
+    [[ -d $root ]] || return 1
+    find "$root" -type f \
+      \( -name "${km}.map" -o -name "${km}.map.gz" \
+         -o -name "${km}.kmap" -o -name "${km}.kmap.gz" \) \
+      2>/dev/null | grep -q .
+    return $?
+  fi
+  if command -v localectl >/dev/null 2>&1; then
+    # localectl present: its answer is final (no find fallthrough).
+    localectl list-keymaps 2>/dev/null | grep -qxF -- "$km"
+    return $?
+  fi
+  # Fallback only when localectl is missing (non-ISO hosts).
+  root=/usr/share/kbd/keymaps
+  [[ -d $root ]] || return 1
+  find "$root" -type f \
+    \( -name "${km}.map" -o -name "${km}.map.gz" \
+       -o -name "${km}.kmap" -o -name "${km}.kmap.gz" \) \
+    2>/dev/null | grep -q .
+}
+
 # ── 0. preflight ────────────────────────────────────────────
 [[ $EUID -eq 0 ]] || die "run as root (from the Arch ISO)"
 [[ -d /sys/firmware/efi/efivars ]] || die "not booted in UEFI mode — enable UEFI and reboot the ISO"
@@ -51,7 +128,7 @@ cryptsetup close cryptroot 2>/dev/null || true
 cat <<EOF
 
 ${cR}╔══════════════════════════════════════════════════════════════╗
-║  HARDENED ARCH INSTALLER — THIS WILL DESTROY DATA ON DISK     ║
+║  HARDENED ARCH INSTALLER — THIS WILL DESTROY DATA ON DISK    ║
 ╚══════════════════════════════════════════════════════════════╝${c0}
 Stack: LUKS2 + Btrfs(+@tmp) + linux-lts/hardened + UKI + systemd-boot
        + minimal GNOME + zram + AppArmor + UFW + Snapper + Secure Boot
@@ -70,19 +147,15 @@ echo "  2) MANUAL — pick existing partitions (EFI optional: format or reuse)"
 MODE="$(ask 'choose [1/2]: ' 1)"
 
 FORMAT_EFI=1
+DO_AUTO_PART=0
 if [[ $MODE == 1 ]]; then
   warn "AUTO mode ERASES the ENTIRE disk $DISK — including any Windows / other-OS partitions on it."
   lsblk "$DISK" || true
   echo "Type the disk path to confirm total wipe:"
   [[ "$(ask 'confirm disk: ')" == "$DISK" ]] || die "disk confirmation mismatch — aborting"
   confirm "ERASE $DISK now?" || die "aborted"
-  say "partitioning $DISK (GPT: 2G ESP + LUKS)"
-  sgdisk --zap-all "$DISK" >/dev/null
-  sgdisk -n1:0:+2G   -t1:ef00 -c1:EFI       "$DISK" >/dev/null
-  sgdisk -n2:0:0     -t2:8309 -c2:cryptroot "$DISK" >/dev/null
-  partprobe "$DISK"; udevadm settle 2>/dev/null || sleep 2
-  EFI_PART="$(part_of "$DISK" 1)"
-  ROOT_PART="$(part_of "$DISK" 2)"
+  DO_AUTO_PART=1
+  # Paths assigned after deferred sgdisk (step 5).
 else
   say "current layout:"; lsblk -po NAME,SIZE,FSTYPE,PARTTYPENAME "$DISK" || true
   ROOT_PART="$(ask 'ROOT partition to LUKS-format (e.g. /dev/nvme0n1p2): ')"
@@ -111,8 +184,8 @@ else
   warn "ROOT $ROOT_PART will be ERASED (LUKS format)."
   [[ $FORMAT_EFI == 1 ]] && warn "EFI $EFI_PART will be FORMATTED (FAT32)." || say "EFI $EFI_PART will be REUSED (kept, multiboot-safe)."
   confirm "proceed with these partitions?" || die "aborted"
+  ok "EFI=$EFI_PART  ROOT=$ROOT_PART  (format_efi=$FORMAT_EFI)"
 fi
-ok "EFI=$EFI_PART  ROOT=$ROOT_PART  (format_efi=$FORMAT_EFI)"
 
 # ── 3. luks passphrase ──────────────────────────────────────
 while :; do
@@ -122,12 +195,32 @@ while :; do
   warn "empty or mismatch — retry"
 done
 
-# ── 4. identity ─────────────────────────────────────────────
-HOSTNAME="$(ask 'hostname: ' thinkpad-x1)"
-TIMEZONE="$(ask 'timezone (Region/City): ' America/New_York)"
-LOCALE="$(ask 'locale: ' en_US.UTF-8)"
-KEYMAP="$(ask 'console keymap: ' us)"
-USERNAME="$(ask 'username: ')"
+# ── 4. identity (validated before any wipe / LUKS) ──────────
+while :; do
+  HOSTNAME="$(ask 'hostname: ' thinkpad-x1)"
+  valid_hostname "$HOSTNAME" && break
+  warn "invalid hostname (RFC 1123: start/end alnum, hyphen mid, ≤63)"
+done
+while :; do
+  TIMEZONE="$(ask 'timezone (Region/City): ' America/New_York)"
+  valid_timezone "$TIMEZONE" && break
+  warn "timezone not found under /usr/share/zoneinfo — retry (e.g. America/New_York)"
+done
+while :; do
+  LOCALE="$(ask 'locale: ' en_US.UTF-8)"
+  valid_locale "$LOCALE" && break
+  warn "locale not in SUPPORTED/locale.gen — retry (e.g. en_US.UTF-8)"
+done
+while :; do
+  KEYMAP="$(ask 'console keymap: ' us)"
+  valid_keymap "$KEYMAP" && break
+  warn "keymap not listed by localectl — retry (e.g. us)"
+done
+while :; do
+  USERNAME="$(ask 'username: ')"
+  valid_username "$USERNAME" && break
+  warn "invalid username (^[a-z_][a-z0-9_-]*\$, ≤32, not an existing account)"
+done
 while :; do
   USER_PASS="$(ask_secret "password for $USERNAME: ")"
   USER_PASS2="$(ask_secret 'repeat: ')"
@@ -143,6 +236,16 @@ DESKTOP="$(ask 'install minimal GNOME desktop? [Y/n]: ' Y)"
 ENROLL_SB="$(ask 'enroll Secure Boot keys now if firmware in Setup Mode? [y/N]: ' N)"
 
 # ── 5. encrypt + filesystems ────────────────────────────────
+if (( DO_AUTO_PART == 1 )); then
+  say "partitioning $DISK (GPT: 2G ESP + LUKS)"
+  sgdisk --zap-all "$DISK" >/dev/null
+  sgdisk -n1:0:+2G   -t1:ef00 -c1:EFI       "$DISK" >/dev/null
+  sgdisk -n2:0:0     -t2:8309 -c2:cryptroot "$DISK" >/dev/null
+  partprobe "$DISK"; udevadm settle 2>/dev/null || sleep 2
+  EFI_PART="$(part_of "$DISK" 1)"
+  ROOT_PART="$(part_of "$DISK" 2)"
+  ok "EFI=$EFI_PART  ROOT=$ROOT_PART  (format_efi=$FORMAT_EFI)"
+fi
 say "LUKS2 format (argon2id) on $ROOT_PART"
 wipefs -a "$ROOT_PART" >/dev/null 2>&1 || true   # clear stale signatures (dirty/reused disk)
 printf '%s' "$LUKS_PASS" | cryptsetup luksFormat --type luks2 --pbkdf argon2id --batch-mode "$ROOT_PART" -
@@ -457,7 +560,7 @@ cryptsetup close cryptroot
 cat <<EOF
 
 ${cG}╔══════════════════════════════════════════════════════════════╗
-║  INSTALL COMPLETE                                             ║
+║  INSTALL COMPLETE                                            ║
 ╚══════════════════════════════════════════════════════════════╝${c0}
  • Reboot, remove the ISO:   ${cY}reboot${c0}
  • Boot menu: 'Arch Linux (LTS)' default · Hardened available as fallback.
@@ -471,6 +574,12 @@ ${cG}╔════════════════════════
  • Dotfiles (next):
      ${cY}git clone https://github.com/HelllGuest/dotfiles.git ~/dotfiles${c0}
      ${cY}cd ~/dotfiles && ./install.sh${c0}
- • First login is via GDM (Wayland). Verify: ${cY}~/dotfiles/scripts/check.sh${c0}
 EOF
+if [[ ${DESKTOP^^} != N* ]]; then
+  printf ' • First login via GDM (Wayland) if GNOME installed cleanly.\n'
+  printf '   Console login still works if GDM was skipped or incomplete.\n'
+else
+  printf ' • Desktop skipped — log in on a virtual console (getty) as %s.\n' "$USERNAME"
+fi
+printf ' • Verify: %s~/dotfiles/scripts/check.sh%s\n' "$cY" "$c0"
 ok "done — reboot when ready"

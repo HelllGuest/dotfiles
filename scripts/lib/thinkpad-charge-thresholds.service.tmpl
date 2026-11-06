@@ -1,0 +1,13 @@
+[Unit]
+Description=ThinkPad battery charge thresholds (@@START@@-@@END@@)
+Documentation=file://@@APPLY@@
+After=multi-user.target
+# Do not use ConditionPathExists*: BAT* may appear after early boot.
+
+[Service]
+Type=oneshot
+ExecStart=@@APPLY@@
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target
