@@ -991,10 +991,10 @@ Sysfs values reset on boot. Two layers re-apply them on ThinkPad hosts:
    best-effort (mode 644).
 2. **`thinkpad-charge-thresholds.service`** — `After=multi-user.target`, waits up
    to ~60s for `BAT*/charge_control_*` (`thinkpad_acpi` can appear late). Apply
-   script: `/usr/local/lib/thinkpad/apply-charge-thresholds.sh`. Exits 0 if BAT*
-   never appears (so a mistaken enable is cheap after the first wait). Desktops,
-   VMs, and non-ThinkPad laptops without charge sysfs do not get this unit —
-   the helper skips unless ThinkPad DMI allows a no-BAT seed.
+   script: `/usr/local/lib/thinkpad/apply-charge-thresholds.sh`. Exits 0 after
+   ~60 s if BAT* never appears; runs after multi-user, so it does not delay
+   login. Desktops, VMs, and non-ThinkPad laptops without charge sysfs do not
+   get this unit — the helper skips unless ThinkPad DMI allows a no-BAT seed.
 
 Only batteries that expose `charge_control_*_threshold` are touched. If live
 thresholds exist but tmpfiles and/or the unit are missing, re-run the helper
