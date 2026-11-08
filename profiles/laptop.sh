@@ -23,8 +23,14 @@ if is_thinkpad_t14s; then
 fi
 
 # General laptop tools (non-ThinkPad)
-sudo pacman -S --needed --noconfirm power-profiles-daemon brightnessctl
-sudo systemctl enable --now power-profiles-daemon
+if pacman -Q tuned-ppd >/dev/null 2>&1; then
+    # tuned-ppd provides+conflicts power-profiles-daemon — keep tuned.
+    sudo pacman -S --needed --noconfirm brightnessctl
+    sudo systemctl enable --now tuned tuned-ppd
+else
+    sudo pacman -S --needed --noconfirm power-profiles-daemon brightnessctl
+    sudo systemctl enable --now power-profiles-daemon
+fi
 
 # Legacy touchpad udev/inhibit cleanup (if present)
 if [ -f "$REPO_ROOT/scripts/cleanup-input-overrides.sh" ]; then

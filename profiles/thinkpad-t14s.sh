@@ -2,7 +2,7 @@
 # profiles/thinkpad-t14s.sh
 # ThinkPad T14s Gen 3 AMD (21CQ/21CR) — Rembrandt-U, amdgpu, soldered LPDDR5
 #
-# Host addons this profile owns (PPD, no TLP):
+# Host addons this profile owns (PPD or tuned+tuned-ppd; no TLP):
 #   * charge thresholds 70–80 via scripts/thinkpad-charge-thresholds.sh
 #   * amd_iommu=on + amd_pstate=active (strip intel_iommu / i915 leftovers)
 #   * packages/thinkpad-t14s.txt (mesa / vulkan-radeon / fprintd)
@@ -21,7 +21,8 @@ if ! is_thinkpad_t14s; then
 fi
 
 # Thermal/power: Rembrandt + thinkpad_acpi DYTC is firmware-managed.
-# power-profiles-daemon only (no TLP — conflicts with PPD on GNOME).
+# power-profiles-daemon, or tuned + tuned-ppd when t14s-arch-install chose it
+# (no TLP — conflicts with both on GNOME).
 if systemctl is-active --quiet tlp 2>/dev/null; then
   echo "Disabling TLP (use power-profiles-daemon with GNOME)..."
   sudo systemctl disable --now tlp || true
@@ -34,7 +35,11 @@ if pacman -Q tlp >/dev/null 2>&1; then
   echo "Removing tlp..."
   sudo pacman -Rns --noconfirm tlp || true
 fi
-if command -v powerprofilesctl >/dev/null 2>&1; then
+# t14s-arch-install may pick tuned + tuned-ppd (PPD API for GNOME) instead.
+if pacman -Q tuned-ppd >/dev/null 2>&1; then
+  echo "Enabling tuned + tuned-ppd (power-profiles-daemon replacement)..."
+  sudo systemctl enable --now tuned tuned-ppd || true
+elif command -v powerprofilesctl >/dev/null 2>&1; then
   echo "Enabling power-profiles-daemon..."
   sudo systemctl unmask power-profiles-daemon 2>/dev/null || true
   sudo systemctl enable --now power-profiles-daemon || true

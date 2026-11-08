@@ -502,4 +502,46 @@ fi
 grep -q 'phase-14--thinkpad-optimization' "$ROOT/docs/fresh-install-coding-re.md" \
   || fail "fresh-install must link Phase 14 with double-hyphen anchor"
 
+# install.sh package step: pacman reads targets from stdin and does NOT skip
+# "#" lines, so comments/blanks must be stripped; with tuned-ppd installed,
+# power-profiles-daemon must be dropped. Run the real block with stubs.
+_pkgblk="$(awk '/^if \[ -f "packages\/pacman.txt" \]; then$/{f=1} f; f&&/^fi$/{exit}' "$ROOT/install.sh")"
+[[ -n $_pkgblk ]] || fail "install.sh pacman.txt block not found"
+mkdir -p "$TMP/pk/bin" "$TMP/pk/repo/packages"
+printf '%s\n' '# comment' 'bash' '' '  # indented comment' 'power-profiles-daemon' \
+  'zsh   # trailing comment' >"$TMP/pk/repo/packages/pacman.txt"
+cat >"$TMP/pk/bin/sudo" <<'STUB'
+#!/usr/bin/env bash
+exec "$@"
+STUB
+cat >"$TMP/pk/bin/pacman" <<'STUB'
+#!/usr/bin/env bash
+if [[ $1 == -Q ]]; then [[ -n ${PK_TUNED:-} && $2 == tuned-ppd ]]; exit; fi
+cat >"$PK_OUT"
+STUB
+chmod +x "$TMP/pk/bin/sudo" "$TMP/pk/bin/pacman"
+for _mode in ppd tuned; do
+  _tuned=""; [[ $_mode == tuned ]] && _tuned=1
+  (cd "$TMP/pk/repo" && PK_TUNED="$_tuned" PK_OUT="$TMP/pk/$_mode.out" \
+    PATH="$TMP/pk/bin:$PATH" bash -c "$_pkgblk" >/dev/null) \
+    || fail "install.sh package block failed ($_mode)"
+  grep -q '#' "$TMP/pk/$_mode.out" && fail "pacman stdin must not contain comments ($_mode)"
+  grep -qx '' "$TMP/pk/$_mode.out" && fail "pacman stdin must not contain blank lines ($_mode)"
+  grep -qx 'zsh' "$TMP/pk/$_mode.out" || fail "trailing comment must be stripped, keeping zsh ($_mode)"
+done
+grep -qx 'power-profiles-daemon' "$TMP/pk/ppd.out" || fail "PPD host must still get power-profiles-daemon"
+grep -qx 'power-profiles-daemon' "$TMP/pk/tuned.out" \
+  && fail "tuned-ppd host must not request power-profiles-daemon (conflict aborts --noconfirm)" || true
+# Comment-only manifest: pacman must not be called with an empty target list.
+printf '%s\n' '# only comments' '' >"$TMP/pk/repo/packages/pacman.txt"
+rm -f "$TMP/pk/empty.out"
+(cd "$TMP/pk/repo" && PK_OUT="$TMP/pk/empty.out" PATH="$TMP/pk/bin:$PATH" \
+  bash -c "$_pkgblk" >/dev/null) || fail "install.sh package block failed (empty)"
+[[ ! -e "$TMP/pk/empty.out" ]] || fail "empty manifest must not invoke pacman -S"
+unset -v _pkgblk _mode _tuned
+grep -q 'pacman -Q tuned-ppd' "$ROOT/profiles/thinkpad-t14s.sh" \
+  || fail "T14s profile must keep tuned + tuned-ppd instead of forcing PPD"
+grep -q 'pacman -Q tuned-ppd' "$ROOT/profiles/laptop.sh" \
+  || fail "laptop profile must not install PPD over tuned-ppd"
+
 echo "PASS: thinkpad-t14s tests"

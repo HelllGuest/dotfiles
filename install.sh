@@ -17,7 +17,19 @@ fi
 # 1. Install packages (before machine profile — NVIDIA/Optimus needs nvidia-* present)
 if [ -f "packages/pacman.txt" ]; then
     echo "Installing pacman packages..."
-    sudo pacman -S --needed --noconfirm - < packages/pacman.txt || echo "Sudo failed. Skipping package installation."
+    # pacman does not skip "#" lines on stdin ("target not found: # …" aborts
+    # the whole transaction), so strip comments/blank lines first.
+    # tuned-ppd provides+conflicts power-profiles-daemon; asking for PPD would make
+    # --noconfirm refuse the removal and abort the whole transaction.
+    pkg_list="$(sed -e 's/#.*//' -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//' -e '/^$/d' packages/pacman.txt)"
+    if pacman -Q tuned-ppd >/dev/null 2>&1; then
+        pkg_list="$(printf '%s\n' "$pkg_list" | grep -vx 'power-profiles-daemon')"
+    fi
+    if [ -n "$pkg_list" ]; then
+        printf '%s\n' "$pkg_list" | sudo pacman -S --needed --noconfirm - \
+            || echo "Package install failed (sudo / network / conflict) — see pacman output above."
+    fi
+    unset pkg_list
 fi
 
 # 1.05 Machine profile (hostname override, else hardware detect)

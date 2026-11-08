@@ -386,7 +386,7 @@ We take a "quiet by default" approach:
 | `s2idle [deep]` / `mem_sleep_default=deep` after upgrades | Cmdline or BIOS drifted from s2idle pin | BIOS Sleep = Windows and Linux; `bash scripts/system-setup.sh`; reboot |
 | Charge thresholds reset every boot | Missing tmpfiles **and/or** late-boot unit (`thinkpad_acpi` BAT* can appear after tmpfiles) | `bash scripts/thinkpad-charge-thresholds.sh` (optional `CHARGE_START`/`CHARGE_END`; installs tmpfiles + `thinkpad-charge-thresholds.service`) |
 | `check.sh`: Chrome / Brave policies ✗ | `/etc` policy files missing or stale | `bash scripts/browser-hardening.sh` (needs sudo for `/etc`) |
-| `evolution-data-server` / `wireless-regdb` missing | Listed in `pacman.txt` but not installed | `sudo pacman -S --needed evolution-data-server wireless-regdb` |
+| `evolution-data-server` / `wireless-regdb` (or any `pacman.txt` package) missing | Older `install.sh` fed `#` comment lines to pacman (`target not found: # …`), aborting the whole package step | Pull, then re-run `./install.sh` (comments are stripped now) |
 | `unsafe path transition /etc` during `pacman` | `/etc` owned by user (old `gdm-setup.sh` used `rsync -a`) | `bash scripts/gdm-setup.sh` (restores root + 755), or `sudo chown root:root /etc && sudo chmod 755 /etc` |
 | No network after boot; `ufw.service` failed | `/etc/ufw/before.rules` was a stow symlink into `$HOME` | `bash scripts/system-setup.sh` (installs real files, reloads ufw) |
 | `ufw allow OpenSSH` → could not find profile | Arch UFW has no OpenSSH app profile (Ubuntu-only name) | `sudo ufw allow 22/tcp comment 'ssh'` then `sudo ufw reload`; enable `sshd` |

@@ -949,6 +949,9 @@ pacman -S powertop
 **T14s Gen 3 AMD (21CQ/21CR)** extras (installer + `profiles/thinkpad-t14s.sh`):
 
 * Cmdline: `amd_iommu=on` `amd_pstate=active` (strip any `intel_iommu` / `i915.*` leftovers; rebuild UKI)
+* Power: PPD by default; if the host came from `t14s-arch-install` with
+  tuned, `tuned` + `tuned-ppd` (same GNOME power menu API) replace PPD —
+  `./install.sh` then skips `power-profiles-daemon` and the profile enables tuned
 * GPU / FP packages: `packages/thinkpad-t14s.txt` (`mesa` + `vulkan-radeon` + `fprintd`; VA-API via mesa `Provides`)
 * Charge window 70–80: `arch-install-t14s.sh` seeds tmpfiles from
   `scripts/lib/thinkpad-charge-thresholds.conf` **and** enables
