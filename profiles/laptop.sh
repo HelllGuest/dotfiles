@@ -26,7 +26,7 @@ fi
 if pacman -Q tuned-ppd >/dev/null 2>&1; then
     # tuned-ppd provides+conflicts power-profiles-daemon — keep tuned.
     sudo pacman -S --needed --noconfirm brightnessctl
-    sudo systemctl enable --now tuned tuned-ppd
+    sudo systemctl enable --now tuned tuned-ppd || true
 else
     sudo pacman -S --needed --noconfirm power-profiles-daemon brightnessctl
     sudo systemctl enable --now power-profiles-daemon
