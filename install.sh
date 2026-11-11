@@ -266,6 +266,15 @@ if [ -f "scripts/install-photogimp.sh" ]; then
     bash scripts/install-photogimp.sh || echo "PhotoGIMP setup skipped."
 fi
 
+# 3.6a foxcage: Firefox in a rootless Podman container (pinned commit + SHA-256)
+if [ "${SKIP_FOXCAGE:-0}" = 1 ]; then
+    echo "Skipping foxcage (SKIP_FOXCAGE=1)."
+elif ! command -v podman >/dev/null 2>&1; then
+    echo "Skipping foxcage (podman not installed)."
+elif [ -f "scripts/install-foxcage.sh" ]; then
+    bash scripts/install-foxcage.sh || echo "foxcage install failed — re-run: bash scripts/install-foxcage.sh"
+fi
+
 # 3.7 Dash2Dock Animated (EGO — before extension enable)
 if [ -f "scripts/install-dash2dock.sh" ]; then
     bash scripts/install-dash2dock.sh || echo "Dash2Dock setup skipped."

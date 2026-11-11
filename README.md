@@ -303,7 +303,7 @@ cleanup-input-overrides.sh
 → install-re-skills.sh (leanrea / RE playbooks / Android RE / Ghidra loop)
 → install-ecosystem-skills.sh (packages/agent-skills.txt; owner/repo or owner/repo:skill; if npx)
 → sync-agent-skills.sh → caveman OpenCode plugin refresh
-→ install-photogimp.sh
+→ install-photogimp.sh → install-foxcage.sh (if podman; SKIP_FOXCAGE=1 skips)
 → install-dash2dock.sh → install-extensions.sh
 → privacy-hardener.sh (incl. browser-hardening.sh)
 → check.sh → validate-configs.sh
@@ -334,6 +334,8 @@ Key runtime dependencies (`scripts/check.sh` asserts binaries, shell tools, syml
 **AI (optional):** `python-pipx` + `headroom` (`scripts/headroom-setup.sh`), OpenCode + Kimi Code (`scripts/install-coding-agents.sh`), Caveman `v4.1.0` (`scripts/install-caveman.sh`), Ponytail `v5.3.3` (`scripts/install-ponytail.sh`), Obscura CDP/MCP (`scripts/install-obscura.sh`), and `scripts/sync-agent-skills.sh` (mirrors `~/.agents/skills` + global `AGENTS.md`/`CLAUDE.md`/`GEMINI.md` across Claude Code, Cursor, OpenCode, Kimi, Gemini CLI, Antigravity, and Kiro)
 
 **Graphics (optional):** `gimp` + PhotoGIMP via `scripts/install-photogimp.sh`
+
+**Sandboxed browser (optional):** [foxcage](https://gitlab.com/grepular/foxcage) runs Firefox in a rootless Podman container (`scripts/install-foxcage.sh`, pinned commit + SHA-256; needs Wayland, `podman`, `passt`, `xdg-dbus-proxy`). `foxcage @tmp <url>` opens a throwaway cage. Not set as default browser; opt in with `xdg-settings set default-web-browser foxcage.desktop`.
 
 **GNOME dock:** Dash2Dock Animated via `scripts/install-dash2dock.sh` (EGO; listed in `gnome/extensions.txt`)
 
@@ -420,6 +422,7 @@ We take a "quiet by default" approach:
 | Android UI skills | `bash scripts/install-android-ui-skills.sh` (Compose + Material 3) |
 | REA (MCP + jadx) | `bash scripts/install-rea.sh` (Hopper: `INSTALL_HOPPER=1`) |
 | Obscura (CDP/MCP) | `bash scripts/install-obscura.sh` ([docs](https://docs.obscura.sh/)) |
+| foxcage (Firefox in rootless Podman) | `bash scripts/install-foxcage.sh` ([upstream](https://gitlab.com/grepular/foxcage)); then `foxcage`, `foxcage @tmp <url>`; `install.sh` runs it when `podman` exists (`SKIP_FOXCAGE=1` skips) |
 | RE skills (leanrea, …) | `bash scripts/install-re-skills.sh` |
 | RE host extras (jadx, rizin, …) | `bash scripts/install-re-extras.sh` |
 | ghidra-cli | `bash scripts/install-ghidra-cli.sh` |

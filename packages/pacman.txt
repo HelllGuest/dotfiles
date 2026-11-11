@@ -79,6 +79,8 @@ netavark
 aardvark-dns
 passt
 catatonit
+# foxcage (Firefox in rootless Podman): D-Bus filtering proxy
+xdg-dbus-proxy
 power-profiles-daemon
 python-pipx
 procs

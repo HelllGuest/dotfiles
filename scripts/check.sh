@@ -131,6 +131,11 @@ if command -v obscura >/dev/null 2>&1; then
 else
     echo "○ obscura missing (bash scripts/install-obscura.sh)"
 fi
+if command -v foxcage >/dev/null 2>&1; then
+    echo "✓ foxcage ($(foxcage --version 2>/dev/null | head -1))"
+else
+    echo "○ foxcage missing (bash scripts/install-foxcage.sh)"
+fi
 opencode_json="${XDG_CONFIG_HOME:-$HOME/.config}/opencode/opencode.json"
 if [[ -f "$opencode_json" ]] && grep -q '"obscura"' "$opencode_json"; then
     echo "✓ OpenCode MCP obscura"
