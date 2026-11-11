@@ -463,7 +463,7 @@ HandleLidSwitchExternalPower=ignore
 HandleLidSwitchDocked=ignore
 EOF
 chmod 644 /etc/systemd/logind.conf.d/thinkpad-lid.conf
-cat > /etc/makepkg.conf.d/99-x86-64-v3.conf <<'EOF'
+cat > /etc/makepkg.conf.d/zz-x86-64-v3.conf <<'EOF'
 #!/hint/bash
 # shellcheck disable=2034
 # Local/AUR builds: Comet Lake (X1) and Zen 3+ Rembrandt (T14s Gen 3) are
@@ -486,7 +486,7 @@ esac
 
 GOAMD64="${GOAMD64:-v3}"
 EOF
-chmod 644 /etc/makepkg.conf.d/99-x86-64-v3.conf
+chmod 644 /etc/makepkg.conf.d/zz-x86-64-v3.conf
 cat > /etc/udev/rules.d/61-thinkpad-charge-limit.rules <<'EOF'
 # UPower 1.90+ / GNOME Preserve Battery Health:
 # 60-upower-battery.rules only imports CHARGE_LIMIT from hwdb if

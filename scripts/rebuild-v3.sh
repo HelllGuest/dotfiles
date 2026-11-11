@@ -38,7 +38,7 @@ case " ${CFLAGS-} " in
     *" -march=x86-64-v3 "*) ;;
     *)
         echo "CFLAGS lacks -march=x86-64-v3 (got: ${CFLAGS-unset})" >&2
-        echo "install stow/system/etc/makepkg.conf.d/99-x86-64-v3.conf first" >&2
+        echo "install stow/system/etc/makepkg.conf.d/zz-x86-64-v3.conf first" >&2
         exit 1
         ;;
 esac

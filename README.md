@@ -130,7 +130,7 @@ Antigravity CLI (`agy`) and Kiro: point at `http://127.0.0.1:8787/v1` only if th
 
 This ThinkPad (Comet Lake) is **x86-64-v3**, not v4. Official extra/ packages stay generic `x86-64`. For local/AUR builds:
 
-* `stow/system/etc/makepkg.conf.d/99-x86-64-v3.conf` (via `scripts/system-setup.sh`)
+* `stow/system/etc/makepkg.conf.d/zz-x86-64-v3.conf` (via `scripts/system-setup.sh`)
 * `stow/pacman/.config/pacman/makepkg.conf` (user overlay)
 * `.shell-exports` sets `GOAMD64=v3` and `RUSTFLAGS=-C target-cpu=x86-64-v3`
 

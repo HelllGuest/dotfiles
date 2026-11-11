@@ -140,6 +140,21 @@ fix_parents() {
 tmp="$(mktemp)"
 trap 'rm -f "$tmp"' EXIT
 
+# Renamed drop-ins: remove the old path when it is ours (stow symlink, or a copy
+# carrying both our C and Rust tuning lines), or both files apply.
+# 99-x86-64-v3.conf sorted before pacman's rust.conf, which then reset RUSTFLAGS.
+RETIRED=(
+    etc/makepkg.conf.d/99-x86-64-v3.conf
+)
+for rel in "${RETIRED[@]}"; do
+    old="$ROOT/$rel"
+    if [ -L "$old" ] || { [ -f "$old" ] && grep -qF -- '-march=x86-64-v3' "$old" \
+        && grep -qF -- '-C target-cpu=x86-64-v3' "$old"; }; then
+        echo "Removing retired /$rel"
+        "${SUDO[@]}" rm -f "$old"
+    fi
+done
+
 changed=()
 while IFS= read -r -d '' src; do
     rel="${src#"$SRC_ROOT"/}"

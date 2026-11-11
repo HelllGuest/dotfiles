@@ -601,7 +601,7 @@ grep -q 'pacman -Q tuned-ppd' "$ROOT/profiles/laptop.sh" \
 for _seed in \
   's2idle.conf' \
   'thinkpad-lid.conf' \
-  '99-x86-64-v3.conf' \
+  'zz-x86-64-v3.conf' \
   '99-wayland.conf' \
   'LIBVA_DRIVER_NAME=radeonsi' \
   '61-gdm-wayland.rules' \

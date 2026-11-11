@@ -119,6 +119,38 @@ check "amdgpu: T14s touchpad wakeup rule installed" \
 check "amdgpu: ThinkPad UPower CHARGE_LIMIT rule installed" \
     cmp -s "$SRC/etc/udev/rules.d/61-thinkpad-charge-limit.rules" "$root_amd/etc/udev/rules.d/61-thinkpad-charge-limit.rules"
 
+# renamed makepkg drop-in: our old 99-x86-64-v3.conf is retired, a foreign one kept
+root_mk="$work/root_mk"
+mkdir -p "$root_mk/etc/makepkg.conf.d"
+# the old file had the same tuning body as the renamed one
+cp "$SRC/etc/makepkg.conf.d/zz-x86-64-v3.conf" "$root_mk/etc/makepkg.conf.d/99-x86-64-v3.conf"
+run_setup "$root_mk" SYSTEM_IS_X1=0
+check "retired 99-x86-64-v3.conf removed" test ! -e "$root_mk/etc/makepkg.conf.d/99-x86-64-v3.conf"
+check "zz-x86-64-v3.conf installed" \
+    cmp -s "$SRC/etc/makepkg.conf.d/zz-x86-64-v3.conf" "$root_mk/etc/makepkg.conf.d/zz-x86-64-v3.conf"
+root_mk2="$work/root_mk2"
+mkdir -p "$root_mk2/etc/makepkg.conf.d"
+# a user file that merely mentions x86-64-v3 is not ours
+printf 'CFLAGS+=" -march=x86-64-v3" # my own\n' >"$root_mk2/etc/makepkg.conf.d/99-x86-64-v3.conf"
+run_setup "$root_mk2" SYSTEM_IS_X1=0
+check "foreign file at the retired path is kept" test -f "$root_mk2/etc/makepkg.conf.d/99-x86-64-v3.conf"
+root_mk3="$work/root_mk3"
+mkdir -p "$root_mk3/etc/makepkg.conf.d"
+ln -s "$work/gone/99-x86-64-v3.conf" "$root_mk3/etc/makepkg.conf.d/99-x86-64-v3.conf"
+run_setup "$root_mk3" SYSTEM_IS_X1=0
+check "dangling stow symlink at the retired path removed" \
+    test ! -L "$root_mk3/etc/makepkg.conf.d/99-x86-64-v3.conf"
+
+# makepkg sources conf.d in glob order: after pacman's rust.conf (which sets
+# RUSTFLAGS outright) the effective flags must still target x86-64-v3.
+mkd="$work/mkconf.d"
+mkdir -p "$mkd"
+printf 'RUSTFLAGS="-C force-frame-pointers=yes"\n' >"$mkd/rust.conf"
+cp "$SRC/etc/makepkg.conf.d/zz-x86-64-v3.conf" "$mkd/"
+eff="$(bash -c 'for f in "$1"/*.conf; do source "$f"; done; printf %s "$RUSTFLAGS"' _ "$mkd")"
+check "x86-64-v3 drop-in wins over pacman rust.conf (RUSTFLAGS=$eff)" \
+    test "$eff" = "-C force-frame-pointers=yes -C target-cpu=x86-64-v3"
+
 # non-X1 with a stowed cmdline: materialized (content kept), never deleted
 root4="$work/root4"
 mkdir -p "$root4/etc/kernel"

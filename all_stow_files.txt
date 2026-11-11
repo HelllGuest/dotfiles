@@ -55,7 +55,7 @@ stow/system/etc/environment.d/99-wayland.conf
 stow/system/etc/geoclue/conf.d/99-static-dubai.conf
 stow/system/etc/geolocation
 stow/system/etc/kernel/cmdline
-stow/system/etc/makepkg.conf.d/99-x86-64-v3.conf
+stow/system/etc/makepkg.conf.d/zz-x86-64-v3.conf
 stow/system/etc/modprobe.d/i915.conf
 stow/system/etc/polkit-1/rules.d/50-kali-lan-host-prep.rules
 stow/system/etc/polkit-1/rules.d/50-vpn-location-sync.rules
