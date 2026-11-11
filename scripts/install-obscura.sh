@@ -17,6 +17,8 @@
 
 set -euo pipefail
 
+export PATH="${HOME}/.opencode/bin:${HOME}/.npm-global/bin:${HOME}/.local/bin:${PATH}"
+
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 OBSCURA_BIN_DIR="${OBSCURA_BIN_DIR:-$HOME/.local/bin}"
 OBSCURA_VARIANT="${OBSCURA_VARIANT:-stealth}"
@@ -51,8 +53,12 @@ if [[ -n "${OBSCURA_VERSION:-}" ]]; then
   tag="$OBSCURA_VERSION"
   [[ "$tag" == v* ]] || tag="v$tag"
 else
-  tag="$(curl -fsSL https://api.github.com/repos/h4ckf0r0day/obscura/releases/latest \
-    | python3 -c 'import sys,json; print(json.load(sys.stdin)["tag_name"])')"
+  tag="$(curl -fsSLI -o /dev/null -w '%{url_effective}' https://github.com/h4ckf0r0day/obscura/releases/latest 2>/dev/null \
+    | awk -F/ '{print $NF}' | tr -d '\r\n')"
+  if [[ -z "$tag" || "$tag" == "latest" ]]; then
+    tag="$(curl -fsSL https://api.github.com/repos/h4ckf0r0day/obscura/releases/latest 2>/dev/null \
+      | python3 -c 'import sys,json; print(json.load(sys.stdin)["tag_name"])' 2>/dev/null || echo "v0.2.6")"
+  fi
 fi
 
 asset="obscura-${arch_tag}${suffix}.tar.gz"
@@ -97,38 +103,58 @@ print(f"wrote {path}")
 PY
 
   if [[ -f "$CURSOR_MCP" ]] || [[ -d "$(dirname "$CURSOR_MCP")" ]]; then
-    say "merge Cursor MCP ($CURSOR_MCP)"
-    python3 - "$CURSOR_MCP" "$obscura_bin" <<'PY'
+    say "merge Cursor / Kimi / Gemini / Antigravity / Claude MCP"
+    python3 - "$obscura_bin" <<'PY'
 import json, sys
 from pathlib import Path
 
-path = Path(sys.argv[1])
-binpath = sys.argv[2]
-data = {"mcpServers": {}}
-if path.is_file():
-    try:
-        loaded = json.loads(path.read_text())
-        if isinstance(loaded, dict):
-            if isinstance(loaded.get("mcpServers"), dict):
-                data["mcpServers"] = dict(loaded["mcpServers"])
-            else:
+binpath = sys.argv[1]
+home = Path.home()
+for path in [
+    home / ".claude.json",
+    home / ".cursor/mcp.json",
+    home / ".kimi-code/mcp.json",
+    home / ".gemini/settings.json",
+    home / ".gemini/config/mcp_config.json",
+]:
+    if not (path.is_file() or path.parent.is_dir()):
+        continue
+    data = {"mcpServers": {}}
+    if path.is_file():
+        try:
+            loaded = json.loads(path.read_text())
+            if isinstance(loaded, dict):
                 data = loaded
                 data.setdefault("mcpServers", {})
-    except json.JSONDecodeError as e:
-        raise SystemExit(f"bad json {path}: {e}") from e
-servers = data.setdefault("mcpServers", {})
-servers["obscura"] = {"command": binpath, "args": ["mcp"]}
-path.parent.mkdir(parents=True, exist_ok=True)
-path.write_text(json.dumps(data, indent=2) + "\n")
-print(f"wrote {path}")
+        except json.JSONDecodeError as e:
+            print(f"skip bad json {path}: {e}")
+            continue
+    servers = data.setdefault("mcpServers", {})
+    if isinstance(servers, dict):
+        entry = {"command": binpath, "args": ["mcp"]}
+        if path.name == ".claude.json":
+            entry["type"] = "stdio"
+            entry["env"] = {}
+            projects = data.get("projects")
+            if isinstance(projects, dict):
+                for pdata in projects.values():
+                    if isinstance(pdata, dict) and isinstance(pdata.get("mcpServers"), dict):
+                        pdata["mcpServers"].pop("obscura", None)
+        elif "kimi" in str(path):
+            entry["enabled"] = True
+        servers["obscura"] = entry
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(json.dumps(data, indent=2) + "\n")
+        print(f"wrote {path}")
 PY
   fi
 
   if command -v claude >/dev/null 2>&1; then
-    say "claude mcp add obscura (best-effort)"
-    claude mcp remove obscura >/dev/null 2>&1 || true
-    claude mcp add obscura "$obscura_bin" mcp >/dev/null 2>&1 \
-      || warn "claude mcp add failed; run: claude mcp add obscura $obscura_bin mcp"
+    say "claude mcp add -s user obscura (best-effort)"
+    claude mcp remove -s local obscura >/dev/null 2>&1 || true
+    claude mcp remove -s user obscura >/dev/null 2>&1 || true
+    claude mcp add -s user obscura "$obscura_bin" mcp >/dev/null 2>&1 \
+      || warn "claude mcp add failed; run: claude mcp add -s user obscura $obscura_bin mcp"
   fi
 fi
 

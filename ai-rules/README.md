@@ -14,10 +14,11 @@
 
 ## Layout
 
-```
+```text
 ai-rules/
 ├── AGENTS.md
 ├── bin/agentsync
+├── lib/vscode-settings-merge.sh
 ├── skills/{verify,double-check,refactor,test,commit,security-review,rephrase,optimize,explain,docs,debug}/SKILL.md
 ├── cursor-mdc/00-agents-pointer.mdc
 ├── git-hooks/{commit-msg,prepare-commit-msg,pre-commit,pre-push}
@@ -45,15 +46,20 @@ does remove other orphan files and empty dirs).
 Skills: if `~/.claude/skills` or `~/.kiro/skills` is missing, symlink the whole
 kit `skills/` dir; if it is already a symlink, retarget it; if it is a real
 directory, add per-skill symlinks (existing non-symlink entries such as
-`find-skills` / `caveman` are left alone).
+`find-skills` / `caveman` are left alone). When run via
+`scripts/sync-agent-skills.sh`, `~/.claude/skills` and `~/.kiro/skills` are
+ensured to be real directories first so mirroring the full `~/.agents/skills`
+hub across Claude, Cursor, OpenCode, Kimi, Gemini CLI, Antigravity, and Kiro
+never writes hub symlinks back into `~/dev/ai-rules/skills`.
 
 Claude settings: if `~/.claude/settings.json` is missing, copy the kit file;
 else jq-merge so kit wins on `includeCoAuthoredBy` and kit `env.*` keys, without
 removing user hooks/plugins/theme. VS Code family: create or jq-merge
 `vscode-family-telemetry.json` into common `User/settings.json` paths (Cursor,
 Antigravity, Kiro, Code, VSCodium, plus stow vscode settings when that path
-exists). Kiro CLI: `kiro-cli settings telemetry.enabled false` when `kiro-cli`
-is on PATH.
+exists) via `lib/vscode-settings-merge.sh`, preserving symlinks (such as GNU
+Stow links) and stripping `cursor.general.*` keys from non-Cursor editors. Kiro
+CLI: `kiro-cli settings telemetry.enabled false` when `kiro-cli` is on PATH.
 
 Canonical live kit after install: **`~/dev/ai-rules`** (override install target
 with `./install.sh /path`). Edit there, or edit this repo's `ai-rules/` and

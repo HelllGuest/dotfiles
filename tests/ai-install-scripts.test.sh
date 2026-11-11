@@ -9,12 +9,15 @@ fail() { echo "FAIL: $*" >&2; exit 1; }
 for f in \
   "$ROOT/scripts/sync-agent-skills.sh" \
   "$ROOT/scripts/install-caveman.sh" \
+  "$ROOT/scripts/install-ponytail.sh" \
   "$ROOT/scripts/install-android-ui-skills.sh" \
   "$ROOT/scripts/install-rea.sh" \
   "$ROOT/scripts/install-coding-agents.sh" \
   "$ROOT/scripts/install-ecosystem-skills.sh" \
   "$ROOT/scripts/install-re-skills.sh" \
   "$ROOT/scripts/install-re-extras.sh" \
+  "$ROOT/scripts/install-ghidra-cli.sh" \
+  "$ROOT/scripts/install-obscura.sh" \
   "$ROOT/scripts/kali-disposable.sh"
 do
   [[ -f "$f" ]] || fail "missing $f"
@@ -27,12 +30,27 @@ done
 grep -q 'cloudflare/skills' "$ROOT/packages/agent-skills.txt" \
   || fail "agent-skills manifest missing cloudflare pack"
 
-grep -q 'CAVEMAN_TAG:-v4.0.1' "$ROOT/scripts/install-caveman.sh" \
+grep -q 'CAVEMAN_TAG:-v4.1.0' "$ROOT/scripts/install-caveman.sh" \
   || fail "caveman tag pin missing"
-grep -q 'c129b946a1f7f2e9eeeff5c1a747d7b43b2630c6b9e5fc7aa8297cece9cd3804' \
+grep -q '2e39b2a9b4ce47620757abc8a55ad33a23dd65217f8a998135108f92f83c00a1' \
   "$ROOT/scripts/install-caveman.sh" || fail "caveman SHA-256 pin missing"
 grep -q 'SKIP_SKILL_SYNC' "$ROOT/scripts/install-caveman.sh" \
   || fail "caveman SKIP_SKILL_SYNC missing"
+
+grep -q 'PONYTAIL_TAG:-v5.3.3' "$ROOT/scripts/install-ponytail.sh" \
+  || fail "ponytail tag pin missing"
+grep -q 'SKIP_SKILL_SYNC' "$ROOT/scripts/install-ponytail.sh" \
+  || fail "ponytail SKIP_SKILL_SYNC missing"
+grep -q 'agy plugin install' "$ROOT/scripts/install-ponytail.sh" \
+  || fail "ponytail must use agy plugin install when agy is available"
+grep -q 'install-ponytail.sh' "$ROOT/install.sh" \
+  || fail "install.sh must call install-ponytail.sh"
+grep -q 'claude mcp add -s user obscura' "$ROOT/scripts/install-obscura.sh" \
+  || fail "install-obscura.sh must register obscura at Claude user scope (-s user)"
+grep -q 'url_effective' "$ROOT/scripts/install-obscura.sh" \
+  || fail "install-obscura.sh must resolve latest release tag via redirect before REST API"
+grep -q 'opencode/AGENTS.md' "$ROOT/scripts/sync-agent-skills.sh" \
+  || fail "sync-agent-skills.sh must sync shared AGENTS.md into opencode/AGENTS.md"
 
 grep -q 'OPENCODE_NPM_SPEC:-opencode-ai@1.19.4' \
   "$ROOT/scripts/install-coding-agents.sh" || fail "opencode npm pin missing"
@@ -262,8 +280,17 @@ grep -q 'cursor\.general' "$_strip_settings" \
   && fail "merge must strip cursor.general.* from non-Cursor settings"
 grep -q '"editor.fontSize": 14' "$_strip_settings" \
   || fail "merge must keep unrelated user keys when stripping"
+# Symlinked settings.json (stow): merge must preserve the symlink, not replace with a regular file
+_sym_target="$_strip_dir/stow_settings.json"
+mv "$_strip_settings" "$_sym_target"
+ln -s "$_sym_target" "$_strip_settings"
+REPO_ROOT="$ROOT" telemetry_merge_vscode_settings "$_strip_settings" \
+  "$ROOT/ai-rules/vscode-family-telemetry.json" \
+  || fail "telemetry_merge_vscode_settings failed on symlink fixture"
+[[ -L "$_strip_settings" ]] \
+  || fail "merge must preserve symlink on stow-backed settings.json"
 rm -rf "$_strip_dir"
-unset _strip_dir _strip_settings
+unset _strip_dir _strip_settings _sym_target
 grep -q 'telemetry_ensure_gemini' "$ROOT/scripts/lib/telemetry.sh" \
   || fail "telemetry.sh missing gemini helper"
 grep -q 'telemetry_ensure_opencode' "$ROOT/scripts/lib/telemetry.sh" \
@@ -381,5 +408,18 @@ else
   grep -q 'ln -sfnT' "$ROOT/scripts/install-coding-agents.sh" || fail "need ln -sfnT"
 fi
 rm -rf "$tmpdir"
+
+# ghidra-cli installer: rustup default stable bootstrap + unlocked cargo fallback
+grep -q 'rustup default stable' "$ROOT/scripts/install-ghidra-cli.sh" \
+  || fail "install-ghidra-cli must bootstrap rustup default stable when unconfigured"
+grep -q 'cargo install --git "\$GHIDRA_CLI_GIT" --tag "\$GHIDRA_CLI_TAG" --force' \
+  "$ROOT/scripts/install-ghidra-cli.sh" \
+  || fail "install-ghidra-cli must fall back to unlocked cargo install"
+
+# sync-agent-skills + ai-rules/install.sh: prevent writing hub symlinks back into kit
+grep -q 'if \[\[ -L "\$CLAUDE" \]\]; then' "$ROOT/scripts/sync-agent-skills.sh" \
+  || fail "sync-agent-skills must replace whole-dir symlink \$CLAUDE before install.sh"
+grep -q '\-type l' "$ROOT/ai-rules/install.sh" \
+  || fail "ai-rules/install.sh sync_kit_cp must clean up orphan symlinks (-type l)"
 
 echo "PASS: ai-install-scripts.test.sh"

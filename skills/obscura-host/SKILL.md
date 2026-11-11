@@ -37,9 +37,14 @@ Stealth: `obscura --stealth …` or MCP args `mcp` with `--stealth` (rebuild/ins
 
 ## MCP (agents)
 
+Wired automatically by `bash ~/dotfiles/scripts/install-obscura.sh`:
+
 * OpenCode: `mcp.obscura` → `["~/.local/bin/obscura","mcp"]` in `~/.config/opencode/opencode.json`
+* Claude Code: `mcpServers.obscura` in `~/.claude.json` (`claude mcp add -s user obscura ~/.local/bin/obscura mcp`)
 * Cursor: `mcpServers.obscura` in `~/.cursor/mcp.json`
-* Claude Code: `claude mcp add obscura ~/.local/bin/obscura mcp`
+* Kimi Code: `mcpServers.obscura` in `~/.kimi-code/mcp.json`
+* Gemini CLI: `mcpServers.obscura` in `~/.gemini/settings.json`
+* Antigravity: `mcpServers.obscura` in `~/.gemini/config/mcp_config.json`
 
 **Session model:** navigate first (`browser_navigate`), then snapshot/interact. Element refs go stale after navigation/rerender — re-snapshot before acting.
 

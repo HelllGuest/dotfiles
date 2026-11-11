@@ -66,5 +66,13 @@ vscode_merge_settings_telemetry() {
       | reduce $strip[] as $k (.; del(.[$k]))
     ' "$settings" "$kit" > "$tmp"
   fi
-  mv "$tmp" "$settings"
+  if [[ -f "$settings" ]] && cmp -s "$tmp" "$settings"; then
+    rm -f "$tmp"
+  elif [[ -L "$settings" ]]; then
+    cat "$tmp" > "$settings"
+    rm -f "$tmp"
+  else
+    chmod 644 "$tmp" 2>/dev/null || true
+    mv "$tmp" "$settings"
+  fi
 }

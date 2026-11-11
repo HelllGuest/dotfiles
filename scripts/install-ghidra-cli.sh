@@ -20,6 +20,14 @@ warn() { echo "warning: $*" >&2; }
 if ! command -v cargo >/dev/null 2>&1; then
     die "cargo not found; install rust (pacman: rust)"
 fi
+if ! cargo --version >/dev/null 2>&1; then
+    if command -v rustup >/dev/null 2>&1; then
+        echo "No default Rust toolchain configured; running 'rustup default stable'..."
+        rustup default stable
+    else
+        die "cargo is not functional; install rust toolchain"
+    fi
+fi
 
 if [[ ! -x "$GHIDRA_INSTALL_DIR/support/analyzeHeadless" ]]; then
     die "Ghidra not found at $GHIDRA_INSTALL_DIR (pacman: ghidra)"
@@ -56,10 +64,12 @@ if [[ -x "$CLI_BIN" ]]; then
     if [[ "$installed_ver" == "$GHIDRA_CLI_VER" ]]; then
         echo "ghidra-cli ${GHIDRA_CLI_TAG} already at $CLI_BIN; skipping cargo build"
     else
-        cargo install --git "$GHIDRA_CLI_GIT" --tag "$GHIDRA_CLI_TAG" --locked --force
+        cargo install --git "$GHIDRA_CLI_GIT" --tag "$GHIDRA_CLI_TAG" --locked --force \
+            || cargo install --git "$GHIDRA_CLI_GIT" --tag "$GHIDRA_CLI_TAG" --force
     fi
 else
-    cargo install --git "$GHIDRA_CLI_GIT" --tag "$GHIDRA_CLI_TAG" --locked --force
+    cargo install --git "$GHIDRA_CLI_GIT" --tag "$GHIDRA_CLI_TAG" --locked --force \
+        || cargo install --git "$GHIDRA_CLI_GIT" --tag "$GHIDRA_CLI_TAG" --force
 fi
 
 [[ -x "$CLI_BIN" ]] || die "expected binary missing: $CLI_BIN"
@@ -134,6 +144,7 @@ install_skills() {
     fi
 
     for dest in "${HOME}/.claude/skills" "${HOME}/.cursor/skills"; do
+        [[ -L "$dest" ]] && rm -f "$dest"
         mkdir -p "$dest"
         ln -sfn "$AGENTS_SKILLS/ghidra-cli-host" "$dest/ghidra-cli-host"
         if [[ -d "$AGENTS_SKILLS/ghidra-cli" ]]; then

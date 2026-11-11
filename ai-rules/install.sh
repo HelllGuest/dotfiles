@@ -22,10 +22,10 @@ sync_kit_cp() {
       .git|.git/*) continue ;;
     esac
     [[ "$rel" == *.bak ]] && continue
-    if [[ ! -e "$src/$rel" ]]; then
+    if [[ ! -e "$src/$rel" && ! -L "$src/$rel" ]]; then
       rm -f "$f"
     fi
-  done < <(find "$dst" -type f ! -path '*/.git/*' -print0 2>/dev/null || true)
+  done < <(find "$dst" \( -type f -o -type l \) ! -path '*/.git/*' -print0 2>/dev/null || true)
   # Drop empty dirs absent from src (deepest first); never touch .git
   while IFS= read -r -d '' d; do
     rel="${d#"$dst"/}"

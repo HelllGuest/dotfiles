@@ -9,7 +9,7 @@
 #   KIMI_NPM_SPEC         default @moonshot-ai/kimi-code@2.3.0
 #   REA_AGENTS_VERSION    default 6.7.0 (MCP npx pin)
 #   SKIP_CAVEMAN_OPENCODE=1  skip caveman --only opencode
-#   CAVEMAN_TAG           forwarded to install-caveman pins (default v4.0.1)
+#   CAVEMAN_TAG           forwarded to install-caveman pins (default v4.1.0)
 #
 # Usage:
 #   bash scripts/install-coding-agents.sh
@@ -44,10 +44,16 @@ install_caveman_opencode() {
       rm -f "$target"
     fi
   done
-  local tmp tag sha got
+  local tmp tag sha got caveman_dir
+  caveman_dir="${XDG_DATA_HOME:-$HOME/.local/share}/caveman"
+  tag="${CAVEMAN_TAG:-v4.1.0}"
+  sha="${CAVEMAN_INSTALL_SHA256:-2e39b2a9b4ce47620757abc8a55ad33a23dd65217f8a998135108f92f83c00a1}"
+  if [[ -f "$caveman_dir/installer/install.js" ]]; then
+    CAVEMAN_REF="$tag" node "$caveman_dir/installer/install.js" --only opencode --non-interactive --force \
+      || warn "caveman opencode local install failed"
+    return 0
+  fi
   tmp="$(mktemp)"
-  tag="${CAVEMAN_TAG:-v4.0.1}"
-  sha="${CAVEMAN_INSTALL_SHA256:-c129b946a1f7f2e9eeeff5c1a747d7b43b2630c6b9e5fc7aa8297cece9cd3804}"
   curl -fsSL --proto '=https' --tlsv1.2 -o "$tmp" \
     "https://raw.githubusercontent.com/JuliusBrussee/caveman/${tag}/install.sh"
   got="$(sha256sum "$tmp" | awk '{print $1}')"
@@ -57,7 +63,7 @@ install_caveman_opencode() {
     return 0
   fi
   chmod +x "$tmp"
-  bash "$tmp" --only opencode --non-interactive || warn "caveman opencode install failed"
+  bash "$tmp" --only opencode --non-interactive --force || warn "caveman opencode install failed"
   rm -f "$tmp"
 }
 
@@ -87,7 +93,7 @@ pick_jdk21() {
 }
 
 command -v npm >/dev/null 2>&1 || die "npm required (fnm install 22 first)"
-export PATH="${HOME}/.npm-global/bin:${HOME}/.local/bin:${PATH}"
+export PATH="${HOME}/.opencode/bin:${HOME}/.npm-global/bin:${HOME}/.local/bin:${PATH}"
 
 # Prefer user-global prefix so install needs no root
 if [[ "$(npm config get prefix 2>/dev/null)" == "/usr" ]] || [[ "$(npm config get prefix 2>/dev/null)" == "/usr/local" ]]; then
@@ -97,7 +103,8 @@ if [[ "$(npm config get prefix 2>/dev/null)" == "/usr" ]] || [[ "$(npm config ge
 fi
 
 say "npm install -g ${OPENCODE_NPM_SPEC}"
-npm install -g "${OPENCODE_NPM_SPEC}"
+npm install -g --allow-scripts=opencode-ai "${OPENCODE_NPM_SPEC}" \
+  || npm install -g "${OPENCODE_NPM_SPEC}"
 
 say "npm install -g ${KIMI_NPM_SPEC}"
 npm install -g --allow-scripts=@moonshot-ai/kimi-code,node-pty "${KIMI_NPM_SPEC}" \
