@@ -44,9 +44,10 @@ Skip `thinkpad-health.sh` (i915-only). Details:
 RAM, keep analysis VMs small (2–4 GiB). Prefer QEMU/libvirt isolation. Never
 detonate unknown samples on the host.
 
-`packages/pacman.txt` may list NVIDIA packages used by other ThinkPad profiles
-(e.g. P15). On the X1 Yoga they are usually unused; ignore or skip if nothing
-loads.
+`packages/pacman.txt` lists Intel and NVIDIA GPU packages used by X1 / P15
+profiles. On T14s Gen 3 AMD (`21CQ`/`21CR`), `./install.sh` automatically
+filters out Intel and NVIDIA GPU packages before invoking `pacman -S`; on the
+X1 Yoga, the NVIDIA packages stay unloaded unless an NVIDIA GPU is present.
 
 ---
 
@@ -119,13 +120,16 @@ cd ~/dotfiles
 bash scripts/p15-dotfiles-preflight.sh   # skip on X1
 ./install.sh
 # Explicit Optimus re-run if needed: bash profiles/thinkpad-p15.sh
-# AI tools (also run by install.sh when npm/ghidra present):
-#   bash scripts/sync-agent-skills.sh
+# AI tools (also run by install.sh when npm/node/ghidra present):
+#   bash scripts/headroom-setup.sh          # Headroom proxy + MCP across agents
+#   bash scripts/sync-agent-skills.sh       # ai-rules kit + hub → 9 agent roots
 #   bash scripts/install-coding-agents.sh   # OpenCode + Kimi CLIs + MCP
-#   bash scripts/install-caveman.sh         # /caveman voice + skills
+#   bash scripts/install-caveman.sh         # /caveman v4.1.0 plugins + skills
+#   bash scripts/install-ponytail.sh        # /ponytail v5.3.3 plugins + hooks + skills
 #   bash scripts/install-android-ui-skills.sh  # Compose + Material 3
 #   bash scripts/install-ghidra-cli.sh
 #   bash scripts/install-rea.sh             # optional: INSTALL_HOPPER=1
+#   bash scripts/install-obscura.sh         # Obscura headless browser + MCP
 #   bash scripts/install-re-skills.sh       # leanrea + RE playbooks + Android + Ghidra loop
 #   bash scripts/install-re-extras.sh       # optional host pkgs (jadx, rizin, …)
 #   bash scripts/install-ecosystem-skills.sh  # packages/agent-skills.txt (Meson/QEMU, Arch triage, web quality, …; owner/repo:skill OK)
@@ -169,7 +173,7 @@ See [Verify sleep](hardened-arch-gnome.md#verify-sleep-s2idle).
 | Editors | Neovim (Lazy), VSCodium (`vscodium-bin`), Cursor / Antigravity (AUR) |
 | Languages | fnm Node 22, rust, `python-pipx`, `flutter-bin`, jdk-openjdk (+ JDK 17 for Android) |
 | Mobile | Flatpak Android Studio; `ANDROID_HOME` in `.shell-exports`; alias `as` |
-| AI (optional) | `bash scripts/headroom-setup.sh`, then `hr-claude` / `hr-cursor` |
+| AI stack | Headroom (`headroom-setup.sh`), OpenCode + Kimi (`install-coding-agents.sh`), Caveman (`install-caveman.sh`), Ponytail (`install-ponytail.sh`), Obscura (`install-obscura.sh`), and `sync-agent-skills.sh` |
 | Local builds | x86-64-v3 makepkg drop-in; `bash scripts/rebuild-v3.sh` after big upgrades |
 
 ### Containers (Podman — in `pacman.txt`)

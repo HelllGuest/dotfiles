@@ -7,6 +7,8 @@ set -euo pipefail
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 STOW_DIR="$REPO_ROOT/stow"
 GDM_SRC="$STOW_DIR/gdm/etc"
+# shellcheck source=lib/dmi.sh
+source "$REPO_ROOT/scripts/lib/dmi.sh"
 
 echo "→ Configuring GDM..."
 
@@ -32,8 +34,16 @@ fi
 echo "→ Installing GDM config into /etc (root-owned)..."
 # Per-file install, never `cp -a`/`rsync -a`: those copy the repo owner onto /etc
 # and its parent dirs (user-writable /etc; pacman hooks refuse unsafe paths).
+tmp="$(mktemp)"
+trap 'rm -f "$tmp"' EXIT
 while IFS= read -r -d '' src; do
-    sudo install -D -m 0644 -o root -g root "$src" "/etc/${src#"$GDM_SRC"/}"
+    rel="${src#"$GDM_SRC"/}"
+    cp "$src" "$tmp"
+    if [[ "$rel" == "systemd/system/gdm.service.d/override.conf" ]] \
+      && ! is_thinkpad_x1 && { is_thinkpad_t14s || [[ -d /sys/module/amdgpu ]]; }; then
+        sed -i 's/^Environment=LIBVA_DRIVER_NAME=.*/Environment=LIBVA_DRIVER_NAME=radeonsi/' "$tmp"
+    fi
+    sudo install -D -m 0644 -o root -g root "$tmp" "/etc/$rel"
 done < <(find "$GDM_SRC" -type f -print0)
 # Repair parent dirs an older `rsync -a` handed to the repo owner, with the repo's
 # mode (700 under umask 077). Non-recursive; only adds read/traverse, drops go-w.

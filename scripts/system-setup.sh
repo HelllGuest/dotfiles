@@ -61,6 +61,7 @@ X1_ONLY=(
 source "$REPO_ROOT/scripts/lib/dmi.sh"
 # A missing helper would read as "not X1" inside `if !` and silently skip files.
 declare -F is_thinkpad_x1 >/dev/null || { echo "lib/dmi.sh: is_thinkpad_x1 missing" >&2; exit 1; }
+declare -F is_thinkpad_t14s >/dev/null || { echo "lib/dmi.sh: is_thinkpad_t14s missing" >&2; exit 1; }
 
 if [ ! -d "$SRC_ROOT" ]; then
     echo "Missing system source: $SRC_ROOT" >&2
@@ -73,6 +74,15 @@ is_x1_host() {
         0) return 1 ;;
     esac
     is_thinkpad_x1
+}
+
+is_amdgpu_host() {
+    case "${SYSTEM_IS_AMDGPU:-}" in
+        1) return 0 ;;
+        0) return 1 ;;
+    esac
+    is_x1_host && return 1
+    is_thinkpad_t14s || [ -d /sys/module/amdgpu ]
 }
 
 # LUKS UUID that unlocked the running root, confirmed to exist as a block device.
@@ -145,6 +155,10 @@ while IFS= read -r -d '' src; do
     fi
 
     cp "$src" "$tmp"
+    if [ "$rel" = "etc/environment.d/99-wayland.conf" ] && is_amdgpu_host; then
+        sed -i -e 's/^# Wayland + VA-API defaults.*/# Wayland + VA-API defaults for GNOME Shell 51 on AMD Radeon (radeonsi)/' \
+               -e 's/^LIBVA_DRIVER_NAME=.*/LIBVA_DRIVER_NAME=radeonsi/' "$tmp"
+    fi
     if [ "$rel" = "etc/kernel/cmdline" ]; then
         uuid="$(booted_luks_uuid || true)"
         if [ -z "$uuid" ]; then

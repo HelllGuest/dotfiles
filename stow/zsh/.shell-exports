@@ -24,7 +24,11 @@ export MOZ_ENABLE_WAYLAND=1
 export ELECTRON_OZONE_PLATFORM_HINT=wayland
 export QT_QPA_PLATFORM=wayland
 export SDL_VIDEODRIVER=wayland
-export LIBVA_DRIVER_NAME=iHD
+if [[ -d /sys/module/amdgpu ]]; then
+    export LIBVA_DRIVER_NAME=radeonsi
+else
+    export LIBVA_DRIVER_NAME=iHD
+fi
 
 # PATH
 _prepend_path() { [[ ":$PATH:" != *":$1:"* ]] && export PATH="$1:$PATH"; }
@@ -36,6 +40,7 @@ _prepend_path "$HOME/.cargo/bin"
 _prepend_path "$HOME/go/bin"
 _prepend_path "${PNPM_HOME:-$HOME/.local/share/pnpm}"
 _prepend_path "$HOME/.npm-global/bin"
+_prepend_path "$HOME/.opencode/bin"
 
 # Android SDK
 export ANDROID_HOME="$HOME/Android/Sdk"

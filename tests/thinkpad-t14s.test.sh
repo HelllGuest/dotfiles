@@ -162,12 +162,40 @@ grep -q 'packages/thinkpad-t14s.txt' "$ROOT/profiles/thinkpad-t14s.sh" \
   || fail "thinkpad-t14s profile must read packages/thinkpad-t14s.txt"
 grep -q '^vulkan-radeon$' "$ROOT/packages/thinkpad-t14s.txt" \
   || fail "packages/thinkpad-t14s.txt must list vulkan-radeon"
+grep -q '^libva-utils$' "$ROOT/packages/thinkpad-t14s.txt" \
+  || fail "packages/thinkpad-t14s.txt must list libva-utils"
+grep -q '^wireless-regdb$' "$ROOT/packages/thinkpad-t14s.txt" \
+  || fail "packages/thinkpad-t14s.txt must list wireless-regdb"
 grep -q '^fprintd$' "$ROOT/packages/thinkpad-t14s.txt" \
   || fail "packages/thinkpad-t14s.txt must list fprintd"
 grep -q '^libva-mesa-driver$' "$ROOT/packages/thinkpad-t14s.txt" \
   && fail "packages/thinkpad-t14s.txt must not list obsolete libva-mesa-driver" || true
 grep -q 'vulkan-radeon' "$ROOT/scripts/arch-install-t14s.sh" \
   || fail "arch-install-t14s must pacstrap vulkan-radeon"
+grep -q 'libva-utils' "$ROOT/scripts/arch-install-t14s.sh" \
+  || fail "arch-install-t14s must pacstrap libva-utils"
+grep -q 'wireless-regdb' "$ROOT/scripts/arch-install-t14s.sh" \
+  || fail "arch-install-t14s must pacstrap wireless-regdb"
+grep -q '71-thinkpad-t14s-touchpad-wakeup.rules' "$ROOT/scripts/arch-install-t14s.sh" \
+  || fail "arch-install-t14s must seed 71-thinkpad-t14s-touchpad-wakeup.rules"
+grep -q '61-thinkpad-charge-limit.rules' "$ROOT/scripts/arch-install-t14s.sh" \
+  || fail "arch-install-t14s must seed 61-thinkpad-charge-limit.rules"
+grep -q '71-thinkpad-t14s-touchpad-wakeup.rules' "$ROOT/profiles/thinkpad-t14s.sh" \
+  || fail "profiles/thinkpad-t14s.sh must install 71-thinkpad-t14s-touchpad-wakeup.rules"
+grep -q '61-thinkpad-charge-limit.rules' "$ROOT/profiles/thinkpad-t14s.sh" \
+  || fail "profiles/thinkpad-t14s.sh must install 61-thinkpad-charge-limit.rules"
+grep -q 'LIBVA_DRIVER_NAME=radeonsi' "$ROOT/stow/zsh/.shell-exports" \
+  || fail ".shell-exports must set LIBVA_DRIVER_NAME=radeonsi on amdgpu"
+grep -q 'LIBVA_DRIVER_NAME=radeonsi' "$ROOT/scripts/system-setup.sh" \
+  || fail "system-setup.sh must rewrite LIBVA_DRIVER_NAME=radeonsi on amdgpu"
+grep -q 'LIBVA_DRIVER_NAME=radeonsi' "$ROOT/scripts/gdm-setup.sh" \
+  || fail "gdm-setup.sh must rewrite LIBVA_DRIVER_NAME=radeonsi on amdgpu"
+grep -q '0x1002' "$ROOT/stow/gdm/etc/udev/rules.d/61-gdm-wayland.rules" \
+  || fail "61-gdm-wayland.rules must include AMD vendor 0x1002"
+grep -q 'is_thinkpad_x1' "$ROOT/scripts/gnome-session-setup.sh" \
+  || fail "gnome-session-setup.sh must gate yoga-tablet-mode.service on is_thinkpad_x1"
+grep -q 'is_thinkpad_x1' "$ROOT/scripts/validate-configs.sh" \
+  || fail "validate-configs.sh must gate yoga-tablet-mode.service check on is_thinkpad_x1"
 grep -q 'thinkpad-charge-thresholds.conf' "$ROOT/scripts/arch-install-t14s.sh" \
   || fail "arch-install-t14s must ship charge tmpfiles"
 grep -q 'thinkpad-charge-thresholds.service' "$ROOT/scripts/arch-install-t14s.sh" \
@@ -532,6 +560,33 @@ done
 grep -qx 'power-profiles-daemon' "$TMP/pk/ppd.out" || fail "PPD host must still get power-profiles-daemon"
 grep -qx 'power-profiles-daemon' "$TMP/pk/tuned.out" \
   && fail "tuned-ppd host must not request power-profiles-daemon (conflict aborts --noconfirm)" || true
+# T14s AMD host: Intel/NVIDIA GPU packages in pacman.txt must be filtered out,
+# while non-T14s hosts (e.g. X1 / P15) keep them.
+mkdir -p "$TMP/pk/repo/scripts/lib"
+cp "$ROOT/scripts/lib/dmi.sh" "$TMP/pk/repo/scripts/lib/dmi.sh"
+printf '%s\n' 'atuin' 'intel-media-driver' 'vulkan-intel' 'nvidia-open-dkms' \
+  'nvidia-prime' 'nvidia-utils' 'iio-sensor-proxy' 'stow' >"$TMP/pk/repo/packages/pacman.txt"
+(cd "$TMP/pk/repo" && DMI_SYSFS_ROOT="$TMP/cr" PK_OUT="$TMP/pk/t14s.out" \
+  PATH="$TMP/pk/bin:$PATH" bash -c "$_pkgblk" >/dev/null) \
+  || fail "install.sh package block failed (t14s)"
+grep -qx 'atuin' "$TMP/pk/t14s.out" || fail "t14s must keep atuin"
+grep -qx 'stow' "$TMP/pk/t14s.out" || fail "t14s must keep stow"
+grep -qE '^(intel-media-driver|vulkan-intel|nvidia-open-dkms|nvidia-prime|nvidia-utils|iio-sensor-proxy)$' \
+  "$TMP/pk/t14s.out" && fail "t14s must filter out Intel/NVIDIA/iio-sensor-proxy packages" || true
+(cd "$TMP/pk/repo" && DMI_SYSFS_ROOT="$TMP/x1" PK_OUT="$TMP/pk/x1.out" \
+  PATH="$TMP/pk/bin:$PATH" bash -c "$_pkgblk" >/dev/null) \
+  || fail "install.sh package block failed (x1)"
+for _gp in intel-media-driver vulkan-intel nvidia-open-dkms nvidia-prime nvidia-utils iio-sensor-proxy; do
+  grep -qx "$_gp" "$TMP/pk/x1.out" || fail "non-t14s must keep $_gp"
+done
+unset _gp
+# All-filtered manifest on T14s: must exit 0 and not invoke pacman -S.
+printf '%s\n' 'intel-media-driver' 'nvidia-open-dkms' >"$TMP/pk/repo/packages/pacman.txt"
+rm -f "$TMP/pk/allfilt.out"
+(cd "$TMP/pk/repo" && DMI_SYSFS_ROOT="$TMP/cr" PK_OUT="$TMP/pk/allfilt.out" \
+  PATH="$TMP/pk/bin:$PATH" bash -e -c "$_pkgblk" >/dev/null) \
+  || fail "install.sh package block failed when all packages filtered"
+[[ ! -e "$TMP/pk/allfilt.out" ]] || fail "all-filtered manifest must not invoke pacman -S"
 # Comment-only manifest: pacman must not be called with an empty target list.
 printf '%s\n' '# only comments' '' >"$TMP/pk/repo/packages/pacman.txt"
 rm -f "$TMP/pk/empty.out"
@@ -543,5 +598,18 @@ grep -q 'pacman -Q tuned-ppd' "$ROOT/profiles/thinkpad-t14s.sh" \
   || fail "T14s profile must keep tuned + tuned-ppd instead of forcing PPD"
 grep -q 'pacman -Q tuned-ppd' "$ROOT/profiles/laptop.sh" \
   || fail "laptop profile must not install PPD over tuned-ppd"
+for _seed in \
+  's2idle.conf' \
+  'thinkpad-lid.conf' \
+  '99-x86-64-v3.conf' \
+  '99-wayland.conf' \
+  'LIBVA_DRIVER_NAME=radeonsi' \
+  '61-gdm-wayland.rules' \
+  'gdm.service.d/override.conf'
+do
+  grep -q "$_seed" "$ROOT/scripts/arch-install-t14s.sh" \
+    || fail "arch-install-t14s.sh must seed $_seed for first boot"
+done
+unset -v _seed
 
 echo "PASS: thinkpad-t14s tests"

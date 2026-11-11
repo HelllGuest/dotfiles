@@ -13,7 +13,7 @@ Defined in `stow/zsh/.shell-aliases` (shared by Zsh and Bash):
 | `v` | `nvim` |
 | `as` | `flatpak run com.google.AndroidStudio` |
 | `ff` | `fastfetch` |
-| `kali` / `kali-up` / `kali-up-nat` / `kali-up-lan` / `kali-lan` / `kali-wipe` / `kali-stop` / `kali-st` | Disposable Kali (see below) |
+| `kali` / `kali-up` / `kali-up-nat` / `kali-up-lan` / `kali-lan` / `kali-lan-check` / `kali-wipe` / `kali-stop` / `kali-st` | Disposable Kali (see below) |
 
 Modern CLI aliases (when installed): `eza`, `bat`, `rg`, `fd`, etc.
 
@@ -136,8 +136,6 @@ If the app grid needs two clicks: D-Bus unit race. Stow ships
 `~/.config/systemd/user/app-com.mitchellh.ghostty.service.d/override.conf`
 (`Type=notify`). After pull: `stow -R -t ~ ghostty` from `~/dotfiles/stow`, then
 `systemctl --user daemon-reload`.
-
-
 
 | Shortcut | Action |
 |----------|--------|

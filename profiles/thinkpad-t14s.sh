@@ -5,10 +5,11 @@
 # Host addons this profile owns (PPD or tuned+tuned-ppd; no TLP):
 #   * charge thresholds 70–80 via scripts/thinkpad-charge-thresholds.sh
 #   * amd_iommu=on + amd_pstate=active (strip intel_iommu / i915 leftovers)
-#   * packages/thinkpad-t14s.txt (mesa / vulkan-radeon / fprintd)
-#   * fwupd refresh, bolt, bluetooth; sof-firmware via pacman.txt / installer
+#   * packages/thinkpad-t14s.txt (mesa / vulkan-radeon / libva-utils / wireless-regdb / fprintd)
+#   * I2C touchpad s2idle wakeup disable (i2c-ELAN0678 / i2c-SYNA8018)
+#   * fwupd refresh, bolt, bluetooth, fstrim.timer; sof-firmware via pacman.txt / installer
 # Skip: ryzenadj (PRO EC often locks), thermald (DYTC firmware), TLP;
-#       X1 fingerprint-disable udev (keep power-button FP)
+#       X1 fingerprint-disable udev (keep power-button FP), X1 Yoga tablet services
 
 echo "Applying ThinkPad T14s Gen 3 AMD optimizations..."
 
@@ -46,12 +47,24 @@ elif command -v powerprofilesctl >/dev/null 2>&1; then
 fi
 
 # Battery longevity: thinkpad_acpi charge window (sysfs resets each boot)
+# Install 61-thinkpad-charge-limit.rules first so UPower's Preserve Battery Health
+# exports CHARGE_LIMIT=70,80 on BAT* instead of resetting start_threshold to 0.
+CHARGE_UDEV_SRC="$REPO_ROOT/stow/system/etc/udev/rules.d/61-thinkpad-charge-limit.rules"
+CHARGE_UDEV_DST="/etc/udev/rules.d/61-thinkpad-charge-limit.rules"
+if [[ -f "$CHARGE_UDEV_SRC" ]]; then
+  if [[ ! -f "$CHARGE_UDEV_DST" ]] || ! cmp -s "$CHARGE_UDEV_SRC" "$CHARGE_UDEV_DST"; then
+    sudo install -D -m 0644 -o root -g root "$CHARGE_UDEV_SRC" "$CHARGE_UDEV_DST" || true
+    sudo udevadm control --reload-rules 2>/dev/null || true
+    sudo udevadm trigger --subsystem-match=power_supply 2>/dev/null || true
+  fi
+fi
+unset CHARGE_UDEV_SRC CHARGE_UDEV_DST
 if [[ -f "$REPO_ROOT/scripts/thinkpad-charge-thresholds.sh" ]]; then
   echo "Setting ThinkPad charge thresholds 70–80..."
   bash "$REPO_ROOT/scripts/thinkpad-charge-thresholds.sh" || true
 fi
 
-# Rembrandt extras (680M + FP) — pacman.txt is Intel-skewed (vulkan-intel).
+# Rembrandt extras (680M + FP) — install.sh skips Intel/NVIDIA GPU pkgs on T14s.
 # Manifest: packages/thinkpad-t14s.txt (keep arch-install-t14s.sh pacstrap in sync).
 T14S_PKGS_FILE="$REPO_ROOT/packages/thinkpad-t14s.txt"
 if [[ -f "$T14S_PKGS_FILE" ]] && command -v pacman >/dev/null 2>&1; then
@@ -137,6 +150,32 @@ if pacman -Q bluez >/dev/null 2>&1; then
   echo "Enabling bluetooth..."
   sudo systemctl enable --now bluetooth || true
 fi
+
+# NVMe periodic TRIM
+echo "Enabling fstrim.timer..."
+sudo systemctl enable --now fstrim.timer || true
+
+# Disable X1 Yoga tablet-mode watcher on clamshell T14s
+systemctl --user disable --now yoga-tablet-mode.service 2>/dev/null || true
+
+# Disable I2C touchpad wakeup from s2idle (prevents spurious wakeups in transit)
+TP_WAKE_RULE_SRC="$REPO_ROOT/stow/system/etc/udev/rules.d/71-thinkpad-t14s-touchpad-wakeup.rules"
+TP_WAKE_RULE_DST="/etc/udev/rules.d/71-thinkpad-t14s-touchpad-wakeup.rules"
+if [[ -f "$TP_WAKE_RULE_SRC" ]]; then
+  if [[ ! -f "$TP_WAKE_RULE_DST" ]] || ! cmp -s "$TP_WAKE_RULE_SRC" "$TP_WAKE_RULE_DST"; then
+    echo "Installing $TP_WAKE_RULE_DST..."
+    sudo install -D -m 0644 -o root -g root "$TP_WAKE_RULE_SRC" "$TP_WAKE_RULE_DST" || true
+    sudo udevadm control --reload-rules 2>/dev/null || true
+  fi
+fi
+for _tp_wake in /sys/bus/i2c/devices/i2c-ELAN0678:*/power/wakeup /sys/bus/i2c/devices/i2c-SYNA8018:*/power/wakeup; do
+  [[ -f "$_tp_wake" ]] || continue
+  if [[ "$(cat "$_tp_wake" 2>/dev/null)" == "enabled" ]]; then
+    echo "Disabling s2idle wakeup on ${_tp_wake%/power/wakeup}..."
+    echo disabled | sudo tee "$_tp_wake" >/dev/null || true
+  fi
+done
+unset _tp_wake TP_WAKE_RULE_SRC TP_WAKE_RULE_DST
 
 # Legacy touchpad udev/inhibit cleanup (if present)
 if [ -f "$REPO_ROOT/scripts/cleanup-input-overrides.sh" ]; then

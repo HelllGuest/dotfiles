@@ -952,14 +952,18 @@ pacman -S powertop
 * Power: PPD by default; if the host came from `t14s-arch-install` with
   tuned, `tuned` + `tuned-ppd` (same GNOME power menu API) replace PPD —
   `./install.sh` then skips `power-profiles-daemon` and the profile enables tuned
-* GPU / FP packages: `packages/thinkpad-t14s.txt` (`mesa` + `vulkan-radeon` + `fprintd`; VA-API via mesa `Provides`)
+* GPU / Wi-Fi / FP packages: `packages/thinkpad-t14s.txt` (`mesa` + `vulkan-radeon` + `libva-utils` + `wireless-regdb` + `fprintd`; VA-API via `LIBVA_DRIVER_NAME=radeonsi` in `.shell-exports`, `/etc/environment.d/99-wayland.conf`, and GDM override)
+* Touchpad `s2idle` wakeup: `/etc/udev/rules.d/71-thinkpad-t14s-touchpad-wakeup.rules` disables I2C touchpad wakeup (`i2c-ELAN0678:*` / `i2c-SYNA8018:*`) so lid flex in transit does not wake the laptop from `s2idle`
 * Charge window 70–80: `arch-install-t14s.sh` seeds tmpfiles from
-  `scripts/lib/thinkpad-charge-thresholds.conf` **and** enables
+  `scripts/lib/thinkpad-charge-thresholds.conf`, installs
+  `/etc/udev/rules.d/61-thinkpad-charge-limit.rules` (`ENV{CHARGE_LIMIT}="70,80"`
+  so UPower 1.90+ / GNOME Preserve Battery Health does not reset
+  `charge_control_start_threshold` to `0`), **and** enables
   `thinkpad-charge-thresholds.service` (waits for late BAT* sysfs; apply script
   under `/usr/local/lib/thinkpad/`). Live refresh via
   `scripts/thinkpad-charge-thresholds.sh` (also `install-re-extras.sh` /
   `profiles/thinkpad-t14s.sh`) installs both tmpfiles and the service.
-* No Yoga tablet rotate stack; keep fingerprint enabled (do not install the X1 fingerprint-disable udev rule)
+* No Yoga tablet rotate stack (`iio-sensor-proxy` and `yoga-tablet-mode.service` are gated on `is_thinkpad_x1`); keep fingerprint enabled (do not install the X1 fingerprint-disable udev rule)
 
 ---
 
@@ -1530,21 +1534,15 @@ cd ~/dotfiles
 ./install.sh
 ```
 
-`./install.sh` (run from a GNOME session) will:
+`./install.sh` (run from a GNOME session; full step-by-step order in [README — Script execution order](../README.md#script-execution-order-fresh-machine)) will:
 
-* Apply exactly one machine profile: `profiles/$(hostname).sh` if present, otherwise `scripts/detect-profile.sh` (ThinkPad X1 → `thinkpad-x1`; ThinkPad P15 → `thinkpad-p15`; other ThinkPads/laptop chassis → `laptop`). Optimus/NVIDIA setup is inside `thinkpad-p15.sh` (no `nvidia.sh`).
-* Install packages from `packages/pacman.txt` (kernels, shells, terminals, CLI tools)
-* Install Flatpaks from `packages/flatpak.txt` (Brave, Zen, Chrome, LibreWolf, Proton VPN, Android Studio)
-* Deploy browser telemetry via `scripts/browser-hardening.sh` (layout and per-browser notes: README Flatpaks section). Launch Zen once before re-running if profiles are new.
-* Install AUR packages from `packages/aur.txt` (bootstraps `paru` if no helper exists)
-* Stow configs to `$HOME` (skips `zram` and `gdm`); install `system/` into `/etc` as root-owned files via `scripts/system-setup.sh`
-* Materialize `zram-generator.conf` via `scripts/zram-setup.sh`
-* Apply GNOME session dconf from `gnome/dconf/user.conf`, enable extensions, location spoofing
-* Reset mouse/touchpad/keyboard to stock GNOME defaults (`scripts/reset-input-defaults.sh`); clean legacy touchpad udev/inhibit if present (`scripts/cleanup-input-overrides.sh`)
-* Configure GDM, Git, Neovim; run `bash scripts/privacy-hardener.sh` then `bash scripts/check.sh`
-* fnm, Headroom, PhotoGIMP, Dash2Dock (Wayland needs logout): see Phase 17b–17e
-* **Ptyxis** optional terminal rice via `scripts/ptyxis-setup.sh` (after Console setup)
-* **ghidra-cli** optional when pacman `ghidra` is installed (`scripts/install-ghidra-cli.sh`; failure does not abort `./install.sh`)
+* Install packages from `packages/pacman.txt` (kernels, shells, terminals, CLI tools; skips Intel/NVIDIA GPU packages on ThinkPad T14s Gen 3 AMD and skips `power-profiles-daemon` when `tuned-ppd` is present)
+* Apply **after** `pacman.txt` exactly one machine profile via `scripts/apply-profile.sh`: `profiles/$(hostname).sh` if present, otherwise `scripts/detect-profile.sh` (`thinkpad-x1`, `thinkpad-p15`, `thinkpad-t14s`, or `laptop`). Optimus/NVIDIA setup is inside `thinkpad-p15.sh` (no `nvidia.sh`).
+* Install Flatpaks from `packages/flatpak.txt` (Brave, Zen, Chrome, LibreWolf, Proton VPN, Android Studio) and AUR packages from `packages/aur.txt` (bootstraps `paru` if no helper exists)
+* Stow configs to `$HOME` (skips `zram` and `gdm`); install `system/` into `/etc` as root-owned files via `scripts/system-setup.sh`; materialize `zram-generator.conf` via `scripts/zram-setup.sh`
+* Apply GNOME session dconf (`gnome/dconf/user.conf`), Console & Ptyxis terminal settings, Dash2Dock + extensions, location spoofing, and stock input defaults (`scripts/reset-input-defaults.sh` + `scripts/cleanup-input-overrides.sh`)
+* Configure GDM, Git, Neovim, Headroom proxy + MCP (`scripts/headroom-setup.sh`), AI coding/RE agents + plugins + skills (`sync-agent-skills.sh`, `install-coding-agents.sh`, `install-caveman.sh`, `install-ponytail.sh`, `install-android-ui-skills.sh`, `install-ghidra-cli.sh`, `install-rea.sh`, `install-obscura.sh`, `install-re-skills.sh`, `install-ecosystem-skills.sh`), and PhotoGIMP
+* Run `scripts/privacy-hardener.sh` (incl. `browser-hardening.sh`), `scripts/check.sh`, and `scripts/validate-configs.sh`
 
 Config-only (no package install; skips `zram`, `system`, and `gdm`; removes unmodified `/etc/skel` copies that block stow):
 

@@ -5,14 +5,21 @@ set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 STOW_DIR="$REPO_ROOT/stow"
+# shellcheck source=lib/dmi.sh
+source "$REPO_ROOT/scripts/lib/dmi.sh"
 
 echo "→ GNOME session setup..."
 
-PAC_PKGS=(gnome-shell-extensions gnome-tweaks iio-sensor-proxy inter-font)
+PAC_PKGS=(gnome-shell-extensions gnome-tweaks inter-font)
+if is_thinkpad_x1; then
+  PAC_PKGS+=(iio-sensor-proxy)
+fi
 sudo pacman -S --needed --noconfirm "${PAC_PKGS[@]}" 2>/dev/null || \
   pacman -S --needed --noconfirm "${PAC_PKGS[@]}" 2>/dev/null || true
 
-sudo systemctl enable --now iio-sensor-proxy.service 2>/dev/null || true
+if is_thinkpad_x1; then
+  sudo systemctl enable --now iio-sensor-proxy.service 2>/dev/null || true
+fi
 
 mkdir -p "$HOME/.config"
 cd "$STOW_DIR" || exit 1
@@ -51,7 +58,11 @@ if [[ -f "$REPO_ROOT/gnome/dconf/extensions.conf" ]]; then
 fi
 
 systemctl --user daemon-reload 2>/dev/null || true
-systemctl --user enable --now yoga-tablet-mode.service 2>/dev/null || true
+if is_thinkpad_x1; then
+  systemctl --user enable --now yoga-tablet-mode.service 2>/dev/null || true
+else
+  systemctl --user disable --now yoga-tablet-mode.service 2>/dev/null || true
+fi
 
 fc-cache -fv &>/dev/null || true
 

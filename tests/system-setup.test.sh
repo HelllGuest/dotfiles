@@ -68,6 +68,8 @@ check "700 parent dir made traversable" \
     test "$(mode_of "$root/etc/environment.d")" = 755
 check "installed file mode 644" \
     test "$(mode_of "$root/etc/environment.d/99-wayland.conf")" = 644
+check "X1: 99-wayland.conf keeps LIBVA_DRIVER_NAME=iHD" \
+    grep -qx "LIBVA_DRIVER_NAME=iHD" "$root/etc/environment.d/99-wayland.conf"
 check "cmdline gets booted UUID" \
     grep -q "rd.luks.name=$UUID=cryptroot" "$root/etc/kernel/cmdline"
 check "location-owned file skipped" \
@@ -105,6 +107,17 @@ check "non-X1: X1 fingerprint rule not installed" \
     test ! -e "$root3/etc/udev/rules.d/72-fingerprint-disable.rules"
 check "non-X1: generic files still installed" \
     test -f "$root3/etc/ufw/before.rules"
+
+# non-X1 AMD GPU host: 99-wayland.conf rewritten to LIBVA_DRIVER_NAME=radeonsi
+root_amd="$work/root_amd"
+mkdir -p "$root_amd"
+run_setup "$root_amd" SYSTEM_IS_X1=0 SYSTEM_IS_AMDGPU=1
+check "amdgpu: 99-wayland.conf sets LIBVA_DRIVER_NAME=radeonsi" \
+    grep -qx "LIBVA_DRIVER_NAME=radeonsi" "$root_amd/etc/environment.d/99-wayland.conf"
+check "amdgpu: T14s touchpad wakeup rule installed" \
+    cmp -s "$SRC/etc/udev/rules.d/71-thinkpad-t14s-touchpad-wakeup.rules" "$root_amd/etc/udev/rules.d/71-thinkpad-t14s-touchpad-wakeup.rules"
+check "amdgpu: ThinkPad UPower CHARGE_LIMIT rule installed" \
+    cmp -s "$SRC/etc/udev/rules.d/61-thinkpad-charge-limit.rules" "$root_amd/etc/udev/rules.d/61-thinkpad-charge-limit.rules"
 
 # non-X1 with a stowed cmdline: materialized (content kept), never deleted
 root4="$work/root4"

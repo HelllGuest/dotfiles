@@ -1,4 +1,4 @@
-# ThinkPad T14s Gen 3 AMD (type 21CQ/21CR) — Rembrandt / Radeon 680M
+# ThinkPad T14s Gen 3 AMD (type 21CQ/21CR) — Rembrandt / Radeon 680M / QCNFA765
 # Installed by profiles/thinkpad-t14s.sh when missing.
 # Keep GNOME pacstrap in scripts/arch-install-t14s.sh (and public t14s-arch-install)
 # in sync with this list. sof-firmware lives in pacman.txt / installer already.
@@ -6,4 +6,6 @@
 
 mesa
 vulkan-radeon
+libva-utils
+wireless-regdb
 fprintd

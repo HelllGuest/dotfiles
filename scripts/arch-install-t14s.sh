@@ -444,6 +444,66 @@ EOF
 chmod 644 /etc/systemd/system/thinkpad-charge-thresholds.service
 systemctl enable thinkpad-charge-thresholds.service
 
+# Disable I2C touchpad wakeup from s2idle (Elan i2c-ELAN0678 / Synaptics i2c-SYNA8018),
+# export UPower CHARGE_LIMIT=70,80 on BAT* so upowerd does not reset start_threshold to 0,
+# and seed sleep/lid/makepkg x86-64-v3 drop-ins for first boot before ./install.sh runs.
+mkdir -p /etc/udev/rules.d /etc/systemd/sleep.conf.d /etc/systemd/logind.conf.d /etc/makepkg.conf.d
+cat > /etc/systemd/sleep.conf.d/s2idle.conf <<'EOF'
+[Sleep]
+SuspendState=mem
+MemorySleepMode=s2idle
+HibernateMode=shutdown
+EOF
+chmod 644 /etc/systemd/sleep.conf.d/s2idle.conf
+cat > /etc/systemd/logind.conf.d/thinkpad-lid.conf <<'EOF'
+[Login]
+# Battery / unknown: suspend on lid. On charger: stay awake (GNOME mirrors this).
+HandleLidSwitch=suspend
+HandleLidSwitchExternalPower=ignore
+HandleLidSwitchDocked=ignore
+EOF
+chmod 644 /etc/systemd/logind.conf.d/thinkpad-lid.conf
+cat > /etc/makepkg.conf.d/99-x86-64-v3.conf <<'EOF'
+#!/hint/bash
+# shellcheck disable=2034
+# Local/AUR builds: Comet Lake (X1) and Zen 3+ Rembrandt (T14s Gen 3) are
+# x86-64-v3 (AVX2/BMI2/FMA), not v4 (AVX-512).
+# Official extra/core upgrades replace any rebuilt package with the generic build.
+
+if [[ ${CFLAGS-} == *"-march=x86-64"* && ${CFLAGS-} != *"-march=x86-64-v"* ]]; then
+    CFLAGS="${CFLAGS/-march=x86-64/-march=x86-64-v3}"
+    CFLAGS="${CFLAGS/-mtune=generic /}"
+fi
+if [[ ${CXXFLAGS-} == *"-march=x86-64"* && ${CXXFLAGS-} != *"-march=x86-64-v"* ]]; then
+    CXXFLAGS="${CXXFLAGS/-march=x86-64/-march=x86-64-v3}"
+    CXXFLAGS="${CXXFLAGS/-mtune=generic /}"
+fi
+
+case "${RUSTFLAGS-} " in
+    *" -C target-cpu="* | *" target-cpu="*) ;;
+    *) RUSTFLAGS="${RUSTFLAGS:+$RUSTFLAGS }-C target-cpu=x86-64-v3" ;;
+esac
+
+GOAMD64="${GOAMD64:-v3}"
+EOF
+chmod 644 /etc/makepkg.conf.d/99-x86-64-v3.conf
+cat > /etc/udev/rules.d/61-thinkpad-charge-limit.rules <<'EOF'
+# UPower 1.90+ / GNOME Preserve Battery Health:
+# 60-upower-battery.rules only imports CHARGE_LIMIT from hwdb if
+# charge_control_start_threshold already exists when BAT0 is added (races
+# thinkpad_acpi) and defaults to 75,80. Explicitly export CHARGE_LIMIT=70,80
+# on BAT* so upowerd writes 70–80 instead of clobbering start_threshold to 0.
+ACTION!="remove", SUBSYSTEM=="power_supply", KERNEL=="BAT*", ENV{CHARGE_LIMIT}="70,80"
+EOF
+chmod 644 /etc/udev/rules.d/61-thinkpad-charge-limit.rules
+cat > /etc/udev/rules.d/71-thinkpad-t14s-touchpad-wakeup.rules <<'EOF'
+# ThinkPad T14s Gen 3 AMD (21CQ/21CR): disable I2C touchpad wakeup from s2idle.
+# Prevents spurious wakeups when the lid flexes in transit (ArchWiki T14s Gen 3 AMD).
+# Matches both Elan (i2c-ELAN0678:00) and Synaptics (i2c-SYNA8018:00) SKUs.
+ACTION=="add|change", SUBSYSTEM=="i2c", KERNEL=="i2c-ELAN0678:*|i2c-SYNA8018:*", ATTR{power/wakeup}="disabled"
+EOF
+chmod 644 /etc/udev/rules.d/71-thinkpad-t14s-touchpad-wakeup.rules
+
 # UKI presets: linux-lts (primary) + linux-hardened (fallback)
 # reuse ESP: clear stale UKIs + loader entries before rebuild (multiboot-safe names)
 if [[ ${FORMAT_EFI:-1} == 0 ]]; then
@@ -575,13 +635,51 @@ if [[ ${DESKTOP^^} != N* ]]; then
     xdg-user-dirs-gtk xdg-desktop-portal xdg-desktop-portal-gnome polkit \
     flatpak fwupd bolt pipewire pipewire-pulse wireplumber earlyoom \
     power-profiles-daemon \
-    sof-firmware alsa-ucm-conf fprintd \
-    mesa vulkan-radeon \
+    sof-firmware alsa-ucm-conf wireless-regdb fprintd \
+    mesa vulkan-radeon libva-utils \
     gnome-software
   then
     systemctl enable gdm bolt.service earlyoom.service power-profiles-daemon
-    mkdir -p /etc/gdm
+    mkdir -p /etc/gdm /etc/environment.d /etc/udev/rules.d /etc/systemd/system/gdm.service.d
     printf '[daemon]\nWaylandEnable=true\n' > /etc/gdm/custom.conf
+    cat > /etc/environment.d/99-wayland.conf <<'EOF'
+# Wayland + VA-API defaults for GNOME Shell 51 on AMD Radeon (radeonsi)
+OZONE_PLATFORM=wayland
+MOZ_ENABLE_WAYLAND=1
+MOZ_DBUS_REMOTE=1
+QT_QPA_PLATFORM=wayland
+QT_WAYLAND_DISABLE_WINDOWDECORATION=1
+ELECTRON_OZONE_PLATFORM_HINT=wayland
+SDL_VIDEODRIVER=wayland
+CLUTTER_BACKEND=wayland
+LIBVA_DRIVER_NAME=radeonsi
+EOF
+    chmod 644 /etc/environment.d/99-wayland.conf
+    cat > /etc/udev/rules.d/61-gdm-wayland.rules <<'EOF'
+# AMD Radeon 680M Rembrandt (1002:1681) — keep GDM on Wayland
+SUBSYSTEM=="drm", KERNEL=="card*", \
+  ATTRS{vendor}=="0x1002", ATTRS{device}=="0x1681", \
+  TAG+="seat", TAG+="uaccess", \
+  ENV{GDM_DISABLE_WAYLAND}=""
+
+SUBSYSTEM=="drm", KERNEL=="card*", \
+  ATTRS{vendor}=="0x1002", \
+  ENV{GDM_DISABLE_WAYLAND}=""
+EOF
+    chmod 644 /etc/udev/rules.d/61-gdm-wayland.rules
+    cat > /etc/systemd/system/gdm.service.d/override.conf <<'EOF'
+# /etc/systemd/system/gdm.service.d/override.conf
+
+[Service]
+Environment=GDK_BACKEND=wayland
+Environment=CLUTTER_BACKEND=wayland
+Environment=QT_QPA_PLATFORM=wayland
+Environment=LIBVA_DRIVER_NAME=radeonsi
+OOMScoreAdjust=-500
+Restart=always
+RestartSec=1s
+EOF
+    chmod 644 /etc/systemd/system/gdm.service.d/override.conf
     flatpak remote-add --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo || true
     # Browser flatpaks — keep in sync with packages/flatpak.txt (AndroidStudio excluded: dev tool)
     # One install per app: a single failure must not abort the rest. Extra-data apps

@@ -5,7 +5,16 @@
 # dconf, extension enable, and gsettings steps need an active user session.
 
 # Ensure we are in the repo root
-cd "$(dirname "$0")"
+cd "$(dirname "$0")" || exit 1
+
+# Ensure user-local tool paths are on PATH on fresh first-boot bash sessions
+for _p in "$HOME/.opencode/bin" "$HOME/.npm-global/bin" "${PNPM_HOME:-$HOME/.local/share/pnpm}" "$HOME/go/bin" "$HOME/.cargo/bin" "$HOME/.local/bin"; do
+    case ":$PATH:" in
+        *":$_p:"*) ;;
+        *) export PATH="$_p:$PATH" ;;
+    esac
+done
+unset _p
 
 echo "Starting installation..."
 
@@ -23,7 +32,14 @@ if [ -f "packages/pacman.txt" ]; then
     # --noconfirm refuse the removal and abort the whole transaction.
     pkg_list="$(sed -e 's/#.*//' -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//' -e '/^$/d' packages/pacman.txt)"
     if pacman -Q tuned-ppd >/dev/null 2>&1; then
-        pkg_list="$(printf '%s\n' "$pkg_list" | grep -vx 'power-profiles-daemon')"
+        pkg_list="$(printf '%s\n' "$pkg_list" | grep -vx 'power-profiles-daemon' || true)"
+    fi
+    if [ -f "scripts/lib/dmi.sh" ]; then
+        # shellcheck source=scripts/lib/dmi.sh
+        source scripts/lib/dmi.sh
+        if is_thinkpad_t14s; then
+            pkg_list="$(printf '%s\n' "$pkg_list" | grep -vxE 'intel-media-driver|vulkan-intel|nvidia-open-dkms|nvidia-prime|nvidia-utils|iio-sensor-proxy' || true)"
+        fi
     fi
     if [ -n "$pkg_list" ]; then
         printf '%s\n' "$pkg_list" | sudo pacman -S --needed --noconfirm - \
@@ -92,6 +108,8 @@ if command -v fnm >/dev/null 2>&1; then
     eval "$(fnm env --shell bash)"
     fnm install 22 || echo "fnm install 22 failed — skipping."
     fnm default 22 || true
+    fnm use 22 || true
+    eval "$(fnm env --shell bash)"
 fi
 
 # 2.2 Import shell history into atuin
@@ -163,6 +181,16 @@ if [ -f "scripts/install-caveman.sh" ]; then
             echo "Caveman install failed — re-run: bash scripts/install-caveman.sh"
     else
         echo "Skipping caveman (npm not on PATH)."
+    fi
+fi
+
+# 3.5c1 Ponytail (lazy senior dev mode; pinned tag + skills/hooks/plugins)
+if [ -f "scripts/install-ponytail.sh" ]; then
+    if command -v node >/dev/null 2>&1; then
+        SKIP_SKILL_SYNC=1 bash scripts/install-ponytail.sh || \
+            echo "Ponytail install failed — re-run: bash scripts/install-ponytail.sh"
+    else
+        echo "Skipping ponytail (node not on PATH)."
     fi
 fi
 

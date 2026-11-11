@@ -71,6 +71,7 @@ check_agent_skill() {
     fi
 }
 check_agent_skill caveman "bash scripts/install-caveman.sh"
+check_agent_skill ponytail "bash scripts/install-ponytail.sh"
 check_agent_skill android-compose-design "bash scripts/install-android-ui-skills.sh"
 check_agent_skill material-3 "bash scripts/install-android-ui-skills.sh"
 check_agent_skill reverse-engineer-anything "bash scripts/install-rea.sh"
@@ -93,6 +94,8 @@ check_agent_skill agent-browser "bash scripts/install-ecosystem-skills.sh"
 
 OPENCODE_SKILLS="${XDG_CONFIG_HOME:-$HOME/.config}/opencode/skills"
 KIMI_SKILLS="${KIMI_CODE_HOME:-$HOME/.kimi-code}/skills"
+GEMINI_SKILLS="${HOME}/.gemini/skills"
+AGY_SKILLS="${HOME}/.gemini/config/skills"
 if [[ -f "${OPENCODE_SKILLS}/caveman/SKILL.md" ]]; then
     echo "✓ OpenCode skills (caveman)"
 else
@@ -102,6 +105,16 @@ if [[ -f "${KIMI_SKILLS}/caveman/SKILL.md" ]]; then
     echo "✓ Kimi Code skills (caveman)"
 else
     echo "○ Kimi Code skills missing (bash scripts/sync-agent-skills.sh)"
+fi
+if [[ -f "${GEMINI_SKILLS}/caveman/SKILL.md" ]]; then
+    echo "✓ Gemini CLI skills (caveman)"
+else
+    echo "○ Gemini CLI skills missing (bash scripts/sync-agent-skills.sh)"
+fi
+if [[ -f "${AGY_SKILLS}/caveman/SKILL.md" ]]; then
+    echo "✓ Antigravity skills (caveman)"
+else
+    echo "○ Antigravity skills missing (bash scripts/sync-agent-skills.sh)"
 fi
 if command -v kimi >/dev/null 2>&1; then
     echo "✓ kimi CLI ($(kimi --version 2>/dev/null | head -1))"
@@ -262,12 +275,30 @@ fi
 echo "--- Input / touchpad ---"
 # shellcheck source=lib/input.sh
 source "$REPO_ROOT/scripts/lib/input.sh"
+# shellcheck source=lib/dmi.sh
+source "$REPO_ROOT/scripts/lib/dmi.sh"
 if phantom_syna_mouse_inhibited; then
     echo "✗ synaptics Mouse node is inhibited (clicks will not work)"
     list_phantom_syna_mice | sed 's/^/  /'
     echo "  run: bash scripts/cleanup-input-overrides.sh && log out once"
 else
     echo "✓ synaptics Mouse node not inhibited"
+fi
+if is_thinkpad_t14s; then
+    for _tp_w in /sys/bus/i2c/devices/i2c-ELAN0678:*/power/wakeup /sys/bus/i2c/devices/i2c-SYNA8018:*/power/wakeup; do
+        [[ -f "$_tp_w" ]] || continue
+        if [[ "$(cat "$_tp_w" 2>/dev/null)" == "disabled" ]]; then
+            echo "✓ T14s touchpad s2idle wakeup disabled (${_tp_w%/power/wakeup})"
+        else
+            echo "✗ T14s touchpad s2idle wakeup enabled (${_tp_w%/power/wakeup} — run profiles/thinkpad-t14s.sh)"
+        fi
+    done
+    unset _tp_w
+    if grep -qx 'LIBVA_DRIVER_NAME=radeonsi' /etc/environment.d/99-wayland.conf 2>/dev/null; then
+        echo "✓ /etc/environment.d/99-wayland.conf sets LIBVA_DRIVER_NAME=radeonsi"
+    else
+        echo "✗ /etc/environment.d/99-wayland.conf missing LIBVA_DRIVER_NAME=radeonsi (run scripts/system-setup.sh)"
+    fi
 fi
 
 # shellcheck source=lib/browsers.sh
@@ -511,6 +542,16 @@ if command -v tailscale >/dev/null 2>&1; then
             echo "✓ UFW allows tailscale0"
         else
             echo "○ UFW active but no tailscale0 rule — bash scripts/ufw-tailscale.sh"
+        fi
+    elif systemctl is-active --quiet ufw 2>/dev/null || grep -qx 'ENABLED=yes' /etc/ufw/ufw.conf 2>/dev/null; then
+        if [[ -r /etc/ufw/user.rules ]]; then
+            if grep -qi 'tailscale0' /etc/ufw/user.rules 2>/dev/null; then
+                echo "✓ UFW allows tailscale0"
+            else
+                echo "○ UFW active but no tailscale0 rule — bash scripts/ufw-tailscale.sh"
+            fi
+        else
+            echo "○ UFW active (user.rules unreadable without sudo to verify tailscale0)"
         fi
     else
         echo "○ ufw inactive, missing, or needs sudo (Tailscale netfilter may still protect)"

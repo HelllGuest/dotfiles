@@ -43,10 +43,12 @@ Both `~/.zshrc` and `~/.bashrc` source these files.
 
 **History:** **atuin** is initialized with `--disable-up-arrow` (sqlite). `↑`/`↓` stay on prefix history-search. **`Ctrl+R`:** Zsh loads atuin then `fzf --zsh`, so **fzf** owns `^R`; Bash loads `fzf --bash` then atuin, so **atuin** owns `^R`. Config: `stow/atuin/.config/atuin/config.toml`.
 
-### Bash stack
+### Bash stack (`.bashrc` + `.inputrc`)
 
 - **ble.sh** (optional AUR) — syntax highlighting and autosuggestions for bash
-- Same **fzf**, **zoxide**, **atuin**, **direnv**, **starship** as zsh
+- **bash-completion** for commands (Tab; loaded at shell startup)
+- **Prefix history search** on `↑` / `↓` and **menu-complete** on Tab via `.inputrc`
+- Same **fzf**, **zoxide**, **atuin**, **direnv**, **starship**, and shared `.shell-*` files as Zsh
 - **fzf** preview binds: `Ctrl+F` / `Ctrl+B` page preview; no global `Ctrl+Y` copy bind (fzf 0.72 lacks `copy-selection` — pass `--bind` per invocation if needed)
 
 ### Containers (Podman-first; Docker optional)
@@ -116,9 +118,9 @@ headroom doctor
 | `hr-cursor` | Start proxy; paste printed Base URL into Cursor → Settings → Models |
 | `hr-proxy` | One-shot proxy on port `8787` (`HEADROOM_PORT` to override) |
 
-**Routing:** Claude Code uses `ANTHROPIC_BASE_URL` from `~/.claude/settings.json`. Interactive shells get `ANTHROPIC_BASE_URL` / `OPENAI_BASE_URL` from the Headroom block in stowed `~/.zshrc` / `~/.bashrc` (and `~/.profile`). If `headroom doctor` warns that those vars are unset, the *current* process never sourced the rc file (common in IDE/agent shells): `source ~/.zshrc`, open a new terminal, or `export ANTHROPIC_BASE_URL=http://127.0.0.1:8787` / `OPENAI_BASE_URL=http://127.0.0.1:8787/v1`.
+**Routing & MCP:** `scripts/headroom-setup.sh` sets `ANTHROPIC_BASE_URL` and `ENABLE_TOOL_SEARCH` in `~/.claude/settings.json` and registers the `headroom` MCP server across Claude Code, Cursor (`~/.cursor/mcp.json`), OpenCode (`~/.config/opencode/opencode.json`), Kimi Code (`~/.kimi-code/mcp.json`), Gemini CLI (`~/.gemini/settings.json`), and Antigravity (`~/.gemini/config/mcp_config.json`). Interactive shells also get `ANTHROPIC_BASE_URL` / `OPENAI_BASE_URL` from stowed `~/.zshrc` / `~/.bashrc` (and `~/.profile`). If `headroom doctor` warns that those vars are unset, the *current* process never sourced the rc file (common in IDE/agent shells): `source ~/.zshrc`, open a new terminal, or `export ANTHROPIC_BASE_URL=http://127.0.0.1:8787` / `OPENAI_BASE_URL=http://127.0.0.1:8787/v1`.
 
-**Cursor:** still paste Override OpenAI Base URL from `hr-cursor` (IDE does not use shell env for model routing). MCP: `headroom mcp install --force` registers Claude / Codex / OpenCode when detected; add Cursor manually in `~/.cursor/mcp.json` if needed (`command`: `headroom`, `args`: `["mcp","serve"]`).
+**Cursor model proxy:** paste the Override OpenAI Base URL printed by `hr-cursor` into Cursor → Settings → Models (the IDE does not read shell env for model routing).
 
 **RTK:** Headroom 0.34+ no longer bundles [RTK](https://github.com/rtk-ai/rtk). Keep the binary under e.g. `~/.local/share/rtk/rtk` (symlink from `~/.local/bin/rtk`). Do **not** put it in `~/.headroom/bin`; `headroom wrap` / some `init` paths purge managed copies there. Telemetry stays off (`HEADROOM_TELEMETRY=off`, `--no-telemetry`).
 
@@ -172,13 +174,6 @@ Uses the **Gruvbox Rainbow** preset (official [starship preset](https://starship
 
 Optional older **Crampack** presets (not in this repo):  
 `bash <(curl -fsSL "https://git.new/crampack-sh")`
-
-### Bash (`.bashrc` + `.inputrc`)
-
-- **bash-completion** for commands (Tab; loaded at shell startup)
-- **Prefix history search** on `↑` / `↓` via `.inputrc`
-- **Menu-complete** on Tab
-- Same shared exports, aliases, and functions as Zsh
 
 ---
 
@@ -252,7 +247,7 @@ Installs packages, stows configs into `$HOME`, installs `stow/system/` into `/et
 ./install.sh
 ```
 
-Machine profiles run in `./install.sh` via `scripts/apply-profile.sh` **after** `packages/pacman.txt` (exactly one profile): `profiles/$(hostname).sh` if it exists, otherwise `scripts/detect-profile.sh` (ThinkPad X1 → `thinkpad-x1`, ThinkPad P15 → `thinkpad-p15`, ThinkPad T14s → `thinkpad-t14s`, other ThinkPads/laptop chassis → `laptop`). Pacman first so Optimus/NVIDIA packages exist before `thinkpad-p15` enables services and rebuilds UKIs. There is no `nvidia.sh`; Optimus setup is inside `profiles/thinkpad-p15.sh`.
+Machine profiles run in `./install.sh` via `scripts/apply-profile.sh` **after** `packages/pacman.txt` (exactly one profile): `profiles/$(hostname).sh` if it exists, otherwise `scripts/detect-profile.sh` (ThinkPad X1 → `thinkpad-x1`, ThinkPad P15 → `thinkpad-p15`, ThinkPad T14s → `thinkpad-t14s`, other ThinkPads/laptop chassis → `laptop`). Pacman first so Optimus/NVIDIA packages exist before `thinkpad-p15` enables services and rebuilds UKIs (on `thinkpad-t14s` AMD hosts, `./install.sh` skips the Intel/NVIDIA GPU packages in `packages/pacman.txt`). There is no `nvidia.sh`; Optimus setup is inside `profiles/thinkpad-p15.sh`.
 
 ThinkPad system configs (`i915`, kernel cmdline, sleep, UFW, Wayland env) live in `stow/system/` and are installed by `scripts/system-setup.sh` as **root-owned regular files**, never stow symlinks (re-run it after editing `stow/system/`). Why, and how the cmdline UUID is handled: [hardened guide — `system/` files](docs/hardened-arch-gnome.md#kernel-cmdline--system-files-installed-not-stowed). After tuning on **X1**, run `scripts/thinkpad-health.sh` (i915-focused) and **reboot**. On **T14s Gen 3 AMD**, skip that script; check `cat /sys/power/mem_sleep`, `lscpu | grep -i ryzen`, `grep -E 'amd_iommu|amd_pstate' /proc/cmdline`, and charge thresholds under `/sys/class/power_supply/BAT*/charge_control_*_threshold` instead. Installer + profile pull `mesa` / `vulkan-radeon` / `fprintd` (libva via mesa).
 
@@ -302,7 +297,7 @@ cleanup-input-overrides.sh
 → gnome-session-setup.sh → location-setup.sh → gnome-console-setup.sh → ptyxis-setup.sh
 → gdm-setup.sh → git-setup.sh → nvim-setup.sh → headroom-setup.sh
 → sync-agent-skills.sh → install-coding-agents.sh (OpenCode + Kimi + MCP; if npm)
-→ install-caveman.sh (if npm) → install-android-ui-skills.sh (if npx)
+→ install-caveman.sh (if npm) → install-ponytail.sh (if node) → install-android-ui-skills.sh (if npx)
 → install-ghidra-cli.sh (if ghidra) → install-rea.sh (if npm)
 → install-obscura.sh (headless browser + MCP)
 → install-re-skills.sh (leanrea / RE playbooks / Android RE / Ghidra loop)
@@ -336,7 +331,7 @@ Key runtime dependencies (`scripts/check.sh` asserts binaries, shell tools, syml
 
 **Shell tools:** `atuin`, `fzf`, `fd`, `ripgrep`, `bat`, `eza`, `zoxide`, `direnv`, `git-delta`, `fnm`
 
-**AI (optional):** `python-pipx` + `headroom` via `scripts/headroom-setup.sh`; `claude` / `cursor` installed separately
+**AI (optional):** `python-pipx` + `headroom` (`scripts/headroom-setup.sh`), OpenCode + Kimi Code (`scripts/install-coding-agents.sh`), Caveman `v4.1.0` (`scripts/install-caveman.sh`), Ponytail `v5.3.3` (`scripts/install-ponytail.sh`), Obscura CDP/MCP (`scripts/install-obscura.sh`), and `scripts/sync-agent-skills.sh` (mirrors `~/.agents/skills` + global `AGENTS.md`/`CLAUDE.md`/`GEMINI.md` across Claude Code, Cursor, OpenCode, Kimi, Gemini CLI, Antigravity, and Kiro)
 
 **Graphics (optional):** `gimp` + PhotoGIMP via `scripts/install-photogimp.sh`
 
@@ -417,10 +412,11 @@ We take a "quiet by default" approach:
 | Refresh stow inventory | `git add stow/…` then `bash scripts/list-stow-files.sh > all_stow_files.txt` (index only) |
 | Location sync | `vpn-location-sync` or Proton VPN panel → Sync spoofed location |
 | Optional st (suckless) | `bash scripts/build-st.sh` |
-| Agent skills sync | `bash scripts/sync-agent-skills.sh` (hub → Claude/Cursor/OpenCode/Kimi) |
+| Agent skills sync | `bash scripts/sync-agent-skills.sh` (hub → Claude/Cursor/OpenCode/Kimi/Gemini/Antigravity/Kiro) |
 | OpenCode + Kimi | `bash scripts/install-coding-agents.sh` (pinned npm CLIs + MCP) |
 | Ecosystem skills | `bash scripts/install-ecosystem-skills.sh` (`packages/agent-skills.txt`; optional `owner/repo:skill1,skill2`) |
 | Caveman (`/caveman`) | `bash scripts/install-caveman.sh` |
+| Ponytail (`/ponytail`) | `bash scripts/install-ponytail.sh` |
 | Android UI skills | `bash scripts/install-android-ui-skills.sh` (Compose + Material 3) |
 | REA (MCP + jadx) | `bash scripts/install-rea.sh` (Hopper: `INSTALL_HOPPER=1`) |
 | Obscura (CDP/MCP) | `bash scripts/install-obscura.sh` ([docs](https://docs.obscura.sh/)) |

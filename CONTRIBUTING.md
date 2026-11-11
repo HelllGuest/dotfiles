@@ -96,7 +96,7 @@ Thank you for helping improve this setup. Follow these guidelines to keep the re
 | Container CLI / `DOCKER_HOST` | `README.md`, `docs/hardened-arch-gnome.md`, `CHANGELOG.md` |
 | fzf / shell exports | `README.md`, `gnome/keybindings.md`, `CHANGELOG.md` |
 | fnm / Node version pins | `README.md`, `CHANGELOG.md`, troubleshooting table |
-| Headroom / AI proxy helpers | `README.md` (Headroom section), `CHANGELOG.md` |
+| Headroom / AI agents / skills | `README.md` (Headroom / Maintenance), `docs/fresh-install-coding-re.md`, `ai-rules/README.md`, `CHANGELOG.md` |
 | Privacy / telemetry / browsers | `README.md` (Privacy + Flatpaks), `CONTRIBUTING.md` (packages), `docs/hardened-arch-gnome.md` (Phase 27), `stow/privacy`, `scripts/lib/telemetry.sh`, `CHANGELOG.md` |
 | PhotoGIMP / GIMP | `README.md` (PhotoGIMP section), `CHANGELOG.md` |
 | Dash2Dock / GNOME dock | `README.md` (Dash2Dock section), `CHANGELOG.md` |
@@ -115,19 +115,19 @@ Thank you for helping improve this setup. Follow these guidelines to keep the re
   keep it out of `validate-configs.sh`.
 - Use `$HOME`-relative paths or repo-root detection — avoid hardcoding usernames.
 - Prefer `set -e` for install scripts; use guarded fallbacks where sudo may fail.
-- Shared helpers live in `scripts/lib/` (`dmi.sh`, `install-identity.sh`, `browsers.sh`, `telemetry.sh`, `agent-skills.sh`, `input.sh`, `skel.sh`). VS Code settings telemetry merge lives once in `ai-rules/lib/vscode-settings-merge.sh` (sourced by `telemetry.sh` + `ai-rules/install.sh`).
+- Shared helpers and templates live in `scripts/lib/` (`dmi.sh`, `install-identity.sh`, `browsers.sh`, `telemetry.sh`, `agent-skills.sh`, `input.sh`, `skel.sh`, `thinkpad-charge-thresholds.conf`, `apply-charge-thresholds.sh.tmpl`, `thinkpad-charge-thresholds.service.tmpl`). VS Code settings telemetry merge lives once in `ai-rules/lib/vscode-settings-merge.sh` (sourced by `telemetry.sh` + `ai-rules/install.sh`).
   Prefer sourcing those over copying snippets.
 
 ### Script map (keep flat; group by role)
 
 | Role | Scripts |
 |------|---------|
-| Bootstrap | `install.sh`, `stow-only.sh`, `minimal-stow.sh`, `arch-install.sh`, `arch-install-t14s.sh`, `arch-install-vmtest.sh`, `apply-profile.sh`, `detect-profile.sh` |
-| Containers | `agent-run.sh` (hardened rootless Podman); stow `containers` → `~/.config/containers/containers.conf` |
+| Bootstrap | `install.sh`, `stow-only.sh`, `minimal-stow.sh`, `arch-install.sh`, `arch-install-t14s.sh`, `arch-install-vmtest.sh`, `p15-dotfiles-preflight.sh`, `apply-profile.sh`, `detect-profile.sh` |
+| Containers / VM | `agent-run.sh` (hardened rootless Podman; `stow/containers`), `kali-disposable.sh` (ephemeral Kali libvirt overlay), `kali-lan-host-prep.sh` |
 | Packages | `install-flatpaks.sh`, `install-aur.sh`, `bootstrap-aur.sh`, `install-fonts.sh` |
 | GNOME / desktop | `gnome-session-setup.sh`, `install-extensions.sh`, `fetch-gnome-extensions.sh`, `install-dash2dock.sh`, `gnome-console-setup.sh`, `ptyxis-setup.sh`, `gdm-setup.sh`, `backup-gsettings.sh`, `restore-gsettings.sh`, `reset-input-defaults.sh`, `cleanup-input-overrides.sh` |
-| Location / VPN | `location-setup.sh`, `vpn-location-sync.sh`, `proton-connectivity-check.sh`, `proton-seed-serverlist.sh` |
-| Dev tools | `git-setup.sh`, `nvim-setup.sh`, `headroom-setup.sh`, `install-headroom.sh`, `sync-agent-skills.sh`, `install-coding-agents.sh`, `install-ecosystem-skills.sh`, `install-caveman.sh`, `install-android-ui-skills.sh`, `install-rea.sh`, `install-re-skills.sh` (`packages/agent-skills-re.txt`), `install-re-extras.sh` (`packages/re-extra.txt`), `install-ghidra-cli.sh`, `install-obscura.sh` (Obscura CDP/MCP), `install-photogimp.sh`, `browser-hardening.sh`, `privacy-hardener.sh` (`lib/telemetry.sh`, `stow/privacy`) |
+| Location / VPN | `location-setup.sh`, `vpn-location-sync.sh`, `proton-connectivity-check.sh`, `proton-seed-serverlist.sh`, `ufw-tailscale.sh` |
+| Dev tools | `git-setup.sh`, `nvim-setup.sh`, `headroom-setup.sh`, `install-headroom.sh`, `sync-agent-skills.sh`, `install-coding-agents.sh`, `install-ecosystem-skills.sh`, `install-caveman.sh`, `install-ponytail.sh`, `install-android-ui-skills.sh`, `install-rea.sh`, `install-re-skills.sh` (`packages/agent-skills-re.txt`), `install-re-extras.sh` (`packages/re-extra.txt`), `install-ghidra-cli.sh`, `install-obscura.sh` (Obscura CDP/MCP), `install-photogimp.sh`, `browser-hardening.sh`, `privacy-hardener.sh` (`lib/telemetry.sh`, `stow/privacy`) |
 | System | `system-setup.sh`, `zram-setup.sh`, `tmp-to-disk.sh`, `network-dns-setup.sh`, `fingerprint-setup.sh`, `thinkpad-health.sh`, `thinkpad-charge-thresholds.sh` (70–80 tmpfiles + late-boot service; T14s profile + `install-re-extras.sh`), `rebuild-v3.sh`, `build-st.sh` |
 | Validate | `check.sh`, `validate-configs.sh`, `lint-docs.sh`, `list-stow-files.sh`, `post-update.sh` |
 

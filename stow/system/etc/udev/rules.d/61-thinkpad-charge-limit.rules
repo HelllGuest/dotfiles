@@ -1,0 +1,6 @@
+# UPower 1.90+ / GNOME Preserve Battery Health:
+# 60-upower-battery.rules only imports CHARGE_LIMIT from hwdb if
+# charge_control_start_threshold already exists when BAT0 is added (races
+# thinkpad_acpi) and defaults to 75,80. Explicitly export CHARGE_LIMIT=70,80
+# on BAT* so upowerd writes 70–80 instead of clobbering start_threshold to 0.
+ACTION!="remove", SUBSYSTEM=="power_supply", KERNEL=="BAT*", ENV{CHARGE_LIMIT}="70,80"

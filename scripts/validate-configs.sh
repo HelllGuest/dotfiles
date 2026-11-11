@@ -101,13 +101,23 @@ fi
 
 echo ""
 echo "=== GNOME ==="
+# shellcheck source=lib/dmi.sh
+source "$REPO_ROOT/scripts/lib/dmi.sh"
 if [[ -f "$REPO_ROOT/gnome/dconf/user.conf" ]]; then
   ok "gnome/dconf/user.conf present"
 fi
-if systemctl --user is-enabled yoga-tablet-mode.service >/dev/null 2>&1; then
-  ok "yoga-tablet-mode.service enabled"
+if is_thinkpad_x1; then
+  if systemctl --user is-enabled yoga-tablet-mode.service >/dev/null 2>&1; then
+    ok "yoga-tablet-mode.service enabled"
+  else
+    warn "yoga-tablet-mode.service not enabled"
+  fi
 else
-  warn "yoga-tablet-mode.service not enabled"
+  if systemctl --user is-enabled yoga-tablet-mode.service >/dev/null 2>&1; then
+    warn "yoga-tablet-mode.service enabled on non-X1 host (run scripts/gnome-session-setup.sh)"
+  else
+    ok "yoga-tablet-mode.service skipped (non-X1)"
+  fi
 fi
 
 echo ""
