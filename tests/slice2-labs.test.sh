@@ -87,6 +87,19 @@ grep -q 'rice-setup.sh' "$ROOT/scripts/configure.sh" || fail "configure must cal
 grep -q 'LABS_SLICE2' "$ROOT/scripts/configure.sh" \
   && fail "Slice 2 placeholders must be gone" || true
 
+# P15 ollama checklist default + no swallowed module failures
+grep -q 'OLLAMA_STATE=on' "$ROOT/scripts/configure.sh" \
+  || fail "configure must set OLLAMA_STATE=on for P15"
+grep -q 'is_p15 -eq 1' "$ROOT/scripts/configure.sh" \
+  || fail "configure must gate OLLAMA_STATE on is_p15"
+grep -q 'lab-malware' "$ROOT/scripts/configure.sh" \
+  || fail "MIGRATE_FIREWALLD label must mention lab-malware"
+# run_mod must not be paired with || true (would hide failures)
+grep -E 'run_mod[[:space:]].*\|\|[[:space:]]*true' "$ROOT/scripts/configure.sh" \
+  && fail "configure must not swallow run_mod failures with || true" || true
+grep -q 'selected MIGRATE_FIREWALLD' "$ROOT/scripts/configure.sh" \
+  || fail "configure must use selected() fail-fast module gates"
+
 grep -q '^bubblewrap$' "$ROOT/packages/pacman.txt" || fail "bubblewrap in pacman.txt"
 grep -q '^libnotify$' "$ROOT/packages/pacman.txt" || fail "libnotify in pacman.txt"
 grep -q '^btop$' "$ROOT/packages/pacman.txt" || fail "btop in pacman.txt"

@@ -59,10 +59,14 @@ msg() {
   esac
 }
 
+# Default SETUP_OLLAMA on for P15 (20SU); off elsewhere (T14s never wants host ollama).
 OLLAMA_STATE=off
+if [[ $is_p15 -eq 1 ]]; then
+  OLLAMA_STATE=on
+fi
 
 OPTS="$(checklist "Stage B modules" \
-  MIGRATE_FIREWALLD "UFW → firewalld (drop + libvirt + virbr-malware)" on \
+  MIGRATE_FIREWALLD "firewalld migrate (drop + libvirt + lab-malware)" on \
   APPLY_PROFILE "Re-run machine profile (detect / hostname)" off \
   SETUP_OLLAMA "P15: ollama-cuda + qwen models (localhost)" "$OLLAMA_STATE" \
   SETUP_LABS "Labs lab-triage/re/android/web (+ capture image)" off \
@@ -78,13 +82,18 @@ run_mod() {
   "$@"
 }
 
-echo "$OPTS" | grep -qx MIGRATE_FIREWALLD \
-  && run_mod firewalld bash "$REPO_ROOT/scripts/firewalld-migrate.sh" || true
+selected() { echo "$OPTS" | grep -qx "$1"; }
 
-echo "$OPTS" | grep -qx APPLY_PROFILE \
-  && run_mod profile bash "$REPO_ROOT/scripts/apply-profile.sh" || true
+# Fail-fast: module errors propagate (no || true swallow).
+if selected MIGRATE_FIREWALLD; then
+  run_mod firewalld bash "$REPO_ROOT/scripts/firewalld-migrate.sh"
+fi
 
-if echo "$OPTS" | grep -qx SETUP_OLLAMA; then
+if selected APPLY_PROFILE; then
+  run_mod profile bash "$REPO_ROOT/scripts/apply-profile.sh"
+fi
+
+if selected SETUP_OLLAMA; then
   if [[ $is_p15 -eq 1 ]]; then
     run_mod ollama bash "$REPO_ROOT/scripts/ollama-setup.sh"
   else
@@ -92,16 +101,20 @@ if echo "$OPTS" | grep -qx SETUP_OLLAMA; then
   fi
 fi
 
-echo "$OPTS" | grep -qx SETUP_LABS \
-  && run_mod labs bash "$REPO_ROOT/scripts/labs-setup.sh" || true
+if selected SETUP_LABS; then
+  run_mod labs bash "$REPO_ROOT/scripts/labs-setup.sh"
+fi
 
-echo "$OPTS" | grep -qx SETUP_DETONATE \
-  && run_mod detonate bash "$REPO_ROOT/scripts/lab-detonate.sh" setup || true
+if selected SETUP_DETONATE; then
+  run_mod detonate bash "$REPO_ROOT/scripts/lab-detonate.sh" setup
+fi
 
-echo "$OPTS" | grep -qx SETUP_AI \
-  && run_mod ai bash "$REPO_ROOT/scripts/ai-stack-setup.sh" || true
+if selected SETUP_AI; then
+  run_mod ai bash "$REPO_ROOT/scripts/ai-stack-setup.sh"
+fi
 
-echo "$OPTS" | grep -qx SETUP_RICE \
-  && run_mod rice bash "$REPO_ROOT/scripts/rice-setup.sh" || true
+if selected SETUP_RICE; then
+  run_mod rice bash "$REPO_ROOT/scripts/rice-setup.sh"
+fi
 
 echo "✓ configure.sh finished"
