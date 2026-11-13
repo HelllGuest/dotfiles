@@ -446,7 +446,7 @@ echo "--- Telemetry / privacy ---"
 TELEMETRY_ENV_D="${XDG_CONFIG_HOME:-$HOME/.config}/environment.d/90-telemetry-optout.conf"
 if [[ -f "$TELEMETRY_ENV_D" ]]; then
     echo "✓ $TELEMETRY_ENV_D"
-    for key in DO_NOT_TRACK DISABLE_TELEMETRY HEADROOM_TELEMETRY GOTELEMETRY NEXT_TELEMETRY_DISABLED; do
+    for key in DO_NOT_TRACK DISABLE_TELEMETRY OTEL_SDK_DISABLED HEADROOM_TELEMETRY GOTELEMETRY NEXT_TELEMETRY_DISABLED; do
         if grep -q "^${key}=" "$TELEMETRY_ENV_D"; then
             echo "✓ env $key"
         else

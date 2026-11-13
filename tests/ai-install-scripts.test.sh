@@ -229,10 +229,16 @@ grep -q 'shell-exports' "$ROOT/stow/zsh/.zshrc" \
   || fail "zshrc must source shell-exports"
 grep -q 'DO_NOT_TRACK=1' "$ROOT/stow/privacy/.config/environment.d/90-telemetry-optout.conf" \
   || fail "telemetry-optout missing DO_NOT_TRACK"
+grep -q 'OTEL_SDK_DISABLED=true' "$ROOT/stow/privacy/.config/environment.d/90-telemetry-optout.conf" \
+  || fail "telemetry-optout missing OTEL_SDK_DISABLED"
 grep -q 'GOTELEMETRY=off' "$ROOT/stow/privacy/.config/environment.d/90-telemetry-optout.conf" \
   || fail "telemetry-optout missing GOTELEMETRY"
 grep -q 'HEADROOM_TELEMETRY=off' "$ROOT/stow/privacy/.config/environment.d/90-telemetry-optout.conf" \
   || fail "telemetry-optout missing HEADROOM_TELEMETRY"
+grep -q 'TERRAFORM_TELEMETRY_DISABLED=1' "$ROOT/stow/privacy/.config/environment.d/90-telemetry-optout.conf" \
+  || fail "telemetry-optout missing TERRAFORM_TELEMETRY_DISABLED"
+grep -q 'synced \$TELEMETRY_ENV_D from stow/privacy\|synced.*stow/privacy' "$ROOT/scripts/privacy-hardener.sh" \
+  || fail "privacy-hardener must sync environment.d from stow kit"
 grep -q 'KIMI_DISABLE_TELEMETRY=1' "$ROOT/stow/privacy/.config/environment.d/90-telemetry-optout.conf" \
   || fail "telemetry-optout missing KIMI_DISABLE_TELEMETRY"
 grep -q 'OPENCODE_DISABLE_AUTOUPDATE=1' "$ROOT/stow/privacy/.config/environment.d/90-telemetry-optout.conf" \

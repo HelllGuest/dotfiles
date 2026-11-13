@@ -58,18 +58,20 @@ fi
 
 # ── 3. Session environment (CLI + GUI apps under systemd user) ──────
 say "Session env (environment.d telemetry opt-out)"
-if telemetry_env_d_ok; then
-  echo "  ok $TELEMETRY_ENV_D"
-else
-  # Stow may not have run yet — copy from repo
-  src="$REPO_ROOT/stow/privacy/.config/environment.d/90-telemetry-optout.conf"
-  if [[ -f "$src" ]]; then
-    mkdir -p "$(dirname "$TELEMETRY_ENV_D")"
-    cp -a "$src" "$TELEMETRY_ENV_D"
-    echo "  installed $TELEMETRY_ENV_D (run stow privacy / install.sh to keep in sync)"
+src="$REPO_ROOT/stow/privacy/.config/environment.d/90-telemetry-optout.conf"
+if [[ -f "$src" ]]; then
+  mkdir -p "$(dirname "$TELEMETRY_ENV_D")"
+  if [[ -L "$TELEMETRY_ENV_D" ]]; then
+    # Stow-managed: kit is source of truth via symlink
+    echo "  ok stow link $TELEMETRY_ENV_D"
+  elif [[ -f "$TELEMETRY_ENV_D" ]] && cmp -s "$src" "$TELEMETRY_ENV_D"; then
+    echo "  ok $TELEMETRY_ENV_D"
   else
-    warn "missing $src — re-check out stow/privacy"
+    cp -a "$src" "$TELEMETRY_ENV_D"
+    echo "  synced $TELEMETRY_ENV_D from stow/privacy"
   fi
+else
+  warn "missing $src — re-check out stow/privacy"
 fi
 
 # ── 4. IDEs / editors ───────────────────────────────────────────────
@@ -141,8 +143,16 @@ fi
 if telemetry_ensure_kimi_mcp; then
   echo "  Kimi MCP cleaned (no custom-keep test server)"
 fi
-echo "  env: DO_NOT_TRACK / DISABLE_TELEMETRY / HEADROOM_TELEMETRY / KIMI_DISABLE_TELEMETRY"
+echo "  env: DO_NOT_TRACK / DISABLE_TELEMETRY / OTEL_SDK_DISABLED / HEADROOM_TELEMETRY / KIMI_DISABLE_TELEMETRY"
 echo "  note: CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC + DO_NOT_TRACK may block Claude Remote Control"
+
+# ── 6b. npm (fund / update-notifier — not classic telemetry, still phone-home) ──
+if command -v npm >/dev/null 2>&1; then
+  say "npm fund + update-notifier off"
+  npm config set fund false >/dev/null 2>&1 || true
+  npm config set update-notifier false >/dev/null 2>&1 || true
+  echo "  npm fund=false update-notifier=false"
+fi
 
 # ── 7. Summary ──────────────────────────────────────────────────────
 cat <<EOF
@@ -150,10 +160,11 @@ cat <<EOF
 Privacy hardening complete.
   OS:      GNOME privacy keys + Software download-updates
   Browsers: Chrome/Brave managed policies; Zen user.js; LibreWolf upstream
-  Session:  ~/.config/environment.d/90-telemetry-optout.conf
+  Session:  ~/.config/environment.d/90-telemetry-optout.conf (synced from stow/privacy)
   Shell:    .shell-exports sources the same file; atuin sync/update off
   IDEs:     vscode-family-telemetry.json merged; Claude env flags
   Mobile:   ~/.dart-tool/dart-flutter-telemetry.config reporting=0
+  npm:      fund + update-notifier off when npm present
 
 Re-login (or reboot) so environment.d applies to GUI apps.
 Verify: bash scripts/check.sh | grep -i telemetry

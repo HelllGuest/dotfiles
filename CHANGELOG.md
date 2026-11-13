@@ -1,6 +1,7 @@
 # Changelog
 
 ## [Unreleased]
+- Privacy: expand `90-telemetry-optout.conf` (OTEL_SDK_DISABLED, HINT/ET/Deno/Terraform, …); `privacy-hardener.sh` always syncs environment.d from stow kit + npm fund/update-notifier off.
 - fix(firewalld): `ensure_lab_malware_zone` unbinds `virbr-malware` from `libvirt`+`block`, fails on critical bind/reload/ports, tolerates ALREADY_ENABLED, postchecks libvirt/block clear, warns if firewalld inactive; migrate fail-fast on virbr0/libvirt bind. Docs: Kali NAT uses firewalld/`libvirt` (not UFW) incl. `gnome/keybindings.md`; configure notes optional `dialog`.
 - Docs: Stage B `configure.sh` howto (module table, P15 ollama default, fail-fast) in README + fresh-install + t14s-arch-install; live health checklist + `lab-malware` rebind note.
 - fix(configure): P15 `SETUP_OLLAMA` defaults on; modules fail-fast (no swallowed `run_mod` errors); migrate label mentions `lab-malware`.
