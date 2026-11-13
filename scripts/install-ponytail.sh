@@ -52,8 +52,8 @@ say "install ponytail skills → $AGENTS_SKILLS"
 mkdir -p "$AGENTS_SKILLS"
 for _skill in ponytail ponytail-review ponytail-audit ponytail-debt ponytail-gain ponytail-help; do
   if [[ -d "$PONYTAIL_DIR/skills/$_skill" ]]; then
-    rm -rf "$AGENTS_SKILLS/$_skill"
-    cp -a "$PONYTAIL_DIR/skills/$_skill" "$AGENTS_SKILLS/$_skill"
+    rm -rf "${AGENTS_SKILLS:?}/$_skill"
+    cp -a "$PONYTAIL_DIR/skills/$_skill" "${AGENTS_SKILLS}/$_skill"
     echo "  hub/$_skill"
   fi
 done

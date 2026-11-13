@@ -132,8 +132,8 @@ install_skills() {
 
     skill_src="$REPO_ROOT/skills/ghidra-cli-host"
     [[ -f "$skill_src/SKILL.md" ]] || die "missing host skill: $skill_src/SKILL.md"
-    rm -rf "$AGENTS_SKILLS/ghidra-cli-host"
-    cp -a "$skill_src" "$AGENTS_SKILLS/ghidra-cli-host"
+    rm -rf "${AGENTS_SKILLS:?}/ghidra-cli-host"
+    cp -a "$skill_src" "${AGENTS_SKILLS}/ghidra-cli-host"
 
     if command -v npx >/dev/null 2>&1; then
         echo "Installing upstream ghidra-cli agent skill..."

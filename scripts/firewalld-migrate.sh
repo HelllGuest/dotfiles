@@ -47,9 +47,9 @@ fi
 sudo systemctl unmask firewalld 2>/dev/null || true
 sudo systemctl enable --now firewalld
 
-# Default zone (runtime + permanent)
+# Default zone — --set-default-zone already persists; --permanent is invalid here
+# (firewall-cmd: "Can't use stand-alone options with other options").
 sudo firewall-cmd --set-default-zone=drop || true
-sudo firewall-cmd --permanent --set-default-zone=drop || true
 
 # libvirt zone XML ships with the libvirt package (not firewalld alone).
 if ! firewall-cmd --permanent --get-zones 2>/dev/null | grep -qw libvirt; then
