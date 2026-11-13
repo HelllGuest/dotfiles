@@ -110,31 +110,41 @@ Then remove the ISO, reboot, and log into GNOME.
 
 ### Stage B — Dotfiles (requires an active GNOME session)
 
+Two paths: modular TUI (`configure.sh`) or full bootstrap (`./install.sh`).
+
+#### How to: modular TUI (`configure.sh`)
+
 ```bash
 git clone https://github.com/HelllGuest/dotfiles.git ~/dotfiles
 cd ~/dotfiles
-# ThinkPad P15 (hostname p15): optional check, then install (pulls nvidia-* + Optimus profile)
-bash scripts/p15-dotfiles-preflight.sh   # skip on T14s
-./install.sh
+bash scripts/p15-dotfiles-preflight.sh   # P15 only; skip on T14s
+bash scripts/configure.sh                # dialog → whiptail → plain
+```
+
+Checklist tags (fail-fast on module error):
+
+| Tag | Default | Effect |
+|-----|---------|--------|
+| `MIGRATE_FIREWALLD` | on | drop + `libvirt`/`virbr0` + `lab-malware`/`virbr-malware` |
+| `APPLY_PROFILE` | off | re-run machine profile |
+| `SETUP_OLLAMA` | on **only on P15** | `ollama-setup.sh` → `127.0.0.1:11434` |
+| `SETUP_LABS` | off | build/pull lab images; shell wrappers |
+| `SETUP_DETONATE` | off | `lab-detonate.sh setup` |
+| `SETUP_AI` | off | Headroom/`hr-*`, Ponytail, Continue FIM (not Caveman) |
+| `SETUP_RICE` | off | Gruvbox + `show-in-lock-screen false` |
+
+Full howto table: [README — configure.sh](../README.md#how-to-configuresh-stage-b-tui).
+
+#### How to: full bootstrap (`./install.sh`)
+
+```bash
+cd ~/dotfiles
+bash scripts/p15-dotfiles-preflight.sh   # P15 only
+./install.sh                             # Caveman + Ponytail + packages + stow + …
 # Explicit Optimus re-run if needed: bash profiles/thinkpad-p15.sh
-# AI tools (also run by install.sh when npm/node/ghidra present):
-#   bash scripts/headroom-setup.sh          # Headroom proxy + MCP across agents
-#   bash scripts/sync-agent-skills.sh       # ai-rules kit + hub → 9 agent roots
-#   bash scripts/install-coding-agents.sh   # OpenCode + Kimi CLIs + MCP
-#   bash scripts/install-caveman.sh         # /caveman v4.1.0 plugins + skills
-#   bash scripts/install-ponytail.sh        # /ponytail v5.3.3 plugins + hooks + skills
-#   bash scripts/install-android-ui-skills.sh  # Compose + Material 3
-#   bash scripts/install-ghidra-cli.sh
-#   bash scripts/install-rea.sh             # optional: INSTALL_HOPPER=1
-#   bash scripts/install-obscura.sh         # Obscura headless browser + MCP
-#   bash scripts/install-re-skills.sh       # leanrea + RE playbooks + Android + Ghidra loop
-#   bash scripts/install-re-extras.sh       # optional host pkgs (jadx, rizin, …)
-#   bash scripts/install-ecosystem-skills.sh  # packages/agent-skills.txt (Meson/QEMU, Arch triage, web quality, …; owner/repo:skill OK)
-#   bash scripts/sync-agent-skills.sh
-#   ONLY_CAVEMAN_OPENCODE=1 bash scripts/install-coding-agents.sh
+# Optional REA host MCP (prefer lab-re): bash scripts/install-rea.sh
 exec zsh
-bash scripts/thinkpad-health.sh
-reboot   # required: UKI must embed nvidia_drm.modeset=1 + rd.driver.blacklist=nouveau
+reboot   # P15: UKI must embed nvidia_drm.modeset=1 + rd.driver.blacklist=nouveau
 # after reboot (P15 Optimus):
 tr ' ' '\n' </proc/cmdline | grep -E 'nvidia_drm|blacklist=nouveau'
 lspci -nnk -d 10de: | grep -A2 'Kernel driver'   # expect: nvidia (not nouveau)
@@ -143,11 +153,12 @@ prime-run nvidia-smi -L
 
 Step order: [README — what `./install.sh` runs](../README.md#script-execution-order-fresh-machine).
 
-`stow/system/` (sleep, logind, makepkg v3, UFW, udev, `virbr0-up.service`) is
-installed by `scripts/system-setup.sh` as root-owned files, not stowed. Kernel
+`stow/system/` (sleep, logind, makepkg v3, udev, `virbr0-up.service`, waydroid-nat)
+is installed by `scripts/system-setup.sh` as root-owned files, not stowed. Kernel
 cmdline stays with the installer / machine profile. Details:
 [hardened-arch-gnome.md — `system/` files](hardened-arch-gnome.md#kernel-cmdline--system-files-installed-not-stowed).
-Firewall check: [Verify Firewall](hardened-arch-gnome.md#verify-firewall).
+Firewall: **firewalld** (`drop` / `libvirt` / `lab-malware`) — see
+[Verify Firewall](hardened-arch-gnome.md#verify-firewall) and README live health checklist.
 
 **Sleep drift:** repo files pin `mem_sleep_default=s2idle` and
 `MemorySleepMode=s2idle`. A live host may still show `s2idle [deep]` (deep

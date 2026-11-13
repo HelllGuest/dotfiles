@@ -1,7 +1,8 @@
 # Changelog
 
 ## [Unreleased]
-- Docs: live health checklist + upgrade note when `virbr-malware` still sits in `libvirt`/`block` (re-run `firewalld-migrate.sh` / `ensure_lab_malware_zone`).
+- Docs: Stage B `configure.sh` howto (module table, P15 ollama default, fail-fast) in README + fresh-install + t14s-arch-install; live health checklist + `lab-malware` rebind note.
+- fix(configure): P15 `SETUP_OLLAMA` defaults on; modules fail-fast (no swallowed `run_mod` errors); migrate label mentions `lab-malware`.
 - Cleanup (Slices 1/2/2B): drop `ufw-tailscale.sh` + empty `stow/gnome-session` / `stow/system/etc/{kernel,modprobe.d}`; stop auto-running host `install-rea.sh` from `install.sh` (prefer `lab-re`); shared `lib/lab-malware-zone.sh` so `firewalld-migrate` + `lab-detonate` both bind `virbr-malware` → `lab-malware` (not legacy `block`); REA pin `6.9.0` on optional host scripts; `arch-install.sh` ollama gate uses `lib/dmi.sh`; zsh fully stow-managed; docs sync Stage A dual-host / Stage B configure / labs / AI / rice.
 - Slice 2b: `lab-detonate.sh` — disposable Linux/Windows VMs on `virbr-malware`, INetSim capture image + optional PolarProxy, `lab-malware` firewalld zone for gateway ports only. `lab-mcp.sh` + lab-web Playwright/Chrome DevTools MCP and lab-android Flutter/adb MCP (host example: `labs/mcp-host.example.json`).
 - lab-re: ship `jdk21-openjdk`, `ghidra`, `jadx`, `rizin`, and `rea-agents@6.9+` inside the Podman image; Stage B AI stack no longer runs host `install-rea.sh` (bare metal stays JDK-free).

@@ -278,7 +278,7 @@ sbctl status && sbctl verify
 git clone https://github.com/HelllGuest/dotfiles.git ~/dotfiles
 cd ~/dotfiles
 bash scripts/p15-dotfiles-preflight.sh   # P15 only — optional readiness check
-bash scripts/configure.sh                # TUI: firewalld migrate, labs, AI, rice, ollama (P15)
+bash scripts/configure.sh                # modular TUI (preferred for labs/AI/rice/firewalld)
 # or full bootstrap:
 ./install.sh                             # requires GNOME session for dconf/extensions
 # hostname p15 → profiles/p15.sh → thinkpad-p15 (Optimus). Or re-run:
@@ -290,6 +290,30 @@ lspci -nnk -d 10de: | grep -A2 'Kernel driver'
 prime-run nvidia-smi -L
 scripts/thinkpad-charge-thresholds.sh  # tmpfiles + late-boot service; profile / install-re-extras call it
 ```
+
+#### How to: `configure.sh` (Stage B TUI)
+
+UI backend: **dialog** if present, else **whiptail**, else plain checklist on the
+TTY. Abort/Cancel exits without running modules. Selected modules **fail-fast**
+(a failing module stops the script; no silent `|| true`).
+
+| Tag | Default | Runs |
+|-----|---------|------|
+| `MIGRATE_FIREWALLD` | on | `firewalld-migrate.sh` → drop + `virbr0`/`libvirt` + `virbr-malware`/`lab-malware` |
+| `APPLY_PROFILE` | off | `apply-profile.sh` |
+| `SETUP_OLLAMA` | **on for P15 (20SU)**; off on T14s | `ollama-setup.sh` (skipped with msg if not P15) |
+| `SETUP_LABS` | off | `labs-setup.sh` (triage/re/android/web images) |
+| `SETUP_DETONATE` | off | `lab-detonate.sh setup` (capture + VMs) |
+| `SETUP_AI` | off | `ai-stack-setup.sh` (Headroom/`hr-*`, Ponytail, Continue FIM; **not** Caveman) |
+| `SETUP_RICE` | off | `rice-setup.sh` (Gruvbox + lock-screen notifications off) |
+
+```bash
+bash scripts/configure.sh
+# Re-run anytime; MIGRATE_FIREWALLD is safe to repeat.
+```
+
+Full `./install.sh` still installs Caveman + Ponytail. `SETUP_AI` alone is
+Ponytail-oriented (complementary hooks; no duplicate caveman install).
 
 **Firewalld zones (after `firewalld-migrate.sh` / configure):**
 ```text
@@ -453,7 +477,7 @@ We take a "quiet by default" approach:
 | REA in lab-re | `lab-re` / rebuild `podman build -t localhost/lab-re labs/lab-re` (`rea-agents@6.9.0`) |
 | REA host MCP (optional) | `bash scripts/install-rea.sh` (needs JDK≥21; Hopper: `INSTALL_HOPPER=1`) |
 | Labs / detonate / MCP | `bash scripts/labs-setup.sh`; `lab-detonate` / `lab-mcp` |
-| Stage B TUI | `bash scripts/configure.sh` |
+| Stage B TUI | `bash scripts/configure.sh` ([howto](#how-to-configuresh-stage-b-tui)) |
 | Gruvbox rice | `bash scripts/rice-setup.sh` |
 | Live lab/firewall health | See checklist below |
 | Obscura (CDP/MCP) | `bash scripts/install-obscura.sh` ([docs](https://docs.obscura.sh/)) |
