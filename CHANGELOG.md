@@ -1,7 +1,7 @@
 # Changelog
 
 ## [Unreleased]
-- fix(firewalld): `ensure_lab_malware_zone` unbinds `virbr-malware` from `libvirt`+`block`, fails on critical bind/reload, warns if firewalld inactive; migrate fail-fast on virbr0/libvirt bind. Docs: Kali NAT uses firewalld/`libvirt` (not UFW); configure notes optional `dialog`.
+- fix(firewalld): `ensure_lab_malware_zone` unbinds `virbr-malware` from `libvirt`+`block`, fails on critical bind/reload/ports, tolerates ALREADY_ENABLED, postchecks libvirt/block clear, warns if firewalld inactive; migrate fail-fast on virbr0/libvirt bind. Docs: Kali NAT uses firewalld/`libvirt` (not UFW) incl. `gnome/keybindings.md`; configure notes optional `dialog`.
 - Docs: Stage B `configure.sh` howto (module table, P15 ollama default, fail-fast) in README + fresh-install + t14s-arch-install; live health checklist + `lab-malware` rebind note.
 - fix(configure): P15 `SETUP_OLLAMA` defaults on; modules fail-fast (no swallowed `run_mod` errors); migrate label mentions `lab-malware`.
 - Cleanup (Slices 1/2/2B): drop `ufw-tailscale.sh` + empty `stow/gnome-session` / `stow/system/etc/{kernel,modprobe.d}`; stop auto-running host `install-rea.sh` from `install.sh` (prefer `lab-re`); shared `lib/lab-malware-zone.sh` so `firewalld-migrate` + `lab-detonate` both bind `virbr-malware` → `lab-malware` (not legacy `block`); REA pin `6.9.0` on optional host scripts; `arch-install.sh` ollama gate uses `lib/dmi.sh`; zsh fully stow-managed; docs sync Stage A dual-host / Stage B configure / labs / AI / rice.
