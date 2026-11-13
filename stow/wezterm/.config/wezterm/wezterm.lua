@@ -1,4 +1,4 @@
--- WezTerm — ThinkPad X1 Yoga / GNOME 50 Wayland
+-- WezTerm — ThinkPad P15 / T14s / GNOME Wayland
 -- Match kitty/ghostty rice
 
 local wezterm = require("wezterm")

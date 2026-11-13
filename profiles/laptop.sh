@@ -1,18 +1,10 @@
 #!/bin/bash
-# Laptop specific settings
+# Laptop specific settings (fallback when hostname/profile is not P15 or T14s)
 echo "Applying Laptop profile..."
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 # shellcheck source=../scripts/lib/dmi.sh
 source "$REPO_ROOT/scripts/lib/dmi.sh"
-
-if is_thinkpad_x1; then
-    if [ -f "profiles/thinkpad-x1.sh" ]; then
-        # shellcheck source=/dev/null
-        source "profiles/thinkpad-x1.sh"
-        exit 0
-    fi
-fi
 
 if is_thinkpad_t14s; then
     if [ -f "profiles/thinkpad-t14s.sh" ]; then
@@ -22,7 +14,7 @@ if is_thinkpad_t14s; then
     fi
 fi
 
-# General laptop tools (non-ThinkPad)
+# General laptop tools (non-ThinkPad / other ThinkPads)
 if pacman -Q tuned-ppd >/dev/null 2>&1; then
     # tuned-ppd provides+conflicts power-profiles-daemon — keep tuned.
     sudo pacman -S --needed --noconfirm brightnessctl

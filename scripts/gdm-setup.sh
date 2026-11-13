@@ -40,7 +40,7 @@ while IFS= read -r -d '' src; do
     rel="${src#"$GDM_SRC"/}"
     cp "$src" "$tmp"
     if [[ "$rel" == "systemd/system/gdm.service.d/override.conf" ]] \
-      && ! is_thinkpad_x1 && { is_thinkpad_t14s || [[ -d /sys/module/amdgpu ]]; }; then
+      && { is_thinkpad_t14s || [[ -d /sys/module/amdgpu ]]; }; then
         sed -i 's/^Environment=LIBVA_DRIVER_NAME=.*/Environment=LIBVA_DRIVER_NAME=radeonsi/' "$tmp"
     fi
     sudo install -D -m 0644 -o root -g root "$tmp" "/etc/$rel"

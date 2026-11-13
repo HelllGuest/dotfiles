@@ -1,25 +1,16 @@
 #!/usr/bin/env bash
-# gnome-session-setup.sh — GNOME session dconf, extensions, X1 Yoga tablet handler
+# gnome-session-setup.sh — GNOME session dconf, extensions, cleanup
 
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 STOW_DIR="$REPO_ROOT/stow"
-# shellcheck source=lib/dmi.sh
-source "$REPO_ROOT/scripts/lib/dmi.sh"
 
 echo "→ GNOME session setup..."
 
 PAC_PKGS=(gnome-shell-extensions gnome-tweaks inter-font)
-if is_thinkpad_x1; then
-  PAC_PKGS+=(iio-sensor-proxy)
-fi
 sudo pacman -S --needed --noconfirm "${PAC_PKGS[@]}" 2>/dev/null || \
   pacman -S --needed --noconfirm "${PAC_PKGS[@]}" 2>/dev/null || true
-
-if is_thinkpad_x1; then
-  sudo systemctl enable --now iio-sensor-proxy.service 2>/dev/null || true
-fi
 
 mkdir -p "$HOME/.config"
 cd "$STOW_DIR" || exit 1
@@ -31,7 +22,6 @@ if ! stow -R --adopt -t "$HOME" proton-vpn 2>/dev/null; then
   stow -t "$HOME" proton-vpn 2>/dev/null || \
     echo "⚠ stow proton-vpn skipped (extension likely already present)" >&2
 fi
-chmod +x "$HOME/.config/gnome-session/scripts/tablet-mode-handler.sh" 2>/dev/null || true
 
 if [[ -f "$REPO_ROOT/gnome/dconf/user.conf" ]]; then
   echo "→ Applying session dconf..."
@@ -58,11 +48,8 @@ if [[ -f "$REPO_ROOT/gnome/dconf/extensions.conf" ]]; then
 fi
 
 systemctl --user daemon-reload 2>/dev/null || true
-if is_thinkpad_x1; then
-  systemctl --user enable --now yoga-tablet-mode.service 2>/dev/null || true
-else
-  systemctl --user disable --now yoga-tablet-mode.service 2>/dev/null || true
-fi
+# Drop leftover tablet watcher from older installs.
+systemctl --user disable --now yoga-tablet-mode.service 2>/dev/null || true
 
 fc-cache -fv &>/dev/null || true
 

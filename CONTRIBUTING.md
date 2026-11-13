@@ -34,8 +34,7 @@ Thank you for helping improve this setup. Follow these guidelines to keep the re
 ### Stow
 
 - User configs: `stow -R -t "$HOME" <package>` from the `stow/` directory. Do not re-add tracked repo-root convenience links (`.zshrc`, `.zsh-plugins`, `.config/*`); those are gitignored — stow owns the real trees under `stow/`.
-- System configs: `bash scripts/system-setup.sh` (via `install.sh`) installs `stow/system/` as root-owned regular files. Never `stow -t / system` or `stow -t / zram`: `/etc` symlinks into `$HOME` dangle at early boot and make root config user-writable. **zram:** `scripts/zram-setup.sh`.
-- X1-only files (`X1_ONLY` in `system-setup.sh`) install only on ThinkPad X1 hardware. `stow/system/etc/kernel/cmdline` is one of them: `system-setup.sh` rewrites `rd.luks.name=` to the booted LUKS UUID and rebuilds UKIs when it changes.
+- System configs: `bash scripts/system-setup.sh` (via `install.sh`) installs `stow/system/` as root-owned regular files. Never `stow -t / system` or `stow -t / zram`: `/etc` symlinks into `$HOME` dangle at early boot and make root config user-writable. **zram:** `scripts/zram-setup.sh`. Kernel cmdline is owned by the installer / machine profile (P15 / T14s), not `stow/system/`. UKIs rebuild when a managed `modprobe.d` file changes.
 - `install.sh` and `stow-only.sh` encode this logic — update docs if you change it.
 - Regenerate `all_stow_files.txt` after adding or removing stowed files:
   ```bash
@@ -49,13 +48,13 @@ Thank you for helping improve this setup. Follow these guidelines to keep the re
 
 ### Machine profiles (`profiles/`)
 
-- Optional hostname override: `profiles/$(hostname).sh` (e.g. `thinkpad-x1.sh`).
-- If no hostname match, `scripts/detect-profile.sh` picks from DMI product strings + chassis type: `thinkpad-x1`, `thinkpad-p15`, `thinkpad-t14s`, or `laptop` (no desktop/NVIDIA-only profile; no `lspci` in detect-profile).
+- Optional hostname override: `profiles/$(hostname).sh` (e.g. `p15.sh` → `thinkpad-p15.sh`).
+- If no hostname match, `scripts/detect-profile.sh` picks from DMI product strings + chassis type: `thinkpad-p15`, `thinkpad-t14s`, or `laptop` (no desktop/NVIDIA-only profile; no `lspci` in detect-profile).
 - `install.sh` installs `packages/pacman.txt` first, then `apply-profile.sh` sources **exactly one** profile (NVIDIA/Optimus packages must exist before `thinkpad-p15` enables services / rebuilds UKIs). Optimus setup is inside `profiles/thinkpad-p15.sh` (`has_nvidia_gpu` in `scripts/lib/dmi.sh`). There is no `nvidia.sh`.
-- `profiles/laptop.sh` delegates to `thinkpad-x1.sh` on X1 models and `thinkpad-t14s.sh` when DMI type is **21CQ/21CR** (`is_thinkpad_t14s`; other T14s gens do not match).
+- `profiles/laptop.sh` delegates to `thinkpad-t14s.sh` when DMI type is **21CQ/21CR** (`is_thinkpad_t14s`; other T14s gens do not match); otherwise it applies the general laptop fallback.
 - Bare-metal AMD T14s Gen 3: use `scripts/arch-install-t14s.sh` (not the generic `arch-install.sh`) so cmdline gets `amd_iommu`/`amd_pstate`, pacstrap uses `amd-ucode`, and desktop pulls packages listed in `packages/thinkpad-t14s.txt` (`mesa`/`vulkan-radeon`/`fprintd`). That installer (only) seeds BAT0 charge tmpfiles from `scripts/lib/thinkpad-charge-thresholds.conf` **and** enables `thinkpad-charge-thresholds.service` for late BAT* (keep heredoc in sync). After `./install.sh`, `profiles/thinkpad-t14s.sh` refreshes thresholds via `scripts/thinkpad-charge-thresholds.sh` (tmpfiles + service). VM: `INSTALLER=arch-install-t14s.sh scripts/arch-install-vmtest.sh`.
 - Installer identity helpers: edit `scripts/lib/install-identity.sh` first (canonical). Both `arch-install.sh` and `arch-install-t14s.sh` embed the same function bodies so each stays a single curl-able file — do not change only one copy. `tests/thinkpad-t14s.test.sh` diffs each `valid_*` body against the lib (drift fails CI). Test fixtures `LOCALE_FILES` / `KEYMAP_DIR` are ignored unless `T14S_IDENTITY_OVERRIDES=1` (or `IDENTITY_OVERRIDES=1`) is set.
-- On ThinkPad X1 hardware, `system-setup.sh` (run after the profile) installs the X1-only `stow/system/` files (cmdline, i915, fingerprint rule), so `thinkpad-x1.sh` must not edit them. Other profiles skip those files and may manage their own (e.g. `thinkpad-p15.sh` writes `/etc/modprobe.d/nvidia.conf`, appends `nvidia_drm.modeset=1` and `rd.driver.blacklist=nouveau` to `/etc/kernel/cmdline`, then rebuilds UKIs). Gating is by DMI hardware (`is_thinkpad_x1`), not hostname. UKI rebuilds go through `mkinitcpio -P`; sbctl's mkinitcpio post hook signs each rebuilt UKI. A live `/proc/cmdline` without those flags means reboot (or UKI rebuild) was skipped.
+- Machine profiles own `/etc/kernel/cmdline` (e.g. `thinkpad-p15.sh` writes `/etc/modprobe.d/nvidia.conf`, appends `nvidia_drm.modeset=1` and `rd.driver.blacklist=nouveau`, then rebuilds UKIs). UKI rebuilds go through `mkinitcpio -P`; sbctl's mkinitcpio post hook signs each rebuilt UKI. A live `/proc/cmdline` without those flags means reboot (or UKI rebuild) was skipped.
 - `stow/system/etc/systemd/system/virbr0-up.service` starts the libvirt `default` network then brings `virbr0` up (boot race fix). `system-setup.sh` enables it when the unit file changes; `scripts/kali-disposable.sh setup` also installs/enables it.
 
 ### Packages (`packages/`)

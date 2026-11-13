@@ -44,7 +44,6 @@ gping
 grim
 htop
 hyperfine
-iio-sensor-proxy
 intel-media-driver
 inter-font
 jdk-openjdk

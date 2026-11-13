@@ -24,8 +24,6 @@ stow/git/.config/git/templates/hooks/commit-msg
 stow/git/.config/git/templates/hooks/pre-push
 stow/git/.config/git/templates/hooks/prepare-commit-msg
 stow/git/.config/git/work.conf
-stow/gnome-session/.config/gnome-session/scripts/tablet-mode-handler.sh
-stow/gnome-session/.config/systemd/user/yoga-tablet-mode.service
 stow/htop/.config/htop/htoprc
 stow/kitty/.config/kitty/kitty.conf
 stow/kitty/.config/kitty/sessions/dev.conf
@@ -54,9 +52,7 @@ stow/system/etc/NetworkManager/dispatcher.d/99-vpn-location
 stow/system/etc/environment.d/99-wayland.conf
 stow/system/etc/geoclue/conf.d/99-static-dubai.conf
 stow/system/etc/geolocation
-stow/system/etc/kernel/cmdline
 stow/system/etc/makepkg.conf.d/zz-x86-64-v3.conf
-stow/system/etc/modprobe.d/i915.conf
 stow/system/etc/polkit-1/rules.d/50-kali-lan-host-prep.rules
 stow/system/etc/polkit-1/rules.d/50-vpn-location-sync.rules
 stow/system/etc/systemd/logind.conf.d/thinkpad-lid.conf
@@ -65,7 +61,6 @@ stow/system/etc/systemd/system/virbr0-up.service
 stow/system/etc/systemd/system/waydroid-nat.service
 stow/system/etc/udev/rules.d/61-thinkpad-charge-limit.rules
 stow/system/etc/udev/rules.d/71-thinkpad-t14s-touchpad-wakeup.rules
-stow/system/etc/udev/rules.d/72-fingerprint-disable.rules
 stow/system/etc/ufw/before.rules
 stow/tmp-cleanup/.config/systemd/user/tmp-semgrep-cleanup.service
 stow/tmp-cleanup/.config/systemd/user/tmp-semgrep-cleanup.timer

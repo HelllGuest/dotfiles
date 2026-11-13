@@ -192,10 +192,10 @@ grep -q 'LIBVA_DRIVER_NAME=radeonsi' "$ROOT/scripts/gdm-setup.sh" \
   || fail "gdm-setup.sh must rewrite LIBVA_DRIVER_NAME=radeonsi on amdgpu"
 grep -q '0x1002' "$ROOT/stow/gdm/etc/udev/rules.d/61-gdm-wayland.rules" \
   || fail "61-gdm-wayland.rules must include AMD vendor 0x1002"
-grep -q 'is_thinkpad_x1' "$ROOT/scripts/gnome-session-setup.sh" \
-  || fail "gnome-session-setup.sh must gate yoga-tablet-mode.service on is_thinkpad_x1"
-grep -q 'is_thinkpad_x1' "$ROOT/scripts/validate-configs.sh" \
-  || fail "validate-configs.sh must gate yoga-tablet-mode.service check on is_thinkpad_x1"
+grep -q 'yoga-tablet-mode.service' "$ROOT/scripts/gnome-session-setup.sh" \
+  || fail "gnome-session-setup.sh must disable leftover yoga-tablet-mode.service"
+grep -qE 'is_thinkpad_x1|yoga-tablet-mode' "$ROOT/scripts/validate-configs.sh" \
+  && fail "validate-configs.sh must not gate or check yoga-tablet-mode / is_thinkpad_x1" || true
 grep -q 'thinkpad-charge-thresholds.conf' "$ROOT/scripts/arch-install-t14s.sh" \
   || fail "arch-install-t14s must ship charge tmpfiles"
 grep -q 'thinkpad-charge-thresholds.service' "$ROOT/scripts/arch-install-t14s.sh" \
@@ -251,6 +251,9 @@ grep -q 'install -m' "$ROOT/scripts/thinkpad-charge-thresholds.sh" \
 # Generic installer must NOT claim charge setup
 grep -q 'thinkpad-charge-thresholds' "$ROOT/scripts/arch-install.sh" \
   && fail "arch-install.sh must not seed charge thresholds (T14s installer only)" || true
+
+grep -q 'HelllGuest/t14s-arch-install' "$ROOT/scripts/arch-install-t14s.sh" \
+  || fail "arch-install-t14s must point at canonical public Stage A"
 grep -q 'systemctl is-enabled thinkpad-charge-thresholds.service' \
   "$ROOT/docs/hardened-arch-gnome.md" \
   || fail "Verify Battery Thresholds must check service enabled"
@@ -309,7 +312,7 @@ is_thinkpad_t14s && fail "T14s without 21CQ/21CR must NOT match" || true
 [[ "$(bash "$ROOT/scripts/detect-profile.sh")" != thinkpad-t14s ]] \
   || fail "detect-profile must not return thinkpad-t14s for non-21CQ/21CR T14s"
 
-# Negative: X1 must still win over any accidental substring (sanity)
+# Retired X1 Yoga: no thinkpad-x1 profile; chassis → laptop fallback
 mock_dmi "$TMP/x1" \
   product_family "ThinkPad X1 Yoga" \
   product_version "ThinkPad X1 Yoga Gen 5" \
@@ -317,8 +320,20 @@ mock_dmi "$TMP/x1" \
   product_sku "LENOVO_MT_20UC" \
   chassis_type "31"
 export DMI_SYSFS_ROOT="$TMP/x1"
-[[ "$(bash "$ROOT/scripts/detect-profile.sh")" == thinkpad-x1 ]] \
-  || fail "detect-profile must return thinkpad-x1 for X1 Yoga"
+[[ "$(bash "$ROOT/scripts/detect-profile.sh")" == laptop ]] \
+  || fail "detect-profile must return laptop for retired X1 Yoga"
+
+# P15 Gen 1 (20SU) → thinkpad-p15
+mock_dmi "$TMP/p15" \
+  product_family "ThinkPad P15 Gen 1" \
+  product_version "ThinkPad P15 Gen 1" \
+  product_name "20SUS2FJ00" \
+  product_sku "LENOVO_MT_20SU" \
+  chassis_type "10"
+export DMI_SYSFS_ROOT="$TMP/p15"
+is_thinkpad_p15 || fail "20SU must match is_thinkpad_p15"
+[[ "$(bash "$ROOT/scripts/detect-profile.sh")" == thinkpad-p15 ]] \
+  || fail "detect-profile must return thinkpad-p15 for P15 Gen 1"
 
 # Charge helper: fake sysfs (no sudo)
 PSY="$TMP/psy"
@@ -561,23 +576,23 @@ grep -qx 'power-profiles-daemon' "$TMP/pk/ppd.out" || fail "PPD host must still 
 grep -qx 'power-profiles-daemon' "$TMP/pk/tuned.out" \
   && fail "tuned-ppd host must not request power-profiles-daemon (conflict aborts --noconfirm)" || true
 # T14s AMD host: Intel/NVIDIA GPU packages in pacman.txt must be filtered out,
-# while non-T14s hosts (e.g. X1 / P15) keep them.
+# while non-T14s hosts (e.g. P15) keep them.
 mkdir -p "$TMP/pk/repo/scripts/lib"
 cp "$ROOT/scripts/lib/dmi.sh" "$TMP/pk/repo/scripts/lib/dmi.sh"
 printf '%s\n' 'atuin' 'intel-media-driver' 'vulkan-intel' 'nvidia-open-dkms' \
-  'nvidia-prime' 'nvidia-utils' 'iio-sensor-proxy' 'stow' >"$TMP/pk/repo/packages/pacman.txt"
+  'nvidia-prime' 'nvidia-utils' 'stow' >"$TMP/pk/repo/packages/pacman.txt"
 (cd "$TMP/pk/repo" && DMI_SYSFS_ROOT="$TMP/cr" PK_OUT="$TMP/pk/t14s.out" \
   PATH="$TMP/pk/bin:$PATH" bash -c "$_pkgblk" >/dev/null) \
   || fail "install.sh package block failed (t14s)"
 grep -qx 'atuin' "$TMP/pk/t14s.out" || fail "t14s must keep atuin"
 grep -qx 'stow' "$TMP/pk/t14s.out" || fail "t14s must keep stow"
-grep -qE '^(intel-media-driver|vulkan-intel|nvidia-open-dkms|nvidia-prime|nvidia-utils|iio-sensor-proxy)$' \
-  "$TMP/pk/t14s.out" && fail "t14s must filter out Intel/NVIDIA/iio-sensor-proxy packages" || true
-(cd "$TMP/pk/repo" && DMI_SYSFS_ROOT="$TMP/x1" PK_OUT="$TMP/pk/x1.out" \
+grep -qE '^(intel-media-driver|vulkan-intel|nvidia-open-dkms|nvidia-prime|nvidia-utils)$' \
+  "$TMP/pk/t14s.out" && fail "t14s must filter out Intel/NVIDIA GPU packages" || true
+(cd "$TMP/pk/repo" && DMI_SYSFS_ROOT="$TMP/p15" PK_OUT="$TMP/pk/p15.out" \
   PATH="$TMP/pk/bin:$PATH" bash -c "$_pkgblk" >/dev/null) \
-  || fail "install.sh package block failed (x1)"
-for _gp in intel-media-driver vulkan-intel nvidia-open-dkms nvidia-prime nvidia-utils iio-sensor-proxy; do
-  grep -qx "$_gp" "$TMP/pk/x1.out" || fail "non-t14s must keep $_gp"
+  || fail "install.sh package block failed (p15)"
+for _gp in intel-media-driver vulkan-intel nvidia-open-dkms nvidia-prime nvidia-utils; do
+  grep -qx "$_gp" "$TMP/pk/p15.out" || fail "non-t14s must keep $_gp"
 done
 unset _gp
 # All-filtered manifest on T14s: must exit 0 and not invoke pacman -S.

@@ -1,8 +1,8 @@
 # Fresh install: coding, reverse engineering, malware analysis
 
-Purpose-oriented guide for this repository on the **Lenovo ThinkPad X1 Yoga Gen 5**
-(SKU `20UC`; example hostname `blackbox`). It layers on top of the hardened base
-install; it does not replace it.
+Purpose-oriented guide for this repository on the **Lenovo ThinkPad P15 Gen 1**
+(type `20SU`; hostname `p15`) and **ThinkPad T14s Gen 3 AMD** (type `21CQ` /
+`21CR`). It layers on top of the hardened base install; it does not replace it.
 
 | Document | Role |
 |----------|------|
@@ -12,42 +12,39 @@ install; it does not replace it.
 
 Automation:
 
-* Bare metal (X1 / generic): [`scripts/arch-install.sh`](../scripts/arch-install.sh)
+* Bare metal (P15 / generic Intel): [`scripts/arch-install.sh`](../scripts/arch-install.sh)
 * Bare metal (T14s Gen 3 AMD, 21CQ/21CR): [`scripts/arch-install-t14s.sh`](../scripts/arch-install-t14s.sh)
 * VM rehearsal: [`scripts/arch-install-vmtest.sh`](../scripts/arch-install-vmtest.sh) (`INSTALLER=arch-install-t14s.sh` for the AMD script)
 * After first GNOME login: [`../install.sh`](../install.sh)
 
-**T14s Gen 3 AMD note:** this guide’s verified table is the X1 Yoga. On a
-**21CQ/21CR** T14s, use the AMD installer, then `./install.sh` (detect →
+**T14s Gen 3 AMD:** use the AMD installer, then `./install.sh` (detect →
 `thinkpad-t14s`). Expect `amd_iommu` / `amd_pstate`, `mesa` + `vulkan-radeon`,
 `fprintd`, and charge thresholds **70–80** via
 [`scripts/thinkpad-charge-thresholds.sh`](../scripts/thinkpad-charge-thresholds.sh).
-Skip `thinkpad-health.sh` (i915-only). Details:
+Health check: [`scripts/thinkpad-health.sh`](../scripts/thinkpad-health.sh)
+covers AMD/NVIDIA/Intel when those modules are present. Details:
 [hardened Phase 14](hardened-arch-gnome.md#phase-14--thinkpad-optimization).
 
 ---
 
-## Target machine (verified)
+## Target machines
 
-| Item | Value |
-|------|--------|
-| Hardware | Lenovo ThinkPad X1 Yoga Gen 5 (`20UC`), chassis convertible |
-| Profile | No `profiles/<hostname>.sh` on this box. `apply-profile.sh` falls through to `detect-profile.sh` → `thinkpad-x1` → `profiles/thinkpad-x1.sh` |
-| CPU | Intel Core i7-10610U (4C/8T, up to 4.9 GHz), **x86-64-v3** (no AVX-512) |
-| RAM | 16 GiB + ~7.7 GiB zram |
-| Storage | ~1 TB NVMe; typical layout: EFI + Windows NTFS + recovery + **LUKS2 → btrfs** root |
-| GPU | Intel UHD Graphics only (no usable discrete NVIDIA on this chassis) |
-| OS target | Arch Linux rolling, `linux-lts` primary / `linux-hardened` fallback UKIs |
-| CPU builds | `GOAMD64=v3`, `RUSTFLAGS=-C target-cpu=x86-64-v3` (see README) |
+| Item | P15 Gen 1 (`20SU`) | T14s Gen 3 AMD (`21CQ`/`21CR`) |
+|------|--------------------|--------------------------------|
+| Profile | hostname `p15` → `profiles/p15.sh` → `thinkpad-p15.sh`, or detect → `thinkpad-p15` | detect → `thinkpad-t14s` |
+| CPU | Comet Lake-H, **x86-64-v3** | Ryzen 7 PRO 6850U (Zen 3+), **x86-64-v3** |
+| GPU | Intel UHD + NVIDIA Quadro (Optimus / `prime-run`) | Radeon 680M (`amdgpu`, `LIBVA_DRIVER_NAME=radeonsi`) |
+| Fingerprint | Synaptics `06cb:00bd` (palm rest) | Goodix `27c6:6594` (power button) |
+| Installer | `arch-install.sh` | `arch-install-t14s.sh` |
+| OS target | Arch rolling, `linux-lts` primary / `linux-hardened` fallback UKIs | same |
+| CPU builds | `GOAMD64=v3`, `RUSTFLAGS=-C target-cpu=x86-64-v3` (see README) | same |
 
-**Fit:** daily coding, static/dynamic RE, and a **light** malware lab. With 16 GiB
-RAM, keep analysis VMs small (2–4 GiB). Prefer QEMU/libvirt isolation. Never
-detonate unknown samples on the host.
+**Fit:** daily coding, static/dynamic RE, and a malware lab in disposable VMs.
+Prefer QEMU/libvirt isolation. Never detonate unknown samples on the host.
 
-`packages/pacman.txt` lists Intel and NVIDIA GPU packages used by X1 / P15
-profiles. On T14s Gen 3 AMD (`21CQ`/`21CR`), `./install.sh` automatically
-filters out Intel and NVIDIA GPU packages before invoking `pacman -S`; on the
-X1 Yoga, the NVIDIA packages stay unloaded unless an NVIDIA GPU is present.
+`packages/pacman.txt` lists Intel and NVIDIA GPU packages used by the P15
+profile. On T14s Gen 3 AMD (`21CQ`/`21CR`), `./install.sh` automatically
+filters those packages out before invoking `pacman -S`.
 
 ---
 
@@ -117,7 +114,7 @@ Then remove the ISO, reboot, and log into GNOME.
 git clone https://github.com/HelllGuest/dotfiles.git ~/dotfiles
 cd ~/dotfiles
 # ThinkPad P15 (hostname p15): optional check, then install (pulls nvidia-* + Optimus profile)
-bash scripts/p15-dotfiles-preflight.sh   # skip on X1
+bash scripts/p15-dotfiles-preflight.sh   # skip on T14s
 ./install.sh
 # Explicit Optimus re-run if needed: bash profiles/thinkpad-p15.sh
 # AI tools (also run by install.sh when npm/node/ghidra present):
@@ -146,10 +143,9 @@ prime-run nvidia-smi -L
 
 Step order: [README — what `./install.sh` runs](../README.md#script-execution-order-fresh-machine).
 
-`stow/system/` (kernel cmdline, sleep, logind, i915, makepkg v3, UFW, udev,
-`virbr0-up.service`) is installed by `scripts/system-setup.sh` as root-owned
-files, not stowed; the X1-only files (cmdline, i915, fingerprint rule) install
-on X1 hardware only; the cmdline gets this machine's booted LUKS UUID. Details:
+`stow/system/` (sleep, logind, makepkg v3, UFW, udev, `virbr0-up.service`) is
+installed by `scripts/system-setup.sh` as root-owned files, not stowed. Kernel
+cmdline stays with the installer / machine profile. Details:
 [hardened-arch-gnome.md — `system/` files](hardened-arch-gnome.md#kernel-cmdline--system-files-installed-not-stowed).
 Firewall check: [Verify Firewall](hardened-arch-gnome.md#verify-firewall).
 
@@ -349,7 +345,7 @@ kali-up-nat                              # NAT for apt/cloud-init
 kali-up-lan                              # NAT + physical RJ45 (needs cable on host NIC)
 # or: kali-lan                           # hot-attach LAN to already-running guest
 kali-st
-# NAT: script prints Guest IP; ssh kali@<ip>  (default password kali — change it)
+# NAT/LAN: script prints Guest IP + password (saved under VM_DIR/kali-session.password)
 kali-wipe                                # back to clean base
 ```
 
@@ -373,8 +369,10 @@ subnet `192.168.122.0/24`, and bring the bridge up. Boot unit
 `virbr0-up.service` (from `stow/system/`, also installed by `setup`) starts the
 libvirt `default` network then `ip link set virbr0 up` so the bridge exists
 after reboot. Cloud-init NoCloud seed sets hostname `kali-disposable`, enables
-password SSH, and uses a fresh `instance-id` each overlay. Default login
-`kali`/`kali` — change after first SSH.
+password SSH, and uses a fresh `instance-id` each overlay. Isolated login
+defaults to `kali`/`kali`. NAT/LAN generates a random password (or
+`KALI_PASSWORD`), prints it, and stores it in `kali-session.password` under
+`KALI_VM_DIR`.
 
 ### Optional host triage (static / inert only)
 
@@ -411,11 +409,11 @@ modem.
 
 ## Hardware constraints (keep these in mind)
 
-* **16 GiB RAM (X1)** — avoid heavy parallel builds plus a large VM plus Ghidra.
 * **P15 Optimus** — Intel iGPU primary + NVIDIA Quadro via `prime-run`; after
   install, reboot so UKI drops `nouveau` and binds `nvidia`.
-* **Comet Lake = x86-64-v3** — never target v4 in makepkg / `RUSTFLAGS`.
-* **Yoga convertible (X1)** — tablet rotate / sensors via profile + `iio-sensor-proxy`.
+* **T14s AMD** — no discrete GPU; keep `LIBVA_DRIVER_NAME=radeonsi`.
+* **x86-64-v3** — Comet Lake (P15) and Zen 3+ Rembrandt (T14s) both stay at v3;
+  never target v4 in makepkg / `RUSTFLAGS`.
 * **zram** — helps under memory pressure; still plan workloads.
 
 ---

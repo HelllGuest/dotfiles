@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# fingerprint-setup.sh — Synaptics UWP WBDI (06CB:00BD) on ThinkPad X1 Yoga Gen 5
+# fingerprint-setup.sh — fprintd enrollment for GDM
+# (P15: Synaptics 06cb:00bd; T14s: Goodix 27c6:6594)
 # Run manually after install: ~/dotfiles/scripts/fingerprint-setup.sh
 
 set -euo pipefail

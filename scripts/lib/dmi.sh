@@ -18,10 +18,6 @@ dmi_label() {
     "$(dmi_field product_name)"
 }
 
-is_thinkpad_x1() {
-  echo "$(dmi_label)" | grep -qiE 'ThinkPad[[:space:]]*X1|X1[[:space:]]+Yoga|X1[[:space:]]+Carbon'
-}
-
 is_thinkpad_p15() {
   echo "$(dmi_label)" | grep -qiE 'ThinkPad[[:space:]]*P15|P15[[:space:]]+Gen'
 }

@@ -1,6 +1,6 @@
 # Definitive Hardened Arch Linux + GNOME Wayland Guide
 
-## For the Lenovo ThinkPad X1 Yoga Gen 5
+## For Lenovo ThinkPad P15 Gen 1 and T14s Gen 3 AMD
 
 ### Modern Security, Power Management, Btrfs Snapshots, UKIs, and Secure Boot
 
@@ -84,11 +84,12 @@ Windows and Linux
 `/sys/power/mem_sleep` lists available modes; the **bracketed** value is active.
 
 This repo’s tracked files pin **s2idle** (not S3/`deep`):
-`mem_sleep_default=s2idle` on the kernel cmdline (`arch-install.sh` and
-`stow/system/etc/kernel/cmdline`) plus `stow/system/etc/systemd/sleep.conf.d/`
-(`SuspendState=mem` + `MemorySleepMode=s2idle`). Check with
-[Verify sleep](#verify-sleep-s2idle); after resume,
-`journalctl -b | grep "suspend entry"` → `PM: suspend entry (s2idle)`.
+`mem_sleep_default=s2idle` on the kernel cmdline (written by `arch-install.sh` /
+`arch-install-t14s.sh` and machine profiles) plus
+`stow/system/etc/systemd/sleep.conf.d/` (`SuspendState=mem` +
+`MemorySleepMode=s2idle`). Check with [Verify sleep](#verify-sleep-s2idle);
+after resume, `journalctl -b | grep "suspend entry"` →
+`PM: suspend entry (s2idle)`.
 
 ### Kernel cmdline + `system/` files (installed, not stowed)
 
@@ -100,19 +101,14 @@ GDM). Symlinks from `/etc` into `$HOME` break in two ways:
   `/etc/ufw/before.rules` dangles, ufw loads its chains without the
   `ESTABLISHED,RELATED` accepts, and reply traffic (DNS included) is dropped.
   `ufw status` still says `active`.
-* The repo owner could edit root config (kernel cmdline, udev, sleep, units)
-  without sudo.
+* The repo owner could edit root config (udev, sleep, units) without sudo.
 
-`arch-install.sh` writes `/etc/kernel/cmdline` with the LUKS UUID of the disk it
-configured. The tracked `stow/system/etc/kernel/cmdline` carries this machine's
-UUID and X1 options (i915, `thinkpad_acpi`). It and the other X1-only files (i915,
-X1 sleep/logind, fingerprint port rule) install only on ThinkPad X1 hardware, by
-DMI (`is_thinkpad_x1`), not hostname. Other profiles (e.g. P15 with
-`nvidia_drm.modeset=1`) keep their own; old stow symlinks to X1-only files are
-removed there, and a stowed cmdline becomes a real file. It rewrites `rd.luks.name=` to the UUID in `/proc/cmdline`
-(the one that unlocked the running root) and skips the file if that UUID is not
-a present block device. When cmdline or `modprobe.d` changes it runs
-`mkinitcpio -P` (sbctl's hook re-signs the UKIs). Replaced files are backed up to
+`arch-install.sh` / `arch-install-t14s.sh` write `/etc/kernel/cmdline` with the
+LUKS UUID of the disk they configure. Machine profiles may append host-specific
+flags (P15: `nvidia_drm.modeset=1` + `rd.driver.blacklist=nouveau`; T14s:
+`amd_iommu=on` + `amd_pstate=active`). `system-setup.sh` does **not** own the
+cmdline. When a managed `modprobe.d` file changes it runs `mkinitcpio -P`
+(sbctl's hook re-signs the UKIs). Replaced files are backed up to
 `/var/backups/dotfiles-system/<timestamp>/`. Leftover stow symlinks from older
 setups are removed; `scripts/check.sh` flags any that remain.
 
@@ -525,7 +521,7 @@ echo "KEYMAP=uk" > /etc/vconsole.conf
 # Hostname
 
 ```bash
-echo "thinkpad-x1" > /etc/hostname
+echo "p15" > /etc/hostname
 ```
 
 ---
@@ -541,7 +537,7 @@ Contents:
 ```text
 127.0.0.1 localhost
 ::1       localhost
-127.0.1.1 thinkpad-x1.localdomain thinkpad-x1
+127.0.1.1 p15.localdomain p15
 ```
 
 ---
@@ -706,7 +702,6 @@ earlyoom \
 power-profiles-daemon \
 sof-firmware \
 alsa-ucm-conf \
-iio-sensor-proxy \
 fprintd \
 gnome-software
 ```
@@ -931,9 +926,8 @@ Lab usage: [fresh-install RE — Disposable Kali](fresh-install-coding-re.md#dis
 
 # PHASE 14 — THINKPAD OPTIMIZATION
 
-PPD, `sof-firmware`, `alsa-ucm-conf`, `fprintd`, and (X1 Yoga)
-`iio-sensor-proxy` come from Phase 10 / the matching installer
-(`iio-sensor-proxy` and `fprintd` are D-Bus activated — do not enable them).
+PPD, `sof-firmware`, `alsa-ucm-conf`, and `fprintd` come from Phase 10 / the
+matching installer (`fprintd` is D-Bus activated — do not systemctl-enable it).
 Optional power diagnostics:
 
 ```bash
@@ -943,7 +937,7 @@ pacman -S powertop
 **Power stack note:** this system uses **power-profiles-daemon (PPD)** only.
 
 * **TLP is *not* used** — it conflicts with PPD (`PLATFORM_PROFILE.../CPU_ENERGY_PERF_POLICY... not set because power-profiles-daemon is running`). Do not install `tlp`/`tlp-rdw`.
-* **thermald is *not* used** — on the X1 it self-exits every boot (`[dytc_lapmode] present: Thermald can't run on this platform`); thermal is firmware-managed (Intel DPTF / AMD DYTC on T14s). Leave it uninstalled/disabled.
+* **thermald is *not* used** — it self-exits on these ThinkPads (`[dytc_lapmode] present: Thermald can't run on this platform`); thermal is firmware-managed (Intel DPTF on P15 / AMD DYTC on T14s). Leave it uninstalled/disabled.
 * **Skip `ryzenadj`** on T14s Gen 3 AMD PRO — EC often locks SMU; not part of the profile.
 
 **T14s Gen 3 AMD (21CQ/21CR)** extras (installer + `profiles/thinkpad-t14s.sh`):
@@ -963,7 +957,7 @@ pacman -S powertop
   under `/usr/local/lib/thinkpad/`). Live refresh via
   `scripts/thinkpad-charge-thresholds.sh` (also `install-re-extras.sh` /
   `profiles/thinkpad-t14s.sh`) installs both tmpfiles and the service.
-* No Yoga tablet rotate stack (`iio-sensor-proxy` and `yoga-tablet-mode.service` are gated on `is_thinkpad_x1`); keep fingerprint enabled (do not install the X1 fingerprint-disable udev rule)
+* Keep fingerprint enabled (power-button Goodix on T14s; palm-rest Synaptics on P15)
 
 ---
 
@@ -974,7 +968,7 @@ interface. Prefer the shared helper (writes live sysfs +
 `/etc/tmpfiles.d/thinkpad-charge-thresholds.conf` + late-boot
 `thinkpad-charge-thresholds.service`). Auto-applied by
 `profiles/thinkpad-t14s.sh` and `scripts/install-re-extras.sh`. Safe to re-run
-on X1/P15 (live BAT* → write + persist). On desktop/VM/non-ThinkPad with no
+on P15 (live BAT* → write + persist). On desktop/VM/non-ThinkPad with no
 BAT*, the helper plain-skips (no unit). Only ThinkPad DMI may seed BAT0
 tmpfiles + service when charge_control_* is not visible yet (late
 `thinkpad_acpi`; enable uses `start --no-block` so the helper does not wait):
@@ -1014,15 +1008,12 @@ thresholds exist but tmpfiles and/or the unit are missing, re-run the helper
 # Fingerprint Enrollment
 
 ```bash
-fprintd-enroll
+bash scripts/fingerprint-setup.sh
+# or: fprintd-enroll
 ```
 
-**If you do not use the fingerprint reader:** the Synaptics Prometheus sensor
-(`06cb:00bd`) bounces on every resume (`xHC error in resume`, repeated
-`usb 1-9: reset`) and wastes idle power. The dotfiles ship
-`stow/system/etc/udev/rules.d/72-fingerprint-disable.rules`, which powers off
-its root-hub port on enumeration. Re-enable by deleting that rule,
-`sudo udevadm control --reload`, clearing the port `disable` flag, then reboot.
+P15 uses Synaptics `06cb:00bd` (palm rest). T14s Gen 3 AMD uses Goodix
+`27c6:6594` (power button). Both work with `fprintd` / `libfprint` on Arch.
 
 ---
 
@@ -1537,7 +1528,7 @@ cd ~/dotfiles
 `./install.sh` (run from a GNOME session; full step-by-step order in [README — Script execution order](../README.md#script-execution-order-fresh-machine)) will:
 
 * Install packages from `packages/pacman.txt` (kernels, shells, terminals, CLI tools; skips Intel/NVIDIA GPU packages on ThinkPad T14s Gen 3 AMD and skips `power-profiles-daemon` when `tuned-ppd` is present)
-* Apply **after** `pacman.txt` exactly one machine profile via `scripts/apply-profile.sh`: `profiles/$(hostname).sh` if present, otherwise `scripts/detect-profile.sh` (`thinkpad-x1`, `thinkpad-p15`, `thinkpad-t14s`, or `laptop`). Optimus/NVIDIA setup is inside `thinkpad-p15.sh` (no `nvidia.sh`).
+* Apply **after** `pacman.txt` exactly one machine profile via `scripts/apply-profile.sh`: `profiles/$(hostname).sh` if present, otherwise `scripts/detect-profile.sh` (`thinkpad-p15`, `thinkpad-t14s`, or `laptop`). Optimus/NVIDIA setup is inside `thinkpad-p15.sh` (no `nvidia.sh`).
 * Install Flatpaks from `packages/flatpak.txt` (Brave, Zen, Chrome, LibreWolf, Proton VPN, Android Studio) and AUR packages from `packages/aur.txt` (bootstraps `paru` if no helper exists)
 * Stow configs to `$HOME` (skips `zram` and `gdm`); install `system/` into `/etc` as root-owned files via `scripts/system-setup.sh`; materialize `zram-generator.conf` via `scripts/zram-setup.sh`
 * Apply GNOME session dconf (`gnome/dconf/user.conf`), Console & Ptyxis terminal settings, Dash2Dock + extensions, location spoofing, and stock input defaults (`scripts/reset-input-defaults.sh` + `scripts/cleanup-input-overrides.sh`)
@@ -1599,12 +1590,15 @@ If you see `s2idle [deep]` and/or `mem_sleep_default=deep`, the live cmdline or
 BIOS Sleep State has drifted from the repo pin. Repair:
 
 1. BIOS Sleep State = **Windows and Linux** (not **Linux** / S3).
-2. `bash scripts/system-setup.sh` (rewrites `/etc/kernel/cmdline` from
-   `stow/system/`, installs `s2idle.conf` + lid drop-in, rebuilds UKIs).
+2. Confirm `/etc/kernel/cmdline` still has `mem_sleep_default=s2idle` (installer
+   / profile owns that file). Then `bash scripts/system-setup.sh` (installs
+   `s2idle.conf` + lid drop-in; rebuilds UKIs only if a managed `modprobe.d`
+   file changed).
 3. **Reboot**, then re-check `/proc/cmdline` and `/sys/power/mem_sleep`.
    Expect bracket on **s2idle**: `[s2idle] deep`.
 
-Cmdline backups land under `/var/backups/dotfiles-system/<timestamp>/`.
+Replaced `system/` file backups land under
+`/var/backups/dotfiles-system/<timestamp>/`.
 
 ---
 

@@ -8,8 +8,8 @@
 #   * packages/thinkpad-t14s.txt (mesa / vulkan-radeon / libva-utils / wireless-regdb / fprintd)
 #   * I2C touchpad s2idle wakeup disable (i2c-ELAN0678 / i2c-SYNA8018)
 #   * fwupd refresh, bolt, bluetooth, fstrim.timer; sof-firmware via pacman.txt / installer
-# Skip: ryzenadj (PRO EC often locks), thermald (DYTC firmware), TLP;
-#       X1 fingerprint-disable udev (keep power-button FP), X1 Yoga tablet services
+# Skip: ryzenadj (PRO EC often locks), thermald (DYTC firmware), TLP.
+# Keep power-button fingerprint (Goodix); do not disable FP ports.
 
 echo "Applying ThinkPad T14s Gen 3 AMD optimizations..."
 
@@ -107,7 +107,7 @@ if [ -f /etc/kernel/cmdline ]; then
   fi
 fi
 
-# Drop X1-only i915 modprobe if present (system-setup skips it on non-X1, but leftovers possible)
+# Drop leftover Intel i915 modprobe from older dual-machine installs (amdgpu host).
 if [ -f /etc/modprobe.d/i915.conf ]; then
   echo "Removing leftover /etc/modprobe.d/i915.conf (amdgpu host)..."
   sudo rm -f /etc/modprobe.d/i915.conf
@@ -154,9 +154,6 @@ fi
 # NVMe periodic TRIM
 echo "Enabling fstrim.timer..."
 sudo systemctl enable --now fstrim.timer || true
-
-# Disable X1 Yoga tablet-mode watcher on clamshell T14s
-systemctl --user disable --now yoga-tablet-mode.service 2>/dev/null || true
 
 # Disable I2C touchpad wakeup from s2idle (prevents spurious wakeups in transit)
 TP_WAKE_RULE_SRC="$REPO_ROOT/stow/system/etc/udev/rules.d/71-thinkpad-t14s-touchpad-wakeup.rules"

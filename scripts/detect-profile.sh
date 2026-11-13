@@ -2,18 +2,13 @@
 # detect-profile.sh — suggest profiles/*.sh from hardware (sysfs first, no sudo).
 # Usage:
 #   detect-profile.sh → primary profile name (stdout)
-# Order: thinkpad-x1 → thinkpad-p15 → thinkpad-t14s → laptop (other ThinkPads / chassis).
+# Order: thinkpad-p15 → thinkpad-t14s → laptop (other ThinkPads / chassis).
 
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 # shellcheck source=lib/dmi.sh
 source "$REPO_ROOT/scripts/lib/dmi.sh"
-
-if is_thinkpad_x1; then
-  printf '%s\n' thinkpad-x1
-  exit 0
-fi
 
 if is_thinkpad_p15; then
   printf '%s\n' thinkpad-p15

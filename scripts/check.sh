@@ -265,11 +265,6 @@ else
 fi
 
 echo "--- GNOME session ---"
-if [ -f "$HOME/.config/gnome-session/scripts/tablet-mode-handler.sh" ]; then
-    echo "✓ Tablet mode handler stowed"
-else
-    echo "✗ Tablet mode handler missing"
-fi
 ENABLED_EXT=$(gnome-extensions list --enabled 2>/dev/null | wc -l || echo 0)
 if [ "$ENABLED_EXT" -ge 4 ] 2>/dev/null; then
     echo "✓ GNOME extensions enabled ($ENABLED_EXT)"
