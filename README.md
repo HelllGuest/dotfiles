@@ -298,6 +298,15 @@ virbr0          → libvirt          (kali-disposable / NAT guests)
 virbr-malware   → lab-malware      (192.168.200.0/24 host-only; DROP; no masq/forward)
 ```
 
+Hosts upgraded from Slice 1 may still show `virbr-malware` under `libvirt` or
+`block` (zone `lab-malware` missing). Re-apply once:
+
+```bash
+bash scripts/firewalld-migrate.sh
+# or: source scripts/lib/lab-malware-zone.sh && ensure_lab_malware_zone
+firewall-cmd --get-active-zones   # virbr-malware must list under lab-malware only
+```
+
 **Lab commands (after `labs-setup.sh` / configure SETUP_LABS):**
 ```text
 lab-triage | lab-re | lab-android | lab-web | lab-detonate | lab-mcp
@@ -405,6 +414,8 @@ We take a "quiet by default" approach:
 | `evolution-data-server` / `wireless-regdb` (or any `pacman.txt` package) missing | Older `install.sh` fed `#` comment lines to pacman (`target not found: # …`), aborting the whole package step | Pull, then re-run `./install.sh` (comments are stripped now) |
 | `unsafe path transition /etc` during `pacman` | `/etc` owned by user (old `gdm-setup.sh` used `rsync -a`) | `bash scripts/gdm-setup.sh` (restores root + 755), or `sudo chown root:root /etc && sudo chmod 755 /etc` |
 | No inbound / wrong default zone | firewalld not migrated or default ≠ `drop` | `bash scripts/firewalld-migrate.sh`; `firewall-cmd --get-default-zone` |
+| `virbr-malware` listed under `libvirt` / `block` | Pre-`lab-malware` bind left over | `bash scripts/firewalld-migrate.sh` or `ensure_lab_malware_zone`; confirm with `--get-active-zones` |
+| `INVALID_ZONE: lab-malware` | Zone never created on this host | Same as above (`lib/lab-malware-zone.sh`) |
 | SSH blocked after migrate | drop zone has no 22/tcp | `sudo firewall-cmd --permanent --add-service=ssh && sudo firewall-cmd --reload` (only if you need SSH) |
 | Spoof location sync does nothing | `vpn-location-sync` failed under `pkexec` | `bash scripts/location-setup.sh`; panel → Sync spoofed location |
 | Touchpad clicks broken after old dotfiles | Legacy synaptics inhibit/udev | `bash scripts/cleanup-input-overrides.sh` (sudo), log out |
@@ -444,6 +455,7 @@ We take a "quiet by default" approach:
 | Labs / detonate / MCP | `bash scripts/labs-setup.sh`; `lab-detonate` / `lab-mcp` |
 | Stage B TUI | `bash scripts/configure.sh` |
 | Gruvbox rice | `bash scripts/rice-setup.sh` |
+| Live lab/firewall health | See checklist below |
 | Obscura (CDP/MCP) | `bash scripts/install-obscura.sh` ([docs](https://docs.obscura.sh/)) |
 | foxcage (Firefox in rootless Podman) | `bash scripts/install-foxcage.sh` ([upstream](https://gitlab.com/grepular/foxcage)); then `foxcage`, `foxcage @tmp <url>`; `install.sh` runs it when `podman` exists (`SKIP_FOXCAGE=1` skips) |
 | RE skills (leanrea, …) | `bash scripts/install-re-skills.sh` |
@@ -459,6 +471,30 @@ We take a "quiet by default" approach:
 | x86-64-v3 rebuilds | `bash scripts/rebuild-v3.sh` |
 | PhotoGIMP | `bash scripts/install-photogimp.sh` |
 | Dash2Dock | `bash scripts/install-dash2dock.sh` then log out/in (Wayland) |
+
+### Live health checklist (non-destructive)
+
+```bash
+uname -r
+systemctl is-enabled ufw                  # expect: masked
+systemctl is-active firewalld             # expect: active
+firewall-cmd --get-default-zone           # expect: drop
+firewall-cmd --get-active-zones           # virbr0→libvirt; virbr-malware→lab-malware only
+firewall-cmd --permanent --zone=lab-malware --list-all
+#   target: DROP; masquerade: no; interface: virbr-malware
+
+lab-re --check
+podman images | grep localhost/lab-
+# From $HOME, lab wrappers refuse mounting home as /work (fallback /srv/lab/out):
+cd ~ && source ~/.shell-functions && _lab_work_dir   # expect /srv/lab/out + refuse message
+
+ss -tlnp | grep -E ':8787|:11434'
+# 8787 → 127.0.0.1 only (Headroom). 11434 → 127.0.0.1 only on P15; absent on T14s.
+gsettings get org.gnome.desktop.notifications show-in-lock-screen   # false
+
+for t in ~/dotfiles/tests/*.test.sh; do bash "$t" || break; done
+bash ~/t14s-arch-install/tests/smoke.test.sh   # if that repo is present
+```
 
 ---
 

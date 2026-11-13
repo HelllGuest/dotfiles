@@ -842,7 +842,8 @@ systemctl enable --now firewalld
 
 Libvirt: bind `virbr0` to zone `libvirt`. Air-gapped malware net: host-only
 `virbr-malware` in zone `lab-malware` (DROP, no masq/forward; see
-`scripts/lib/lab-malware-zone.sh` / `firewalld-migrate.sh`).
+`scripts/lib/lab-malware-zone.sh` / `firewalld-migrate.sh`). Pre-Slice-2B hosts
+may still list the bridge under `libvirt`/`block` until migrate is re-run.
 
 Default behavior:
 
@@ -915,6 +916,9 @@ over opening the host default zone. `scripts/firewalld-migrate.sh` and
 * permanent `--zone=libvirt --add-interface=virbr0` (inherits when bridge appears)
 * runtime `--change-interface=virbr0` when the iface exists
 * host-only `virbr-malware` → zone `lab-malware` (DROP; no NAT/forward)
+* Upgrade note: if `virbr-malware` still sits in `libvirt` or `block`, re-run
+  `bash scripts/firewalld-migrate.sh` (or `ensure_lab_malware_zone`) so the
+  bridge leaves those zones
 
 Boot unit `virbr0-up.service` (from `stow/system/`, installed by
 `system-setup.sh` / kali `setup`) runs `virsh net-start default` then
