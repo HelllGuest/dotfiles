@@ -1,0 +1,18 @@
+# Fake Internet for virbr-malware (host-only, firewalld block zone).
+# Bind ONLY to 192.168.200.1 — never the LAN.
+FROM docker.io/library/debian:bookworm-slim
+
+RUN apt-get update \
+ && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+      inetsim ca-certificates \
+ && rm -rf /var/lib/apt/lists/*
+
+COPY inetsim.conf /etc/inetsim/inetsim.conf
+COPY entrypoint.sh /usr/local/bin/lab-capture-entry
+RUN chmod +x /usr/local/bin/lab-capture-entry
+
+ENV LAB_CAPTURE_BIND=192.168.200.1 \
+    LAB_BADGE="[CAPTURE]"
+VOLUME ["/var/log/inetsim"]
+ENTRYPOINT ["/usr/local/bin/lab-capture-entry"]
+CMD ["inetsim"]

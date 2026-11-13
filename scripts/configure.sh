@@ -65,7 +65,8 @@ OPTS="$(checklist "Stage B modules" \
   MIGRATE_FIREWALLD "UFW → firewalld (drop + libvirt + virbr-malware)" on \
   APPLY_PROFILE "Re-run machine profile (detect / hostname)" off \
   SETUP_OLLAMA "P15: ollama-cuda + qwen models (localhost)" "$OLLAMA_STATE" \
-  SETUP_LABS "Labs lab-triage/re/android/web" off \
+  SETUP_LABS "Labs lab-triage/re/android/web (+ capture image)" off \
+  SETUP_DETONATE "Detonation VMs + INetSim/PolarProxy on virbr-malware" off \
   SETUP_AI "AI MCP / Headroom / Continue / Ponytail" off \
   SETUP_RICE "Gruvbox rice + notifications + launchers" off
 )" || { echo "configure: aborted"; exit 1; }
@@ -93,6 +94,9 @@ fi
 
 echo "$OPTS" | grep -qx SETUP_LABS \
   && run_mod labs bash "$REPO_ROOT/scripts/labs-setup.sh" || true
+
+echo "$OPTS" | grep -qx SETUP_DETONATE \
+  && run_mod detonate bash "$REPO_ROOT/scripts/lab-detonate.sh" setup || true
 
 echo "$OPTS" | grep -qx SETUP_AI \
   && run_mod ai bash "$REPO_ROOT/scripts/ai-stack-setup.sh" || true

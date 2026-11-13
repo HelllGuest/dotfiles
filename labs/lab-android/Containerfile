@@ -1,20 +1,37 @@
-# Android / Flutter / Kotlin SDK sandbox. KVM + Wayland passthrough at run time.
+# Android / Flutter / Kotlin sandbox + adb / Flutter MCP helpers.
 FROM docker.io/library/archlinux:latest
-RUN pacman -Syu --noconfirm \
-      bash curl wget git unzip zip jdk-openjdk \
-      python python-pip libx11 libxext libxrender libxi libxtst \
+RUN pacman -Syu --noconfirm --needed \
+      bash curl wget git unzip zip jdk17-openjdk jdk-openjdk \
+      python python-pip nodejs npm \
+      libx11 libxext libxrender libxi libxtst \
+      android-tools \
     && pacman -Scc --noconfirm \
     && useradd -m -u 1000 lab \
     && mkdir -p /opt/android-sdk /opt/flutter \
     && chown -R lab:lab /opt/android-sdk /opt/flutter
+
 USER lab
 ENV ANDROID_HOME=/opt/android-sdk \
+    ANDROID_SDK_ROOT=/opt/android-sdk \
     FLUTTER_HOME=/opt/flutter \
-    PATH="/opt/flutter/bin:/opt/android-sdk/cmdline-tools/latest/bin:/opt/android-sdk/platform-tools:${PATH}" \
-    LAB_BADGE="[ANDROID]"
-WORKDIR /work
-# SDKs are installed on first run via labs/lab-android/entrypoint.sh (large downloads).
+    JAVA_HOME=/usr/lib/jvm/java-17-openjdk \
+    PATH="/opt/flutter/bin:/opt/android-sdk/cmdline-tools/latest/bin:/opt/android-sdk/platform-tools:/usr/lib/jvm/java-17-openjdk/bin:${PATH}" \
+    LAB_BADGE="[ANDROID]" \
+    NPM_CONFIG_PREFIX=/home/lab/.npm-global
+ENV PATH="/home/lab/.npm-global/bin:${PATH}"
+
+WORKDIR /home/lab
+RUN mkdir -p /home/lab/.npm-global \
+ && npm install -g @flutter/mcp-server 2>/dev/null \
+ || npm install -g flutter-mcp 2>/dev/null \
+ || true
+
 COPY --chown=lab:lab entrypoint.sh /usr/local/bin/lab-android-entry
-RUN chmod +x /usr/local/bin/lab-android-entry
+COPY --chown=lab:lab mcp-flutter.sh /usr/local/bin/mcp-flutter
+COPY --chown=lab:lab mcp-adb.sh /usr/local/bin/mcp-adb
+USER root
+RUN chmod +x /usr/local/bin/lab-android-entry /usr/local/bin/mcp-flutter /usr/local/bin/mcp-adb
+USER lab
+WORKDIR /work
 ENTRYPOINT ["/usr/local/bin/lab-android-entry"]
 CMD ["bash"]

@@ -19,6 +19,11 @@ podman build -t localhost/lab-triage:latest "$REPO_ROOT/labs/lab-triage"
 podman build -t localhost/lab-re:latest "$REPO_ROOT/labs/lab-re"
 podman build -t localhost/lab-android:latest "$REPO_ROOT/labs/lab-android"
 podman build -t localhost/lab-web:latest "$REPO_ROOT/labs/lab-web"
+podman build -t localhost/lab-capture:latest "$REPO_ROOT/labs/lab-capture"
+
+echo "→ Detonation helpers (virbr-malware + INetSim/PolarProxy)..."
+bash "$REPO_ROOT/scripts/lab-detonate.sh" setup || echo "WARN: lab-detonate setup skipped"
+
 
 # adb udev (host) — Android devices for lab-android
 if [[ -f /usr/lib/udev/rules.d/51-android.rules ]] || [[ -f /etc/udev/rules.d/51-android.rules ]]; then
@@ -40,5 +45,6 @@ fi
 
 echo "✓ labs ready"
 echo "  samples: $LAB_ROOT/samples  out: $LAB_ROOT/out"
-echo "  wrappers: lab-triage | lab-re | lab-android | lab-web"
-echo "  malware VM net: virbr-malware (firewalld zone block)"
+echo "  wrappers: lab-triage | lab-re | lab-android | lab-web | lab-detonate | lab-mcp"
+echo "  malware VM net: virbr-malware (lab-malware / block zone)"
+echo "  MCP example: labs/mcp-host.example.json → scripts/lab-mcp.sh"

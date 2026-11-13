@@ -346,6 +346,16 @@ lab-web() {
     _lab_podman localhost/lab-web:latest "[WEB]" pasta "$@"
 }
 
+
+# ── Detonation + MCP (Slice 2b) ─────────────────────────────────────
+lab-detonate() {
+    bash "${DOTFILES:-$HOME/dotfiles}/scripts/lab-detonate.sh" "$@"
+}
+
+lab-mcp() {
+    bash "${DOTFILES:-$HOME/dotfiles}/scripts/lab-mcp.sh" "$@"
+}
+
 # OSC 7: terminal CWD reporting (zsh only)
 if [[ -n "${ZSH_VERSION:-}" ]]; then
     _update_terminal_cwd() {

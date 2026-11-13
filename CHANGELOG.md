@@ -1,7 +1,9 @@
 # Changelog
 
 ## [Unreleased]
+- Slice 2b: `lab-detonate.sh` — disposable Linux/Windows VMs on `virbr-malware`, INetSim capture image + optional PolarProxy, `lab-malware` firewalld zone for gateway ports only. `lab-mcp.sh` + lab-web Playwright/Chrome DevTools MCP and lab-android Flutter/adb MCP (host example: `labs/mcp-host.example.json`).
 - lab-re: ship `jdk21-openjdk`, `ghidra`, `jadx`, `rizin`, and `rea-agents@6.9+` inside the Podman image; Stage B AI stack no longer runs host `install-rea.sh` (bare metal stays JDK-free).
+
 - Slice 2 labs / AI / rice: `lab-triage`/`lab-re`/`lab-android`/`lab-web` wrappers in `.shell-functions` (Kitty Gruvbox accents, Podman/`bwrap`, samples at `/srv/lab`); Containerfiles under `labs/`; `scripts/labs-setup.sh`, `ai-stack-setup.sh` (Headroom/`hr-opencode`/`hr-agy`, Continue FIM→ollama, OpenCode local models on P15), `rice-setup.sh` (Ghostty/Alacritty Gruvbox, kgx night, btop/fastfetch, GtkSourceView, `.desktop` launchers). Stage B `configure.sh` wires `SETUP_LABS`/`SETUP_AI`/`SETUP_RICE`. Packages: `bubblewrap`, `libnotify`, `btop`.
 - Slice 1 dual-host / firewalld / terminals: Stage A (`t14s-arch-install` + `arch-install*.sh`) detects T14s (21CQ/21CR) or P15 (20SU), seeds firewalld (`nftables`, default `drop`) instead of UFW, optional P15 `ollama-cuda` on `127.0.0.1:11434`. Stage B adds `scripts/configure.sh` + `firewalld-migrate.sh` (virbr0→`libvirt`, host-only `virbr-malware`→`block`) + `ollama-setup.sh`. Pruned `ptyxis`/`rio`/`wezterm`/`foot`; keep kitty/ghostty/alacritty/gnome-console.
 - Removed: ThinkPad X1 Yoga support (profile, tablet rotate / `iio-sensor-proxy`, X1-only `stow/system` cmdline + `i915.conf` + fingerprint-disable udev rule). Kept profiles are P15 + T14s Gen 3 AMD (+ `laptop` fallback). `fingerprint-setup.sh` / `thinkpad-health.sh` / docs are machine-neutral for those hosts.
