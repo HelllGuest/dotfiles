@@ -1,5 +1,12 @@
 #!/usr/bin/env bash
-# install-rea.sh — REA (rea-agents) CLI + MCP for all detected agents (X1 / P15)
+# install-rea.sh — REA (rea-agents) CLI + MCP for detected agents
+#
+# Prefer lab-re for Ghidra/JADX/JDK backends (bare-metal host stays minimal):
+#   lab-re --check
+#   lab-re   # then: rea / ghidraRun / jadx / rizin inside the container
+#
+# This host installer still wires MCP on the workstation when JDK>=21 + tools
+# already exist; Slice 2 AI stack does NOT call it by default.
 #
 # * npm global rea-agents
 # * jadx-headless-mcp 0.7.1 JAR (SHA-256 pinned; REA does not download engines itself)
@@ -13,6 +20,7 @@
 # Usage:
 #   bash scripts/install-rea.sh
 #   INSTALL_HOPPER=1 bash scripts/install-rea.sh
+
 
 set -euo pipefail
 

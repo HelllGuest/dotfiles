@@ -64,6 +64,19 @@ grep -q 'install-caveman.sh' "$ROOT/scripts/ai-stack-setup.sh" \
   && fail "ai-stack must not call install-caveman (Ponytail owns /caveman)" || true
 grep -q 'install-ponytail.sh' "$ROOT/scripts/ai-stack-setup.sh" \
   || fail "ai-stack must still install ponytail"
+grep -E 'bash[[:space:]].*install-rea\.sh' "$ROOT/scripts/ai-stack-setup.sh" \
+  && fail "ai-stack must not install REA on host (use lab-re)" || true
+
+grep -q 'jdk21-openjdk' "$ROOT/labs/lab-re/Containerfile" \
+  || fail "lab-re must ship jdk21-openjdk"
+grep -q 'ghidra' "$ROOT/labs/lab-re/Containerfile" \
+  || fail "lab-re must ship ghidra"
+grep -q 'jadx' "$ROOT/labs/lab-re/Containerfile" \
+  || fail "lab-re must ship jadx"
+grep -q 'rizin' "$ROOT/labs/lab-re/Containerfile" \
+  || fail "lab-re must ship rizin"
+grep -q 'rea-agents' "$ROOT/labs/lab-re/Containerfile" \
+  || fail "lab-re must install rea-agents inside image"
 
 grep -q 'SETUP_LABS' "$ROOT/scripts/configure.sh" || fail "configure must wire SETUP_LABS"
 grep -q 'labs-setup.sh' "$ROOT/scripts/configure.sh" || fail "configure must call labs-setup"

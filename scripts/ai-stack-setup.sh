@@ -13,7 +13,8 @@ bash "$REPO_ROOT/scripts/headroom-setup.sh"
 echo "→ Coding agents / Ponytail (best-effort; Ponytail owns /caveman — no separate caveman install)..."
 bash "$REPO_ROOT/scripts/install-coding-agents.sh" || echo "WARN: coding-agents skipped"
 bash "$REPO_ROOT/scripts/install-ponytail.sh" || echo "WARN: ponytail skipped"
-bash "$REPO_ROOT/scripts/install-rea.sh" || echo "WARN: rea skipped"
+# REA + Ghidra/JADX/JDK live in lab-re (not bare metal). Rebuild: podman build -t localhost/lab-re labs/lab-re
+echo "○ REA backends: use lab-re (JDK21/Ghidra/jadx/rizin inside image) — host install-rea.sh skipped"
 
 
 # Continue.dev FIM → local ollama (P15 only; harmless stub elsewhere)
