@@ -1,0 +1,21 @@
+# Reverse engineering toolbox. ptrace stays inside the container only.
+# Host kernel.yama.ptrace_scope is never lowered.
+FROM docker.io/library/archlinux:latest
+RUN pacman -Syu --noconfirm \
+      bash coreutils findutils file binutils gdb rizin radare2 \
+      python python-pip jdk-openjdk unzip wget curl git \
+    && pacman -Scc --noconfirm \
+    && useradd -m -u 1000 lab
+# JADX (CLI) — pinned release tarball into /opt
+ARG JADX_VER=1.5.1
+RUN curl -fsSL "https://github.com/skylot/jadx/releases/download/v${JADX_VER}/jadx-${JADX_VER}.zip" \
+      -o /tmp/jadx.zip \
+    && mkdir -p /opt/jadx \
+    && unzip -q /tmp/jadx.zip -d /opt/jadx \
+    && ln -sf /opt/jadx/bin/jadx /usr/local/bin/jadx \
+    && ln -sf /opt/jadx/bin/jadx-gui /usr/local/bin/jadx-gui \
+    && rm -f /tmp/jadx.zip
+USER lab
+WORKDIR /work
+ENV LAB_BADGE="[RE]"
+CMD ["bash"]

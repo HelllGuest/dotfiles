@@ -1,16 +1,17 @@
 {
-  "editor.fontFamily": "'JetBrainsMono Nerd Font', 'Droid Sans Mono', 'monospace', monospace",
-  "editor.fontSize": 14,
-  "workbench.colorTheme": "Dark Modern",
-  "editor.minimap.enabled": false,
-  "editor.formatOnSave": true,
   "telemetry.telemetryLevel": "off",
+  "telemetry.enableTelemetry": false,
+  "telemetry.enableCrashReporter": false,
+  "telemetry.feedback.enabled": false,
+  "crashReporting.enabled": false,
   "workbench.enableExperiments": false,
   "workbench.settings.enableNaturalLanguageSearch": false,
   "update.mode": "manual",
-  "telemetry.feedback.enabled": false,
-  "workbench.startupEditor": "none",
-  "telemetry.enableTelemetry": false,
-  "telemetry.enableCrashReporter": false,
-  "crashReporting.enabled": false
+  "workbench.colorTheme": "Gruvbox Dark Medium",
+  "editor.fontFamily": "'JetBrainsMono Nerd Font', 'Droid Sans Mono', monospace",
+  "editor.fontLigatures": true,
+  "editor.fontSize": 13,
+  "editor.minimap.enabled": false,
+  "editor.renderWhitespace": "selection",
+  "files.autoSave": "onFocusChange"
 }

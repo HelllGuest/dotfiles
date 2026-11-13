@@ -6,5 +6,12 @@
   "crashReporting.enabled": false,
   "workbench.enableExperiments": false,
   "workbench.settings.enableNaturalLanguageSearch": false,
-  "update.mode": "manual"
+  "update.mode": "manual",
+  "workbench.colorTheme": "Gruvbox Dark Medium",
+  "editor.fontFamily": "'JetBrainsMono Nerd Font', 'Droid Sans Mono', monospace",
+  "editor.fontLigatures": true,
+  "editor.fontSize": 13,
+  "editor.minimap.enabled": false,
+  "editor.renderWhitespace": "selection",
+  "files.autoSave": "onFocusChange"
 }

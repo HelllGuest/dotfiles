@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Lab Android
+Comment=Android / Flutter Podman sandbox
+Exec=bash -lc 'lab-android'
+Icon=utilities-terminal
+Terminal=true
+Categories=Development;
+StartupWMClass=lab-android

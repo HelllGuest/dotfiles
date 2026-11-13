@@ -37,8 +37,8 @@ mode_of() { stat -c '%a' "$1"; }
 
 # fake root with every pre-existing state system-setup.sh must handle
 root="$work/root"
-mkdir -p "$root/etc/ufw" "$root/etc/systemd" "$root/etc/modprobe.d" "$root/etc/udev/rules.d"
-ln -s "$SRC/etc/ufw/before.rules" "$root/etc/ufw/before.rules"            # stowed file
+mkdir -p "$root/etc/systemd/system" "$root/etc/systemd" "$root/etc/modprobe.d" "$root/etc/udev/rules.d"
+ln -s "$SRC/etc/systemd/system/virbr0-up.service" "$root/etc/systemd/system/virbr0-up.service"  # stowed file
 ln -s "$SRC/etc/systemd/sleep.conf.d" "$root/etc/systemd/sleep.conf.d"    # folded dir
 cp "$SRC/etc/udev/rules.d/61-thinkpad-charge-limit.rules" \
   "$root/etc/udev/rules.d/61-thinkpad-charge-limit.rules"                 # identical
@@ -51,7 +51,7 @@ echo "rd.luks.name=keep=cryptroot nvidia_drm.modeset=1" > "$root/etc/kernel/cmdl
 run_setup "$root" SYSTEM_IS_AMDGPU=0
 
 check "stowed file replaced by regular file" \
-    test -f "$root/etc/ufw/before.rules" -a ! -L "$root/etc/ufw/before.rules"
+    test -f "$root/etc/systemd/system/virbr0-up.service" -a ! -L "$root/etc/systemd/system/virbr0-up.service"
 check "folded dir replaced by real dir" \
     test -d "$root/etc/systemd/sleep.conf.d" -a ! -L "$root/etc/systemd/sleep.conf.d"
 check "folded dir content installed" \

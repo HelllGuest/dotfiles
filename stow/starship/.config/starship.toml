@@ -7,6 +7,7 @@ format = """
 [](color_orange)\
 $os\
 $username\
+${env_var.LAB_BADGE}\
 [](bg:color_yellow fg:color_orange)\
 $directory\
 [](fg:color_yellow bg:color_aqua)\
@@ -188,3 +189,10 @@ vimcmd_symbol = '[](bold fg:color_green)'
 vimcmd_replace_one_symbol = '[](bold fg:color_purple)'
 vimcmd_replace_symbol = '[](bold fg:color_purple)'
 vimcmd_visual_symbol = '[](bold fg:color_yellow)'
+
+# Set inside lab-* containers / wrappers (e.g. [MALWARE] [RE] [ANDROID] [WEB])
+[env_var.LAB_BADGE]
+variable = "LAB_BADGE"
+default = ""
+format = "[$env_value](bold fg:color_red) "
+

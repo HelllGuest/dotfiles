@@ -23,8 +23,6 @@ fzf
 fwupd
 alacritty
 contour
-foot
-foot-terminfo
 ghostty
 ghidra
 gimp
@@ -50,10 +48,7 @@ jdk-openjdk
 jdk17-openjdk
 jq
 kitty
-ptyxis
-rio
 vulkan-intel
-wezterm
 less
 libinput
 libva-utils
@@ -78,8 +73,12 @@ netavark
 aardvark-dns
 passt
 catatonit
+bubblewrap
 # foxcage (Firefox in rootless Podman): D-Bus filtering proxy
 xdg-dbus-proxy
+libnotify
+btop
+
 power-profiles-daemon
 python-pipx
 procs
@@ -94,7 +93,7 @@ starship
 stow
 swappy
 awww
-# Mesh VPN; pair with scripts/ufw-tailscale.sh after install
+# Mesh VPN; pair with scripts/firewalld-tailscale.sh after install
 tailscale
 tmux
 wl-clipboard
@@ -102,3 +101,4 @@ yazi
 zoxide
 zram-generator
 zsh
+firewalld

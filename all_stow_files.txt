@@ -1,20 +1,26 @@
 stow/alacritty/.config/alacritty/alacritty.toml
 stow/antigravity/.config/Antigravity IDE/User/settings.json
+stow/applications/.local/share/applications/kali-disposable.desktop
+stow/applications/.local/share/applications/lab-android.desktop
+stow/applications/.local/share/applications/lab-re.desktop
 stow/atuin/.config/atuin/config.toml
 stow/bash/.bashrc
 stow/bash/.inputrc
+stow/btop/.config/btop/btop.conf
+stow/btop/.config/btop/themes/gruvbox_dark.theme
 stow/containers/.config/containers/containers.conf
+stow/continue/.continue/config.yaml
 stow/contour/.config/contour/contour.yml
 stow/cursor/.config/Cursor/User/settings.json
 stow/fastfetch/.config/fastfetch/config.jsonc
 stow/flutter/.dart-tool/dart-flutter-telemetry.config
-stow/foot/.config/foot/foot.ini
 stow/gdm/etc/dconf/db/gdm.d/00-login-screen
 stow/gdm/etc/dconf/profile/gdm
 stow/gdm/etc/gdm/custom.conf
 stow/gdm/etc/systemd/system/gdm.service.d/override.conf
 stow/gdm/etc/udev/rules.d/61-gdm-wayland.rules
 stow/ghostty/.config/ghostty/config
+stow/ghostty/.config/ghostty/theme.conf
 stow/ghostty/.config/systemd/user/app-com.mitchellh.ghostty.service.d/override.conf
 stow/git/.config/git/config
 stow/git/.config/git/ignore
@@ -24,6 +30,7 @@ stow/git/.config/git/templates/hooks/commit-msg
 stow/git/.config/git/templates/hooks/pre-push
 stow/git/.config/git/templates/hooks/prepare-commit-msg
 stow/git/.config/git/work.conf
+stow/gnome-text-editor/.local/share/gtksourceview-5/styles/gruvbox-dark.xml
 stow/htop/.config/htop/htoprc
 stow/kitty/.config/kitty/kitty.conf
 stow/kitty/.config/kitty/sessions/dev.conf
@@ -46,7 +53,6 @@ stow/proton-vpn/.local/share/gnome-shell/extensions/proton-vpn@helllguest/icons/
 stow/proton-vpn/.local/share/gnome-shell/extensions/proton-vpn@helllguest/icons/state-connected.svg
 stow/proton-vpn/.local/share/gnome-shell/extensions/proton-vpn@helllguest/icons/state-disconnected.svg
 stow/proton-vpn/.local/share/gnome-shell/extensions/proton-vpn@helllguest/metadata.json
-stow/rio/.config/rio/config.toml
 stow/starship/.config/starship.toml
 stow/system/etc/NetworkManager/dispatcher.d/99-vpn-location
 stow/system/etc/environment.d/99-wayland.conf
@@ -61,12 +67,10 @@ stow/system/etc/systemd/system/virbr0-up.service
 stow/system/etc/systemd/system/waydroid-nat.service
 stow/system/etc/udev/rules.d/61-thinkpad-charge-limit.rules
 stow/system/etc/udev/rules.d/71-thinkpad-t14s-touchpad-wakeup.rules
-stow/system/etc/ufw/before.rules
 stow/tmp-cleanup/.config/systemd/user/tmp-semgrep-cleanup.service
 stow/tmp-cleanup/.config/systemd/user/tmp-semgrep-cleanup.timer
 stow/vscode/.config/Code/User/settings.json
 stow/vscode/.config/VSCodium/User/settings.json
-stow/wezterm/.config/wezterm/wezterm.lua
 stow/zram/etc/systemd/zram-generator.conf
 stow/zsh/.shell-aliases
 stow/zsh/.shell-exports

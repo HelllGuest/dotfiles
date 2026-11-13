@@ -39,6 +39,16 @@ grep -qE 'intel_iommu=on' "$ROOT/scripts/arch-install-t14s.sh" \
 # Soft DMI gate must require type codes (not bare T14s name)
 grep -qF "grep -qiE '21CQ|21CR'" "$ROOT/scripts/arch-install-t14s.sh" \
   || fail "installer DMI soft-check must require 21CQ|21CR"
+grep -q 'firewalld' "$ROOT/scripts/arch-install-t14s.sh" \
+  || fail "arch-install-t14s must install/enable firewalld"
+grep -q 'DefaultZone=drop' "$ROOT/scripts/arch-install-t14s.sh" \
+  || fail "arch-install-t14s must set firewalld DefaultZone=drop"
+grep -q 'systemctl mask ufw' "$ROOT/scripts/arch-install-t14s.sh" \
+  || fail "arch-install-t14s must mask ufw before/with firewalld enable"
+grep -qE 'systemctl enable.*\bufw\b' "$ROOT/scripts/arch-install-t14s.sh" \
+  && fail "arch-install-t14s must not enable ufw" || true
+grep -qE '(^|[[:space:]_/])20SU' "$ROOT/scripts/lib/dmi.sh" \
+  || fail "is_thinkpad_p15 must match 20SU (Stage A parity)"
 grep -qF 'DO_AUTO_PART=1' "$ROOT/scripts/arch-install-t14s.sh" \
   || fail "AUTO wipe must be deferred (DO_AUTO_PART) until after identity"
 # Identity validators: real inputs via shared lib; drift-check vs installers

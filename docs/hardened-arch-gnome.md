@@ -14,7 +14,7 @@ This guide builds a modern Arch Linux workstation with:
 * linux-hardened fallback kernel
 * AppArmor
 * zram compressed swap
-* UFW firewall
+* firewalld (`nftables`, default zone `drop`)
 * Snapper snapshots
 * rootless Podman
 * Flatpak sandboxing
@@ -97,10 +97,8 @@ after resume, `journalctl -b | grep "suspend entry"` →
 which installs each file as a root-owned regular file (same reason as zram and
 GDM). Symlinks from `/etc` into `$HOME` break in two ways:
 
-* `ufw.service` starts before `/home` is mounted. A stowed
-  `/etc/ufw/before.rules` dangles, ufw loads its chains without the
-  `ESTABLISHED,RELATED` accepts, and reply traffic (DNS included) is dropped.
-  `ufw status` still says `active`.
+* Early boot units start before `/home` is mounted; stowed `/etc` links into
+  `$HOME` dangle and break services (historically UFW `before.rules`).
 * The repo owner could edit root config (udev, sleep, units) without sudo.
 
 `arch-install.sh` / `arch-install-t14s.sh` write `/etc/kernel/cmdline` with the
@@ -445,10 +443,11 @@ snapper \
 snap-pac \
 zram-generator \
 apparmor \
-ufw \
+firewalld \
 sbctl \
 efibootmgr
 ```
+
 
 Generate fstab:
 
@@ -832,88 +831,90 @@ nano /etc/sysctl.d/99-userns.conf
 
 # PHASE 13 — FIREWALL
 
-Configure UFW:
+Configure firewalld (nftables backend, deny inbound):
 
 ```bash
-ufw default deny incoming
-ufw default allow outgoing
-ufw enable
+pacman -S firewalld
+# or: bash scripts/firewalld-migrate.sh   # from an existing UFW host
+firewall-cmd --set-default-zone=drop
+systemctl enable --now firewalld
 ```
+
+Libvirt: bind `virbr0` to zone `libvirt`. Air-gapped malware net: host-only
+`virbr-malware` in zone `block` (see `scripts/firewalld-migrate.sh`).
 
 Default behavior:
 
 * **deny incoming** — All inbound connections rejected unless explicitly allowed
 * **allow outgoing** — All outbound connections permitted
 
-Add SSH rule (if needed). Arch’s UFW package usually has **no** `OpenSSH` app
-profile (`ufw app list` will not list it; `ufw allow OpenSSH` fails with
-“Could not find a profile matching 'OpenSSH'”). Allow the port instead:
+Add SSH rule (if needed). Prefer an explicit port over app profiles:
 
 ```bash
-sudo ufw allow 22/tcp comment 'ssh'
-sudo ufw reload
+sudo firewall-cmd --permanent --add-service=ssh
+# or: sudo firewall-cmd --permanent --add-port=22/tcp
+sudo firewall-cmd --reload
 sudo systemctl enable --now sshd
 ```
 
-Confirm with `sudo ufw status` and `ss -tlnp | grep ':22'`. Prefer key auth over passwords.
-
-Enable UFW at boot (if not already):
+Confirm with `firewall-cmd --list-all` and `ss -tlnp | grep ':22'`. Prefer key
+auth over passwords. Mask leftover UFW so it never fights firewalld on nftables:
 
 ```bash
-systemctl enable ufw.service
+systemctl disable --now ufw 2>/dev/null || true
+systemctl mask ufw 2>/dev/null || true
 ```
 
 ## Waydroid internet (NAT masquerade)
 
 Waydroid bridges the container on `waydroid0` (`192.168.240.1/24`) but provides
-no outbound NAT, so containers have no return path and no internet. Masquerade
-the container subnet and allow its DHCP/DNS to the host:
+no outbound NAT, so containers have no return path and no internet. Bind the
+bridge to a zone that allows DHCP/DNS to the host, then enable the idempotent
+`waydroid-nat.service` unit (from `stow/system/`, installed by
+`scripts/system-setup.sh`):
 
 ```bash
 # host-side DHCP (67) + DNS (53) for the container's dnsmasq
-ufw allow 53/udp
-ufw allow 67/udp
-```
-
-Enable the idempotent `waydroid-nat.service` unit (installed from `stow/system/` by `scripts/system-setup.sh`):
-
-```bash
+sudo firewall-cmd --permanent --add-port=53/udp
+sudo firewall-cmd --permanent --add-port=67/udp
+sudo firewall-cmd --reload
 sudo systemctl enable --now waydroid-nat.service
 ```
 
-This service ensures the masquerade rule is added exactly once and survives `ufw reload` cycles.
+This service ensures the masquerade rule is added exactly once and survives
+firewall reloads. If container forwarding fails, confirm `waydroid0` is in a
+zone that permits forward (or use the stock `libvirt` pattern from migrate).
 
-If container forwarding fails, check `/etc/default/ufw` and set
-`DEFAULT_FORWARD_POLICY="ACCEPT"` if it is still `DROP`.
-
-## Tailscale + UFW
+## Tailscale + firewalld
 
 Tailscale’s default `netfilter-mode=on` already accepts `tailscale0` in its own
-chains ([docs](https://tailscale.com/docs/reference/netfilter-modes)). For a
-locked-down host (`ufw default deny incoming`) still add UFW rules so policy is
-visible and works if netfilter mode is `off`:
+chains ([docs](https://tailscale.com/docs/reference/netfilter-modes)). On a
+default-`drop` host still bind the mesh iface and allow WireGuard so policy is
+visible if netfilter mode is `off`:
 
 ```bash
-bash scripts/ufw-tailscale.sh
+bash scripts/firewalld-tailscale.sh
+# deprecated alias: bash scripts/ufw-tailscale.sh
 # equivalent:
-#   sudo ufw allow in on tailscale0
-#   sudo ufw allow 41641/udp comment 'tailscale-wg'
-#   sudo ufw route allow in on tailscale0
-#   sudo ufw route allow out on tailscale0
+#   sudo firewall-cmd --permanent --zone=trusted --change-interface=tailscale0
+#   sudo firewall-cmd --permanent --add-port=41641/udp
+#   sudo firewall-cmd --reload
 ```
 
-`./install.sh` runs this when `tailscale` is on PATH. Official lock-down guide:
+`./install.sh` runs this when `tailscale` is on PATH. Official lock-down guide
+(Ubuntu/UFW wording; map to firewalld above):
 [Secure Ubuntu with UFW](https://tailscale.com/docs/how-to/secure-ubuntu-server-with-ufw).
 
 ## Libvirt disposable Kali (virbr0 NAT)
 
-UFW’s default **deny routed** blocks guest DHCP/NAT. Prefer narrow allows over
-global `DEFAULT_FORWARD_POLICY=ACCEPT`. `scripts/kali-disposable.sh setup` /
-`start --nat` add:
+firewalld default zone `drop` rejects unsolicited inbound; libvirt guest NAT
+needs `virbr0` in the stock `libvirt` zone (forward + masquerade). Prefer that
+over opening the host default zone. `scripts/firewalld-migrate.sh` and
+`scripts/kali-disposable.sh setup` / `start --nat`:
 
-* `ufw allow in|out on virbr0`
-* `ufw route allow` guest↔guest on `virbr0` and guest→host WAN ifaces
-* `ufw route allow from 192.168.122.0/24`
+* permanent `--zone=libvirt --add-interface=virbr0` (inherits when bridge appears)
+* runtime `--change-interface=virbr0` when the iface exists
+* host-only `virbr-malware` → zone `block` (no NAT/forward)
 
 Boot unit `virbr0-up.service` (from `stow/system/`, installed by
 `system-setup.sh` / kali `setup`) runs `virsh net-start default` then

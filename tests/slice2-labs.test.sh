@@ -1,0 +1,91 @@
+#!/usr/bin/env bash
+# Slice 2: labs / AI / rice scaffolding smoke.
+set -euo pipefail
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+fail() { echo "FAIL: $*" >&2; exit 1; }
+
+for f in \
+  "$ROOT/scripts/labs-setup.sh" \
+  "$ROOT/scripts/ai-stack-setup.sh" \
+  "$ROOT/scripts/rice-setup.sh" \
+  "$ROOT/scripts/configure.sh" \
+  "$ROOT/labs/lab-triage/Containerfile" \
+  "$ROOT/labs/lab-re/Containerfile" \
+  "$ROOT/labs/lab-android/Containerfile" \
+  "$ROOT/labs/lab-android/entrypoint.sh" \
+  "$ROOT/labs/lab-web/Containerfile" \
+  "$ROOT/labs/lab-web/compose.yml" \
+  "$ROOT/stow/ghostty/.config/ghostty/theme.conf" \
+  "$ROOT/stow/continue/.continue/config.yaml" \
+  "$ROOT/stow/gnome-text-editor/.local/share/gtksourceview-5/styles/gruvbox-dark.xml" \
+  "$ROOT/stow/btop/.config/btop/themes/gruvbox_dark.theme" \
+  "$ROOT/stow/applications/.local/share/applications/kali-disposable.desktop"
+do
+  [[ -f $f ]] || fail "missing $f"
+done
+
+for f in "$ROOT/scripts/labs-setup.sh" "$ROOT/scripts/ai-stack-setup.sh" \
+  "$ROOT/scripts/rice-setup.sh" "$ROOT/scripts/configure.sh" \
+  "$ROOT/labs/lab-android/entrypoint.sh"; do
+  bash -n "$f" || fail "bash -n $f"
+  [[ -x $f ]] || fail "not executable: $f"
+done
+
+bash -n "$ROOT/stow/zsh/.shell-functions" || fail "bash -n .shell-functions"
+
+grep -q 'lab-triage()' "$ROOT/stow/zsh/.shell-functions" || fail "lab-triage missing"
+grep -q 'lab-re()' "$ROOT/stow/zsh/.shell-functions" || fail "lab-re missing"
+grep -q 'lab-android()' "$ROOT/stow/zsh/.shell-functions" || fail "lab-android missing"
+grep -q 'lab-web()' "$ROOT/stow/zsh/.shell-functions" || fail "lab-web missing"
+grep -q 'hr-opencode()' "$ROOT/stow/zsh/.shell-functions" || fail "hr-opencode missing"
+grep -q 'hr-agy()' "$ROOT/stow/zsh/.shell-functions" || fail "hr-agy missing"
+grep -q 'CMD_NOTIFY_THRESHOLD:=15' "$ROOT/stow/zsh/.shell-functions" \
+  || fail "notify threshold must be 15s"
+grep -q 'active_border_color' "$ROOT/stow/zsh/.shell-functions" \
+  || fail "kitty lab accents missing"
+# Fail only on real bind paths, not comments about refusing secret dirs.
+grep -E '(-v|--bind)[[:space:]].*\.ssh|/home/[^/]+/\.ssh|\.gnupg:' \
+  "$ROOT/stow/zsh/.shell-functions" \
+  && fail "labs must not mount .ssh/.gnupg" || true
+grep -q '_lab_work_dir' "$ROOT/stow/zsh/.shell-functions" \
+  || fail "labs must guard HOME/root work mounts"
+grep -q 'refusing to mount' "$ROOT/stow/zsh/.shell-functions" \
+  || fail "labs must warn on HOME/root work mounts"
+grep -q 'SYS_PTRACE' "$ROOT/stow/zsh/.shell-functions" \
+  || fail "lab-re must add SYS_PTRACE"
+grep -q 'seccomp=unconfined' "$ROOT/stow/zsh/.shell-functions" \
+  || fail "lab-re must allow seccomp=unconfined for gdb/frida"
+# SYS_PTRACE only on lab-re path (not shared default for triage/android/web)
+triage_block=$(awk '/^lab-triage\(\)/,/^lab-re\(\)/' "$ROOT/stow/zsh/.shell-functions")
+echo "$triage_block" | grep -q 'SYS_PTRACE' \
+  && fail "lab-triage must not get SYS_PTRACE" || true
+
+grep -q 'install-caveman.sh' "$ROOT/scripts/ai-stack-setup.sh" \
+  && fail "ai-stack must not call install-caveman (Ponytail owns /caveman)" || true
+grep -q 'install-ponytail.sh' "$ROOT/scripts/ai-stack-setup.sh" \
+  || fail "ai-stack must still install ponytail"
+
+grep -q 'SETUP_LABS' "$ROOT/scripts/configure.sh" || fail "configure must wire SETUP_LABS"
+grep -q 'labs-setup.sh' "$ROOT/scripts/configure.sh" || fail "configure must call labs-setup"
+grep -q 'ai-stack-setup.sh' "$ROOT/scripts/configure.sh" || fail "configure must call ai-stack"
+grep -q 'rice-setup.sh' "$ROOT/scripts/configure.sh" || fail "configure must call rice-setup"
+grep -q 'LABS_SLICE2' "$ROOT/scripts/configure.sh" \
+  && fail "Slice 2 placeholders must be gone" || true
+
+grep -q '^bubblewrap$' "$ROOT/packages/pacman.txt" || fail "bubblewrap in pacman.txt"
+grep -q '^libnotify$' "$ROOT/packages/pacman.txt" || fail "libnotify in pacman.txt"
+grep -q '^btop$' "$ROOT/packages/pacman.txt" || fail "btop in pacman.txt"
+
+grep -q '127.0.0.1:11434' "$ROOT/stow/continue/.continue/config.yaml" \
+  || fail "continue must point at local ollama"
+grep -q 'maxPromptTokens: 2048' "$ROOT/stow/continue/.continue/config.yaml" \
+  || fail "continue FIM token budget"
+
+grep -q 'env_var.LAB_BADGE' "$ROOT/stow/starship/.config/starship.toml" \
+  || fail "starship LAB_BADGE badge"
+
+# Kitty host must not ship a forced Gruvbox theme file (stock colors)
+[[ ! -f $ROOT/stow/kitty/.config/kitty/theme.conf ]] \
+  || fail "kitty must stay stock (no theme.conf)"
+
+echo "PASS: slice2-labs.test.sh"

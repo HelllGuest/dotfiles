@@ -1,0 +1,26 @@
+# Continue.dev — local FIM on P15 ollama (qwen2.5-coder:3b).
+# Host without ollama: disable autocomplete in the IDE or ignore this file.
+name: Local P15 Ollama
+version: 1.0.0
+schema: v1
+
+models:
+  - name: qwen2.5-coder-fim
+    provider: ollama
+    model: qwen2.5-coder:3b
+    apiBase: http://127.0.0.1:11434
+    roles:
+      - autocomplete
+    autocompleteOptions:
+      maxPromptTokens: 2048
+      # Keep context inside 4GB VRAM budget with q8_0 KV.
+      # Continue uses this as soft cap for prompt assembly.
+  - name: qwen3.5-chat
+    provider: ollama
+    model: qwen3.5:4b
+    apiBase: http://127.0.0.1:11434
+    roles:
+      - chat
+      - edit
+
+tabAutocompleteModel: qwen2.5-coder-fim

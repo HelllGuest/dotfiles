@@ -166,47 +166,26 @@ cmd_setup_host() {
     sudo_do systemctl enable --now virbr0-up.service 2>/dev/null || true
   fi
   sudo_do ip link set virbr0 up 2>/dev/null || true
-  # UFW deny-routed blocks guest DHCP/NAT unless virbr0 is allowed.
-  if command -v ufw >/dev/null 2>&1 && sudo_do ufw status 2>/dev/null | grep -qi 'Status: active'; then
-    sudo_do ufw allow in on virbr0 2>/dev/null || true
-    sudo_do ufw allow out on virbr0 2>/dev/null || true
-    sudo_do ufw route allow in on virbr0 out on virbr0 2>/dev/null || true
-    local iface
-    for iface in /sys/class/net/*; do
-      iface="${iface##*/}"
-      case "$iface" in
-        lo|virbr*|vnet*|docker*|br-*|tun*|tap*|wg*|zt*) continue ;;
-      esac
-      sudo_do ufw route allow in on virbr0 out on "$iface" 2>/dev/null || true
-    done
-    sudo_do ufw route allow from 192.168.122.0/24 2>/dev/null || true
+  # firewalld: libvirt zone owns virbr0 (see scripts/firewalld-migrate.sh).
+  if command -v firewall-cmd >/dev/null 2>&1 && systemctl is-active --quiet firewalld 2>/dev/null; then
+    sudo_do firewall-cmd --permanent --zone=libvirt --change-interface=virbr0 2>/dev/null || true
+    sudo_do firewall-cmd --zone=libvirt --change-interface=virbr0 2>/dev/null || true
+    sudo_do firewall-cmd --reload 2>/dev/null || true
   fi
   sudo_do usermod -aG libvirt,kvm "$USER"
   ensure_vm_dir
   echo "✓ packages + libvirtd. Log out/in (or: newgrp libvirt) before start."
 }
 
-# Ensure default NAT is usable (UFW often leaves virbr0 isolated / DOWN).
+# Ensure default NAT is usable (firewalld libvirt zone + bridge up).
 ensure_nat_forward() {
   [[ "$NET_MODE" == nat ]] || return 0
   virsh_u net-start default 2>/dev/null || true
   # Admin-up even with NO-CARRIER; carrier appears when a guest tap attaches.
   sudo_do ip link set virbr0 up >/dev/null 2>&1 || true
-  if command -v ufw >/dev/null 2>&1 && sudo_do ufw status 2>/dev/null | grep -qi 'Status: active'; then
-    sudo_do ufw allow in on virbr0 >/dev/null 2>&1 || true
-    sudo_do ufw allow out on virbr0 >/dev/null 2>&1 || true
-    sudo_do ufw route allow in on virbr0 out on virbr0 >/dev/null 2>&1 || true
-    # Guest → host WAN (apt/updates). DEFAULT_FORWARD_POLICY=DROP otherwise.
-    local iface
-    for iface in /sys/class/net/*; do
-      iface="${iface##*/}"
-      case "$iface" in
-        lo|virbr*|vnet*|docker*|br-*|tun*|tap*|wg*|zt*) continue ;;
-      esac
-      sudo_do ufw route allow in on virbr0 out on "$iface" >/dev/null 2>&1 || true
-    done
-    # Belt: subnet allow even if iface name changes (wifi rename).
-    sudo_do ufw route allow from 192.168.122.0/24 >/dev/null 2>&1 || true
+  if command -v firewall-cmd >/dev/null 2>&1 && systemctl is-active --quiet firewalld 2>/dev/null; then
+    sudo_do firewall-cmd --permanent --zone=libvirt --change-interface=virbr0 >/dev/null 2>&1 || true
+    sudo_do firewall-cmd --zone=libvirt --change-interface=virbr0 >/dev/null 2>&1 || true
   fi
 }
 
@@ -741,7 +720,8 @@ cmd_status() {
 cmd_lan_check() {
   need virsh
   resolve_lan_iface
-  local gip host_v4 guest_lan="" gw="" ok=1
+  local gip guest_lan="" ok=1
+
   echo "HOST_IFACE=$LAN_IFACE $(ip -br link show "$LAN_IFACE" 2>/dev/null || echo missing)"
   if ip -4 -o addr show dev "$LAN_IFACE" 2>/dev/null | grep -q .; then
     echo "FAIL: host $LAN_IFACE still has IPv4 (blocks macvtap):"

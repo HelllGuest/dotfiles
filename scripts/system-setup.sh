@@ -1,10 +1,9 @@
 #!/usr/bin/env bash
 # system-setup.sh — install stow/system/ into / as root-owned regular files.
 #
-# Not stowed: /etc symlinks into $HOME dangle at early boot (ufw.service starts
-# before /home is mounted, finds no before.rules, and leaves a half-loaded
-# firewall that drops reply traffic) and let the repo owner edit root config.
-# Same reason as zram-setup.sh and gdm-setup.sh.
+# Not stowed: /etc symlinks into $HOME dangle at early boot (firewalld /
+# other early units start before /home is mounted) and let the repo owner
+# edit root config. Same reason as zram-setup.sh and gdm-setup.sh.
 #
 # * Removes leftover stow symlinks (files or folded directories) first.
 # * Backs up a differing existing file to /var/backups/dotfiles-system/<stamp>/.
@@ -151,11 +150,6 @@ sudo systemctl daemon-reload || true
 changed_list=" ${changed[*]} "
 if [[ "$changed_list" == *" etc/udev/rules.d/"* ]]; then
     sudo udevadm control --reload || true
-fi
-# ufw status, not systemctl: after a failed boot-time start (dangling stowed
-# before.rules) the unit is 'failed' but half-loaded rules are still live.
-if [[ "$changed_list" == *" etc/ufw/before.rules "* ]] && sudo ufw status 2>/dev/null | grep -q '^Status: active'; then
-    sudo ufw reload || echo "ufw reload failed — check: sudo ufw status verbose" >&2
 fi
 if [[ "$changed_list" == *" etc/modprobe.d/"* ]]; then
     echo "Rebuilding UKIs (modprobe.d changed)..."

@@ -336,7 +336,7 @@ BASE_PKGS=(
   networkmanager sudo zsh git vim nano
   reflector pacman-contrib
   mkinitcpio snapper snap-pac zram-generator
-  apparmor ufw sbctl efibootmgr
+  apparmor firewalld sbctl efibootmgr
 )
 say "pacstrap base system ($UCODE)"
 pacstrap -K /mnt "${BASE_PKGS[@]}"
@@ -595,11 +595,21 @@ EOF
 # userns: needed for Flatpak/Podman under linux-hardened; '-' = ignore on LTS (key absent)
 echo '-kernel.unprivileged_userns_clone = 1' > /etc/sysctl.d/99-userns.conf
 
-# firewall — set ENABLED=yes so it's active on first boot (rule-apply may warn in chroot)
-ufw default deny incoming
-ufw default allow outgoing
-ufw --force enable >/dev/null 2>&1 || true
-grep -q '^ENABLED=yes' /etc/ufw/ufw.conf 2>/dev/null || sed -i 's/^ENABLED=.*/ENABLED=yes/' /etc/ufw/ufw.conf 2>/dev/null || true
+# firewalld (nftables) — default zone drop (deny inbound)
+mkdir -p /etc/firewalld
+if [[ ! -f /etc/firewalld/firewalld.conf ]]; then
+  printf '%s\n' '# seeded by Stage A' 'DefaultZone=drop' 'FirewallBackend=nftables' \
+    > /etc/firewalld/firewalld.conf
+else
+  sed -i 's/^FirewallBackend=.*/FirewallBackend=nftables/' /etc/firewalld/firewalld.conf || true
+  grep -q '^FirewallBackend=' /etc/firewalld/firewalld.conf \
+    || echo 'FirewallBackend=nftables' >> /etc/firewalld/firewalld.conf
+  if grep -q '^DefaultZone=' /etc/firewalld/firewalld.conf; then
+    sed -i 's/^DefaultZone=.*/DefaultZone=drop/' /etc/firewalld/firewalld.conf
+  else
+    echo 'DefaultZone=drop' >> /etc/firewalld/firewalld.conf
+  fi
+fi
 
 # reflector mirrors
 cat > /etc/xdg/reflector/reflector.conf <<EOF
@@ -612,9 +622,12 @@ EOF
 # pacman niceties
 sed -i 's/^#Color/Color/; s/^#ParallelDownloads.*/ParallelDownloads = 10/' /etc/pacman.conf
 
-# services
-systemctl enable NetworkManager apparmor ufw bluetooth fstrim.timer reflector.timer \
+# services (mask ufw so it never fights firewalld on nftables)
+systemctl disable --now ufw 2>/dev/null || true
+systemctl mask ufw 2>/dev/null || true
+systemctl enable NetworkManager apparmor firewalld bluetooth fstrim.timer reflector.timer \
                  systemd-tmpfiles-clean.timer
+
 
 # snapper config for / (handle pre-existing @snapshots mount) — non-fatal
 umount /.snapshots 2>/dev/null || true

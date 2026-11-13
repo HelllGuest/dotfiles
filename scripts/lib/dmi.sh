@@ -19,7 +19,10 @@ dmi_label() {
 }
 
 is_thinkpad_p15() {
-  echo "$(dmi_label)" | grep -qiE 'ThinkPad[[:space:]]*P15|P15[[:space:]]+Gen'
+  # Name/version match, or machine type 20SU* (same blob Stage A uses).
+  local blob
+  blob="$(dmi_label) $(dmi_field product_sku) $(dmi_field product_name) $(dmi_field product_version)"
+  echo "$blob" | grep -qiE 'ThinkPad[[:space:]]*P15|P15[[:space:]]+Gen|(^|[[:space:]_/])20SU([[:alnum:]_-]|$)'
 }
 
 # T14s Gen 3 AMD only — machine type 21CQ / 21CR (MTM e.g. 21CRS1PU00).

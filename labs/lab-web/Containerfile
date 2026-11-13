@@ -1,0 +1,14 @@
+# Web/dev sandbox with mise (node/python/bun) — compose adds postgres/redis.
+FROM docker.io/library/archlinux:latest
+RUN pacman -Syu --noconfirm \
+      bash curl git wget unzip python python-pip \
+      nodejs npm \
+    && pacman -Scc --noconfirm \
+    && useradd -m -u 1000 lab \
+    && curl -fsSL https://mise.run | MISE_INSTALL_PATH=/usr/local/bin/mise sh
+USER lab
+ENV LAB_BADGE="[WEB]" \
+    MISE_DATA_DIR=/home/lab/.local/share/mise \
+    PATH="/home/lab/.local/share/mise/shims:/usr/local/bin:${PATH}"
+WORKDIR /work
+CMD ["bash"]

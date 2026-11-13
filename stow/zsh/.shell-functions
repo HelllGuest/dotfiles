@@ -179,7 +179,171 @@ hr-cursor() {
 
 hr-proxy() {
     _hr_need || return
-    headroom proxy --port "${HEADROOM_PORT:-8787}" "$@"
+    # Bind localhost only (never 0.0.0.0).
+    headroom proxy --host 127.0.0.1 --port "${HEADROOM_PORT:-8787}" "$@"
+}
+
+hr-opencode() {
+    _hr_need || return
+    headroom wrap opencode "$@"
+}
+
+hr-agy() {
+    _hr_need || return
+    headroom wrap agy "$@"
+}
+
+# ── Lab sandboxes (Slice 2) ──────────────────────────────────────────
+# Kitty host stays stock; wrappers add Gruvbox accents via --override.
+: "${LAB_ROOT:=/srv/lab}"
+: "${LAB_SAMPLES:=${LAB_ROOT}/samples}"
+: "${LAB_OUT:=${LAB_ROOT}/out}"
+
+_lab_reexec_kitty() {
+    # $1 title $2 accent $3 function-name; remaining args forwarded
+    local title=$1 accent=$2 fn=$3
+    shift 3
+    [[ "${LAB_KITTY:-1}" == 1 ]] || return 1
+    _has kitty || return 1
+    [[ -z "${KITTY_WINDOW_ID:-}${KITTY_PID:-}" ]] || return 1
+    [[ -t 1 ]] || return 1
+    local qargs
+    printf -v qargs '%q ' "$@"
+    exec kitty --title "$title" \
+        --override "active_border_color=${accent}" \
+        --override "active_tab_background=${accent}" \
+        --override "tab_bar_background=#282828" \
+        --override "tab_bar_margin_color=${accent}" \
+        -e env LAB_KITTY=0 "$SHELL" -i -c "${fn} ${qargs}"
+}
+
+# Resolve /work bind. Never mount $HOME or / (would leak ssh/gnupg secret dirs).
+_lab_work_dir() {
+    local cwd home out
+    cwd=$(pwd -P 2>/dev/null || pwd)
+    home=$(readlink -f -- "${HOME:-/}" 2>/dev/null || echo "$HOME")
+    out=$(readlink -f -- "$LAB_OUT" 2>/dev/null || echo "$LAB_OUT")
+    if [[ "$cwd" == "$home" || "$cwd" == "/" ]]; then
+        echo "lab: refusing to mount $cwd as /work (home/root leak). Using $out — cd into a project first." >&2
+        [[ -d $out ]] || mkdir -p "$out"
+        printf '%s' "$out"
+        return
+    fi
+    printf '%s' "$cwd"
+}
+
+_lab_podman() {
+    # $1 image $2 badge $3 network
+    # Optional podman extras: --cap-add X / --security-opt Y (until a non-flag arg)
+    # Remaining args = container command
+    local image=$1 badge=$2 net=$3
+    shift 3
+    local extras=()
+    while (($#)); do
+        case $1 in
+            --cap-add|--security-opt)
+                extras+=("$1" "$2")
+                shift 2
+                ;;
+            --)
+                shift
+                break
+                ;;
+            -*)
+                # unknown podman flag: stop treating as extras
+                break
+                ;;
+            *)
+                break
+                ;;
+        esac
+    done
+    local samples out work
+    samples=$(readlink -f -- "$LAB_SAMPLES" 2>/dev/null || echo "$LAB_SAMPLES")
+    out=$(readlink -f -- "$LAB_OUT" 2>/dev/null || echo "$LAB_OUT")
+    work=$(_lab_work_dir)
+    [[ -d $samples ]] || { echo "lab: missing $samples — run: bash ~/dotfiles/scripts/labs-setup.sh" >&2; return 1; }
+    [[ -d $out ]] || mkdir -p "$out"
+    _has podman || { echo "lab: podman missing" >&2; return 1; }
+    local args=(
+        run --rm -it
+        --security-opt no-new-privileges
+        --cap-drop ALL
+        "${extras[@]}"
+        --userns keep-id
+        --user "$(id -u):$(id -g)"
+        --network "$net"
+        -e "LAB_BADGE=$badge"
+        -v "${samples}:/srv/lab/samples:ro,Z"
+        -v "${out}:/srv/lab/out:Z"
+        -v "${work}:/work:Z"
+        -w /work
+        "$image"
+    )
+    if [[ $# -gt 0 ]]; then
+        podman "${args[@]}" "$@"
+    else
+        podman "${args[@]}"
+    fi
+}
+
+lab-triage() {
+    _lab_reexec_kitty "lab-triage" "#cc241d" lab-triage "$@" && return
+    export LAB_BADGE="[MALWARE]"
+    if podman image exists localhost/lab-triage:latest 2>/dev/null; then
+        _lab_podman localhost/lab-triage:latest "[MALWARE]" none "$@"
+        return
+    fi
+    if _has bwrap; then
+        local samples work
+        samples=$(readlink -f -- "$LAB_SAMPLES")
+        work=$(_lab_work_dir)
+        [[ -d $samples ]] || { echo "lab-triage: $samples missing" >&2; return 1; }
+        bwrap --ro-bind /usr /usr --ro-bind /bin /bin --ro-bind /lib /lib \
+            --ro-bind /lib64 /lib64 --ro-bind /etc /etc --proc /proc --dev /dev \
+            --ro-bind "$samples" /srv/lab/samples \
+            --bind "$work" /work --chdir /work \
+            --unshare-net --die-with-parent \
+            -- "${@:-bash}"
+        return
+    fi
+    echo "lab-triage: build image (bash ~/dotfiles/scripts/labs-setup.sh) or install bubblewrap" >&2
+    return 1
+}
+
+lab-re() {
+    # SYS_PTRACE + seccomp=unconfined: gdb/frida inside container only (host ptrace_scope untouched).
+    _lab_reexec_kitty "lab-re" "#689d6a" lab-re "$@" && return
+    _lab_podman localhost/lab-re:latest "[RE]" none \
+        --cap-add SYS_PTRACE --security-opt seccomp=unconfined "$@"
+}
+
+lab-android() {
+    _lab_reexec_kitty "lab-android" "#98971a" lab-android "$@" && return
+    local extra=()
+    [[ -e /dev/kvm ]] && extra+=(--device /dev/kvm)
+    if [[ -n "${WAYLAND_DISPLAY:-}" && -n "${XDG_RUNTIME_DIR:-}" ]]; then
+        extra+=(-e "WAYLAND_DISPLAY=${WAYLAND_DISPLAY}")
+        extra+=(-v "${XDG_RUNTIME_DIR}/${WAYLAND_DISPLAY}:${XDG_RUNTIME_DIR}/${WAYLAND_DISPLAY}")
+    fi
+    local samples out work
+    samples=$(readlink -f -- "$LAB_SAMPLES")
+    out=$(readlink -f -- "$LAB_OUT")
+    work=$(_lab_work_dir)
+    [[ -d $samples ]] || { echo "lab-android: $samples missing — labs-setup.sh" >&2; return 1; }
+    [[ -d $out ]] || mkdir -p "$out"
+    podman run --rm -it --security-opt no-new-privileges --cap-drop ALL \
+        --userns keep-id --user "$(id -u):$(id -g)" --network pasta \
+        -e LAB_BADGE="[ANDROID]" \
+        -v "${samples}:/srv/lab/samples:ro,Z" -v "${out}:/srv/lab/out:Z" \
+        -v "${work}:/work:Z" -w /work \
+        "${extra[@]}" \
+        localhost/lab-android:latest "$@"
+}
+
+lab-web() {
+    _lab_reexec_kitty "lab-web" "#458588" lab-web "$@" && return
+    _lab_podman localhost/lab-web:latest "[WEB]" pasta "$@"
 }
 
 # OSC 7: terminal CWD reporting (zsh only)
@@ -198,7 +362,7 @@ fi
 # works identically in ghostty, kitty and GNOME Console. Skipped on plain
 # TTYs / SSH sessions with no display. Override the threshold by exporting
 # CMD_NOTIFY_THRESHOLD (seconds) before the shell starts.
-: "${CMD_NOTIFY_THRESHOLD:=10}"
+: "${CMD_NOTIFY_THRESHOLD:=15}"
 
 _cmd_notify_supported() {
     _has notify-send || return 1

@@ -34,7 +34,7 @@ Thank you for helping improve this setup. Follow these guidelines to keep the re
 ### Stow
 
 - User configs: `stow -R -t "$HOME" <package>` from the `stow/` directory. Do not re-add tracked repo-root convenience links (`.zshrc`, `.zsh-plugins`, `.config/*`); those are gitignored — stow owns the real trees under `stow/`.
-- System configs: `bash scripts/system-setup.sh` (via `install.sh`) installs `stow/system/` as root-owned regular files. Never `stow -t / system` or `stow -t / zram`: `/etc` symlinks into `$HOME` dangle at early boot and make root config user-writable. **zram:** `scripts/zram-setup.sh`. Kernel cmdline is owned by the installer / machine profile (P15 / T14s), not `stow/system/`. UKIs rebuild when a managed `modprobe.d` file changes.
+- System configs: `bash scripts/system-setup.sh` (via `install.sh`) installs `stow/system/` as root-owned regular files. Never `stow -t / system` or `stow -t / zram`: `/etc` symlinks into `$HOME` dangle at early boot and make root config user-writable. **zram:** `scripts/zram-setup.sh`. Kernel cmdline is owned by the installer / machine profile (P15 / T14s), not `stow/system/`. Firewall is firewalld (nftables); migrate with `scripts/firewalld-migrate.sh`. UKIs rebuild when a managed `modprobe.d` file changes.
 - `install.sh` and `stow-only.sh` encode this logic — update docs if you change it.
 - Regenerate `all_stow_files.txt` after adding or removing stowed files:
   ```bash

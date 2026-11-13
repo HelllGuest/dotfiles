@@ -63,6 +63,15 @@ if [ -f "scripts/apply-profile.sh" ]; then
     bash scripts/apply-profile.sh || echo "Profile application had some failures."
 fi
 
+# 1.06 Stage B configurator (firewalld / ollama / profile) — TTY only
+if [ "${SKIP_CONFIGURE:-0}" != 1 ] && [ -t 0 ] && [ -f scripts/configure.sh ]; then
+    if [ "${CONFIGURE:-0}" = 1 ] || [ "${CONFIGURE:-}" = Y ]; then
+        bash scripts/configure.sh || echo "configure.sh reported issues."
+    else
+        echo "Stage B modules: run  bash scripts/configure.sh  (or CONFIGURE=1 ./install.sh)"
+    fi
+fi
+
 # 1.1 Install Flatpaks
 if [ -f "scripts/install-flatpaks.sh" ]; then
     echo "Installing flatpak packages..."
@@ -143,9 +152,6 @@ fi
 # 3.0 GNOME Console (kgx app settings only — shortcuts in gnome/dconf/user.conf)
 if [ -f "scripts/gnome-console-setup.sh" ]; then
     SKIP_GNOME_MEDIA_KEYS=1 bash scripts/gnome-console-setup.sh || echo "GNOME Console setup skipped."
-fi
-if [ -f "scripts/ptyxis-setup.sh" ]; then
-    bash scripts/ptyxis-setup.sh || echo "Ptyxis setup skipped."
 fi
 
 # 3.2 GDM login screen (Wayland, greeter dconf, udev)
@@ -299,9 +305,9 @@ if [ -f "scripts/privacy-hardener.sh" ]; then
     bash scripts/privacy-hardener.sh || fail_step "Privacy hardener failed."
 fi
 
-# 4.5 Tailscale + UFW (optional; no-op if ufw inactive / tailscale absent)
-if [ -f "scripts/ufw-tailscale.sh" ] && command -v tailscale >/dev/null 2>&1; then
-    bash scripts/ufw-tailscale.sh || echo "Tailscale UFW rules skipped."
+# 4.5 Tailscale + firewalld (optional; no-op if firewalld inactive / tailscale absent)
+if [ -f "scripts/firewalld-tailscale.sh" ] && command -v tailscale >/dev/null 2>&1; then
+    bash scripts/firewalld-tailscale.sh || echo "Tailscale firewalld rules skipped."
 fi
 
 # 5. Final Health Check

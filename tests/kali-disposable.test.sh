@@ -32,12 +32,12 @@ grep -q 'KALI_NET:-isolated' "$ROOT/scripts/kali-disposable.sh" \
   || fail "kali default net must be isolated"
 grep -q 'cloud-init' "$ROOT/scripts/kali-disposable.sh" \
   || fail "kali start must seed cloud-init for DHCP"
-grep -q 'ufw route allow in on virbr0' "$ROOT/scripts/kali-disposable.sh" \
-  || fail "kali setup/start must allow UFW forward on virbr0"
+grep -q 'firewall-cmd' "$ROOT/scripts/kali-disposable.sh" \
+  || fail "kali setup/start must use firewalld for virbr0"
+grep -q 'zone=libvirt' "$ROOT/scripts/kali-disposable.sh" \
+  || fail "kali must bind virbr0 to firewalld libvirt zone"
 grep -q 'ip link set virbr0 up' "$ROOT/scripts/kali-disposable.sh" \
   || fail "kali must bring virbr0 admin-up for NAT"
-grep -q '192.168.122.0/24' "$ROOT/scripts/kali-disposable.sh" \
-  || fail "kali UFW must allow libvirt NAT subnet forward"
 grep -q 'virbr0-up.service' "$ROOT/scripts/kali-disposable.sh" \
   || fail "kali setup must install virbr0-up.service"
 [[ -f "$ROOT/stow/system/etc/systemd/system/virbr0-up.service" ]] \
@@ -52,13 +52,13 @@ grep -q 'rd.driver.blacklist=nouveau' "$ROOT/profiles/thinkpad-p15.sh" \
   || fail "thinkpad-p15 must blacklist nouveau on cmdline"
 grep -q 'install nouveau /bin/false' "$ROOT/profiles/thinkpad-p15.sh" \
   || fail "thinkpad-p15 must block nouveau via modprobe install"
-[[ -x "$ROOT/scripts/ufw-tailscale.sh" ]] || fail "ufw-tailscale.sh missing/not executable"
-grep -q 'allow in on tailscale0' "$ROOT/scripts/ufw-tailscale.sh" \
-  || fail "ufw-tailscale must allow tailscale0"
+[[ -x "$ROOT/scripts/firewalld-tailscale.sh" ]] || fail "firewalld-tailscale.sh missing/not executable"
+grep -q 'tailscale0' "$ROOT/scripts/firewalld-tailscale.sh" \
+  || fail "firewalld-tailscale must mention tailscale0"
 grep -q '^tailscale$' "$ROOT/packages/pacman.txt" \
   || fail "pacman.txt must list tailscale"
-grep -q 'ufw-tailscale.sh' "$ROOT/install.sh" \
-  || fail "install.sh must call ufw-tailscale.sh"
+grep -q 'firewalld-tailscale.sh' "$ROOT/install.sh" \
+  || fail "install.sh must call firewalld-tailscale.sh"
 grep -q 'Brovi H155-381' "$ROOT/docs/fresh-install-coding-re.md" \
   || fail "fresh-install docs must mention Brovi H155-381 CPE path"
 grep -q 'guest_ipv4' "$ROOT/scripts/kali-disposable.sh" \

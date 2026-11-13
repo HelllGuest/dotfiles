@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Lab RE
+Comment=Reverse-engineering Podman sandbox
+Exec=bash -lc 'lab-re'
+Icon=utilities-terminal
+Terminal=true
+Categories=Development;Security;
+StartupWMClass=lab-re

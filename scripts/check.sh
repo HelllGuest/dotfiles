@@ -526,39 +526,28 @@ else
     echo "○ Claude skipWebFetchPreflight not confirmed"
 fi
 
-echo "--- Tailscale / UFW ---"
+echo "--- Tailscale / firewalld ---"
 if command -v tailscale >/dev/null 2>&1; then
     echo "✓ tailscale installed"
-    _ufw_st=""
-    if command -v ufw >/dev/null 2>&1; then
-      if sudo -n true 2>/dev/null; then
-        _ufw_st="$(sudo -n ufw status 2>/dev/null || true)"
-      else
-        _ufw_st="$(ufw status 2>/dev/null || true)"
-      fi
-    fi
-    if echo "$_ufw_st" | grep -qi 'Status: active'; then
-        if echo "$_ufw_st" | grep -qi 'tailscale0'; then
-            echo "✓ UFW allows tailscale0"
+    if systemctl is-active --quiet firewalld 2>/dev/null; then
+        if firewall-cmd --zone=trusted --list-interfaces 2>/dev/null | grep -qw tailscale0 \
+          || firewall-cmd --get-active-zones 2>/dev/null | grep -A1 '^trusted' | grep -qw tailscale0; then
+            echo "✓ firewalld trusted zone includes tailscale0"
         else
-            echo "○ UFW active but no tailscale0 rule — bash scripts/ufw-tailscale.sh"
-        fi
-    elif systemctl is-active --quiet ufw 2>/dev/null || grep -qx 'ENABLED=yes' /etc/ufw/ufw.conf 2>/dev/null; then
-        if [[ -r /etc/ufw/user.rules ]]; then
-            if grep -qi 'tailscale0' /etc/ufw/user.rules 2>/dev/null; then
-                echo "✓ UFW allows tailscale0"
-            else
-                echo "○ UFW active but no tailscale0 rule — bash scripts/ufw-tailscale.sh"
-            fi
-        else
-            echo "○ UFW active (user.rules unreadable without sudo to verify tailscale0)"
+            echo "○ firewalld active but tailscale0 not in trusted — bash scripts/firewalld-tailscale.sh"
         fi
     else
-        echo "○ ufw inactive, missing, or needs sudo (Tailscale netfilter may still protect)"
+        echo "○ firewalld inactive (run scripts/firewalld-migrate.sh)"
     fi
-    unset _ufw_st
 else
     echo "○ tailscale not installed"
+fi
+if systemctl is-active --quiet firewalld 2>/dev/null; then
+    echo "✓ firewalld active (default=$(firewall-cmd --get-default-zone 2>/dev/null || echo ?))"
+elif systemctl is-enabled --quiet firewalld 2>/dev/null; then
+    echo "○ firewalld enabled but not active"
+else
+    echo "○ firewalld not enabled"
 fi
 
 echo "--- Proton VPN ---"
