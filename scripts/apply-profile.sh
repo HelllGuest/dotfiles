@@ -16,21 +16,26 @@ apply_profile() {
       echo "Applying profile '${name}'..."
     fi
     # shellcheck source=/dev/null
-    source "profiles/${name}.sh" || echo "Profile application had some failures (likely sudo)."
-    return 0
+    if source "profiles/${name}.sh"; then
+      return 0
+    fi
+    echo "Profile application had some failures (likely sudo)." >&2
+    return 1
   fi
   return 1
 }
 
 HOST=$(hostname 2>/dev/null || cat /etc/hostname 2>/dev/null || echo "unknown")
-if apply_profile "$HOST" "hostname"; then
-  exit 0
+if [[ -f "profiles/${HOST}.sh" ]]; then
+  apply_profile "$HOST" "hostname"
+  exit $?
 fi
 
 if [[ -f "scripts/detect-profile.sh" ]]; then
   DETECTED=$(bash scripts/detect-profile.sh 2>/dev/null || true)
-  if [[ -n "$DETECTED" ]] && apply_profile "$DETECTED" "hardware detect"; then
-    exit 0
+  if [[ -n "$DETECTED" && -f "profiles/${DETECTED}.sh" ]]; then
+    apply_profile "$DETECTED" "hardware detect"
+    exit $?
   fi
   echo "No hostname or hardware profile matched. Using default install."
   exit 0

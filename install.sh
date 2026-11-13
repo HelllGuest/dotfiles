@@ -47,7 +47,8 @@ if [ -f "packages/pacman.txt" ]; then
         # shellcheck source=scripts/lib/dmi.sh
         source scripts/lib/dmi.sh
         if is_thinkpad_t14s; then
-            pkg_list="$(printf '%s\n' "$pkg_list" | grep -vxE 'intel-media-driver|vulkan-intel|nvidia-open-dkms|nvidia-prime|nvidia-utils' || true)"
+            # Drop Intel/NVIDIA Optimus stack (incl. egl-wayland) on AMD T14s.
+            pkg_list="$(printf '%s\n' "$pkg_list" | grep -vxE 'intel-media-driver|vulkan-intel|nvidia-open-dkms|nvidia-prime|nvidia-utils|egl-wayland' || true)"
         fi
     fi
     if [ -n "$pkg_list" ]; then
@@ -60,7 +61,8 @@ fi
 # 1.05 Machine profile (hostname override, else hardware detect)
 # Runs after pacman so thinkpad-p15 can enable nvidia-*.service and rebuild UKIs.
 if [ -f "scripts/apply-profile.sh" ]; then
-    bash scripts/apply-profile.sh || echo "Profile application had some failures."
+    bash scripts/apply-profile.sh \
+        || fail_step "Profile application failed (sudo / hardware setup) — see output above."
 fi
 
 # 1.06 Stage B configurator (firewalld / ollama / profile) — TTY only
@@ -113,9 +115,11 @@ for dir in */; do
     elif [ "$dir" = "gdm" ]; then
         echo "Skipping gdm (handled by scripts/gdm-setup.sh)."
     elif [ "$STOW_CMD" == "stow" ]; then
-        stow -R -t "$HOME" "$dir"
+        stow -R -t "$HOME" "$dir" \
+            || fail_step "stow failed for package: $dir"
     else
-        $STOW_CMD "$dir" "$HOME"
+        $STOW_CMD "$dir" "$HOME" \
+            || fail_step "minimal-stow failed for package: $dir"
     fi
 done
 cd .. || exit 1
@@ -270,6 +274,20 @@ if [ -f "scripts/install-coding-agents.sh" ] && command -v npm >/dev/null 2>&1; 
     fi
 fi
 
+# 3.5j AI stack extras (Continue FIM config, P15 OpenCode↔ollama, hr-proxy unit).
+# Cores (Headroom / coding-agents / Caveman / Ponytail) already ran above.
+if [ -f "scripts/ai-stack-setup.sh" ]; then
+    AI_STACK_EXTRAS_ONLY=1 bash scripts/ai-stack-setup.sh \
+        || echo "AI stack extras skipped — re-run: AI_STACK_EXTRAS_ONLY=1 bash scripts/ai-stack-setup.sh"
+fi
+
+# 3.5k Local LLM on P15 (ollama-cuda + qwen pulls; no-op on other hosts).
+# Opt out: SKIP_OLLAMA=1 ./install.sh
+if [ "${SKIP_OLLAMA:-0}" != 1 ] && [ -f "scripts/ollama-setup.sh" ]; then
+    bash scripts/ollama-setup.sh \
+        || echo "ollama setup skipped — re-run: bash scripts/ollama-setup.sh"
+fi
+
 # 3.6 PhotoGIMP (Photoshop-like GIMP layout — optional)
 if [ -f "scripts/install-photogimp.sh" ]; then
     bash scripts/install-photogimp.sh || echo "PhotoGIMP setup skipped."
@@ -306,7 +324,8 @@ fi
 
 # 5. Final Health Check
 if [ -f "scripts/check.sh" ]; then
-    bash scripts/check.sh
+    bash scripts/check.sh \
+        || fail_step "Health check reported failures (✗) — see output above."
 fi
 
 if [ -f "scripts/validate-configs.sh" ]; then

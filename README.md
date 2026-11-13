@@ -253,7 +253,7 @@ Installs packages, stows configs into `$HOME`, installs `stow/system/` into `/et
 ./install.sh
 ```
 
-Machine profiles run in `./install.sh` via `scripts/apply-profile.sh` **after** `packages/pacman.txt` (exactly one profile): `profiles/$(hostname).sh` if it exists, otherwise `scripts/detect-profile.sh` (ThinkPad P15 → `thinkpad-p15`, ThinkPad T14s Gen 3 AMD 21CQ/21CR → `thinkpad-t14s`, other ThinkPads/laptop chassis → `laptop`). Pacman first so Optimus/NVIDIA packages exist before `thinkpad-p15` enables services and rebuilds UKIs (on `thinkpad-t14s` AMD hosts, `./install.sh` skips the Intel/NVIDIA GPU packages in `packages/pacman.txt`). There is no `nvidia.sh`; Optimus setup is inside `profiles/thinkpad-p15.sh`.
+Machine profiles run in `./install.sh` via `scripts/apply-profile.sh` **after** `packages/pacman.txt` (exactly one profile): `profiles/$(hostname).sh` if it exists, otherwise `scripts/detect-profile.sh` (ThinkPad P15 → `thinkpad-p15`, ThinkPad T14s Gen 3 AMD 21CQ/21CR → `thinkpad-t14s`, other ThinkPads/laptop chassis → `laptop`). Pacman first so Optimus/NVIDIA packages exist before `thinkpad-p15` enables services and rebuilds UKIs (on `thinkpad-t14s` AMD hosts, `./install.sh` skips the Intel/NVIDIA GPU packages in `packages/pacman.txt`, including `egl-wayland`). There is no `nvidia.sh`; Optimus setup is inside `profiles/thinkpad-p15.sh`.
 
 ThinkPad system configs (kernel cmdline templates, sleep, Wayland env, units) live in `stow/system/` and are installed by `scripts/system-setup.sh` as **root-owned regular files**, never stow symlinks (re-run it after editing `stow/system/`). Why, and how the cmdline UUID is handled: [hardened guide — `system/` files](docs/hardened-arch-gnome.md#kernel-cmdline--system-files-installed-not-stowed). On **T14s Gen 3 AMD**, check `cat /sys/power/mem_sleep`, `lscpu | grep -i ryzen`, `grep -E 'amd_iommu|amd_pstate' /proc/cmdline`, and charge thresholds under `/sys/class/power_supply/BAT*/charge_control_*_threshold`. On **P15**, verify Optimus/`prime-run` after reboot (`lspci -nnk -d 10de:`, charge 70–80). Installer + profile pull `mesa` / `vulkan-radeon` / `fprintd` (libva via mesa) on AMD; P15 Stage A (`arch-install-p15.sh` or `t14s-arch-install` `HW_PROFILE=p15`) seeds NVIDIA Optimus + optional ollama-cuda, and `profiles/thinkpad-p15.sh` refreshes it.
 
@@ -309,7 +309,7 @@ stops the script; no silent `|| true`).
 | `SETUP_OLLAMA` | **on for P15 (20SU)**; off on T14s | `ollama-setup.sh` (skipped with msg if not P15) |
 | `SETUP_LABS` | off | `labs-setup.sh` (triage/re/android/web images) |
 | `SETUP_DETONATE` | off | `lab-detonate.sh setup` (capture + VMs) |
-| `SETUP_AI` | off | `ai-stack-setup.sh` (Headroom/`hr-*`, Ponytail, Continue FIM; **not** Caveman) |
+| `SETUP_AI` | off | `ai-stack-setup.sh` (Headroom/`hr-*`, Ponytail, Continue FIM; **not** Caveman — full `./install.sh` already did cores + extras + P15 ollama) |
 | `SETUP_RICE` | off | `rice-setup.sh` (Gruvbox + lock-screen notifications off) |
 
 ```bash
@@ -358,6 +358,8 @@ cleanup-input-overrides.sh
 → install-re-skills.sh (leanrea / RE playbooks / Android RE / Ghidra loop)
 → install-ecosystem-skills.sh (packages/agent-skills.txt; owner/repo or owner/repo:skill; if npx)
 → sync-agent-skills.sh → caveman OpenCode plugin refresh
+→ ai-stack-setup.sh (AI_STACK_EXTRAS_ONLY=1: Continue FIM, P15 OpenCode↔ollama, hr-proxy)
+→ ollama-setup.sh (P15 only; SKIP_OLLAMA=1 skips; no-op elsewhere)
 → install-photogimp.sh → install-foxcage.sh (if podman; SKIP_FOXCAGE=1 skips)
 → install-dash2dock.sh → install-extensions.sh
 → privacy-hardener.sh (incl. browser-hardening.sh)
@@ -388,7 +390,7 @@ Key runtime dependencies (`scripts/check.sh` asserts binaries, shell tools, syml
 
 **Shell tools:** `atuin`, `fzf`, `fd`, `ripgrep`, `bat`, `eza`, `zoxide`, `direnv`, `git-delta`, `fnm`
 
-**AI (optional):** `python-pipx` + Headroom (`hr-claude` / `hr-cursor` / `hr-opencode` / `hr-agy` / `hr-proxy`), OpenCode + Kimi (`scripts/install-coding-agents.sh`), Caveman `v4.1.0` + Ponytail `v5.3.3` (complementary plugins/hooks; `./install.sh` runs both; `configure.sh` SETUP_AI runs Ponytail only), Continue.dev local FIM→ollama on P15, Obscura CDP/MCP, `scripts/sync-agent-skills.sh` across Claude Code / Cursor / OpenCode / Kimi / Gemini CLI / Antigravity / Kiro. Stage B: `bash scripts/ai-stack-setup.sh`
+**AI:** `./install.sh` installs the full stack: Headroom (`hr-claude` / `hr-cursor` / `hr-opencode` / `hr-agy` / `hr-proxy`), OpenCode + Kimi, Caveman `v4.1.0` + Ponytail `v5.3.3`, Continue FIM config, Obscura CDP/MCP, ecosystem + RE skills, hub sync; on P15 also `ollama-setup.sh` (CUDA + qwen pulls; `SKIP_OLLAMA=1` opts out). `configure.sh` `SETUP_AI` runs `ai-stack-setup.sh` (Headroom/Ponytail/Continue; **not** Caveman). Modular re-run: `bash scripts/ai-stack-setup.sh`
 
 **Graphics (optional):** `gimp` + PhotoGIMP via `scripts/install-photogimp.sh`
 

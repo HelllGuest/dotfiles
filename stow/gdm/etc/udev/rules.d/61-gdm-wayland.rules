@@ -1,4 +1,8 @@
-# Intel UHD Comet Lake-U GT2 (8086:9b41) & AMD Radeon 680M Rembrandt (1002:1681) — keep GDM on Wayland
+# Keep GDM on Wayland for ThinkPad GPUs:
+# * Intel UHD (Comet Lake etc., vendor 8086; device 9b41 = common UHD)
+# * AMD Radeon 680M Rembrandt (1002:1681)
+# * NVIDIA Optimus dGPU (10de) — without this, proprietary DRM can set
+#   GDM_DISABLE_WAYLAND and Stage B gdm-setup would clobber Stage A P15 seeds
 SUBSYSTEM=="drm", KERNEL=="card*", \
   ATTRS{vendor}=="0x8086", ATTRS{device}=="0x9b41", \
   TAG+="seat", TAG+="uaccess", \
@@ -15,4 +19,13 @@ SUBSYSTEM=="drm", KERNEL=="card*", \
 
 SUBSYSTEM=="drm", KERNEL=="card*", \
   ATTRS{vendor}=="0x1002", \
+  ENV{GDM_DISABLE_WAYLAND}=""
+
+SUBSYSTEM=="drm", KERNEL=="card*", \
+  ATTRS{vendor}=="0x10de", \
+  TAG+="seat", TAG+="uaccess", \
+  ENV{GDM_DISABLE_WAYLAND}=""
+
+SUBSYSTEM=="drm", KERNEL=="card*", \
+  ATTRS{vendor}=="0x10de", \
   ENV{GDM_DISABLE_WAYLAND}=""

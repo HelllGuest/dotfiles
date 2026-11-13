@@ -372,6 +372,20 @@ grep -q 'zen_systemconfig_dir' "$ROOT/scripts/check.sh" \
   || fail "check.sh must use zen_systemconfig_dir (arch parity)"
 grep -q 'CloudReportingEnabled missing' "$ROOT/scripts/check.sh" \
   || fail "check.sh must ✗ stale Chrome CloudReporting"
+grep -q 'check_fail()' "$ROOT/scripts/check.sh" \
+  || fail "check.sh must define check_fail for ✗ probes"
+grep -q 'CHECK_FAILED' "$ROOT/scripts/check.sh" \
+  || fail "check.sh must exit non-zero when ✗ probes fire"
+grep -qF 'fail_step "stow failed' "$ROOT/install.sh" \
+  || fail "install.sh must fail_step on stow errors"
+grep -qF 'fail_step "Health check reported failures' "$ROOT/install.sh" \
+  || fail "install.sh must fail_step when check.sh exits non-zero"
+grep -qF 'fail_step "Profile application failed' "$ROOT/install.sh" \
+  || fail "install.sh must fail_step when apply-profile fails"
+grep -q 'AI_STACK_EXTRAS_ONLY=1' "$ROOT/install.sh" \
+  || fail "install.sh must seed Continue/OpenCode/hr-proxy via ai-stack extras"
+grep -q 'scripts/ollama-setup.sh' "$ROOT/install.sh" \
+  || fail "install.sh must call ollama-setup.sh for P15 local LLM"
 [[ -f "$ROOT/browsers/librewolf/librewolf.overrides.cfg" ]] \
   || fail "missing browsers/librewolf/librewolf.overrides.cfg"
 # Must be versioned (not ignored) so fresh clones get LibreWolf overrides

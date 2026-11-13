@@ -1,24 +1,31 @@
 #!/usr/bin/env bash
 # ai-stack-setup.sh — Headroom + Continue + agent plugins (Slice 2).
+#
+# Full run (configure.sh SETUP_AI): Headroom + coding-agents + Ponytail + extras.
+# AI_STACK_EXTRAS_ONLY=1 (install.sh): only Continue / OpenCode↔ollama / hr-proxy
+#   — cores already installed earlier in install.sh (incl. Caveman).
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 # shellcheck source=lib/dmi.sh
 source "$REPO_ROOT/scripts/lib/dmi.sh"
 
-echo "→ Headroom install + MCP..."
-bash "$REPO_ROOT/scripts/install-headroom.sh"
-bash "$REPO_ROOT/scripts/headroom-setup.sh"
+if [[ ${AI_STACK_EXTRAS_ONLY:-0} != 1 ]]; then
+  echo "→ Headroom install + MCP..."
+  bash "$REPO_ROOT/scripts/install-headroom.sh"
+  bash "$REPO_ROOT/scripts/headroom-setup.sh"
 
-# Caveman (install.sh) and Ponytail are complementary: separate Claude plugins,
-# AGY plugin dirs, hub skills, and Cursor hooks (ponytail merge leaves caveman).
-# SETUP_AI runs Ponytail only; full ./install.sh also runs install-caveman.sh.
-echo "→ Coding agents / Ponytail (Caveman stays on full install.sh path)..."
-bash "$REPO_ROOT/scripts/install-coding-agents.sh" || echo "WARN: coding-agents skipped"
-bash "$REPO_ROOT/scripts/install-ponytail.sh" || echo "WARN: ponytail skipped"
-# REA + Ghidra/JADX/JDK live in lab-re (not bare metal). Rebuild: podman build -t localhost/lab-re labs/lab-re
-echo "○ REA backends: use lab-re (JDK21/Ghidra/jadx/rizin inside image) — host install-rea.sh skipped"
-
+  # Caveman (install.sh) and Ponytail are complementary: separate Claude plugins,
+  # AGY plugin dirs, hub skills, and Cursor hooks (ponytail merge leaves caveman).
+  # SETUP_AI runs Ponytail only; full ./install.sh also runs install-caveman.sh.
+  echo "→ Coding agents / Ponytail (Caveman stays on full install.sh path)..."
+  bash "$REPO_ROOT/scripts/install-coding-agents.sh" || echo "WARN: coding-agents skipped"
+  bash "$REPO_ROOT/scripts/install-ponytail.sh" || echo "WARN: ponytail skipped"
+  # REA + Ghidra/JADX/JDK live in lab-re (not bare metal). Rebuild: podman build -t localhost/lab-re labs/lab-re
+  echo "○ REA backends: use lab-re (JDK21/Ghidra/jadx/rizin inside image) — host install-rea.sh skipped"
+else
+  echo "→ AI stack extras only (Continue / OpenCode↔ollama / hr-proxy)..."
+fi
 
 # Continue.dev FIM → local ollama (P15 only; harmless stub elsewhere)
 CONT_DIR="${HOME}/.continue"

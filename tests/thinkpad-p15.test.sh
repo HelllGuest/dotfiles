@@ -56,6 +56,8 @@ grep -q '80-nvidia-pm.rules' "$INST" \
   || fail "arch-install-p15 must seed 80-nvidia-pm.rules"
 grep -qF 'NVIDIA stack skipped with desktop' "$INST" \
   || fail "finish text must note NVIDIA skipped when DESKTOP=N"
+grep -q '0x10de' "$ROOT/stow/gdm/etc/udev/rules.d/61-gdm-wayland.rules" \
+  || fail "stow GDM udev must keep NVIDIA 0x10de after Stage B gdm-setup"
 grep -q 'thinkpad-p15' "$INST" \
   || fail "arch-install-p15 must default hostname thinkpad-p15"
 grep -q 'INSTALL_OLLAMA' "$INST" \

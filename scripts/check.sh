@@ -2,6 +2,10 @@
 
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 
+# ✗ probes set CHECK_FAILED; install.sh treats non-zero as fail_step.
+CHECK_FAILED=0
+check_fail() { printf '✗ %s\n' "$*"; CHECK_FAILED=$((CHECK_FAILED + 1)); }
+
 echo "Running health check..."
 
 # 1. Check for required binaries
@@ -11,7 +15,7 @@ for bin in "${REQUIRED_BINARIES[@]}"; do
     if command -v "$bin" >/dev/null 2>&1; then
         echo "✓ $bin is installed"
     else
-        echo "✗ $bin is missing"
+        check_fail "$bin is missing"
     fi
 done
 
@@ -20,7 +24,7 @@ etc_owner="$(stat -c '%U' /etc 2>/dev/null || echo unknown)"
 if [[ "$etc_owner" == "root" ]]; then
     echo "✓ /etc owned by root"
 else
-    echo "✗ /etc owned by $etc_owner (must be root — pacman hooks fail with unsafe path transition)"
+    check_fail "/etc owned by $etc_owner (must be root — pacman hooks fail with unsafe path transition)"
     echo "  run: sudo chown root:root /etc && sudo chmod 755 /etc"
 fi
 # sudo -n when cached: plain find cannot enter 700 dirs (e.g. /etc/sudoers.d).
@@ -30,7 +34,7 @@ stowed_etc="$("${find_etc[@]}" /etc -type l -lname '*/stow/system/*' 2>/dev/null
 if [[ -z "$stowed_etc" ]]; then
     echo "✓ no /etc symlinks into stow/system"
 else
-    echo "✗ /etc symlinks into stow/system (dangle at early boot; user-writable root config):"
+    check_fail "/etc symlinks into stow/system (dangle at early boot; user-writable root config):"
     echo "$stowed_etc" | sed 's/^/  /'
     echo "  run: bash scripts/system-setup.sh"
 fi
@@ -40,7 +44,7 @@ for bin in "${SHELL_BINARIES[@]}"; do
     if command -v "$bin" >/dev/null 2>&1; then
         echo "✓ $bin is installed"
     else
-        echo "✗ $bin is missing"
+        check_fail "$bin is missing"
     fi
 done
 
@@ -152,7 +156,7 @@ fi
 if [ -d "${XDG_DATA_HOME:-$HOME/.local/share}/zinit/zinit.git" ]; then
     echo "✓ zinit is bootstrapped"
 else
-    echo "✗ zinit not bootstrapped (launch zsh once)"
+    check_fail "zinit not bootstrapped (launch zsh once)"
 fi
 
 # 2. Check for symlinks
@@ -163,7 +167,7 @@ check_link() {
     elif [ -L "$(dirname "$path")" ] && [ -f "$path" ]; then
         echo "✓ Stowed via $(dirname "$path") -> $(readlink "$(dirname "$path")")"
     else
-        echo "✗ Symlink missing: $path"
+        check_fail "Symlink missing: $path"
     fi
 }
 
@@ -177,91 +181,91 @@ NERD_FONT_COUNT=$(fc-list : family | grep -ci 'Nerd Font' || true)
 if [ "$NERD_FONT_COUNT" -gt 0 ]; then
     echo "✓ Nerd Fonts installed ($NERD_FONT_COUNT families)"
 else
-    echo "✗ Nerd Fonts missing — run scripts/install-fonts.sh"
+    check_fail "Nerd Fonts missing — run scripts/install-fonts.sh"
 fi
 if fc-list : family | grep -qi "JetBrainsMono"; then
     echo "✓ JetBrainsMono Nerd Font is installed"
 else
-    echo "✗ JetBrainsMono Nerd Font is missing"
+    check_fail "JetBrainsMono Nerd Font is missing"
 fi
 
 echo "--- GDM login screen ---"
 if systemctl is-enabled gdm.service >/dev/null 2>&1; then
     echo "✓ gdm.service enabled"
 else
-    echo "✗ gdm.service not enabled (run scripts/gdm-setup.sh)"
+    check_fail "gdm.service not enabled (run scripts/gdm-setup.sh)"
 fi
 if grep -q 'WaylandEnable=true' /etc/gdm/custom.conf 2>/dev/null; then
     echo "✓ GDM WaylandEnable=true"
 else
-    echo "✗ GDM WaylandEnable not set (run scripts/gdm-setup.sh)"
+    check_fail "GDM WaylandEnable not set (run scripts/gdm-setup.sh)"
 fi
 if [ -e /etc/dconf/db/gdm.d/00-login-screen ]; then
     echo "✓ GDM greeter dconf deployed"
 else
-    echo "✗ GDM greeter dconf missing"
+    check_fail "GDM greeter dconf missing"
 fi
 if [ -f /etc/systemd/system/gdm.service.d/override.conf ]; then
     if grep -q 'WAYLAND_DISPLAY' /etc/systemd/system/gdm.service.d/override.conf 2>/dev/null; then
-        echo "✗ GDM override still sets WAYLAND_DISPLAY (run scripts/gdm-setup.sh)"
+        check_fail "GDM override still sets WAYLAND_DISPLAY (run scripts/gdm-setup.sh)"
     else
         echo "✓ GDM override has no WAYLAND_DISPLAY"
     fi
 else
-    echo "✗ GDM systemd override missing (run scripts/gdm-setup.sh)"
+    check_fail "GDM systemd override missing (run scripts/gdm-setup.sh)"
 fi
 if [ -e /etc/dconf/db/gdm.d/00-login-screen ]; then
     gdm_dconf_owner="$(stat -c '%U' /etc/dconf/db/gdm.d/00-login-screen 2>/dev/null || echo unknown)"
     if [ "$gdm_dconf_owner" = root ]; then
         echo "✓ GDM greeter dconf owned by root"
     else
-        echo "✗ GDM greeter dconf owned by $gdm_dconf_owner (run scripts/gdm-setup.sh)"
+        check_fail "GDM greeter dconf owned by $gdm_dconf_owner (run scripts/gdm-setup.sh)"
     fi
 fi
 if [ -e /etc/dconf/profile/gdm ]; then
     if [ -L /etc/dconf/profile/gdm ] && readlink /etc/dconf/profile/gdm 2>/dev/null | grep -qE "$HOME|dotfiles"; then
-        echo "✗ GDM dconf profile symlinks into home (run scripts/gdm-setup.sh)"
+        check_fail "GDM dconf profile symlinks into home (run scripts/gdm-setup.sh)"
     elif [ -L /etc/dconf/profile/gdm ]; then
-        echo "✗ GDM dconf profile is symlink (run scripts/gdm-setup.sh)"
+        check_fail "GDM dconf profile is symlink (run scripts/gdm-setup.sh)"
     else
         echo "✓ GDM dconf profile is real file in /etc"
     fi
 else
-    echo "✗ GDM dconf profile missing (run scripts/gdm-setup.sh)"
+    check_fail "GDM dconf profile missing (run scripts/gdm-setup.sh)"
 fi
 if systemctl show gdm.service -p DropInPaths --value 2>/dev/null | grep -q 'gdm.service.d/override.conf'; then
     echo "✓ GDM systemd drop-in loaded"
 else
-    echo "✗ GDM systemd drop-in not loaded (sudo systemctl daemon-reload)"
+    check_fail "GDM systemd drop-in not loaded (sudo systemctl daemon-reload)"
 fi
 
 echo "--- Git ---"
 if [ -f "$HOME/.config/git/config" ]; then
     echo "✓ Git XDG config deployed"
 else
-    echo "✗ Git config missing (run scripts/git-setup.sh)"
+    check_fail "Git config missing (run scripts/git-setup.sh)"
 fi
 if command -v delta >/dev/null 2>&1; then
     echo "✓ delta is installed"
 else
-    echo "✗ delta is missing"
+    check_fail "delta is missing"
 fi
 if git config --get user.email >/dev/null 2>&1; then
     echo "✓ Git identity: $(git config --get user.name) <$(git config --get user.email)>"
 else
-    echo "✗ Git identity not set"
+    check_fail "Git identity not set"
 fi
 
 echo "--- Neovim ---"
 if [ -f "$HOME/.config/nvim/init.lua" ]; then
     echo "✓ Neovim config deployed"
 else
-    echo "✗ Neovim config missing (run scripts/nvim-setup.sh)"
+    check_fail "Neovim config missing (run scripts/nvim-setup.sh)"
 fi
 if [ -d "${XDG_DATA_HOME:-$HOME/.local/share}/nvim/lazy/lazy.nvim" ]; then
     echo "✓ lazy.nvim bootstrapped"
 else
-    echo "✗ lazy.nvim not bootstrapped (run scripts/nvim-setup.sh)"
+    check_fail "lazy.nvim not bootstrapped (run scripts/nvim-setup.sh)"
 fi
 
 echo "--- GNOME session ---"
@@ -269,7 +273,7 @@ ENABLED_EXT=$(gnome-extensions list --enabled 2>/dev/null | wc -l || echo 0)
 if [ "$ENABLED_EXT" -ge 4 ] 2>/dev/null; then
     echo "✓ GNOME extensions enabled ($ENABLED_EXT)"
 else
-    echo "✗ Few GNOME extensions enabled ($ENABLED_EXT/4 — run scripts/gnome-session-setup.sh)"
+    check_fail "Few GNOME extensions enabled ($ENABLED_EXT/4 — run scripts/gnome-session-setup.sh)"
 fi
 
 echo "--- Input / touchpad ---"
@@ -278,7 +282,7 @@ source "$REPO_ROOT/scripts/lib/input.sh"
 # shellcheck source=lib/dmi.sh
 source "$REPO_ROOT/scripts/lib/dmi.sh"
 if phantom_syna_mouse_inhibited; then
-    echo "✗ synaptics Mouse node is inhibited (clicks will not work)"
+    check_fail "synaptics Mouse node is inhibited (clicks will not work)"
     list_phantom_syna_mice | sed 's/^/  /'
     echo "  run: bash scripts/cleanup-input-overrides.sh && log out once"
 else
@@ -290,14 +294,14 @@ if is_thinkpad_t14s; then
         if [[ "$(cat "$_tp_w" 2>/dev/null)" == "disabled" ]]; then
             echo "✓ T14s touchpad s2idle wakeup disabled (${_tp_w%/power/wakeup})"
         else
-            echo "✗ T14s touchpad s2idle wakeup enabled (${_tp_w%/power/wakeup} — run profiles/thinkpad-t14s.sh)"
+            check_fail "T14s touchpad s2idle wakeup enabled (${_tp_w%/power/wakeup} — run profiles/thinkpad-t14s.sh)"
         fi
     done
     unset _tp_w
     if grep -qx 'LIBVA_DRIVER_NAME=radeonsi' /etc/environment.d/99-wayland.conf 2>/dev/null; then
         echo "✓ /etc/environment.d/99-wayland.conf sets LIBVA_DRIVER_NAME=radeonsi"
     else
-        echo "✗ /etc/environment.d/99-wayland.conf missing LIBVA_DRIVER_NAME=radeonsi (run scripts/system-setup.sh)"
+        check_fail "/etc/environment.d/99-wayland.conf missing LIBVA_DRIVER_NAME=radeonsi (run scripts/system-setup.sh)"
     fi
 fi
 
@@ -311,16 +315,16 @@ if command -v flatpak >/dev/null 2>&1; then
         if flatpak list --app 2>/dev/null | grep -q "$app"; then
             echo "✓ $app installed"
         else
-            echo "✗ $app missing (run scripts/install-flatpaks.sh)"
+            check_fail "$app missing (run scripts/install-flatpaks.sh)"
         fi
     done < <(read_browser_flatpaks)
     if flatpak list --app 2>/dev/null | grep -q com.protonvpn.www; then
         echo "✓ com.protonvpn.www installed"
     else
-        echo "✗ com.protonvpn.www missing (run scripts/install-flatpaks.sh)"
+        check_fail "com.protonvpn.www missing (run scripts/install-flatpaks.sh)"
     fi
 else
-    echo "✗ flatpak not installed"
+    check_fail "flatpak not installed"
 fi
 
 echo "--- Browser policies ---"
@@ -328,39 +332,39 @@ for policy in /etc/opt/chrome/policies/managed/00-privacy.json /etc/brave/polici
     if [[ -f "$policy" ]]; then
         echo "✓ $policy"
     else
-        echo "✗ $policy missing (run scripts/browser-hardening.sh)"
+        check_fail "$policy missing (run scripts/browser-hardening.sh)"
     fi
 done
 if [[ -f /etc/opt/chrome/policies/managed/00-privacy.json ]] \
   && grep -q '"CloudReportingEnabled": false' /etc/opt/chrome/policies/managed/00-privacy.json; then
     echo "✓ Chrome CloudReportingEnabled=false"
 elif [[ -f /etc/opt/chrome/policies/managed/00-privacy.json ]]; then
-    echo "✗ Chrome CloudReportingEnabled missing (bash scripts/browser-hardening.sh)"
+    check_fail "Chrome CloudReportingEnabled missing (bash scripts/browser-hardening.sh)"
 else
-    echo "✗ Chrome policy file missing (bash scripts/browser-hardening.sh)"
+    check_fail "Chrome policy file missing (bash scripts/browser-hardening.sh)"
 fi
 if [[ -f /etc/brave/policies/managed/00-privacy.json ]] \
   && grep -q '"CloudReportingEnabled": false' /etc/brave/policies/managed/00-privacy.json \
   && grep -q '"BraveP3AEnabled": false' /etc/brave/policies/managed/00-privacy.json; then
     echo "✓ Brave CloudReporting + P3A off"
 elif [[ -f /etc/brave/policies/managed/00-privacy.json ]]; then
-    echo "✗ Brave policies stale (bash scripts/browser-hardening.sh)"
+    check_fail "Brave policies stale (bash scripts/browser-hardening.sh)"
 else
-    echo "✗ Brave policy file missing (bash scripts/browser-hardening.sh)"
+    check_fail "Brave policy file missing (bash scripts/browser-hardening.sh)"
 fi
 if [[ -f /etc/firefox/policies/policies.json ]] \
   && grep -q '"DisableTelemetry": true' /etc/firefox/policies/policies.json; then
     echo "✓ /etc/firefox/policies/policies.json DisableTelemetry"
 elif [[ -f /etc/firefox/policies/policies.json ]]; then
-    echo "✗ /etc/firefox/policies stale (bash scripts/browser-hardening.sh)"
+    check_fail "/etc/firefox/policies stale (bash scripts/browser-hardening.sh)"
 else
-    echo "✗ /etc/firefox/policies/policies.json missing (bash scripts/browser-hardening.sh)"
+    check_fail "/etc/firefox/policies/policies.json missing (bash scripts/browser-hardening.sh)"
 fi
 zen_pol="$(zen_systemconfig_dir)/policies/policies.json"
 if [[ -f "$zen_pol" ]] && grep -q '"DisableTelemetry": true' "$zen_pol"; then
     echo "✓ Zen Flatpak systemconfig DisableTelemetry"
 elif flatpak list --app 2>/dev/null | grep -q 'app\.zen_browser\.zen'; then
-    echo "✗ Zen Flatpak policies missing (run scripts/browser-hardening.sh)"
+    check_fail "Zen Flatpak policies missing (run scripts/browser-hardening.sh)"
 else
     echo "○ Zen Flatpak not installed"
 fi
@@ -377,16 +381,16 @@ fi
 if [[ "$zen_userjs_ok" -eq 1 ]]; then
     echo "✓ Zen user.js deployed in profile(s)"
 elif flatpak list --app 2>/dev/null | grep -qE 'app\.zen_browser\.zen|io\.github\.zen_browser\.zen'; then
-    echo "✗ Zen user.js missing — launch Zen once, then run scripts/browser-hardening.sh"
+    check_fail "Zen user.js missing — launch Zen once, then run scripts/browser-hardening.sh"
 fi
 if [[ -f "${HOME}/.var/app/app.zen_browser.zen/.zen/Profile Groups/user.js" ]]; then
-    echo "✗ stray Zen user.js under Profile Groups (re-run browser-hardening.sh)"
+    check_fail "stray Zen user.js under Profile Groups (re-run browser-hardening.sh)"
 fi
 lw_ov="${HOME}/.var/app/io.gitlab.librewolf-community/.librewolf/librewolf.overrides.cfg"
 if [[ -f "$lw_ov" ]] && grep -q 'toolkit.telemetry.enabled' "$lw_ov"; then
     echo "✓ LibreWolf librewolf.overrides.cfg"
 elif flatpak list --app 2>/dev/null | grep -q 'io\.gitlab\.librewolf-community'; then
-    echo "✗ LibreWolf overrides missing (run scripts/browser-hardening.sh)"
+    check_fail "LibreWolf overrides missing (run scripts/browser-hardening.sh)"
 else
     echo "○ LibreWolf Flatpak not installed"
 fi
@@ -396,29 +400,29 @@ if grep -q '90-telemetry-optout.conf' "${HOME}/.shell-exports" 2>/dev/null \
   || grep -q '90-telemetry-optout.conf' "$REPO_ROOT/stow/zsh/.shell-exports" 2>/dev/null; then
     echo "✓ shell-exports sources telemetry-optout.conf"
 else
-    echo "✗ shell-exports missing telemetry-optout source"
+    check_fail "shell-exports missing telemetry-optout source"
 fi
 if grep -q 'umask 077' "${HOME}/.bashrc" 2>/dev/null \
   || grep -q 'umask 077' "$REPO_ROOT/stow/bash/.bashrc" 2>/dev/null; then
     echo "✓ bash umask 077"
 else
-    echo "✗ bash umask 077 missing"
+    check_fail "bash umask 077 missing"
 fi
 if grep -q '\*--password\*' "${HOME}/.bashrc" 2>/dev/null \
   || grep -q '\*--password\*' "$REPO_ROOT/stow/bash/.bashrc" 2>/dev/null; then
     echo "✓ bash HISTIGNORE secret filters (--flag / KEY=)"
 else
-    echo "✗ bash HISTIGNORE secret filters missing"
+    check_fail "bash HISTIGNORE secret filters missing"
 fi
 if grep -q '\*password\*' "${HOME}/.bashrc" 2>/dev/null \
   || grep -q '\*password\*' "$REPO_ROOT/stow/bash/.bashrc" 2>/dev/null; then
-    echo "✗ bash HISTIGNORE still has over-broad *password* (use *--password*)"
+    check_fail "bash HISTIGNORE still has over-broad *password* (use *--password*)"
 fi
 if grep -q 'HISTORY_IGNORE' "${HOME}/.zsh-plugins" 2>/dev/null \
   || grep -q 'HISTORY_IGNORE' "$REPO_ROOT/stow/zsh/.zsh-plugins" 2>/dev/null; then
     echo "✓ zsh HISTORY_IGNORE secret filters"
 else
-    echo "✗ zsh HISTORY_IGNORE missing"
+    check_fail "zsh HISTORY_IGNORE missing"
 fi
 atuin_cfg="${XDG_CONFIG_HOME:-$HOME/.config}/atuin/config.toml"
 if [[ -f "$atuin_cfg" ]] \
@@ -428,12 +432,12 @@ if [[ -f "$atuin_cfg" ]] \
   && grep -q '(?i)--token' "$atuin_cfg"; then
     echo "✓ atuin privacy keys + secret history_filter"
 else
-    echo "✗ atuin privacy keys/filters missing (stow atuin / bash scripts/privacy-hardener.sh)"
+    check_fail "atuin privacy keys/filters missing (stow atuin / bash scripts/privacy-hardener.sh)"
 fi
 # Bare "(?i)password" as whole pattern (not --password / password=)
 if grep -qE '"\(\?i\)password"' "$atuin_cfg" 2>/dev/null \
   || grep -qE '"\(\?i\)password"' "$REPO_ROOT/stow/atuin/.config/atuin/config.toml" 2>/dev/null; then
-    echo "✗ atuin history_filter still has bare (?i)password (over-broad)"
+    check_fail "atuin history_filter still has bare (?i)password (over-broad)"
 fi
 if grep -q 'LESSHISTFILE=-' "${HOME}/.shell-exports" 2>/dev/null \
   || grep -q 'LESSHISTFILE=-' "$REPO_ROOT/stow/zsh/.shell-exports" 2>/dev/null; then
@@ -450,17 +454,17 @@ if [[ -f "$TELEMETRY_ENV_D" ]]; then
         if grep -q "^${key}=" "$TELEMETRY_ENV_D"; then
             echo "✓ env $key"
         else
-            echo "✗ env $key missing in telemetry-optout.conf"
+            check_fail "env $key missing in telemetry-optout.conf"
         fi
     done
 else
-    echo "✗ telemetry-optout.conf missing (stow privacy / bash scripts/privacy-hardener.sh)"
+    check_fail "telemetry-optout.conf missing (stow privacy / bash scripts/privacy-hardener.sh)"
 fi
 if command -v gsettings >/dev/null 2>&1; then
     if [[ "$(gsettings get org.gnome.desktop.privacy report-technical-problems 2>/dev/null)" == "false" ]]; then
         echo "✓ GNOME report-technical-problems=false"
     else
-        echo "✗ GNOME report-technical-problems not false (bash scripts/privacy-hardener.sh)"
+        check_fail "GNOME report-technical-problems not false (bash scripts/privacy-hardener.sh)"
     fi
 fi
 if [[ -f "${HOME}/.dart-tool/dart-flutter-telemetry.config" ]] \
@@ -497,7 +501,7 @@ for _non_cursor in \
   "${XDG_CONFIG_HOME:-$HOME/.config}/Kiro/User/settings.json"
 do
   if [[ -f "$_non_cursor" ]] && grep -q 'cursor\.general' "$_non_cursor"; then
-    echo "✗ cursor.general.* in non-Cursor settings: $_non_cursor (re-run privacy-hardener)"
+    check_fail "cursor.general.* in non-Cursor settings: $_non_cursor (re-run privacy-hardener)"
   fi
 done
 unset _non_cursor
@@ -554,7 +558,7 @@ echo "--- Proton VPN ---"
 if [ -f "$REPO_ROOT/scripts/proton-connectivity-check.sh" ]; then
     bash "$REPO_ROOT/scripts/proton-connectivity-check.sh" 2>/dev/null || echo "⚠ Proton API unreachable (run scripts/proton-connectivity-check.sh)"
 else
-    echo "✗ proton-connectivity-check.sh missing"
+    check_fail "proton-connectivity-check.sh missing"
 fi
 
 echo "--- ThinkPad charge thresholds ---"
@@ -563,7 +567,7 @@ if [[ -f "$_charge" ]]; then
     if bash -n "$_charge" 2>/dev/null; then
         echo "✓ thinkpad-charge-thresholds.sh (syntax OK)"
     else
-        echo "✗ thinkpad-charge-thresholds.sh bash -n failed"
+        check_fail "thinkpad-charge-thresholds.sh bash -n failed"
     fi
     if [[ -r /sys/class/power_supply/BAT0/charge_control_start_threshold ]]; then
         _cs="$(cat /sys/class/power_supply/BAT0/charge_control_start_threshold 2>/dev/null || true)"
@@ -597,8 +601,13 @@ if [[ -f "$_charge" ]]; then
       fi
     fi
 else
-    echo "✗ thinkpad-charge-thresholds.sh missing"
+    check_fail "thinkpad-charge-thresholds.sh missing"
 fi
 unset _charge
 
 echo "Health check finished."
+if [[ "$CHECK_FAILED" -ne 0 ]]; then
+    echo "Health check failed ($CHECK_FAILED)."
+    exit 1
+fi
+exit 0

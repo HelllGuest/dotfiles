@@ -202,6 +202,10 @@ grep -q 'LIBVA_DRIVER_NAME=radeonsi' "$ROOT/scripts/gdm-setup.sh" \
   || fail "gdm-setup.sh must rewrite LIBVA_DRIVER_NAME=radeonsi on amdgpu"
 grep -q '0x1002' "$ROOT/stow/gdm/etc/udev/rules.d/61-gdm-wayland.rules" \
   || fail "61-gdm-wayland.rules must include AMD vendor 0x1002"
+grep -q '0x10de' "$ROOT/stow/gdm/etc/udev/rules.d/61-gdm-wayland.rules" \
+  || fail "61-gdm-wayland.rules must include NVIDIA vendor 0x10de (P15 Optimus)"
+grep -qE 'egl-wayland' "$ROOT/install.sh" \
+  || fail "install.sh T14s filter must mention egl-wayland"
 grep -q 'yoga-tablet-mode.service' "$ROOT/scripts/gnome-session-setup.sh" \
   || fail "gnome-session-setup.sh must disable leftover yoga-tablet-mode.service"
 grep -qE 'is_thinkpad_x1|yoga-tablet-mode' "$ROOT/scripts/validate-configs.sh" \
@@ -600,23 +604,23 @@ grep -qx 'power-profiles-daemon' "$TMP/pk/tuned.out" \
 mkdir -p "$TMP/pk/repo/scripts/lib"
 cp "$ROOT/scripts/lib/dmi.sh" "$TMP/pk/repo/scripts/lib/dmi.sh"
 printf '%s\n' 'atuin' 'intel-media-driver' 'vulkan-intel' 'nvidia-open-dkms' \
-  'nvidia-prime' 'nvidia-utils' 'stow' >"$TMP/pk/repo/packages/pacman.txt"
+  'nvidia-prime' 'nvidia-utils' 'egl-wayland' 'stow' >"$TMP/pk/repo/packages/pacman.txt"
 (cd "$TMP/pk/repo" && DMI_SYSFS_ROOT="$TMP/cr" PK_OUT="$TMP/pk/t14s.out" \
   PATH="$TMP/pk/bin:$PATH" bash -c "$_pkgblk" >/dev/null) \
   || fail "install.sh package block failed (t14s)"
 grep -qx 'atuin' "$TMP/pk/t14s.out" || fail "t14s must keep atuin"
 grep -qx 'stow' "$TMP/pk/t14s.out" || fail "t14s must keep stow"
-grep -qE '^(intel-media-driver|vulkan-intel|nvidia-open-dkms|nvidia-prime|nvidia-utils)$' \
+grep -qE '^(intel-media-driver|vulkan-intel|nvidia-open-dkms|nvidia-prime|nvidia-utils|egl-wayland)$' \
   "$TMP/pk/t14s.out" && fail "t14s must filter out Intel/NVIDIA GPU packages" || true
 (cd "$TMP/pk/repo" && DMI_SYSFS_ROOT="$TMP/p15" PK_OUT="$TMP/pk/p15.out" \
   PATH="$TMP/pk/bin:$PATH" bash -c "$_pkgblk" >/dev/null) \
   || fail "install.sh package block failed (p15)"
-for _gp in intel-media-driver vulkan-intel nvidia-open-dkms nvidia-prime nvidia-utils; do
+for _gp in intel-media-driver vulkan-intel nvidia-open-dkms nvidia-prime nvidia-utils egl-wayland; do
   grep -qx "$_gp" "$TMP/pk/p15.out" || fail "non-t14s must keep $_gp"
 done
 unset _gp
 # All-filtered manifest on T14s: must exit 0 and not invoke pacman -S.
-printf '%s\n' 'intel-media-driver' 'nvidia-open-dkms' >"$TMP/pk/repo/packages/pacman.txt"
+printf '%s\n' 'intel-media-driver' 'nvidia-open-dkms' 'egl-wayland' >"$TMP/pk/repo/packages/pacman.txt"
 rm -f "$TMP/pk/allfilt.out"
 (cd "$TMP/pk/repo" && DMI_SYSFS_ROOT="$TMP/cr" PK_OUT="$TMP/pk/allfilt.out" \
   PATH="$TMP/pk/bin:$PATH" bash -e -c "$_pkgblk" >/dev/null) \

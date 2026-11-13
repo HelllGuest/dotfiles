@@ -68,6 +68,14 @@ grep -E 'bash[[:space:]].*install-rea\.sh' "$ROOT/scripts/ai-stack-setup.sh" \
   && fail "ai-stack must not install REA on host (use lab-re)" || true
 grep -E 'bash[[:space:]].*install-rea\.sh' "$ROOT/install.sh" \
   && fail "install.sh must not auto-run host install-rea (use lab-re)" || true
+grep -q 'AI_STACK_EXTRAS_ONLY=1' "$ROOT/install.sh" \
+  || fail "install.sh must run ai-stack extras (Continue / OpenCode / hr-proxy)"
+grep -q 'AI_STACK_EXTRAS_ONLY' "$ROOT/scripts/ai-stack-setup.sh" \
+  || fail "ai-stack-setup.sh must honor AI_STACK_EXTRAS_ONLY"
+grep -q 'ollama-setup.sh' "$ROOT/install.sh" \
+  || fail "install.sh must run ollama-setup.sh (P15 no-op elsewhere)"
+grep -q 'SKIP_OLLAMA' "$ROOT/install.sh" \
+  || fail "install.sh must allow SKIP_OLLAMA=1"
 
 grep -q 'jdk21-openjdk' "$ROOT/labs/lab-re/Containerfile" \
   || fail "lab-re must ship jdk21-openjdk"

@@ -1,6 +1,8 @@
 # Changelog
 
 ## [Unreleased]
+- fix(install): `./install.sh` completes the AI stack — `AI_STACK_EXTRAS_ONLY=1` Continue/OpenCode↔ollama/`hr-proxy`, plus P15 `ollama-setup.sh` (`SKIP_OLLAMA=1` opts out).
+- fix(install): Stage B GDM udev keeps NVIDIA `0x10de` (P15 Optimus Wayland); T14s pacman filter drops `egl-wayland`; `stow`/`apply-profile`/`check.sh` ✗ fail `install.sh` via `fail_step` / non-zero exit.
 - Stage A: add `scripts/arch-install-p15.sh` (curl-able P15 Gen 1 / 20SU Optimus mirror of `arch-install-t14s.sh`) — `intel-ucode`, `intel_iommu` + `nvidia_drm.modeset` + nouveau blacklist, `nvidia-open-dkms`/`vulkan-intel`/`iHD`, charge thresholds, firewalld drop, optional `INSTALL_OLLAMA`, nvidia suspend/PM udev (profile parity); `tests/thinkpad-p15.test.sh`; README/CONTRIBUTING/fresh-install/hardened Phase 14 document the P15 path (prefer public `t14s-arch-install` `HW_PROFILE=p15` for TUI).
 - Privacy: expand `90-telemetry-optout.conf` (OTEL_SDK_DISABLED, HINT/ET/Deno/Terraform, …); `privacy-hardener.sh` always syncs environment.d from stow kit + npm fund/update-notifier off.
 - fix(firewalld): `ensure_lab_malware_zone` unbinds `virbr-malware` from `libvirt`+`block`, fails on critical bind/reload/ports, tolerates ALREADY_ENABLED, postchecks libvirt/block clear, warns if firewalld inactive; migrate fail-fast on virbr0/libvirt bind. Docs: Kali NAT uses firewalld/`libvirt` (not UFW) incl. `gnome/keybindings.md`; configure notes optional `dialog`.
