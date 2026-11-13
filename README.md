@@ -294,8 +294,9 @@ scripts/thinkpad-charge-thresholds.sh  # tmpfiles + late-boot service; profile /
 #### How to: `configure.sh` (Stage B TUI)
 
 UI backend: **dialog** if present, else **whiptail**, else plain checklist on the
-TTY. Abort/Cancel exits without running modules. Selected modules **fail-fast**
-(a failing module stops the script; no silent `|| true`).
+TTY (Arch often has whiptail only — `pacman -S dialog` optional). Abort/Cancel
+exits without running modules. Selected modules **fail-fast** (a failing module
+stops the script; no silent `|| true`).
 
 | Tag | Default | Runs |
 |-----|---------|------|

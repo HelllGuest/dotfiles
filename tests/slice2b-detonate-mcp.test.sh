@@ -40,8 +40,14 @@ grep -q 'remove-forward-port' "$ZONE_LIB" \
   || fail "lab-malware must clear forward-ports"
 grep -qE 'add-masquerade|add-forward-port' "$ZONE_LIB" \
   && fail "lab-malware zone must never enable masquerade/forward-port" || true
-grep -q 'zone=block --remove-interface=virbr-malware' "$ZONE_LIB" \
+grep -q 'zone=block --remove-interface=virbr-malware\|for z in block libvirt' "$ZONE_LIB" \
   || fail "lab-malware helper must unbind legacy block zone"
+grep -q 'libvirt' "$ZONE_LIB" \
+  || fail "lab-malware helper must unbind virbr-malware from libvirt"
+grep -q 'firewalld inactive' "$ZONE_LIB" \
+  || fail "lab-malware helper must warn when firewalld inactive"
+grep -q 'postcondition failed' "$ZONE_LIB" \
+  || fail "lab-malware helper must verify permanent bind"
 grep -q 'virbr-malware' "$ROOT/scripts/lab-detonate.sh" \
   || fail "detonate must use virbr-malware"
 grep -q 'PolarProxy' "$ROOT/scripts/lab-detonate.sh" \

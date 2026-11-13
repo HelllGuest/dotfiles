@@ -66,9 +66,12 @@ if command -v virsh >/dev/null 2>&1; then
 fi
 # Permanent add-interface so zone sticks when bridge appears later.
 echo "→ Binding virbr0 to firewalld zone libvirt (permanent)..."
-sudo firewall-cmd --permanent --zone=libvirt --add-interface=virbr0 || true
+sudo firewall-cmd --permanent --zone=libvirt --add-interface=virbr0 \
+  || firewall-cmd --permanent --zone=libvirt --list-interfaces 2>/dev/null | grep -qw virbr0 \
+  || { echo "firewalld-migrate: failed to bind virbr0 → libvirt" >&2; exit 1; }
 if [[ -d /sys/class/net/virbr0 ]]; then
-  sudo firewall-cmd --zone=libvirt --change-interface=virbr0 || true
+  sudo firewall-cmd --zone=libvirt --change-interface=virbr0 \
+    || { echo "firewalld-migrate: runtime virbr0 → libvirt failed" >&2; exit 1; }
 fi
 
 # Host-only malware net (no forward / no NAT)
@@ -107,10 +110,12 @@ ensure_lab_malware_zone
 
 # libvirt may reattach bridges at start; re-assert runtime zones.
 if [[ -d /sys/class/net/virbr0 ]]; then
-  sudo firewall-cmd --zone=libvirt --change-interface=virbr0 || true
+  sudo firewall-cmd --zone=libvirt --change-interface=virbr0 \
+    || { echo "firewalld-migrate: re-assert virbr0 → libvirt failed" >&2; exit 1; }
 fi
 if [[ -d /sys/class/net/virbr-malware ]]; then
-  sudo firewall-cmd --zone=lab-malware --change-interface=virbr-malware || true
+  sudo firewall-cmd --zone=lab-malware --change-interface=virbr-malware \
+    || { echo "firewalld-migrate: re-assert virbr-malware → lab-malware failed" >&2; exit 1; }
 fi
 
 echo "✓ firewalld active (default=$(firewall-cmd --get-default-zone 2>/dev/null || echo ?))"

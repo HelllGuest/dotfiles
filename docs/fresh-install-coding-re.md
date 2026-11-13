@@ -352,7 +352,7 @@ and undefines the domain; base stays clean. Script:
 | `kali-st` | Status |
 
 ```bash
-bash scripts/kali-disposable.sh setup    # once: libvirt pkgs + download base + UFW/virbr0
+bash scripts/kali-disposable.sh setup    # once: libvirt pkgs + download base + virbr0/libvirt zone
 # re-login / newgrp libvirt
 kali-up                                  # isolated (samples)
 kali-up-nat                              # NAT for apt/cloud-init
@@ -378,11 +378,12 @@ cannot read `$HOME`). Each `start` rebuilds `kali-session.qcow2` unless
 `KEEP_OVERLAY=1`. No host shares. Defaults: **isolated** net, 4096 MiB RAM,
 4 vCPU (`KALI_RAM_MB` / `KALI_VCPUS` / `KALI_NET` / `KALI_VM_DIR` override).
 
-**NAT / UFW:** `setup` and `start --nat` allow traffic on `virbr0`, forward guest
-subnet `192.168.122.0/24`, and bring the bridge up. Boot unit
-`virbr0-up.service` (from `stow/system/`, also installed by `setup`) starts the
-libvirt `default` network then `ip link set virbr0 up` so the bridge exists
-after reboot. Cloud-init NoCloud seed sets hostname `kali-disposable`, enables
+**NAT / firewalld:** `setup` and `start --nat` bind `virbr0` to the stock
+`libvirt` zone (forward + masquerade for guest subnet `192.168.122.0/24`) and
+bring the bridge up. Prefer `bash scripts/firewalld-migrate.sh` if zones are
+missing. Boot unit `virbr0-up.service` (from `stow/system/`, also installed by
+`setup`) starts the libvirt `default` network then `ip link set virbr0 up` so
+the bridge exists after reboot. Cloud-init NoCloud seed sets hostname `kali-disposable`, enables
 password SSH, and uses a fresh `instance-id` each overlay. Isolated login
 defaults to `kali`/`kali`. NAT/LAN generates a random password (or
 `KALI_PASSWORD`), prints it, and stores it in `kali-session.password` under
