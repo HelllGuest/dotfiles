@@ -841,7 +841,8 @@ systemctl enable --now firewalld
 ```
 
 Libvirt: bind `virbr0` to zone `libvirt`. Air-gapped malware net: host-only
-`virbr-malware` in zone `block` (see `scripts/firewalld-migrate.sh`).
+`virbr-malware` in zone `lab-malware` (DROP, no masq/forward; see
+`scripts/lib/lab-malware-zone.sh` / `firewalld-migrate.sh`).
 
 Default behavior:
 
@@ -894,7 +895,6 @@ visible if netfilter mode is `off`:
 
 ```bash
 bash scripts/firewalld-tailscale.sh
-# deprecated alias: bash scripts/ufw-tailscale.sh
 # equivalent:
 #   sudo firewall-cmd --permanent --zone=trusted --change-interface=tailscale0
 #   sudo firewall-cmd --permanent --add-port=41641/udp
@@ -914,7 +914,7 @@ over opening the host default zone. `scripts/firewalld-migrate.sh` and
 
 * permanent `--zone=libvirt --add-interface=virbr0` (inherits when bridge appears)
 * runtime `--change-interface=virbr0` when the iface exists
-* host-only `virbr-malware` → zone `block` (no NAT/forward)
+* host-only `virbr-malware` → zone `lab-malware` (DROP; no NAT/forward)
 
 Boot unit `virbr0-up.service` (from `stow/system/`, installed by
 `system-setup.sh` / kali `setup`) runs `virsh net-start default` then
@@ -1128,16 +1128,18 @@ Installed or wired by `./install.sh`; documented once in the README:
 
 ---
 
-# PHASE 17f — PTYXIS / GHIDRA-CLI (OPTIONAL)
+# PHASE 17f — GHIDRA-CLI / LAB-RE (OPTIONAL)
 
 ```bash
-bash scripts/ptyxis-setup.sh
-# if pacman -Q ghidra:
+# preferred RE stack (JDK21 + Ghidra + jadx + rizin + rea-agents@6.9.0):
+lab-re --check && lab-re
+# optional host cargo CLI when pacman ghidra is installed:
 bash scripts/install-ghidra-cli.sh
 ```
 
-* Ptyxis: gsettings/dconf rice aligned with kitty/ghostty habits; wired into `./install.sh` after `gnome-console-setup.sh`
+* Terminals: kitty (primary) + ghostty + gnome-console; rice via `scripts/rice-setup.sh` (Gruvbox). Ptyxis/rio/wezterm/foot pruned.
 * ghidra-cli: cargo CLI + host skill under `skills/ghidra-cli-host/`; GUI via `ghidra-gui` (cargo `ghidra` shadows `/usr/bin/ghidra`). Install failure is non-fatal in `./install.sh`
+* Host `install-rea.sh` is optional only (needs JDK≥21); Stage B AI stack skips it
 
 ---
 
@@ -1532,8 +1534,8 @@ cd ~/dotfiles
 * Apply **after** `pacman.txt` exactly one machine profile via `scripts/apply-profile.sh`: `profiles/$(hostname).sh` if present, otherwise `scripts/detect-profile.sh` (`thinkpad-p15`, `thinkpad-t14s`, or `laptop`). Optimus/NVIDIA setup is inside `thinkpad-p15.sh` (no `nvidia.sh`).
 * Install Flatpaks from `packages/flatpak.txt` (Brave, Zen, Chrome, LibreWolf, Proton VPN, Android Studio) and AUR packages from `packages/aur.txt` (bootstraps `paru` if no helper exists)
 * Stow configs to `$HOME` (skips `zram` and `gdm`); install `system/` into `/etc` as root-owned files via `scripts/system-setup.sh`; materialize `zram-generator.conf` via `scripts/zram-setup.sh`
-* Apply GNOME session dconf (`gnome/dconf/user.conf`), Console & Ptyxis terminal settings, Dash2Dock + extensions, location spoofing, and stock input defaults (`scripts/reset-input-defaults.sh` + `scripts/cleanup-input-overrides.sh`)
-* Configure GDM, Git, Neovim, Headroom proxy + MCP (`scripts/headroom-setup.sh`), AI coding/RE agents + plugins + skills (`sync-agent-skills.sh`, `install-coding-agents.sh`, `install-caveman.sh`, `install-ponytail.sh`, `install-android-ui-skills.sh`, `install-ghidra-cli.sh`, `install-rea.sh`, `install-obscura.sh`, `install-re-skills.sh`, `install-ecosystem-skills.sh`), PhotoGIMP, and foxcage (`install-foxcage.sh`, Firefox in rootless Podman when `podman` exists)
+* Apply GNOME session dconf (`gnome/dconf/user.conf`), Console settings, Dash2Dock + extensions, location spoofing, and stock input defaults (`scripts/reset-input-defaults.sh` + `scripts/cleanup-input-overrides.sh`)
+* Configure GDM, Git, Neovim, Headroom proxy + MCP (`scripts/headroom-setup.sh`), AI coding/RE agents + plugins + skills (`sync-agent-skills.sh`, `install-coding-agents.sh`, `install-caveman.sh`, `install-ponytail.sh`, `install-android-ui-skills.sh`, `install-ghidra-cli.sh`, `install-obscura.sh`, `install-re-skills.sh`, `install-ecosystem-skills.sh`; REA via `lab-re`), PhotoGIMP, and foxcage (`install-foxcage.sh`, Firefox in rootless Podman when `podman` exists). Stage B modules: `configure.sh` / `labs-setup.sh` / `ai-stack-setup.sh` / `rice-setup.sh`
 * Run `scripts/privacy-hardener.sh` (incl. `browser-hardening.sh`), `scripts/check.sh`, and `scripts/validate-configs.sh`
 
 Config-only (no package install; skips `zram`, `system`, and `gdm`; removes unmodified `/etc/skel` copies that block stow):

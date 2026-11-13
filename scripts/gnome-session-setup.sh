@@ -14,10 +14,7 @@ sudo pacman -S --needed --noconfirm "${PAC_PKGS[@]}" 2>/dev/null || \
 
 mkdir -p "$HOME/.config"
 cd "$STOW_DIR" || exit 1
-# --adopt: reclaim absolute/foreign symlinks left by prior installs (extensions etc.)
-if ! stow -R --adopt -t "$HOME" gnome-session 2>/dev/null; then
-  echo "⚠ stow gnome-session conflicted — continuing (dconf/extensions still apply)" >&2
-fi
+# Empty gnome-session stow package removed; dconf/extensions below are enough.
 if ! stow -R --adopt -t "$HOME" proton-vpn 2>/dev/null; then
   stow -t "$HOME" proton-vpn 2>/dev/null || \
     echo "⚠ stow proton-vpn skipped (extension likely already present)" >&2

@@ -10,7 +10,10 @@ echo "→ Headroom install + MCP..."
 bash "$REPO_ROOT/scripts/install-headroom.sh"
 bash "$REPO_ROOT/scripts/headroom-setup.sh"
 
-echo "→ Coding agents / Ponytail (best-effort; Ponytail owns /caveman — no separate caveman install)..."
+# Caveman (install.sh) and Ponytail are complementary: separate Claude plugins,
+# AGY plugin dirs, hub skills, and Cursor hooks (ponytail merge leaves caveman).
+# SETUP_AI runs Ponytail only; full ./install.sh also runs install-caveman.sh.
+echo "→ Coding agents / Ponytail (Caveman stays on full install.sh path)..."
 bash "$REPO_ROOT/scripts/install-coding-agents.sh" || echo "WARN: coding-agents skipped"
 bash "$REPO_ROOT/scripts/install-ponytail.sh" || echo "WARN: ponytail skipped"
 # REA + Ghidra/JADX/JDK live in lab-re (not bare metal). Rebuild: podman build -t localhost/lab-re labs/lab-re

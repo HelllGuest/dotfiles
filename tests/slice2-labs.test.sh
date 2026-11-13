@@ -60,12 +60,14 @@ triage_block=$(awk '/^lab-triage\(\)/,/^lab-re\(\)/' "$ROOT/stow/zsh/.shell-func
 echo "$triage_block" | grep -q 'SYS_PTRACE' \
   && fail "lab-triage must not get SYS_PTRACE" || true
 
-grep -q 'install-caveman.sh' "$ROOT/scripts/ai-stack-setup.sh" \
-  && fail "ai-stack must not call install-caveman (Ponytail owns /caveman)" || true
+grep -E 'bash[[:space:]].*install-caveman\.sh' "$ROOT/scripts/ai-stack-setup.sh" \
+  && fail "ai-stack must not call install-caveman (full install.sh owns caveman; SETUP_AI = ponytail only)" || true
 grep -q 'install-ponytail.sh' "$ROOT/scripts/ai-stack-setup.sh" \
   || fail "ai-stack must still install ponytail"
 grep -E 'bash[[:space:]].*install-rea\.sh' "$ROOT/scripts/ai-stack-setup.sh" \
   && fail "ai-stack must not install REA on host (use lab-re)" || true
+grep -E 'bash[[:space:]].*install-rea\.sh' "$ROOT/install.sh" \
+  && fail "install.sh must not auto-run host install-rea (use lab-re)" || true
 
 grep -q 'jdk21-openjdk' "$ROOT/labs/lab-re/Containerfile" \
   || fail "lab-re must ship jdk21-openjdk"

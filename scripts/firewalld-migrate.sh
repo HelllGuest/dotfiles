@@ -1,7 +1,11 @@
 #!/usr/bin/env bash
 # firewalld-migrate.sh — replace UFW with firewalld (nftables, default drop).
-# Rewires libvirt virbr0 → libvirt zone; creates host-only virbr-malware → block.
+# Rewires libvirt virbr0 → libvirt zone; creates host-only virbr-malware → lab-malware.
 set -euo pipefail
+
+REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+# shellcheck source=lib/lab-malware-zone.sh
+source "$REPO_ROOT/scripts/lib/lab-malware-zone.sh"
 
 STAMP="$(date +%Y%m%d%H%M%S)"
 BACKUP="/var/backups/dotfiles-ufw-${STAMP}"
@@ -98,23 +102,17 @@ if command -v virsh >/dev/null 2>&1; then
   sudo virsh net-start virbr-malware 2>/dev/null || true
 fi
 
-# Permanent add-interface so zone sticks when bridge appears later.
-echo "→ Binding virbr-malware to firewalld zone block (permanent)..."
-sudo firewall-cmd --permanent --zone=block --add-interface=virbr-malware || true
-if [[ -d /sys/class/net/virbr-malware ]]; then
-  sudo firewall-cmd --zone=block --change-interface=virbr-malware || true
-fi
-
-sudo firewall-cmd --reload || true
+echo "→ Binding virbr-malware to firewalld zone lab-malware..."
+ensure_lab_malware_zone
 
 # libvirt may reattach bridges at start; re-assert runtime zones.
 if [[ -d /sys/class/net/virbr0 ]]; then
   sudo firewall-cmd --zone=libvirt --change-interface=virbr0 || true
 fi
 if [[ -d /sys/class/net/virbr-malware ]]; then
-  sudo firewall-cmd --zone=block --change-interface=virbr-malware || true
+  sudo firewall-cmd --zone=lab-malware --change-interface=virbr-malware || true
 fi
 
 echo "✓ firewalld active (default=$(firewall-cmd --get-default-zone 2>/dev/null || echo ?))"
-echo "  virbr0 → libvirt zone; virbr-malware → block zone (air-gap)"
+echo "  virbr0 → libvirt zone; virbr-malware → lab-malware zone (DROP, no masq/forward)"
 echo "  UFW backup: $BACKUP"

@@ -45,9 +45,6 @@ fi
 
 for term_pair in \
   "alacritty:$HOME/.config/alacritty/alacritty.toml" \
-  "rio:$HOME/.config/rio/config.toml" \
-  "foot:$HOME/.config/foot/foot.ini" \
-  "wezterm:$HOME/.config/wezterm/wezterm.lua" \
   "contour:$HOME/.config/contour/contour.yml"
 do
   bin="${term_pair%%:*}"

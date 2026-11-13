@@ -14,6 +14,8 @@
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+# shellcheck source=lib/lab-malware-zone.sh
+source "$REPO_ROOT/scripts/lib/lab-malware-zone.sh"
 LAB_ROOT="${LAB_ROOT:-/srv/lab}"
 DET_DIR="${LAB_ROOT}/detonate"
 CAPTURE_LOG="${LAB_ROOT}/capture"
@@ -37,26 +39,7 @@ ensure_net() {
   fi
   virsh_s net-start virbr-malware 2>/dev/null || true
   virsh_s net-autostart virbr-malware 2>/dev/null || true
-  if command -v firewall-cmd >/dev/null && systemctl is-active --quiet firewalld; then
-    # Custom zone: trap 192.168.200.0/24 — no masquerade, no forward, DROP target.
-    if ! firewall-cmd --permanent --get-zones 2>/dev/null | grep -qw lab-malware; then
-      sudo firewall-cmd --permanent --new-zone=lab-malware 2>/dev/null || true
-      sudo firewall-cmd --permanent --zone=lab-malware --set-description="Detonation host-only (INetSim/PolarProxy)" 2>/dev/null || true
-    fi
-    sudo firewall-cmd --permanent --zone=lab-malware --set-target=DROP 2>/dev/null || true
-    sudo firewall-cmd --permanent --zone=lab-malware --remove-masquerade 2>/dev/null || true
-    # Drop any accidental port forwards (would pierce the air-gap).
-    while read -r fp; do
-      [[ -z $fp ]] && continue
-      sudo firewall-cmd --permanent --zone=lab-malware --remove-forward-port="$fp" 2>/dev/null || true
-    done < <(firewall-cmd --permanent --zone=lab-malware --list-forward-ports 2>/dev/null || true)
-    for spec in 53/udp 53/tcp 80/tcp 443/tcp 10443/tcp 10080/tcp; do
-      sudo firewall-cmd --permanent --zone=lab-malware --add-port="$spec" 2>/dev/null || true
-    done
-    sudo firewall-cmd --permanent --zone=lab-malware --add-interface=virbr-malware 2>/dev/null || true
-    sudo firewall-cmd --reload 2>/dev/null || true
-    sudo firewall-cmd --zone=lab-malware --change-interface=virbr-malware 2>/dev/null || true
-  fi
+  ensure_lab_malware_zone
   sudo ip link set virbr-malware up 2>/dev/null || true
 }
 
@@ -221,7 +204,7 @@ cmd_status() {
   virsh_s net-info virbr-malware 2>/dev/null || echo "missing"
   ip -br addr show virbr-malware 2>/dev/null || true
   if command -v firewall-cmd >/dev/null; then
-    echo "block zone ifaces: $(firewall-cmd --permanent --zone=block --list-interfaces 2>/dev/null || true)"
+    echo "lab-malware ifaces: $(firewall-cmd --permanent --zone=lab-malware --list-interfaces 2>/dev/null || true)"
   fi
   echo "=== capture ==="
   sudo podman ps -a --filter name=lab-inetsim --format '{{.Names}} {{.Status}}' 2>/dev/null || true

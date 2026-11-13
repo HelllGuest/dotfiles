@@ -537,12 +537,22 @@ if [[ ${DESKTOP^^} != N* ]]; then
   fi
 fi
 
-# Optional local LLM — P15 / 20SU only (never AMD T14s)
+# Optional local LLM — P15 / 20SU only (never AMD T14s). Regex must match lib/dmi.sh.
 if [[ ${INSTALL_OLLAMA^^} == Y* ]]; then
-  _dmi="$(cat /sys/class/dmi/id/product_family /sys/class/dmi/id/product_version \
-            /sys/class/dmi/id/product_name /sys/class/dmi/id/product_sku 2>/dev/null \
-            | tr '\n' ' ')"
-  if echo "$_dmi" | grep -qiE 'ThinkPad[[:space:]]*P15|P15[[:space:]]+Gen|(^|[[:space:]_/])20SU([[:alnum:]_-]|$)'; then
+  _dmi_lib="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib/dmi.sh"
+  _p15=0
+  if [[ -f $_dmi_lib ]]; then
+    # shellcheck source=lib/dmi.sh
+    source "$_dmi_lib"
+    is_thinkpad_p15 && _p15=1
+  else
+    _dmi="$(cat /sys/class/dmi/id/product_family /sys/class/dmi/id/product_version \
+              /sys/class/dmi/id/product_name /sys/class/dmi/id/product_sku 2>/dev/null \
+              | tr '\n' ' ')"
+    echo "$_dmi" | grep -qiE 'ThinkPad[[:space:]]*P15|P15[[:space:]]+Gen|(^|[[:space:]_/])20SU([[:alnum:]_-]|$)' \
+      && _p15=1
+  fi
+  if ((_p15)); then
     say "installing ollama (CUDA preferred) for local 4GB VRAM models"
     if pacman -S --noconfirm --needed ollama-cuda || pacman -S --noconfirm --needed ollama; then
       mkdir -p /etc/systemd/system/ollama.service.d
@@ -559,8 +569,10 @@ OLL
       say "WARN: ollama install failed"
     fi
   else
+    _dmi="${_dmi:-$(cat /sys/class/dmi/id/product_name 2>/dev/null || true)}"
     say "skip ollama: INSTALL_OLLAMA=Y but DMI is not P15/20SU (${_dmi:-unknown})"
   fi
+  unset _dmi_lib _p15 _dmi
 fi
 
 

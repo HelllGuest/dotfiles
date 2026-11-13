@@ -26,16 +26,22 @@ bash -n "$ROOT/scripts/lab-mcp.sh" || fail "bash -n lab-mcp"
 
 grep -q '192.168.200.1' "$ROOT/labs/lab-capture/inetsim.conf" \
   || fail "INetSim must bind malware gateway IP"
-grep -q 'lab-malware' "$ROOT/scripts/lab-detonate.sh" \
-  || fail "detonate must use lab-malware firewalld zone"
-grep -q 'set-target=DROP' "$ROOT/scripts/lab-detonate.sh" \
+ZONE_LIB="$ROOT/scripts/lib/lab-malware-zone.sh"
+[[ -f $ZONE_LIB ]] || fail "missing lib/lab-malware-zone.sh"
+grep -q 'ensure_lab_malware_zone' "$ROOT/scripts/lab-detonate.sh" \
+  || fail "detonate must call ensure_lab_malware_zone"
+grep -q 'ensure_lab_malware_zone' "$ROOT/scripts/firewalld-migrate.sh" \
+  || fail "firewalld-migrate must call ensure_lab_malware_zone"
+grep -q 'set-target=DROP' "$ZONE_LIB" \
   || fail "lab-malware must set-target=DROP"
-grep -q 'remove-masquerade' "$ROOT/scripts/lab-detonate.sh" \
+grep -q 'remove-masquerade' "$ZONE_LIB" \
   || fail "lab-malware must disable masquerade"
-grep -q 'remove-forward-port' "$ROOT/scripts/lab-detonate.sh" \
+grep -q 'remove-forward-port' "$ZONE_LIB" \
   || fail "lab-malware must clear forward-ports"
-grep -qE 'add-masquerade|add-forward-port' "$ROOT/scripts/lab-detonate.sh" \
-  && fail "lab-detonate must never enable masquerade/forward-port" || true
+grep -qE 'add-masquerade|add-forward-port' "$ZONE_LIB" \
+  && fail "lab-malware zone must never enable masquerade/forward-port" || true
+grep -q 'zone=block --remove-interface=virbr-malware' "$ZONE_LIB" \
+  || fail "lab-malware helper must unbind legacy block zone"
 grep -q 'virbr-malware' "$ROOT/scripts/lab-detonate.sh" \
   || fail "detonate must use virbr-malware"
 grep -q 'PolarProxy' "$ROOT/scripts/lab-detonate.sh" \

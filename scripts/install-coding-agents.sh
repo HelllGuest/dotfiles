@@ -7,7 +7,7 @@
 # Env:
 #   OPENCODE_NPM_SPEC     default opencode-ai@1.19.4
 #   KIMI_NPM_SPEC         default @moonshot-ai/kimi-code@2.3.0
-#   REA_AGENTS_VERSION    default 6.7.0 (MCP npx pin)
+#   REA_AGENTS_VERSION    default 6.9.0 (MCP npx pin; match labs/lab-re)
 #   SKIP_CAVEMAN_OPENCODE=1  skip caveman --only opencode
 #   CAVEMAN_TAG           forwarded to install-caveman pins (default v4.1.0)
 #
@@ -20,7 +20,7 @@ set -euo pipefail
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 OPENCODE_NPM_SPEC="${OPENCODE_NPM_SPEC:-opencode-ai@1.19.4}"
 KIMI_NPM_SPEC="${KIMI_NPM_SPEC:-@moonshot-ai/kimi-code@2.3.0}"
-REA_AGENTS_VERSION="${REA_AGENTS_VERSION:-6.7.0}"
+REA_AGENTS_VERSION="${REA_AGENTS_VERSION:-6.9.0}"
 OPENCODE_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/opencode"
 KIMI_CODE_HOME="${KIMI_CODE_HOME:-$HOME/.kimi-code}"
 JADX_JAR="${XDG_DATA_HOME:-$HOME/.local/share}/rea/jadx-headless-mcp-0.7.1-all.jar"

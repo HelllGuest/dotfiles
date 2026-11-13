@@ -324,8 +324,8 @@ grep -q 'ln -sfnT' "$ROOT/scripts/install-coding-agents.sh" \
   || fail "coding-agents must use ln -sfnT for brand links"
 grep -q 'preserve other servers' "$ROOT/scripts/install-coding-agents.sh" \
   || fail "coding-agents must merge kimi mcp (not clobber)"
-grep -q 'REA_AGENTS_VERSION:-6.7.0' "$ROOT/scripts/install-rea.sh" \
-  || fail "install-rea must pin REA_AGENTS_VERSION like coding-agents"
+grep -q 'REA_AGENTS_VERSION:-6.9.0' "$ROOT/scripts/install-rea.sh" \
+  || fail "install-rea must pin REA_AGENTS_VERSION like coding-agents / lab-re"
 grep -q 'rea-agents@latest' "$ROOT/scripts/install-rea.sh" \
   && fail "install-rea must not use rea-agents@latest"
 grep -q 'akiselev/ghidra-cli' "$ROOT/packages/agent-skills.txt" \
@@ -400,11 +400,11 @@ path.write_text(json.dumps({"mcpServers": {"custom": {"url": "https://example.te
 data = json.loads(path.read_text())
 servers = data.setdefault("mcpServers", {})
 servers["headroom"] = {"command": "headroom", "args": ["mcp", "serve"]}
-servers["rea"] = {"command": "npx", "args": ["-y", "rea-agents@6.7.0", "mcp"]}
+servers["rea"] = {"command": "npx", "args": ["-y", "rea-agents@6.9.0", "mcp"]}
 path.write_text(json.dumps(data, indent=2))
 out = json.loads(path.read_text())
 assert "custom" in out["mcpServers"], out
-assert out["mcpServers"]["rea"]["args"][1] == "rea-agents@6.7.0"
+assert out["mcpServers"]["rea"]["args"][1] == "rea-agents@6.9.0"
 assert "headroom" in out["mcpServers"]
 print("kimi-merge-sim ok")
 PY

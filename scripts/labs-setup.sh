@@ -46,5 +46,5 @@ fi
 echo "✓ labs ready"
 echo "  samples: $LAB_ROOT/samples  out: $LAB_ROOT/out"
 echo "  wrappers: lab-triage | lab-re | lab-android | lab-web | lab-detonate | lab-mcp"
-echo "  malware VM net: virbr-malware (lab-malware / block zone)"
+echo "  malware VM net: virbr-malware (lab-malware zone, DROP)"
 echo "  MCP example: labs/mcp-host.example.json → scripts/lab-mcp.sh"

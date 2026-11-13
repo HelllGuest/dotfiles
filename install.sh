@@ -229,14 +229,8 @@ if [ -f "scripts/install-ghidra-cli.sh" ]; then
     fi
 fi
 
-# 3.5f REA (reverse-engineer-anything MCP + jadx JAR; needs npm from fnm)
-if [ -f "scripts/install-rea.sh" ]; then
-    if command -v npm >/dev/null 2>&1; then
-        bash scripts/install-rea.sh || echo "REA install failed — re-run: bash scripts/install-rea.sh"
-    else
-        echo "Skipping REA (npm not on PATH — open a new shell after fnm, then: bash scripts/install-rea.sh)."
-    fi
-fi
+# 3.5f REA backends live in lab-re (JDK21/Ghidra/jadx). Host install-rea is
+# optional only (needs host JDK>=21); prefer: lab-re --check && lab-re
 
 # 3.5f1 Obscura headless browser + MCP (OpenCode/Cursor/Claude)
 if [ -f "scripts/install-obscura.sh" ]; then

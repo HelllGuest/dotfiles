@@ -169,7 +169,8 @@ See [Verify sleep](hardened-arch-gnome.md#verify-sleep-s2idle).
 | Editors | Neovim (Lazy), VSCodium (`vscodium-bin`), Cursor / Antigravity (AUR) |
 | Languages | fnm Node 22, rust, `python-pipx`, `flutter-bin`, jdk-openjdk (+ JDK 17 for Android) |
 | Mobile | Flatpak Android Studio; `ANDROID_HOME` in `.shell-exports`; alias `as` |
-| AI stack | Headroom (`headroom-setup.sh`), OpenCode + Kimi (`install-coding-agents.sh`), Caveman (`install-caveman.sh`), Ponytail (`install-ponytail.sh`), Obscura (`install-obscura.sh`), and `sync-agent-skills.sh` |
+| AI stack | Headroom + `hr-*`, OpenCode + Kimi (`install-coding-agents.sh`), Caveman + Ponytail (complementary; `./install.sh` both, SETUP_AI = Ponytail), Continue FIM→ollama (P15), Obscura, `ai-stack-setup.sh` / `sync-agent-skills.sh` |
+| Labs | `lab-triage` / `lab-re` / `lab-android` / `lab-web` / `lab-detonate` / `lab-mcp` via `labs-setup.sh` |
 | Local builds | x86-64-v3 makepkg drop-in; `bash scripts/rebuild-v3.sh` after big upgrades |
 
 ### Containers (Podman — in `pacman.txt`)
@@ -243,11 +244,12 @@ paru -S --needed imhex-bin android-apktool-bin
 
 ### AI reverse-engineering (MCP + skills)
 
-`./install.sh` already runs REA + RE skills when npm/npx are available.
+Prefer containerized REA inside `lab-re` (`rea-agents@6.9.0` + JDK21/Ghidra/jadx/rizin). Host `install-rea.sh` is optional (needs JDK≥21). `./install.sh` still runs RE skills when npx is available; it does **not** auto-run host REA.
 
 | Layer | What | Install |
 |-------|------|---------|
-| **REA** | MCP + CLI across native / JS / .NET / web / Android; uses your Ghidra/jadx | `bash scripts/install-rea.sh` |
+| **REA (lab-re)** | MCP + CLI inside Podman image | `lab-re` / `bash scripts/labs-setup.sh` |
+| **REA (host, optional)** | MCP on bare metal when JDK≥21 + tools exist | `bash scripts/install-rea.sh` |
 | **leanrea** | Small skill: shell-tool RE, no MCP (cheap triage) | `bash scripts/install-re-skills.sh` |
 | **reverse-engineering** | Playbooks + triage scripts (EncidXVII) | same |
 | **android-reverse-engineering** | APK/XAPK API recovery (jadx) | same |
@@ -270,7 +272,8 @@ Optional native-only MCP (not installed by default; REA already bridges Ghidra):
 Survey (Oct 2026): [AI RE tools compared](https://dev.to/leemie8848/ai-reverse-engineering-tools-compared-rea-ida-mcp-ghidramcp-and-friends-oct-2026-3hfl).
 
 ```bash
-bash scripts/install-rea.sh
+lab-re --check && lab-re          # preferred REA + Ghidra/jadx
+# optional host MCP: bash scripts/install-rea.sh
 bash scripts/install-re-skills.sh
 bash ~/dotfiles/scripts/check.sh   # ○/✓ for leanrea, reverse-engineering, …
 ```

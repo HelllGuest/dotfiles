@@ -166,7 +166,7 @@ UUID `dash2dock-lite@icedman.github.com` is in `gnome/extensions.txt` and `gnome
 
 Shell functions (`fe`, `rge`, `gai`, `fcd`, …), `Ctrl+R` / `Ctrl+T` / `Alt+C`, terminal and GNOME keys: [gnome/keybindings.md](gnome/keybindings.md). Modern aliases (when installed): `eza`, `bat`, `rg`, `fd`, `dust`, `duf`, `delta`, etc.
 
-Disposable Kali lab (libvirt overlay): `kali-up` (isolated) / `kali-up-nat` / `kali-up-lan` (NAT + physical RJ45) / `kali-lan` / `kali-wipe` / `kali-stop` / `kali-st` / `kali` — see [keybindings](gnome/keybindings.md#disposable-kali) and [fresh-install RE guide](docs/fresh-install-coding-re.md#disposable-kali). NAT needs `virbr0-up.service` + UFW virbr0 rules (kali `setup` / system-setup). Physical LAN uses macvtap on `KALI_LAN_IFACE` (default `enp0s31f6`) → guest eth1.
+Disposable Kali lab (libvirt overlay): `kali-up` (isolated) / `kali-up-nat` / `kali-up-lan` (NAT + physical RJ45) / `kali-lan` / `kali-wipe` / `kali-stop` / `kali-st` / `kali` — see [keybindings](gnome/keybindings.md#disposable-kali) and [fresh-install RE guide](docs/fresh-install-coding-re.md#disposable-kali). NAT needs `virbr0` in firewalld **libvirt** zone (`firewalld-migrate.sh`). Physical LAN uses macvtap on `KALI_LAN_IFACE` (default `enp0s31f6`) → guest eth1.
 
 ### Starship
 
@@ -184,11 +184,11 @@ dotfiles/
 ├── install.sh       # First-boot orchestrator (pacman → profile → stow → agents…)
 ├── stow/            # GNU Stow packages → $HOME (system/zram/gdm via setup scripts, not stow -t /)
 │   ├── bash/ zsh/   # shells; shared .shell-* under zsh/
-│   ├── system/      # /etc template (i915, sleep, UFW, udev, Wayland) → system-setup.sh
+│   ├── system/      # /etc template (sleep, firewalld-era units, udev, Wayland) → system-setup.sh
 │   ├── containers/  # rootless Podman containers.conf
 │   ├── privacy/     # telemetry opt-out environment.d
 │   ├── zram/ gdm/   # templates → zram-setup.sh / gdm-setup.sh
-│   ├── kitty/ ghostty/ alacritty/ contour/ foot/ rio/ wezterm/
+│   ├── kitty/ ghostty/ alacritty/ contour/
 │   └── nvim/ starship/ atuin/ git/ vscode/ cursor/ … 
 ├── browsers/        # chromium-base (+ brave-extra); zen; LibreWolf
 ├── packages/        # pacman.txt, flatpak.txt, aur.txt, re-extra.txt, thinkpad-t14s.txt, …
@@ -216,30 +216,33 @@ Layout stays flat on purpose: GNU Stow package roots, curl-able installers, and
 | [README.md](README.md) | Overview, shell setup, installation |
 | [CHANGELOG.md](CHANGELOG.md) | Version history |
 | [CONTRIBUTING.md](CONTRIBUTING.md) | Contribution guidelines |
-| [docs/hardened-arch-gnome.md](docs/hardened-arch-gnome.md) | Full Arch + GNOME guide — `arch-install.sh` (X1) / `arch-install-t14s.sh` (21CQ/21CR) |
-| [docs/fresh-install-coding-re.md](docs/fresh-install-coding-re.md) | Purpose stacks (coding / RE / malware lab); T14s note for AMD path |
+| [docs/hardened-arch-gnome.md](docs/hardened-arch-gnome.md) | Full Arch + GNOME guide — dual-host Stage A + firewalld |
+| [docs/fresh-install-coding-re.md](docs/fresh-install-coding-re.md) | Purpose stacks (coding / RE / malware lab); lab-re + Stage B configure |
+| [t14s-arch-install](https://github.com/HelllGuest/t14s-arch-install) | Preferred Stage A ISO installer (T14s 21CQ/21CR + P15 20SU) |
 | [gnome/keybindings.md](gnome/keybindings.md) | Shell aliases and useful shortcuts |
 
 ---
 
 ## 📦 Installation & Setup
 
-### 0. Bare-metal Arch install (from the ISO)
-For a fresh machine, the automated installer builds the whole hardened base —
-LUKS2 (argon2id) + Btrfs subvolumes (incl. disk-backed `@tmp`) + `linux-lts`
-(primary) / `linux-hardened` (fallback) Unified Kernel Images + systemd-boot +
-`sbctl` Secure Boot + minimal GNOME — before you clone these dotfiles:
+### 0. Bare-metal Arch install (Stage A, from the ISO)
+
+Preferred dual-host installer: **[t14s-arch-install](https://github.com/HelllGuest/t14s-arch-install)** —
+`HW_PROFILE` auto-detects ThinkPad T14s Gen 3 AMD (`21CQ`/`21CR`) or P15 Gen 1
+(`20SU` Optimus). Seeds **firewalld** (`nftables`, default zone `drop`), optional
+P15-only `ollama-cuda` on `127.0.0.1:11434` (Quadro T1000 4GB).
+
+In-tree mirrors (same stack):
 ```bash
 # from the Arch ISO (UEFI, as root). AUTO wipe, or MANUAL with EFI optional/reuse.
 bash <(curl -fsSL https://raw.githubusercontent.com/HelllGuest/dotfiles/main/scripts/arch-install.sh)
 
-# ThinkPad T14s Gen 3 AMD (21CQ/21CR) — same stack, AMD cmdline/hostname:
+# ThinkPad T14s Gen 3 AMD (21CQ/21CR) — AMD cmdline/hostname:
 bash <(curl -fsSL https://raw.githubusercontent.com/HelllGuest/dotfiles/main/scripts/arch-install-t14s.sh)
 ```
 Generic path mirrors [docs/hardened-arch-gnome.md](docs/hardened-arch-gnome.md).
 Rehearse in a UEFI VM first — `scripts/arch-install-vmtest.sh` (OVMF qemu; host
-disks untouched). T14s script in VM: `INSTALLER=arch-install-t14s.sh scripts/arch-install-vmtest.sh`
-(confirm past the DMI warn). Then continue with **1. Full Bootstrap** below.
+disks untouched). Then continue with **1. Full Bootstrap** (Stage B) below.
 
 ### 1. Full Bootstrap (Recommended)
 Installs packages, stows configs into `$HOME`, installs `stow/system/` into `/etc` as root-owned files, restores GNOME settings, and runs health checks.
@@ -249,14 +252,15 @@ Installs packages, stows configs into `$HOME`, installs `stow/system/` into `/et
 
 Machine profiles run in `./install.sh` via `scripts/apply-profile.sh` **after** `packages/pacman.txt` (exactly one profile): `profiles/$(hostname).sh` if it exists, otherwise `scripts/detect-profile.sh` (ThinkPad P15 → `thinkpad-p15`, ThinkPad T14s Gen 3 AMD 21CQ/21CR → `thinkpad-t14s`, other ThinkPads/laptop chassis → `laptop`). Pacman first so Optimus/NVIDIA packages exist before `thinkpad-p15` enables services and rebuilds UKIs (on `thinkpad-t14s` AMD hosts, `./install.sh` skips the Intel/NVIDIA GPU packages in `packages/pacman.txt`). There is no `nvidia.sh`; Optimus setup is inside `profiles/thinkpad-p15.sh`.
 
-ThinkPad system configs (`i915`, kernel cmdline, sleep, UFW, Wayland env) live in `stow/system/` and are installed by `scripts/system-setup.sh` as **root-owned regular files**, never stow symlinks (re-run it after editing `stow/system/`). Why, and how the cmdline UUID is handled: [hardened guide — `system/` files](docs/hardened-arch-gnome.md#kernel-cmdline--system-files-installed-not-stowed). After tuning on **X1**, run `scripts/thinkpad-health.sh` (i915-focused) and **reboot**. On **T14s Gen 3 AMD**, skip that script; check `cat /sys/power/mem_sleep`, `lscpu | grep -i ryzen`, `grep -E 'amd_iommu|amd_pstate' /proc/cmdline`, and charge thresholds under `/sys/class/power_supply/BAT*/charge_control_*_threshold` instead. Installer + profile pull `mesa` / `vulkan-radeon` / `fprintd` (libva via mesa).
+ThinkPad system configs (kernel cmdline templates, sleep, Wayland env, units) live in `stow/system/` and are installed by `scripts/system-setup.sh` as **root-owned regular files**, never stow symlinks (re-run it after editing `stow/system/`). Why, and how the cmdline UUID is handled: [hardened guide — `system/` files](docs/hardened-arch-gnome.md#kernel-cmdline--system-files-installed-not-stowed). On **T14s Gen 3 AMD**, check `cat /sys/power/mem_sleep`, `lscpu | grep -i ryzen`, `grep -E 'amd_iommu|amd_pstate' /proc/cmdline`, and charge thresholds under `/sys/class/power_supply/BAT*/charge_control_*_threshold`. On **P15**, verify Optimus/`prime-run` after reboot. Installer + profile pull `mesa` / `vulkan-radeon` / `fprintd` (libva via mesa) on AMD; P15 pulls NVIDIA stack via profile.
 
 #### Script execution order (fresh machine)
 
 **Stage A — from the Arch ISO (bare metal):**
 ```text
+# Preferred: HelllGuest/t14s-arch-install (HW_PROFILE=t14s|p15, firewalld drop, optional ollama-cuda)
 scripts/arch-install-vmtest.sh   # optional: full UEFI VM install (host disks untouched)
-scripts/arch-install.sh          # LUKS + Btrfs(@tmp) + UKI(lts/hardened) + systemd-boot + sbctl + minimal GNOME
+scripts/arch-install.sh          # dual-host mirror: LUKS + Btrfs(@tmp) + UKI + sbctl + GNOME + firewalld
 scripts/arch-install-t14s.sh     # T14s Gen 3 AMD (21CQ/21CR): amd_iommu + amd_pstate + mesa/vulkan-radeon
 → reboot, remove ISO
 ```
@@ -274,6 +278,8 @@ sbctl status && sbctl verify
 git clone https://github.com/HelllGuest/dotfiles.git ~/dotfiles
 cd ~/dotfiles
 bash scripts/p15-dotfiles-preflight.sh   # P15 only — optional readiness check
+bash scripts/configure.sh                # TUI: firewalld migrate, labs, AI, rice, ollama (P15)
+# or full bootstrap:
 ./install.sh                             # requires GNOME session for dconf/extensions
 # hostname p15 → profiles/p15.sh → thinkpad-p15 (Optimus). Or re-run:
 # bash profiles/thinkpad-p15.sh
@@ -282,8 +288,19 @@ reboot                                   # UKI must embed nvidia_drm.modeset + n
 # after reboot (P15): expect Kernel driver in use: nvidia
 lspci -nnk -d 10de: | grep -A2 'Kernel driver'
 prime-run nvidia-smi -L
-scripts/thinkpad-health.sh       # X1 only (i915); T14s: check amd_iommu/amd_pstate + mem_sleep
 scripts/thinkpad-charge-thresholds.sh  # tmpfiles + late-boot service; profile / install-re-extras call it
+```
+
+**Firewalld zones (after `firewalld-migrate.sh` / configure):**
+```text
+default zone: drop
+virbr0          → libvirt          (kali-disposable / NAT guests)
+virbr-malware   → lab-malware      (192.168.200.0/24 host-only; DROP; no masq/forward)
+```
+
+**Lab commands (after `labs-setup.sh` / configure SETUP_LABS):**
+```text
+lab-triage | lab-re | lab-android | lab-web | lab-detonate | lab-mcp
 ```
 
 **What `./install.sh` runs, in order:**
@@ -294,11 +311,11 @@ cleanup-input-overrides.sh
 → install-flatpaks.sh → install-aur.sh (bootstraps paru)
 → install-fonts.sh → stow ($HOME; system/ via system-setup.sh; skips zram & gdm)
 → fnm install/default 22 → atuin import → zram-setup.sh
-→ gnome-session-setup.sh → location-setup.sh → gnome-console-setup.sh → ptyxis-setup.sh
+→ gnome-session-setup.sh → location-setup.sh → gnome-console-setup.sh
 → gdm-setup.sh → git-setup.sh → nvim-setup.sh → headroom-setup.sh
 → sync-agent-skills.sh → install-coding-agents.sh (OpenCode + Kimi + MCP; if npm)
 → install-caveman.sh (if npm) → install-ponytail.sh (if node) → install-android-ui-skills.sh (if npx)
-→ install-ghidra-cli.sh (if ghidra) → install-rea.sh (if npm)
+→ install-ghidra-cli.sh (if ghidra)
 → install-obscura.sh (headless browser + MCP)
 → install-re-skills.sh (leanrea / RE playbooks / Android RE / Ghidra loop)
 → install-ecosystem-skills.sh (packages/agent-skills.txt; owner/repo or owner/repo:skill; if npx)
@@ -306,8 +323,10 @@ cleanup-input-overrides.sh
 → install-photogimp.sh → install-foxcage.sh (if podman; SKIP_FOXCAGE=1 skips)
 → install-dash2dock.sh → install-extensions.sh
 → privacy-hardener.sh (incl. browser-hardening.sh)
-→ check.sh → validate-configs.sh
+→ firewalld-tailscale.sh (if tailscale) → check.sh → validate-configs.sh
 ```
+REA backends: use `lab-re` (JDK21/Ghidra/jadx/rizin + `rea-agents@6.9.0`). Optional host MCP only:
+`bash scripts/install-rea.sh` (needs host JDK≥21).
 
 > `scripts/tmp-to-disk.sh` is **not** part of this flow — `arch-install.sh` already
 > puts `/tmp` on a disk-backed `@tmp` subvolume. It's only for retrofitting an
@@ -331,7 +350,7 @@ Key runtime dependencies (`scripts/check.sh` asserts binaries, shell tools, syml
 
 **Shell tools:** `atuin`, `fzf`, `fd`, `ripgrep`, `bat`, `eza`, `zoxide`, `direnv`, `git-delta`, `fnm`
 
-**AI (optional):** `python-pipx` + `headroom` (`scripts/headroom-setup.sh`), OpenCode + Kimi Code (`scripts/install-coding-agents.sh`), Caveman `v4.1.0` (`scripts/install-caveman.sh`), Ponytail `v5.3.3` (`scripts/install-ponytail.sh`), Obscura CDP/MCP (`scripts/install-obscura.sh`), and `scripts/sync-agent-skills.sh` (mirrors `~/.agents/skills` + global `AGENTS.md`/`CLAUDE.md`/`GEMINI.md` across Claude Code, Cursor, OpenCode, Kimi, Gemini CLI, Antigravity, and Kiro)
+**AI (optional):** `python-pipx` + Headroom (`hr-claude` / `hr-cursor` / `hr-opencode` / `hr-agy` / `hr-proxy`), OpenCode + Kimi (`scripts/install-coding-agents.sh`), Caveman `v4.1.0` + Ponytail `v5.3.3` (complementary plugins/hooks; `./install.sh` runs both; `configure.sh` SETUP_AI runs Ponytail only), Continue.dev local FIM→ollama on P15, Obscura CDP/MCP, `scripts/sync-agent-skills.sh` across Claude Code / Cursor / OpenCode / Kimi / Gemini CLI / Antigravity / Kiro. Stage B: `bash scripts/ai-stack-setup.sh`
 
 **Graphics (optional):** `gimp` + PhotoGIMP via `scripts/install-photogimp.sh`
 
@@ -343,13 +362,13 @@ Key runtime dependencies (`scripts/check.sh` asserts binaries, shell tools, syml
 
 **Flatpaks** (via `install-flatpaks.sh`): Brave, Zen, Google Chrome, LibreWolf, Proton VPN, Android Studio. Chrome may be `--system` or `--user`; both satisfy `check.sh` / hardening presence checks. Browser telemetry debloat: `scripts/browser-hardening.sh` (Chrome = `chromium-base` only; Brave = base + `brave-extra`; Zen `user.js` per real profile + Flatpak `systemconfig` + `/etc/firefox/policies` for native; LibreWolf upstream + `librewolf.overrides.cfg`). Launch Zen once before re-running hardening if profiles are new. `/etc` policy paths need sudo.
 
-**Terminals:** `kitty` (primary; Super+Return), `ghostty`, optional stowed configs for `alacritty`, `contour`, `foot`, `rio`, `wezterm`, plus `gnome-console` (kgx) and `ptyxis`. Optional suckless `st`: `bash scripts/build-st.sh` (`builds/st/`).
+**Terminals:** `kitty` (primary; Super+Return), `ghostty`, optional `alacritty` / `contour`, plus `gnome-console` (kgx). Rice: `bash scripts/rice-setup.sh` (Gruvbox accents; privacy: `show-in-lock-screen false`). Optional suckless `st`: `bash scripts/build-st.sh` (`builds/st/`).
 
-Run `scripts/gnome-console-setup.sh` / `scripts/ptyxis-setup.sh` for Console/Ptyxis dconf. **Super+Return → kitty** is in `gnome/dconf/user.conf`.
+Run `scripts/gnome-console-setup.sh` for Console dconf. **Super+Return → kitty** is in `gnome/dconf/user.conf`.
 
 Clipboard: selecting text auto-copies in kitty and ghostty (`copy_on_select`); in kitty, right-click also copies the selection (Shift+right-click extends it).
 
-**Ghidra / RE AI:** pacman `ghidra` + `bash scripts/install-ghidra-cli.sh` (cargo CLI; host skill under `skills/ghidra-cli-host/`). GUI: `ghidra-gui` (cargo `ghidra` shadows `/usr/bin/ghidra`). REA MCP: `bash scripts/install-rea.sh`. Extra agent skills: `bash scripts/install-re-skills.sh`. Optional host tools: `bash scripts/install-re-extras.sh`. Details: [fresh-install RE guide](docs/fresh-install-coding-re.md#ai-reverse-engineering-mcp--skills).
+**Ghidra / RE AI:** prefer `lab-re` (container: JDK21 + Ghidra + jadx + rizin + `rea-agents@6.9.0`). Optional host: pacman `ghidra` + `bash scripts/install-ghidra-cli.sh` / `bash scripts/install-rea.sh` (needs JDK≥21). Extra skills: `bash scripts/install-re-skills.sh`. Details: [fresh-install RE guide](docs/fresh-install-coding-re.md#ai-reverse-engineering-mcp--skills).
 
 **GDM:** `scripts/gdm-setup.sh` copies greeter config to `/etc` (not stow — GDM cannot read `$HOME`), enables Wayland, compiles greeter dconf, and enables `gdm.service`. Greeter changes appear after **reboot** (or `sudo systemctl restart gdm`, which logs you out). Optional fingerprint: `scripts/fingerprint-setup.sh`.
 
@@ -369,7 +388,7 @@ Clipboard: selecting text auto-copies in kitty and ghostty (`copy_on_select`); i
 
 We take a "quiet by default" approach:
 - **GNOME Debloated:** Uses `gnome-shell` instead of the full `gnome` meta-package where possible.
-- **Opt-out defaults:** `stow/privacy` → `~/.config/environment.d/90-telemetry-optout.conf` (GUI session + `.shell-exports`). `scripts/privacy-hardener.sh` covers GNOME, browsers, IDE/Claude merges (Cursor-only `cursor.general.*` on Cursor trees; strips leftovers elsewhere), Flutter `reporting=0`, Headroom/AI. Re-run after upgrades: `bash scripts/privacy-hardener.sh`.
+- **Opt-out defaults:** `stow/privacy` → `~/.config/environment.d/90-telemetry-optout.conf` (GUI session + `.shell-exports`). `scripts/privacy-hardener.sh` covers GNOME, browsers, IDE/Claude merges (Cursor-only `cursor.general.*` on Cursor trees; strips leftovers elsewhere), Flutter `reporting=0`, Headroom/AI. Rice also sets `org.gnome.desktop.notifications show-in-lock-screen false`. Re-run after upgrades: `bash scripts/privacy-hardener.sh` / `bash scripts/rice-setup.sh`.
 
 ---
 
@@ -385,8 +404,8 @@ We take a "quiet by default" approach:
 | `check.sh`: Chrome / Brave policies ✗ | `/etc` policy files missing or stale | `bash scripts/browser-hardening.sh` (needs sudo for `/etc`) |
 | `evolution-data-server` / `wireless-regdb` (or any `pacman.txt` package) missing | Older `install.sh` fed `#` comment lines to pacman (`target not found: # …`), aborting the whole package step | Pull, then re-run `./install.sh` (comments are stripped now) |
 | `unsafe path transition /etc` during `pacman` | `/etc` owned by user (old `gdm-setup.sh` used `rsync -a`) | `bash scripts/gdm-setup.sh` (restores root + 755), or `sudo chown root:root /etc && sudo chmod 755 /etc` |
-| No network after boot; `ufw.service` failed | `/etc/ufw/before.rules` was a stow symlink into `$HOME` | `bash scripts/system-setup.sh` (installs real files, reloads ufw) |
-| `ufw allow OpenSSH` → could not find profile | Arch UFW has no OpenSSH app profile (Ubuntu-only name) | `sudo ufw allow 22/tcp comment 'ssh'` then `sudo ufw reload`; enable `sshd` |
+| No inbound / wrong default zone | firewalld not migrated or default ≠ `drop` | `bash scripts/firewalld-migrate.sh`; `firewall-cmd --get-default-zone` |
+| SSH blocked after migrate | drop zone has no 22/tcp | `sudo firewall-cmd --permanent --add-service=ssh && sudo firewall-cmd --reload` (only if you need SSH) |
 | Spoof location sync does nothing | `vpn-location-sync` failed under `pkexec` | `bash scripts/location-setup.sh`; panel → Sync spoofed location |
 | Touchpad clicks broken after old dotfiles | Legacy synaptics inhibit/udev | `bash scripts/cleanup-input-overrides.sh` (sudo), log out |
 | Ghostty needs 2 clicks / fails from app grid | systemd `notify-reload` vs late SIGUSR2 ([#14394](https://github.com/ghostty-org/ghostty/discussions/14394)) | Stow `ghostty` drop-in sets `Type=notify`; `systemctl --user daemon-reload` |
@@ -420,7 +439,11 @@ We take a "quiet by default" approach:
 | Caveman (`/caveman`) | `bash scripts/install-caveman.sh` |
 | Ponytail (`/ponytail`) | `bash scripts/install-ponytail.sh` |
 | Android UI skills | `bash scripts/install-android-ui-skills.sh` (Compose + Material 3) |
-| REA (MCP + jadx) | `bash scripts/install-rea.sh` (Hopper: `INSTALL_HOPPER=1`) |
+| REA in lab-re | `lab-re` / rebuild `podman build -t localhost/lab-re labs/lab-re` (`rea-agents@6.9.0`) |
+| REA host MCP (optional) | `bash scripts/install-rea.sh` (needs JDK≥21; Hopper: `INSTALL_HOPPER=1`) |
+| Labs / detonate / MCP | `bash scripts/labs-setup.sh`; `lab-detonate` / `lab-mcp` |
+| Stage B TUI | `bash scripts/configure.sh` |
+| Gruvbox rice | `bash scripts/rice-setup.sh` |
 | Obscura (CDP/MCP) | `bash scripts/install-obscura.sh` ([docs](https://docs.obscura.sh/)) |
 | foxcage (Firefox in rootless Podman) | `bash scripts/install-foxcage.sh` ([upstream](https://gitlab.com/grepular/foxcage)); then `foxcage`, `foxcage @tmp <url>`; `install.sh` runs it when `podman` exists (`SKIP_FOXCAGE=1` skips) |
 | RE skills (leanrea, …) | `bash scripts/install-re-skills.sh` |

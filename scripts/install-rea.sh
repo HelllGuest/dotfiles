@@ -28,7 +28,7 @@ JADX_VER="0.7.1"
 JADX_SHA256="6e5eacf500b64292bfb73c49797c1958f6ee44646e43e868039ae7feb573ff75"
 JADX_URL="https://github.com/1013503897/jadx-headless-mcp/releases/download/v${JADX_VER}/jadx-headless-mcp-${JADX_VER}-all.jar"
 # Keep in sync with scripts/install-coding-agents.sh (REA_AGENTS_VERSION)
-REA_AGENTS_VERSION="${REA_AGENTS_VERSION:-6.7.0}"
+REA_AGENTS_VERSION="${REA_AGENTS_VERSION:-6.9.0}"
 REA_DIR="${XDG_DATA_HOME:-$HOME/.local/share}/rea"
 JADX_JAR="${REA_DIR}/jadx-headless-mcp-${JADX_VER}-all.jar"
 GHIDRA_INSTALL_DIR="${GHIDRA_INSTALL_DIR:-/opt/ghidra}"
