@@ -9,13 +9,17 @@ echo "--- Session ---"
 echo "XDG_SESSION_TYPE=${XDG_SESSION_TYPE:-unknown}"
 
 echo "--- Power ---"
-for svc in power-profiles-daemon bolt; do
-    printf "  %-24s %s\n" "$svc" "$(systemctl is-active "$svc" 2>/dev/null || echo unknown)"
-done
+svc_state() {
+    local st
+    st="$(systemctl is-active "$1" 2>/dev/null || true)"
+    printf "  %-24s %s\n" "$1" "${st:-unknown}"
+}
+svc_state bolt
 if pacman -Q tuned-ppd >/dev/null 2>&1; then
-    for svc in tuned tuned-ppd; do
-        printf "  %-24s %s\n" "$svc" "$(systemctl is-active "$svc" 2>/dev/null || echo unknown)"
-    done
+    svc_state tuned
+    svc_state tuned-ppd
+else
+    svc_state power-profiles-daemon
 fi
 
 echo "--- Kernel cmdline (key params) ---"
@@ -33,15 +37,20 @@ fi
 if [[ -d /sys/module/nvidia ]] || command -v nvidia-smi >/dev/null 2>&1; then
     echo "--- NVIDIA ---"
     # Read runtime_status before nvidia-smi: listing the GPU wakes it from runtime PM.
+    # Only class 0x03* (VGA/3D/display). HDMI audio / USB-C companions can stay
+    # active and must not force nvidia-smi.
     nvidia_pci=0
     nvidia_awake=0
     for card in /sys/bus/pci/devices/*/power/runtime_status; do
         [[ -r "$card" ]] || continue
-        vendor="$(cat "${card%/power/runtime_status}/vendor" 2>/dev/null || true)"
+        dev="${card%/power/runtime_status}"
+        vendor="$(cat "$dev/vendor" 2>/dev/null || true)"
         [[ "$vendor" == "0x10de" ]] || continue
+        class="$(cat "$dev/class" 2>/dev/null || true)"
+        [[ "$class" == 0x03* ]] || continue
         nvidia_pci=1
         st="$(cat "$card")"
-        printf "  %s runtime_status=%s\n" "${card%/power/runtime_status}" "$st"
+        printf "  %s runtime_status=%s\n" "$dev" "$st"
         case "$st" in
             suspended|suspending) ;;
             *) nvidia_awake=1 ;;
