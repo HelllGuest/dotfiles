@@ -4,6 +4,11 @@
 # Target: Rembrandt-U (Ryzen 5/7 PRO 6650U/6850U), soldered LPDDR5, amdgpu,
 #         Wi-Fi 6E, 57Wh, s2idle. Example MTM: 21CRS1PU00.
 #
+# Canonical Stage A (TUI, DRYRUN, host-check, unattended): 
+#   https://github.com/HelllGuest/t14s-arch-install
+# Prefer that for new installs. This private-repo copy hands off to Stage B
+# (git clone this dotfiles tree && ./install.sh). Keep Rembrandt seeds in sync.
+#
 #   bash <(curl -fsSL https://raw.githubusercontent.com/HelllGuest/dotfiles/main/scripts/arch-install-t14s.sh)
 #
 # Same stack as arch-install.sh (LUKS2 + Btrfs + UKI LTS/hardened + GNOME +
@@ -366,11 +371,15 @@ cat > /etc/hosts <<EOF
 127.0.1.1 ${HOSTNAME}.localdomain ${HOSTNAME}
 EOF
 
-# users
+# users — secrets from /root/.install-secrets (0600; shredded after chroot)
+# shellcheck disable=SC1091
+source /root/.install-secrets
 echo "root:${ROOT_PASS}" | chpasswd
 id "$USERNAME" &>/dev/null || useradd -m -G wheel -s /bin/zsh "$USERNAME"
 echo "${USERNAME}:${USER_PASS}" | chpasswd
 sed -i 's/^# %wheel ALL=(ALL:ALL) ALL/%wheel ALL=(ALL:ALL) ALL/' /etc/sudoers
+unset -v USER_PASS ROOT_PASS
+rm -f /root/.install-secrets
 
 # initramfs (systemd + sd-encrypt for LUKS)
 sed -i 's/^HOOKS=.*/HOOKS=(base systemd autodetect microcode modconf kms keyboard sd-vconsole block sd-encrypt filesystems fsck)/' /etc/mkinitcpio.conf
@@ -625,7 +634,7 @@ if [[ ${DESKTOP^^} != N* ]]; then
   # sof-firmware+alsa-ucm-conf: Rembrandt audio. fprintd: power-button match-on-chip
   # mesa+vulkan-radeon+fprintd: keep in sync with packages/thinkpad-t14s.txt
   # Charge tmpfiles seeded above; profile helper can refresh post-boot.
-  # FP (D-Bus-activated — do NOT systemctl enable). No Yoga tablet / iio rotate.
+  # FP (D-Bus-activated — do NOT systemctl enable).
   # browsers + proton-vpn: Flatpak. gnome-software: Flatpak software center.
   # Non-fatal: a network hiccup here must not abort an otherwise-bootable base system.
   if pacman -S --noconfirm --needed --disable-download-timeout \
@@ -719,15 +728,35 @@ fi
 sbctl verify || true
 CHROOT
 
+# Passwords via 0600 file (not arch-chroot env — visible in /proc/*/environ).
+# umask 077 only in this subshell so locale/sysctl files stay world-readable.
+(
+  umask 077
+  {
+    printf 'USERNAME=%q\n' "$USERNAME"
+    printf 'USER_PASS=%q\n' "$USER_PASS"
+    printf 'ROOT_PASS=%q\n' "$ROOT_PASS"
+  } > /mnt/root/.install-secrets
+)
+chmod 600 /mnt/root/.install-secrets
+unset -v USER_PASS ROOT_PASS
+
 chmod +x /mnt/root/chroot-setup.sh
+cleanup_chroot_secrets() {
+  shred -u /mnt/root/chroot-setup.sh /mnt/root/.install-secrets 2>/dev/null \
+    || rm -f /mnt/root/chroot-setup.sh /mnt/root/.install-secrets
+}
 say "running chroot config"
-arch-chroot /mnt env \
+if ! arch-chroot /mnt env \
   TIMEZONE="$TIMEZONE" LOCALE="$LOCALE" KEYMAP="$KEYMAP" HOSTNAME="$HOSTNAME" \
-  USERNAME="$USERNAME" USER_PASS="$USER_PASS" ROOT_PASS="$ROOT_PASS" \
+  USERNAME="$USERNAME" \
   LUKS_UUID="$LUKS_UUID" DESKTOP="$DESKTOP" ENROLL_SB="$ENROLL_SB" FORMAT_EFI="$FORMAT_EFI" \
   bash /root/chroot-setup.sh
-
-shred -u /mnt/root/chroot-setup.sh 2>/dev/null || rm -f /mnt/root/chroot-setup.sh
+then
+  cleanup_chroot_secrets
+  die "chroot setup failed"
+fi
+cleanup_chroot_secrets
 ok "chroot config complete"
 
 # ── 8. finish ───────────────────────────────────────────────
@@ -753,10 +782,13 @@ ${cG}╔════════════════════════
      ${cY}multiboot:${c0} '-m' keeps Microsoft keys so Windows still boots; other
      unsigned Linux loaders won't boot under SB until you 'sbctl sign' them.
  • linux-hardened + Flatpak/Podman: userns sysctl already set (99-userns.conf).
- • Dotfiles (next) — hostname ${cY}${HOSTNAME}${c0} picks profiles/${HOSTNAME}.sh when present
+ • Dotfiles Stage B — hostname ${cY}${HOSTNAME}${c0} picks profiles/${HOSTNAME}.sh when present
    (default ${cY}thinkpad-t14s${c0} → profiles/thinkpad-t14s.sh; else DMI 21CQ/21CR detect):
      ${cY}git clone https://github.com/HelllGuest/dotfiles.git ~/dotfiles${c0}
      ${cY}cd ~/dotfiles && ./install.sh${c0}
+ • Next Stage A prefer public installer (TUI / DRYRUN / host-check):
+     ${cY}https://github.com/HelllGuest/t14s-arch-install${c0}
+     Post-boot: ${cY}bash tests/host-check.sh${c0} (from that repo)
 EOF
 if [[ ${DESKTOP^^} != N* ]]; then
   printf ' • First login via GDM (Wayland) if GNOME installed cleanly.\n'

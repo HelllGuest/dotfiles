@@ -40,7 +40,7 @@ kali setup          # once: packages + download base + UFW/virbr0
 kali-up             # isolated session (samples)
 kali-up-nat         # NAT when guest needs internet
 kali-up-lan         # NAT + RJ45 (plug cable into host enp0s31f6)
-# ssh kali@<Guest IP>   # default password kali — change it
+# ssh kali@<Guest IP>   # isolated: kali/kali; NAT/LAN: printed + kali-session.password
 kali-wipe           # reset to clean base
 ```
 

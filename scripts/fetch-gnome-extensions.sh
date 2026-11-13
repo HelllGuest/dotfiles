@@ -56,11 +56,18 @@ PY
 
 install_gnome_clipboard() {
     local uuid="gnome-clipboard@b00f.github.io"
-    local tmp src zip dir
+    local tmp src zip dir got
+    # Pin commit + zip digest (bump together). Floating main is refused.
+    local ref="${GNOME_CLIPBOARD_REF:-6eca59f2efd9441df3bfbdfc27df0ce35d16b881}"
+    local sha="${GNOME_CLIPBOARD_SHA256:-d56f73e11e070035971b0d51ca5139296d4ac918e720b3724d8782668f9f6988}"
     tmp="$(mktemp -d)"
-    info "GitHub build ${uuid}"
+    info "GitHub build ${uuid} @ ${ref:0:12}"
     "$CURL_BIN" -fsSL -o "$tmp/src.zip" \
-        "https://github.com/b00f/gnome-clipboard/archive/refs/heads/main.zip"
+        "https://github.com/b00f/gnome-clipboard/archive/${ref}.zip"
+    command -v sha256sum >/dev/null 2>&1 || die "sha256sum required"
+    got="$(sha256sum "$tmp/src.zip" | awk '{print $1}')"
+    [[ "$got" == "$sha" ]] \
+        || die "gnome-clipboard SHA-256 mismatch (got $got want $sha). If you bumped GNOME_CLIPBOARD_REF, refresh GNOME_CLIPBOARD_SHA256."
     unzip -qo "$tmp/src.zip" -d "$tmp"
     src="$(find "$tmp" -maxdepth 1 -type d -name 'gnome-clipboard-*' | head -1)"
     [[ -n "$src" ]] || die "gnome-clipboard source tree missing"

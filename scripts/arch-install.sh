@@ -191,7 +191,7 @@ done
 
 # ── 4. identity (validated before any wipe / LUKS) ──────────
 while :; do
-  HOSTNAME="$(ask 'hostname: ' thinkpad-x1)"
+  HOSTNAME="$(ask 'hostname: ' p15)"
   valid_hostname "$HOSTNAME" && break
   warn "invalid hostname (RFC 1123: start/end alnum, hyphen mid, ≤63)"
 done
@@ -347,11 +347,15 @@ cat > /etc/hosts <<EOF
 127.0.1.1 ${HOSTNAME}.localdomain ${HOSTNAME}
 EOF
 
-# users
+# users — secrets from /root/.install-secrets (0600; shredded after chroot)
+# shellcheck disable=SC1091
+source /root/.install-secrets
 echo "root:${ROOT_PASS}" | chpasswd
 id "$USERNAME" &>/dev/null || useradd -m -G wheel -s /bin/zsh "$USERNAME"
 echo "${USERNAME}:${USER_PASS}" | chpasswd
 sed -i 's/^# %wheel ALL=(ALL:ALL) ALL/%wheel ALL=(ALL:ALL) ALL/' /etc/sudoers
+unset -v USER_PASS ROOT_PASS
+rm -f /root/.install-secrets
 
 # initramfs (systemd + sd-encrypt for LUKS)
 sed -i 's/^HOOKS=.*/HOOKS=(base systemd autodetect microcode modconf kms keyboard sd-vconsole block sd-encrypt filesystems fsck)/' /etc/mkinitcpio.conf
@@ -478,9 +482,8 @@ fi
 # minimal GNOME (optional)
 if [[ ${DESKTOP^^} != N* ]]; then
   say "installing minimal GNOME + browsers + VPN + software center"
-  # sof-firmware+alsa-ucm-conf: Comet Lake speakers/mic. iio-sensor-proxy: tablet
-  # auto-rotate. fprintd: fingerprint. iio/fprintd are D-Bus-activated — do NOT enable.
-  # browsers + proton-vpn: installed via Flatpak (not in official repos).
+  # sof-firmware+alsa-ucm-conf: Comet Lake (P15) speakers/mic. fprintd: fingerprint
+  # (D-Bus-activated — do NOT systemctl enable). browsers + proton-vpn: Flatpak.
   # gnome-software: software center for Flatpak apps.
   # Non-fatal: a network hiccup here must not abort an otherwise-bootable base system.
   if pacman -S --noconfirm --needed --disable-download-timeout \
@@ -490,7 +493,7 @@ if [[ ${DESKTOP^^} != N* ]]; then
     xdg-user-dirs-gtk xdg-desktop-portal xdg-desktop-portal-gnome polkit \
     flatpak fwupd bolt pipewire pipewire-pulse wireplumber earlyoom \
     power-profiles-daemon \
-    sof-firmware alsa-ucm-conf iio-sensor-proxy fprintd \
+    sof-firmware alsa-ucm-conf fprintd \
     gnome-software
   then
     systemctl enable gdm bolt.service earlyoom.service power-profiles-daemon
@@ -535,15 +538,34 @@ fi
 sbctl verify || true
 CHROOT
 
+# Passwords via 0600 file (not arch-chroot env — visible in /proc/*/environ).
+(
+  umask 077
+  {
+    printf 'USERNAME=%q\n' "$USERNAME"
+    printf 'USER_PASS=%q\n' "$USER_PASS"
+    printf 'ROOT_PASS=%q\n' "$ROOT_PASS"
+  } > /mnt/root/.install-secrets
+)
+chmod 600 /mnt/root/.install-secrets
+unset -v USER_PASS ROOT_PASS
+
 chmod +x /mnt/root/chroot-setup.sh
+cleanup_chroot_secrets() {
+  shred -u /mnt/root/chroot-setup.sh /mnt/root/.install-secrets 2>/dev/null \
+    || rm -f /mnt/root/chroot-setup.sh /mnt/root/.install-secrets
+}
 say "running chroot config"
-arch-chroot /mnt env \
+if ! arch-chroot /mnt env \
   TIMEZONE="$TIMEZONE" LOCALE="$LOCALE" KEYMAP="$KEYMAP" HOSTNAME="$HOSTNAME" \
-  USERNAME="$USERNAME" USER_PASS="$USER_PASS" ROOT_PASS="$ROOT_PASS" \
+  USERNAME="$USERNAME" \
   LUKS_UUID="$LUKS_UUID" DESKTOP="$DESKTOP" ENROLL_SB="$ENROLL_SB" FORMAT_EFI="$FORMAT_EFI" \
   bash /root/chroot-setup.sh
-
-shred -u /mnt/root/chroot-setup.sh 2>/dev/null || rm -f /mnt/root/chroot-setup.sh
+then
+  cleanup_chroot_secrets
+  die "chroot setup failed"
+fi
+cleanup_chroot_secrets
 ok "chroot config complete"
 
 # ── 8. finish ───────────────────────────────────────────────

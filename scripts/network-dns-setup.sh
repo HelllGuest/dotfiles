@@ -5,7 +5,7 @@
 # Usage:
 #   network-dns-setup.sh              # active connection
 #   network-dns-setup.sh --all-wifi   # all wifi profiles
-#   network-dns-setup.sh MyWifi  # named profile
+#   network-dns-setup.sh MyWifi       # named profile
 
 set -euo pipefail
 

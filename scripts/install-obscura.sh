@@ -6,7 +6,8 @@
 # Docs: https://docs.obscura.sh/
 #
 # Env:
-#   OBSCURA_VERSION   release tag (default: latest)
+#   OBSCURA_VERSION   release tag (default: v0.2.6 pinned)
+#   OBSCURA_SHA256    expected archive digest (required if version/variant not in map)
 #   OBSCURA_VARIANT   archive suffix: "" | stealth | no-render | no-render-stealth
 #                     default: stealth (render + stealth)
 #   OBSCURA_BIN_DIR   install dir (default: ~/.local/bin)
@@ -22,6 +23,8 @@ export PATH="${HOME}/.opencode/bin:${HOME}/.npm-global/bin:${HOME}/.local/bin:${
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 OBSCURA_BIN_DIR="${OBSCURA_BIN_DIR:-$HOME/.local/bin}"
 OBSCURA_VARIANT="${OBSCURA_VARIANT:-stealth}"
+# Pin by default; bump tag + digests together from GitHub release asset digests.
+OBSCURA_VERSION="${OBSCURA_VERSION:-v0.2.6}"
 OPENCODE_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/opencode"
 CURSOR_MCP="${HOME}/.cursor/mcp.json"
 
@@ -31,6 +34,7 @@ warn() { echo "warning: $*" >&2; }
 
 command -v curl >/dev/null 2>&1 || die "curl required"
 command -v tar >/dev/null 2>&1 || die "tar required"
+command -v sha256sum >/dev/null 2>&1 || die "sha256sum required"
 command -v python3 >/dev/null 2>&1 || die "python3 required"
 
 arch="$(uname -m)"
@@ -49,24 +53,44 @@ case "$OBSCURA_VARIANT" in
   *) die "OBSCURA_VARIANT must be empty|stealth|no-render|no-render-stealth (got $OBSCURA_VARIANT)" ;;
 esac
 
-if [[ -n "${OBSCURA_VERSION:-}" ]]; then
-  tag="$OBSCURA_VERSION"
-  [[ "$tag" == v* ]] || tag="v$tag"
-else
-  tag="$(curl -fsSLI -o /dev/null -w '%{url_effective}' https://github.com/h4ckf0r0day/obscura/releases/latest 2>/dev/null \
-    | awk -F/ '{print $NF}' | tr -d '\r\n')"
-  if [[ -z "$tag" || "$tag" == "latest" ]]; then
-    tag="$(curl -fsSL https://api.github.com/repos/h4ckf0r0day/obscura/releases/latest 2>/dev/null \
-      | python3 -c 'import sys,json; print(json.load(sys.stdin)["tag_name"])' 2>/dev/null || echo "v0.2.6")"
-  fi
-fi
+tag="$OBSCURA_VERSION"
+[[ "$tag" == v* ]] || tag="v$tag"
+
+# Digests for pinned v0.2.6 linux assets (GitHub release). Override with OBSCURA_SHA256.
+obscura_expected_sha() {
+  local key="$1"
+  case "$key" in
+    x86_64-linux) echo eed986e478c5ec5439f531f2d7fb6b0e36a356f1df7a6c44a8e8fd4f2486bd76 ;;
+    x86_64-linux-stealth) echo ac8057374ec1b5cabb78ea2d08b2ed890d21d156a42b1ac23357fd049edc08c5 ;;
+    x86_64-linux-no-render) echo f1188c1a3b1ef70d56d594beebbb34b693ff89c280fa073820ad019ed555a02c ;;
+    x86_64-linux-no-render-stealth) echo 2b36b2d68d31d4430ccddd3c0d8a765a21bf91fb3c642fd9e551f360a98d6c83 ;;
+    aarch64-linux) echo e12aff8bbe40326386a471060083e9cec5255b67048996b84f649efef10cac39 ;;
+    aarch64-linux-stealth) echo 403b4c8e3bcf777748a870fbb32c9281e997a6c30c5f8377c17305287fc3811f ;;
+    aarch64-linux-no-render) echo 5bd8a40e4ff9b35ae985e695f2445181b6d40a115c447f3bd2013fb7b77aeb69 ;;
+    aarch64-linux-no-render-stealth) echo 9680c736db45fc7cad067cd20ea04ed032ab4701337fb7029c81bd2a6b9a8c79 ;;
+    *) echo "" ;;
+  esac
+}
 
 asset="obscura-${arch_tag}${suffix}.tar.gz"
 url="https://github.com/h4ckf0r0day/obscura/releases/download/${tag}/${asset}"
+expected_sha="${OBSCURA_SHA256:-}"
+if [[ -z "$expected_sha" ]]; then
+  if [[ "$tag" != "v0.2.6" ]]; then
+    die "OBSCURA_SHA256 required when OBSCURA_VERSION is not v0.2.6 (got $tag)"
+  fi
+  expected_sha="$(obscura_expected_sha "${arch_tag}${suffix}")"
+  [[ -n "$expected_sha" ]] || die "no pinned SHA for ${arch_tag}${suffix}; set OBSCURA_SHA256"
+fi
+
 say "download $url"
 tmp="$(mktemp -d)"
 trap 'rm -rf "$tmp"' EXIT
 curl -fsSL -o "$tmp/obscura.tgz" "$url"
+got="$(sha256sum "$tmp/obscura.tgz" | awk '{print $1}')"
+[[ "$got" == "$expected_sha" ]] \
+  || die "obscura SHA-256 mismatch (got $got want $expected_sha). Refusing to install."
+say "SHA-256 ok"
 tar -xzf "$tmp/obscura.tgz" -C "$tmp"
 [[ -x "$tmp/obscura" ]] || die "archive missing obscura binary"
 mkdir -p "$OBSCURA_BIN_DIR"

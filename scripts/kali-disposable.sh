@@ -25,6 +25,8 @@
 #                   nat+lan = NAT eth0 + physical NIC via macvtap (see KALI_LAN_IFACE)
 #                   (alias: lan → nat+lan)
 #   KALI_LAN_IFACE  physical ethernet for nat+lan (default: enp0s31f6, else first ether)
+#   KALI_IMAGE_URL / KALI_IMAGE_SHA256  pinned cloud image (override when bumping)
+#   KALI_PASSWORD   guest SSH password (isolated default: kali; nat/lan: random unless set)
 
 set -euo pipefail
 
@@ -57,11 +59,62 @@ ensure_vm_dir() {
   fi
 }
 
-# Official weekly cloud qcow2 (amd64). Override with KALI_IMAGE_URL if needed.
-KALI_IMAGE_URL="${KALI_IMAGE_URL:-https://kali.download/cloud-images/current/kali-linux-2026.2-cloud-genericcloud-amd64.tar.xz}"
+# Official cloud image (amd64). Bump URL + SHA together (see SHA256SUMS on kali.download).
+KALI_IMAGE_URL="${KALI_IMAGE_URL:-https://kali.download/cloud-images/current/kali-linux-2026.3-cloud-genericcloud-amd64.tar.xz}"
+KALI_IMAGE_SHA256="${KALI_IMAGE_SHA256:-087a9c43b6082b0a6aae666debe26c9edf6e3960a90952fc94720e755d628e58}"
+KALI_PASS_FILE="${KALI_PASS_FILE:-}"  # set in ensure path; default under VM_DIR
 
 die() { echo "ERROR: $*" >&2; exit 1; }
 need() { command -v "$1" >/dev/null 2>&1 || die "missing $1 — run: $0 setup"; }
+
+kali_pass_path() {
+  printf '%s' "${KALI_PASS_FILE:-$VM_DIR/kali-session.password}"
+}
+
+# Isolated keeps lab default kali/kali. NAT/LAN never use a fixed password unless set.
+# Fresh overlay → new random password; KEEP_OVERLAY=1 reuses the saved file.
+resolve_kali_password() {
+  local pass=""
+  case "$NET_MODE" in
+    nat|nat+lan)
+      if [[ -n "${KALI_PASSWORD:-}" ]]; then
+        pass="$KALI_PASSWORD"
+      elif [[ "${KEEP_OVERLAY:-0}" == "1" && -f "$(kali_pass_path)" ]]; then
+        pass="$(tr -d '\n' <"$(kali_pass_path)")"
+      else
+        pass="$(tr -dc 'A-Za-z0-9' </dev/urandom | head -c 20)"
+        [[ ${#pass} -eq 20 ]] || die "failed to generate KALI_PASSWORD"
+      fi
+      ;;
+    *)
+      pass="${KALI_PASSWORD:-kali}"
+      ;;
+  esac
+  [[ "$pass" =~ ^[A-Za-z0-9._@%-]+$ ]] \
+    || die "KALI_PASSWORD must be alphanumeric (plus . _ @ % -)"
+  KALI_PASS="$pass"
+}
+
+save_kali_password() {
+  case "$NET_MODE" in
+    nat|nat+lan)
+      ensure_vm_dir
+      umask 077
+      printf '%s\n' "$KALI_PASS" >"$(kali_pass_path)"
+      chmod 600 "$(kali_pass_path)" 2>/dev/null || true
+      ;;
+  esac
+}
+
+guest_ssh_password() {
+  if [[ -n "${KALI_PASSWORD:-}" ]]; then
+    printf '%s' "$KALI_PASSWORD"
+  elif [[ -f "$(kali_pass_path)" ]]; then
+    tr -d '\n' <"$(kali_pass_path)"
+  else
+    printf '%s' kali
+  fi
+}
 
 # Prefer askpass over SSH (no TTY). Set SUDO_ASKPASS or use interactive sudo.
 sudo_do() {
@@ -187,6 +240,12 @@ cmd_fetch_base() {
   if ! curl -fL --retry 3 -o "$tmp/kali.tar.xz" "$KALI_IMAGE_URL"; then
     die "download failed. Set KALI_IMAGE_URL to a working kali cloud/qcow2 URL from https://www.kali.org/get-kali/"
   fi
+  command -v sha256sum >/dev/null 2>&1 || die "sha256sum required to verify Kali image"
+  local got
+  got="$(sha256sum "$tmp/kali.tar.xz" | awk '{print $1}')"
+  [[ "$got" == "$KALI_IMAGE_SHA256" ]] \
+    || die "Kali image SHA-256 mismatch (got $got want $KALI_IMAGE_SHA256). Refusing to install. If you bumped KALI_IMAGE_URL, refresh KALI_IMAGE_SHA256 from https://kali.download/cloud-images/current/SHA256SUMS"
+  echo "→ SHA-256 ok"
   echo "→ extracting..."
   tar -xJf "$tmp/kali.tar.xz" -C "$tmp"
   # Kali genericcloud ships disk.raw; older builds used .qcow2.
@@ -316,7 +375,7 @@ ensure_guest_lan_dhcp() {
 
   seed_guest_dns_via_ssh() {
     local ssh=(ssh "${ssh_opts[@]}" "kali@$gip")
-    [[ "${1:-}" == "sshpass" ]] && ssh=(sshpass -p kali ssh "${ssh_opts[@]}" "kali@$gip")
+    [[ "${1:-}" == "sshpass" ]] && ssh=(sshpass -p "$(guest_ssh_password)" ssh "${ssh_opts[@]}" "kali@$gip")
     "${ssh[@]}" "sudo mkdir -p /etc/systemd/resolved.conf.d /etc/systemd/network" 2>/dev/null || return 1
     printf '%s\n' "$body" | "${ssh[@]}" "sudo tee $unit_path >/dev/null" 2>/dev/null || return 1
     printf '%s\n' "$dns_body" | "${ssh[@]}" "sudo tee $dns_path >/dev/null" 2>/dev/null || return 1
@@ -448,6 +507,7 @@ cmd_wipe() {
       || virsh_u undefine "$VM_NAME" 2>/dev/null || true
   fi
   rm -f "$OVERLAY"
+  rm -f "$(kali_pass_path)"
   # Best-effort: restore NM on known iface without dying if absent.
   if [[ -n "$LAN_IFACE" && -d "/sys/class/net/$LAN_IFACE" ]]; then
     restore_lan_nm
@@ -490,10 +550,13 @@ cmd_start() {
     echo "→ importing disposable domain ($RAM_MB MiB, ${VCPUS} vCPU, net=$NET_MODE)"
     # Kali genericcloud needs cloud-init NoCloud seed or networking never comes up.
     local ci_dir ci_user ci_meta
+    resolve_kali_password
+    save_kali_password
     ci_dir="$(mktemp -d "${TMPDIR:-/tmp}/kali-ci.XXXXXX")"
     ci_user="$ci_dir/user-data"
     ci_meta="$ci_dir/meta-data"
-    cat >"$ci_user" <<'EOF'
+    # Unquoted EOF: only KALI_PASS is expanded (validated alphanumeric above).
+    cat >"$ci_user" <<EOF
 #cloud-config
 hostname: kali-disposable
 manage_etc_hosts: true
@@ -502,7 +565,7 @@ disable_root: false
 chpasswd:
   expire: false
   users:
-    - {name: kali, password: kali, type: text}
+    - {name: kali, password: "${KALI_PASS}", type: text}
 users:
   - default
   - name: kali
@@ -511,7 +574,7 @@ users:
     sudo: ALL=(ALL) NOPASSWD:ALL
     shell: /bin/bash
     lock_passwd: false
-    plain_text_passwd: kali
+    plain_text_passwd: "${KALI_PASS}"
 write_files:
   - path: /etc/ssh/sshd_config.d/99-kali-disposable.conf
     permissions: "0644"
@@ -628,7 +691,14 @@ EOF
 
   echo "✓ $VM_NAME running (URI=$(uri))"
   echo "  GUI: virt-manager → $VM_NAME   or:  virsh -c $(uri) console $VM_NAME"
-  echo "  Cloud login: kali / kali — change after first login."
+  case "$NET_MODE" in
+    nat|nat+lan)
+      echo "  Cloud login: kali / ${KALI_PASS:-$(guest_ssh_password)}  (also: $(kali_pass_path))"
+      ;;
+    *)
+      echo "  Cloud login: kali / ${KALI_PASS:-kali} — isolated net; change if you open networking."
+      ;;
+  esac
   if [[ -n "$gip" ]]; then
     echo "  Guest IP (NAT): $gip   (ssh kali@$gip)"
   else
@@ -694,7 +764,7 @@ cmd_lan_check() {
   else
     echo "PASS: guest NAT $gip"
     local ssh=(ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=5)
-    local run=(sshpass -p kali "${ssh[@]}" "kali@$gip")
+    local run=(sshpass -p "$(guest_ssh_password)" "${ssh[@]}" "kali@$gip")
     command -v sshpass >/dev/null || run=("${ssh[@]}" -o BatchMode=yes "kali@$gip")
     if out="$("${run[@]}" 'ip -4 -br addr show eth1; ip -4 route show default; ping -c1 -W2 $(ip -4 route show default | awk "/default/{print \$3; exit}") >/dev/null && echo GW_OK' 2>/dev/null)"; then
       echo "$out" | sed 's/^/  /'

@@ -47,8 +47,20 @@ grep -q 'install-ponytail.sh' "$ROOT/install.sh" \
   || fail "install.sh must call install-ponytail.sh"
 grep -q 'claude mcp add -s user obscura' "$ROOT/scripts/install-obscura.sh" \
   || fail "install-obscura.sh must register obscura at Claude user scope (-s user)"
-grep -q 'url_effective' "$ROOT/scripts/install-obscura.sh" \
-  || fail "install-obscura.sh must resolve latest release tag via redirect before REST API"
+grep -q 'OBSCURA_VERSION:-v0.2.6' "$ROOT/scripts/install-obscura.sh" \
+  || fail "install-obscura.sh must pin OBSCURA_VERSION"
+grep -q 'ac8057374ec1b5cabb78ea2d08b2ed890d21d156a42b1ac23357fd049edc08c5' \
+  "$ROOT/scripts/install-obscura.sh" || fail "install-obscura.sh missing stealth x86_64 SHA-256 pin"
+grep -q 'sha256sum' "$ROOT/scripts/install-obscura.sh" \
+  || fail "install-obscura.sh must verify SHA-256 before install"
+grep -q 'GNOME_CLIPBOARD_REF:-6eca59f2efd9441df3bfbdfc27df0ce35d16b881' \
+  "$ROOT/scripts/fetch-gnome-extensions.sh" || fail "gnome-clipboard commit pin missing"
+grep -q 'd56f73e11e070035971b0d51ca5139296d4ac918e720b3724d8782668f9f6988' \
+  "$ROOT/scripts/fetch-gnome-extensions.sh" || fail "gnome-clipboard SHA-256 pin missing"
+grep -q 'fail_step' "$ROOT/install.sh" \
+  || fail "install.sh must track critical failures via fail_step"
+grep -q 'INSTALL_FAILED' "$ROOT/install.sh" \
+  || fail "install.sh must exit non-zero when critical steps fail"
 grep -q 'opencode/AGENTS.md' "$ROOT/scripts/sync-agent-skills.sh" \
   || fail "sync-agent-skills.sh must sync shared AGENTS.md into opencode/AGENTS.md"
 

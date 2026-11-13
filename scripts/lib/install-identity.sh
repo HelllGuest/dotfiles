@@ -7,8 +7,10 @@
 #   LOCALE_FILES  — space-separated locale list paths (replaces SUPPORTED/locale.gen)
 #   KEYMAP_DIR    — keymap tree for find / fixtures
 #
-# Note: public t14s-arch-install keeps its own copies (FQDN hostnames, + in
-# keymaps, T14S_IDENTITY_OVERRIDES only). Do not assume byte-identical parity.
+# Note: public t14s-arch-install (HelllGuest/t14s-arch-install) keeps its own
+# copies (FQDN hostnames, + in keymaps, T14S_IDENTITY_OVERRIDES only). That
+# repo is canonical Stage A. Do not assume byte-identical parity; do not
+# "sync" validators the wrong way.
 
 valid_hostname() {
   local h="$1"

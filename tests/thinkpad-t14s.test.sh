@@ -252,6 +252,16 @@ grep -q 'install -m' "$ROOT/scripts/thinkpad-charge-thresholds.sh" \
 grep -q 'thinkpad-charge-thresholds' "$ROOT/scripts/arch-install.sh" \
   && fail "arch-install.sh must not seed charge thresholds (T14s installer only)" || true
 
+# Passwords must not enter arch-chroot via environ (/proc leak).
+for _inst in arch-install-t14s.sh arch-install.sh; do
+  grep -q '\.install-secrets' "$ROOT/scripts/$_inst" \
+    || fail "$_inst must use .install-secrets for chroot passwords"
+  grep -E 'arch-chroot.*/mnt env' -A6 "$ROOT/scripts/$_inst" | grep -q 'USER_PASS=' \
+    && fail "$_inst must not pass USER_PASS via arch-chroot env" || true
+  grep -E 'arch-chroot.*/mnt env' -A6 "$ROOT/scripts/$_inst" | grep -q 'ROOT_PASS=' \
+    && fail "$_inst must not pass ROOT_PASS via arch-chroot env" || true
+done
+unset _inst
 grep -q 'HelllGuest/t14s-arch-install' "$ROOT/scripts/arch-install-t14s.sh" \
   || fail "arch-install-t14s must point at canonical public Stage A"
 grep -q 'systemctl is-enabled thinkpad-charge-thresholds.service' \

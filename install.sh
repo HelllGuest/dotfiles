@@ -16,6 +16,15 @@ for _p in "$HOME/.opencode/bin" "$HOME/.npm-global/bin" "${PNPM_HOME:-$HOME/.loc
 done
 unset _p
 
+# Critical steps set this; optional tools stay soft-skip. Exit 1 at end if set.
+INSTALL_FAILED=0
+INSTALL_FAIL_REASONS=()
+fail_step() {
+    echo "$1"
+    INSTALL_FAILED=1
+    INSTALL_FAIL_REASONS+=("$1")
+}
+
 echo "Starting installation..."
 
 # Legacy touchpad udev/inhibit cleanup (if present from older dotfiles)
@@ -38,12 +47,12 @@ if [ -f "packages/pacman.txt" ]; then
         # shellcheck source=scripts/lib/dmi.sh
         source scripts/lib/dmi.sh
         if is_thinkpad_t14s; then
-            pkg_list="$(printf '%s\n' "$pkg_list" | grep -vxE 'intel-media-driver|vulkan-intel|nvidia-open-dkms|nvidia-prime|nvidia-utils|iio-sensor-proxy' || true)"
+            pkg_list="$(printf '%s\n' "$pkg_list" | grep -vxE 'intel-media-driver|vulkan-intel|nvidia-open-dkms|nvidia-prime|nvidia-utils' || true)"
         fi
     fi
     if [ -n "$pkg_list" ]; then
         printf '%s\n' "$pkg_list" | sudo pacman -S --needed --noconfirm - \
-            || echo "Package install failed (sudo / network / conflict) — see pacman output above."
+            || fail_step "Package install failed (sudo / network / conflict) — see pacman output above."
     fi
     unset pkg_list
 fi
@@ -91,7 +100,7 @@ for dir in */; do
         echo "Skipping zram stow (use scripts/zram-setup.sh — /etc must not symlink into \$HOME)."
     elif [ "$dir" = "system" ]; then
         echo "Installing $dir as root-owned files (scripts/system-setup.sh — /etc must not symlink into \$HOME)."
-        bash ../scripts/system-setup.sh || echo "System setup failed (sudo required)."
+        bash ../scripts/system-setup.sh || fail_step "System setup failed (sudo required)."
     elif [ "$dir" = "gdm" ]; then
         echo "Skipping gdm (handled by scripts/gdm-setup.sh)."
     elif [ "$STOW_CMD" == "stow" ]; then
@@ -287,7 +296,7 @@ fi
 
 # 4. Privacy Hardening (before health check so telemetry probes reflect final state)
 if [ -f "scripts/privacy-hardener.sh" ]; then
-    bash scripts/privacy-hardener.sh
+    bash scripts/privacy-hardener.sh || fail_step "Privacy hardener failed."
 fi
 
 # 4.5 Tailscale + UFW (optional; no-op if ufw inactive / tailscale absent)
@@ -302,6 +311,15 @@ fi
 
 if [ -f "scripts/validate-configs.sh" ]; then
     bash scripts/validate-configs.sh || echo "Config validation reported issues."
+fi
+
+if [ "$INSTALL_FAILED" -ne 0 ]; then
+    echo "Installation finished with failures:"
+    for _r in "${INSTALL_FAIL_REASONS[@]}"; do
+        echo "  - $_r"
+    done
+    unset _r
+    exit 1
 fi
 
 echo "Installation complete!"

@@ -65,6 +65,23 @@ grep -q 'guest_ipv4' "$ROOT/scripts/kali-disposable.sh" \
   || fail "kali start should resolve guest IPv4 (not stale leases)"
 grep -q 'PasswordAuthentication yes' "$ROOT/scripts/kali-disposable.sh" \
   || fail "cloud-init must force ssh password auth"
+grep -q 'kali-linux-2026.3-cloud-genericcloud-amd64.tar.xz' "$ROOT/scripts/kali-disposable.sh" \
+  || fail "kali default image URL must track current 2026.3 cloud image"
+grep -q '087a9c43b6082b0a6aae666debe26c9edf6e3960a90952fc94720e755d628e58' \
+  "$ROOT/scripts/kali-disposable.sh" || fail "kali image SHA-256 pin missing"
+grep -q 'KALI_IMAGE_SHA256' "$ROOT/scripts/kali-disposable.sh" \
+  || fail "kali must honor KALI_IMAGE_SHA256 override"
+grep -q 'resolve_kali_password' "$ROOT/scripts/kali-disposable.sh" \
+  || fail "kali must resolve guest password (no fixed kali/kali on nat/lan)"
+grep -q 'kali-session.password' "$ROOT/scripts/kali-disposable.sh" \
+  || fail "kali must persist networked guest password under VM_DIR"
+# Live URL must not 404 (pin basename matches current/ index).
+_kali_url="$(grep -oE 'https://kali\.download/cloud-images/current/kali-linux-[^"]+\.tar\.xz' \
+  "$ROOT/scripts/kali-disposable.sh" | head -1)"
+[[ -n "$_kali_url" ]] || fail "could not extract default KALI_IMAGE_URL"
+_kali_code="$(curl -fsSIL -o /dev/null -w '%{http_code}' "$_kali_url" 2>/dev/null || echo 000)"
+[[ "$_kali_code" == "200" ]] || fail "default Kali image URL returned HTTP $_kali_code (want 200): $_kali_url"
+unset _kali_url _kali_code
 grep -q 'owner/repo:skill1,skill2' "$ROOT/scripts/install-re-skills.sh" \
   || fail "install-re-skills must document selective skill filter"
 grep -q 'lib/agent-skills.sh' "$ROOT/scripts/install-re-skills.sh" \

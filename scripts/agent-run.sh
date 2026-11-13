@@ -41,17 +41,7 @@ NAME=${AGENT_NAME:-agent-$(basename "$PROJ")-$$}
 TMP_SIZE=${AGENT_TMP_SIZE:-512m}
 UIDGID="$(id -u):$(id -g)"
 
-# Hard deny: never pass through container runtime sockets.
-for sock in \
-  "${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/podman/podman.sock" \
-  /run/podman/podman.sock \
-  /var/run/docker.sock \
-  /run/docker.sock
-do
-  [[ -S $sock ]] || continue
-  # Ensure we are not about to -v that path (args are only PROJ + image + cmd).
-  :
-done
+# Never mounts Podman/Docker sockets: bind list is only PROJ → /work below.
 
 args=(
   run --rm -it
