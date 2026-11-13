@@ -12,10 +12,17 @@ Purpose-oriented guide for this repository on the **Lenovo ThinkPad P15 Gen 1**
 
 Automation:
 
-* Bare metal (P15 / generic Intel): [`scripts/arch-install.sh`](../scripts/arch-install.sh)
+* Bare metal (P15 Gen 1, 20SU Optimus): [`scripts/arch-install-p15.sh`](../scripts/arch-install-p15.sh) (or preferred public Stage A with `HW_PROFILE=p15`)
+* Bare metal (generic / dual-host mirror): [`scripts/arch-install.sh`](../scripts/arch-install.sh)
 * Bare metal (T14s Gen 3 AMD, 21CQ/21CR): [`scripts/arch-install-t14s.sh`](../scripts/arch-install-t14s.sh)
-* VM rehearsal: [`scripts/arch-install-vmtest.sh`](../scripts/arch-install-vmtest.sh) (`INSTALLER=arch-install-t14s.sh` for the AMD script)
+* VM rehearsal: [`scripts/arch-install-vmtest.sh`](../scripts/arch-install-vmtest.sh) (`INSTALLER=arch-install-p15.sh` or `arch-install-t14s.sh`)
 * After first GNOME login: [`../install.sh`](../install.sh)
+
+**P15 Gen 1:** use [`scripts/arch-install-p15.sh`](../scripts/arch-install-p15.sh)
+(or public Stage A with `HW_PROFILE=p15`), then `./install.sh` (detect →
+`thinkpad-p15`). Expect `intel_iommu`, `nvidia_drm.modeset`, nouveau blacklist,
+`nvidia-open-dkms` + `vulkan-intel` + `LIBVA_DRIVER_NAME=iHD`, charge **70–80**,
+optional `ollama-cuda` on `127.0.0.1:11434`.
 
 **T14s Gen 3 AMD:** use the AMD installer, then `./install.sh` (detect →
 `thinkpad-t14s`). Expect `amd_iommu` / `amd_pstate`, `mesa` + `vulkan-radeon`,
@@ -35,7 +42,7 @@ covers AMD/NVIDIA/Intel when those modules are present. Details:
 | CPU | Comet Lake-H, **x86-64-v3** | Ryzen 7 PRO 6850U (Zen 3+), **x86-64-v3** |
 | GPU | Intel UHD + NVIDIA Quadro (Optimus / `prime-run`) | Radeon 680M (`amdgpu`, `LIBVA_DRIVER_NAME=radeonsi`) |
 | Fingerprint | Synaptics `06cb:00bd` (palm rest) | Goodix `27c6:6594` (power button) |
-| Installer | `arch-install.sh` | `arch-install-t14s.sh` |
+| Installer | `arch-install-p15.sh` (or `t14s-arch-install` `HW_PROFILE=p15`) | `arch-install-t14s.sh` |
 | OS target | Arch rolling, `linux-lts` primary / `linux-hardened` fallback UKIs | same |
 | CPU builds | `GOAMD64=v3`, `RUSTFLAGS=-C target-cpu=x86-64-v3` (see README) | same |
 
@@ -64,7 +71,7 @@ filters those packages out before invoking `pacman -S`.
 
 ## Fresh install path
 
-If Windows must stay, choose **MANUAL** partitioning in `arch-install.sh`, reuse
+If Windows must stay, choose **MANUAL** partitioning in the Stage A installer, reuse
 the EFI system partition, and only wipe/recreate the Linux LUKS volume. AUTO
 mode wipes the whole disk.
 
@@ -90,14 +97,22 @@ cd /path/to/dotfiles
 bash scripts/arch-install-vmtest.sh
 ```
 
-On the machine, from the official Arch ISO as root:
+On the machine, from the official Arch ISO as root (pick the host script):
 
 ```bash
+# P15 Gen 1 (20SU Optimus) — preferred in-tree mirror:
+bash <(curl -fsSL https://raw.githubusercontent.com/HelllGuest/dotfiles/main/scripts/arch-install-p15.sh)
+
+# T14s Gen 3 AMD (21CQ/21CR):
+bash <(curl -fsSL https://raw.githubusercontent.com/HelllGuest/dotfiles/main/scripts/arch-install-t14s.sh)
+
+# Generic / dual-host mirror (or prefer public t14s-arch-install HW_PROFILE=…):
 bash <(curl -fsSL https://raw.githubusercontent.com/HelllGuest/dotfiles/main/scripts/arch-install.sh)
 ```
 
 What it builds: LUKS2 (argon2id), Btrfs subvolumes including disk-backed `@tmp`,
-UKIs (`linux-lts` / `linux-hardened`), systemd-boot, sbctl, minimal GNOME.
+UKIs (`linux-lts` / `linux-hardened`), systemd-boot, sbctl, minimal GNOME
+(P15 adds Optimus NVIDIA stack + optional ollama-cuda).
 
 Then remove the ISO, reboot, and log into GNOME.
 
@@ -439,7 +454,7 @@ Same order as Stages 0 → A → A½ → B (matches README):
 
 ```text
 BIOS (SB off, VT-x/d on; Sleep = Windows and Linux for s2idle)
-  → Arch ISO → arch-install.sh (AUTO wipe, or MANUAL + reuse EFI)
+  → Arch ISO → arch-install-p15.sh / arch-install-t14s.sh / arch-install.sh (AUTO wipe, or MANUAL + reuse EFI)
   → reboot → GNOME login
   → optional: sbctl enroll-keys -m → enable SB in BIOS → sbctl verify
   → clone dotfiles → ./install.sh (installs stow/system/ via system-setup.sh) → exec zsh

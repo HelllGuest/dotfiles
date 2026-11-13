@@ -1,6 +1,7 @@
 # Changelog
 
 ## [Unreleased]
+- Stage A: add `scripts/arch-install-p15.sh` (curl-able P15 Gen 1 / 20SU Optimus mirror of `arch-install-t14s.sh`) — `intel-ucode`, `intel_iommu` + `nvidia_drm.modeset` + nouveau blacklist, `nvidia-open-dkms`/`vulkan-intel`/`iHD`, charge thresholds, firewalld drop, optional `INSTALL_OLLAMA`, nvidia suspend/PM udev (profile parity); `tests/thinkpad-p15.test.sh`; README/CONTRIBUTING/fresh-install/hardened Phase 14 document the P15 path (prefer public `t14s-arch-install` `HW_PROFILE=p15` for TUI).
 - Privacy: expand `90-telemetry-optout.conf` (OTEL_SDK_DISABLED, HINT/ET/Deno/Terraform, …); `privacy-hardener.sh` always syncs environment.d from stow kit + npm fund/update-notifier off.
 - fix(firewalld): `ensure_lab_malware_zone` unbinds `virbr-malware` from `libvirt`+`block`, fails on critical bind/reload/ports, tolerates ALREADY_ENABLED, postchecks libvirt/block clear, warns if firewalld inactive; migrate fail-fast on virbr0/libvirt bind. Docs: Kali NAT uses firewalld/`libvirt` (not UFW) incl. `gnome/keybindings.md`; configure notes optional `dialog`.
 - Docs: Stage B `configure.sh` howto (module table, P15 ollama default, fail-fast) in README + fresh-install + t14s-arch-install; live health checklist + `lab-malware` rebind note.

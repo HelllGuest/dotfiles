@@ -38,7 +38,11 @@ This guide prioritizes:
 > ```bash
 > bash <(curl -fsSL https://raw.githubusercontent.com/HelllGuest/dotfiles/main/scripts/arch-install-t14s.sh)
 > ```
-> Rehearse first in a UEFI VM with [`scripts/arch-install-vmtest.sh`](../scripts/arch-install-vmtest.sh) (full install on a virtual disk; host disks untouched). For the T14s script: `INSTALLER=arch-install-t14s.sh scripts/arch-install-vmtest.sh` (confirm past the DMI warn in the VM). The manual phases below remain the reference for what it does and for customizing.
+> **ThinkPad P15 Gen 1** (type **20SU** Optimus): use [`scripts/arch-install-p15.sh`](../scripts/arch-install-p15.sh) — `intel-ucode`, `intel_iommu` / `nvidia_drm.modeset` / nouveau blacklist, `nvidia-open-dkms` + `vulkan-intel` + `LIBVA=iHD`, charge thresholds, optional `ollama-cuda`. Prefer public Stage A [t14s-arch-install](https://github.com/HelllGuest/t14s-arch-install) with `HW_PROFILE=p15` for TUI/DRYRUN. After first-boot `./install.sh` → `profiles/thinkpad-p15.sh`.
+> ```bash
+> bash <(curl -fsSL https://raw.githubusercontent.com/HelllGuest/dotfiles/main/scripts/arch-install-p15.sh)
+> ```
+> Rehearse first in a UEFI VM with [`scripts/arch-install-vmtest.sh`](../scripts/arch-install-vmtest.sh) (full install on a virtual disk; host disks untouched). For machine scripts: `INSTALLER=arch-install-t14s.sh` or `INSTALLER=arch-install-p15.sh scripts/arch-install-vmtest.sh` (confirm past the DMI warn in the VM). The manual phases below remain the reference for what it does and for customizing.
 
 > **Dotfiles:** After completing this guide, continue with [PHASE 27 — Dotfiles Setup](#phase-27--dotfiles-setup) or jump to the [dotfiles README](../README.md) for shell and maintenance. For coding, reverse engineering, and malware-lab purpose stacks on this ThinkPad, see [fresh-install-coding-re.md](fresh-install-coding-re.md).
 
@@ -85,7 +89,7 @@ Windows and Linux
 
 This repo’s tracked files pin **s2idle** (not S3/`deep`):
 `mem_sleep_default=s2idle` on the kernel cmdline (written by `arch-install.sh` /
-`arch-install-t14s.sh` and machine profiles) plus
+`arch-install-t14s.sh` / `arch-install-p15.sh` and machine profiles) plus
 `stow/system/etc/systemd/sleep.conf.d/` (`SuspendState=mem` +
 `MemorySleepMode=s2idle`). Check with [Verify sleep](#verify-sleep-s2idle);
 after resume, `journalctl -b | grep "suspend entry"` →
@@ -101,11 +105,11 @@ GDM). Symlinks from `/etc` into `$HOME` break in two ways:
   `$HOME` dangle and break services (historically UFW `before.rules`).
 * The repo owner could edit root config (udev, sleep, units) without sudo.
 
-`arch-install.sh` / `arch-install-t14s.sh` write `/etc/kernel/cmdline` with the
-LUKS UUID of the disk they configure. Machine profiles may append host-specific
-flags (P15: `nvidia_drm.modeset=1` + `rd.driver.blacklist=nouveau`; T14s:
-`amd_iommu=on` + `amd_pstate=active`). `system-setup.sh` does **not** own the
-cmdline. When a managed `modprobe.d` file changes it runs `mkinitcpio -P`
+`arch-install.sh` / `arch-install-t14s.sh` / `arch-install-p15.sh` write
+`/etc/kernel/cmdline` with the LUKS UUID of the disk they configure. Machine
+profiles may append host-specific flags (P15: `nvidia_drm.modeset=1` +
+`rd.driver.blacklist=nouveau`; T14s: `amd_iommu=on` + `amd_pstate=active`).
+`system-setup.sh` does **not** own the cmdline. When a managed `modprobe.d` file changes it runs `mkinitcpio -P`
 (sbctl's hook re-signs the UKIs). Replaced files are backed up to
 `/var/backups/dotfiles-system/<timestamp>/`. Leftover stow symlinks from older
 setups are removed; `scripts/check.sh` flags any that remain.
@@ -945,6 +949,25 @@ pacman -S powertop
 * **thermald is *not* used** — it self-exits on these ThinkPads (`[dytc_lapmode] present: Thermald can't run on this platform`); thermal is firmware-managed (Intel DPTF on P15 / AMD DYTC on T14s). Leave it uninstalled/disabled.
 * **Skip `ryzenadj`** on T14s Gen 3 AMD PRO — EC often locks SMU; not part of the profile.
 
+**Shared charge window 70–80** (`arch-install-t14s.sh` + `arch-install-p15.sh`):
+seed tmpfiles from `scripts/lib/thinkpad-charge-thresholds.conf`, install
+`/etc/udev/rules.d/61-thinkpad-charge-limit.rules` (`ENV{CHARGE_LIMIT}="70,80"`
+so UPower 1.90+ / GNOME Preserve Battery Health does not reset
+`charge_control_start_threshold` to `0`), **and** enable
+`thinkpad-charge-thresholds.service` (late BAT* sysfs; apply under
+`/usr/local/lib/thinkpad/`). Live refresh:
+`scripts/thinkpad-charge-thresholds.sh` (also `install-re-extras.sh` / profiles).
+
+**P15 Gen 1 (20SU)** extras (`arch-install-p15.sh` + `profiles/thinkpad-p15.sh`):
+
+* Cmdline: `intel_iommu=on` `nvidia_drm.modeset=1` `rd.driver.blacklist=nouveau`
+* GPU: `nvidia-open-dkms` + `nvidia-utils` / `nvidia-prime` / `egl-wayland` +
+  `mesa` / `vulkan-intel` / `intel-media-driver`; `LIBVA_DRIVER_NAME=iHD`;
+  `nvidia.conf`, early KMS MODULES, `nvidia-suspend`/`resume`/`hibernate`,
+  `80-nvidia-pm.rules`
+* Optional Stage A: `INSTALL_OLLAMA=Y` → `ollama-cuda` on `127.0.0.1:11434`
+* Fingerprint: palm-rest Synaptics `06cb:00bd` (`fprintd`)
+
 **T14s Gen 3 AMD (21CQ/21CR)** extras (installer + `profiles/thinkpad-t14s.sh`):
 
 * Cmdline: `amd_iommu=on` `amd_pstate=active` (strip any `intel_iommu` / `i915.*` leftovers; rebuild UKI)
@@ -953,16 +976,7 @@ pacman -S powertop
   `./install.sh` then skips `power-profiles-daemon` and the profile enables tuned
 * GPU / Wi-Fi / FP packages: `packages/thinkpad-t14s.txt` (`mesa` + `vulkan-radeon` + `libva-utils` + `wireless-regdb` + `fprintd`; VA-API via `LIBVA_DRIVER_NAME=radeonsi` in `.shell-exports`, `/etc/environment.d/99-wayland.conf`, and GDM override)
 * Touchpad `s2idle` wakeup: `/etc/udev/rules.d/71-thinkpad-t14s-touchpad-wakeup.rules` disables I2C touchpad wakeup (`i2c-ELAN0678:*` / `i2c-SYNA8018:*`) so lid flex in transit does not wake the laptop from `s2idle`
-* Charge window 70–80: `arch-install-t14s.sh` seeds tmpfiles from
-  `scripts/lib/thinkpad-charge-thresholds.conf`, installs
-  `/etc/udev/rules.d/61-thinkpad-charge-limit.rules` (`ENV{CHARGE_LIMIT}="70,80"`
-  so UPower 1.90+ / GNOME Preserve Battery Health does not reset
-  `charge_control_start_threshold` to `0`), **and** enables
-  `thinkpad-charge-thresholds.service` (waits for late BAT* sysfs; apply script
-  under `/usr/local/lib/thinkpad/`). Live refresh via
-  `scripts/thinkpad-charge-thresholds.sh` (also `install-re-extras.sh` /
-  `profiles/thinkpad-t14s.sh`) installs both tmpfiles and the service.
-* Keep fingerprint enabled (power-button Goodix on T14s; palm-rest Synaptics on P15)
+* Fingerprint: power-button Goodix `27c6:6594` (`fprintd`)
 
 ---
 

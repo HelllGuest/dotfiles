@@ -239,6 +239,9 @@ bash <(curl -fsSL https://raw.githubusercontent.com/HelllGuest/dotfiles/main/scr
 
 # ThinkPad T14s Gen 3 AMD (21CQ/21CR) — AMD cmdline/hostname:
 bash <(curl -fsSL https://raw.githubusercontent.com/HelllGuest/dotfiles/main/scripts/arch-install-t14s.sh)
+
+# ThinkPad P15 Gen 1 (20SU) — Intel/NVIDIA Optimus + optional ollama-cuda:
+bash <(curl -fsSL https://raw.githubusercontent.com/HelllGuest/dotfiles/main/scripts/arch-install-p15.sh)
 ```
 Generic path mirrors [docs/hardened-arch-gnome.md](docs/hardened-arch-gnome.md).
 Rehearse in a UEFI VM first — `scripts/arch-install-vmtest.sh` (OVMF qemu; host
@@ -252,7 +255,7 @@ Installs packages, stows configs into `$HOME`, installs `stow/system/` into `/et
 
 Machine profiles run in `./install.sh` via `scripts/apply-profile.sh` **after** `packages/pacman.txt` (exactly one profile): `profiles/$(hostname).sh` if it exists, otherwise `scripts/detect-profile.sh` (ThinkPad P15 → `thinkpad-p15`, ThinkPad T14s Gen 3 AMD 21CQ/21CR → `thinkpad-t14s`, other ThinkPads/laptop chassis → `laptop`). Pacman first so Optimus/NVIDIA packages exist before `thinkpad-p15` enables services and rebuilds UKIs (on `thinkpad-t14s` AMD hosts, `./install.sh` skips the Intel/NVIDIA GPU packages in `packages/pacman.txt`). There is no `nvidia.sh`; Optimus setup is inside `profiles/thinkpad-p15.sh`.
 
-ThinkPad system configs (kernel cmdline templates, sleep, Wayland env, units) live in `stow/system/` and are installed by `scripts/system-setup.sh` as **root-owned regular files**, never stow symlinks (re-run it after editing `stow/system/`). Why, and how the cmdline UUID is handled: [hardened guide — `system/` files](docs/hardened-arch-gnome.md#kernel-cmdline--system-files-installed-not-stowed). On **T14s Gen 3 AMD**, check `cat /sys/power/mem_sleep`, `lscpu | grep -i ryzen`, `grep -E 'amd_iommu|amd_pstate' /proc/cmdline`, and charge thresholds under `/sys/class/power_supply/BAT*/charge_control_*_threshold`. On **P15**, verify Optimus/`prime-run` after reboot. Installer + profile pull `mesa` / `vulkan-radeon` / `fprintd` (libva via mesa) on AMD; P15 pulls NVIDIA stack via profile.
+ThinkPad system configs (kernel cmdline templates, sleep, Wayland env, units) live in `stow/system/` and are installed by `scripts/system-setup.sh` as **root-owned regular files**, never stow symlinks (re-run it after editing `stow/system/`). Why, and how the cmdline UUID is handled: [hardened guide — `system/` files](docs/hardened-arch-gnome.md#kernel-cmdline--system-files-installed-not-stowed). On **T14s Gen 3 AMD**, check `cat /sys/power/mem_sleep`, `lscpu | grep -i ryzen`, `grep -E 'amd_iommu|amd_pstate' /proc/cmdline`, and charge thresholds under `/sys/class/power_supply/BAT*/charge_control_*_threshold`. On **P15**, verify Optimus/`prime-run` after reboot (`lspci -nnk -d 10de:`, charge 70–80). Installer + profile pull `mesa` / `vulkan-radeon` / `fprintd` (libva via mesa) on AMD; P15 Stage A (`arch-install-p15.sh` or `t14s-arch-install` `HW_PROFILE=p15`) seeds NVIDIA Optimus + optional ollama-cuda, and `profiles/thinkpad-p15.sh` refreshes it.
 
 #### Script execution order (fresh machine)
 
@@ -262,6 +265,7 @@ ThinkPad system configs (kernel cmdline templates, sleep, Wayland env, units) li
 scripts/arch-install-vmtest.sh   # optional: full UEFI VM install (host disks untouched)
 scripts/arch-install.sh          # dual-host mirror: LUKS + Btrfs(@tmp) + UKI + sbctl + GNOME + firewalld
 scripts/arch-install-t14s.sh     # T14s Gen 3 AMD (21CQ/21CR): amd_iommu + amd_pstate + mesa/vulkan-radeon
+scripts/arch-install-p15.sh      # P15 Gen 1 (20SU): intel_iommu + nvidia modeset + Optimus + optional ollama
 → reboot, remove ISO
 ```
 

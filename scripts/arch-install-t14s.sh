@@ -409,7 +409,7 @@ cat > /usr/local/lib/thinkpad/apply-charge-thresholds.sh <<'EOF'
 # Wait for thinkpad_acpi BAT* charge_control_*, then apply 70-80.
 # Exit 0 if absent (VM / no battery sysfs).
 # Canonical template: scripts/lib/apply-charge-thresholds.sh.tmpl
-# Rendered by thinkpad-charge-thresholds.sh; keep arch-install-t14s.sh in sync (tests).
+# Rendered by thinkpad-charge-thresholds.sh; keep machine Stage A installers in sync (tests).
 set -euo pipefail
 START=70
 END=80

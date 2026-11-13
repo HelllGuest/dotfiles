@@ -258,9 +258,9 @@ grep -q '/usr/local/lib/thinkpad/' "$ROOT/scripts/thinkpad-charge-thresholds.sh"
   || fail "helper default apply path must be /usr/local/lib/thinkpad/"
 grep -q 'install -m' "$ROOT/scripts/thinkpad-charge-thresholds.sh" \
   || fail "helper must install with explicit mode (not raw 0600 mktemp copy)"
-# Generic installer must NOT claim charge setup
+# Generic installer must NOT claim charge setup (machine scripts do: t14s + p15)
 grep -q 'thinkpad-charge-thresholds' "$ROOT/scripts/arch-install.sh" \
-  && fail "arch-install.sh must not seed charge thresholds (T14s installer only)" || true
+  && fail "arch-install.sh must not seed charge thresholds (use arch-install-t14s/p15)" || true
 
 # Passwords must not enter arch-chroot via environ (/proc leak).
 for _inst in arch-install-t14s.sh arch-install.sh; do
