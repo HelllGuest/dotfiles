@@ -15,6 +15,7 @@
 #   STAGE_A_DRY_PRINT=1   print resolution only (tests); do not exec
 
 # Resolve one commit for every raw.githubusercontent fetch (install + libs).
+# Call only on the remote path — local checkouts must stay offline.
 t14s_resolve_base_url() {
   if [[ -n ${T14S_BASE_URL:-} ]]; then
     printf '%s\n' "$T14S_BASE_URL"
@@ -38,14 +39,10 @@ stage_a_handoff() {
   local profile="${1:-}"
   shift || true
   local base url tmp cand libdir
-  base="$(t14s_resolve_base_url)" || exit 1
-  url="${T14S_INSTALL_URL:-$base/install.sh}"
 
   if [[ -n $profile ]]; then
     export HW_PROFILE="$profile"
   fi
-  export T14S_BASE_URL="$base"
-  export T14S_REF="${T14S_REF:-}"
 
   # 1) Explicit file
   if [[ -n ${T14S_INSTALL_SH:-} && -f $T14S_INSTALL_SH ]]; then
@@ -81,6 +78,12 @@ stage_a_handoff() {
     # shellcheck disable=SC2093 # intentional: hand off process; loop does not continue
     exec bash "$cand/install.sh" "$@"
   done
+
+  # 3) Remote: resolve one SHA (or use T14S_BASE_URL / T14S_REF) then fetch
+  base="$(t14s_resolve_base_url)" || exit 1
+  url="${T14S_INSTALL_URL:-$base/install.sh}"
+  export T14S_BASE_URL="$base"
+  export T14S_REF="${T14S_REF:-}"
 
   if [[ ${STAGE_A_DRY_PRINT:-0} == 1 ]]; then
     printf 'fetch:%s\nHW_PROFILE=%s\nT14S_BASE_URL=%s\nT14S_REF=%s\n' \

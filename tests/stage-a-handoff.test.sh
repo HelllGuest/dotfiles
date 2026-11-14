@@ -39,14 +39,37 @@ grep -q 'HelllGuest/t14s-arch-install' "$ROOT/scripts/arch-install-p15.sh" \
 # Resolution: local sibling checkout (this host has ~/t14s-arch-install)
 # shellcheck source=../scripts/lib/stage-a-handoff.sh
 source "$ROOT/scripts/lib/stage-a-handoff.sh"
-out="$(
+# Local path must not call GitHub API (works with no network)
+_run_local_handoff() {
   STAGE_A_DRY_PRINT=1 STAGE_A_DOTFILES_ROOT="$ROOT" \
     T14S_LOCAL="$ROOT/../t14s-arch-install" \
     stage_a_handoff t14s
-)" || fail "dry handoff t14s failed"
+}
+if command -v unshare >/dev/null 2>&1 && unshare -rn true 2>/dev/null; then
+  out="$(unshare -rn bash -c '
+    set -euo pipefail
+    ROOT="'"$ROOT"'"
+    # shellcheck source=/dev/null
+    source "$ROOT/scripts/lib/stage-a-handoff.sh"
+    STAGE_A_DRY_PRINT=1 STAGE_A_DOTFILES_ROOT="$ROOT" \
+      T14S_LOCAL="$ROOT/../t14s-arch-install" \
+      stage_a_handoff t14s
+  ')" || fail "offline local handoff failed (must not need GitHub API)"
+else
+  out="$(_run_local_handoff)" || fail "dry handoff t14s failed"
+fi
 echo "$out" | grep -q '^local:' || fail "expected local resolution: $out"
 echo "$out" | grep -qx 'HW_PROFILE=t14s' || fail "expected HW_PROFILE=t14s: $out"
 echo "$out" | grep -q 'T14S_LIB_DIR=' || fail "expected T14S_LIB_DIR: $out"
+# Resolve must sit after local checkout attempts (not before)
+python3 - "$ROOT/scripts/lib/stage-a-handoff.sh" <<'PY' || fail "resolve must follow local checkout"
+from pathlib import Path
+import sys
+t = Path(sys.argv[1]).read_text()
+i_local = t.find('Explicit file')
+i_remote = t.find('base="$(t14s_resolve_base_url)"')
+assert i_local >= 0 and i_remote > i_local, (i_local, i_remote)
+PY
 
 out="$(
   STAGE_A_DRY_PRINT=1 STAGE_A_DOTFILES_ROOT="$ROOT" \
