@@ -394,8 +394,8 @@ defaults (`SETUP_FIREWALLD` on), then `./install.sh` with
 | RESULT | Meaning | Harness exit |
 |--------|---------|--------------|
 | `PASS` | configure + install both 0 | 0 |
-| `PASS_CONFIGURE` | configure 0; install soft-fail (minimal Stage A / no GNOME) | 0 |
-| `FAIL` | configure failed (or guest aborted) | 1 |
+| `PASS_HEADLESS` | configure 0; install failed only on headless-expected checks (GNOME extensions, Zen `user.js`, zinit, Proton API) | 0 |
+| `FAIL` | configure failed, any other install failure, or guest aborted | 1 |
 
 Wait budget: 150 min (nested pacman is slow).
 
@@ -539,7 +539,7 @@ We take a "quiet by default" approach:
 | `virbr-malware` listed under `libvirt` / `block` | Pre-`lab-malware` bind left over | [firewalld howto](#how-to-firewalld-lab-zones--lab-malware); confirm iface + `192.168.200.0/24` |
 | `INVALID_ZONE: lab-malware` | Zone never created on this host | Same as above (`lib/lab-malware-zone.sh`) |
 | Stage B VM hangs on Name/Email or `npx` prompt | Interactive git / clipboard build on serial | Pull fixes; harness sets `GIT_SETUP_NONINTERACTIVE` + non-interactive `tsc` |
-| `DOTFILES_STAGEB_RESULT=PASS_CONFIGURE` | Install soft-failed on minimal Stage A | Expected without full GNOME; firewalld path still OK |
+| `DOTFILES_STAGEB_RESULT=PASS_HEADLESS` | Install failed only on checks that need a desktop session / launched apps | Expected on a headless VM; the guest log lists each ✗ |
 | SSH blocked after lab-zones | drop zone has no 22/tcp | `sudo firewall-cmd --permanent --add-service=ssh && sudo firewall-cmd --reload` (only if you need SSH) |
 | Spoof location sync does nothing | `vpn-location-sync` failed under `pkexec` | `bash scripts/location-setup.sh`; panel → Sync spoofed location |
 | Touchpad clicks broken after old dotfiles | Legacy synaptics inhibit/udev | `bash scripts/cleanup-input-overrides.sh` (sudo), log out |

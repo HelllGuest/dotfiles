@@ -65,8 +65,10 @@ grep -q 'CONFIGURE_UI' "$ROOT/scripts/configure.sh" \
   || fail "configure.sh must honor CONFIGURE_UI"
 grep -q 'fail_step "configure.sh failed' "$ROOT/install.sh" \
   || fail "install.sh CONFIGURE=1 must fail_step when configure.sh fails"
-grep -q 'PASS_CONFIGURE' "$ROOT/scripts/vm-stageb-guest.sh" \
-  || fail "vm-stageb-guest must emit PASS_CONFIGURE for soft install fail"
+grep -q 'PASS_HEADLESS' "$ROOT/scripts/vm-stageb-guest.sh" \
+  || fail "vm-stageb-guest must emit PASS_HEADLESS for headless-only install failures"
+grep -q 'PASS_CONFIGURE' "$ROOT/scripts/vm-stageb-guest.sh" "$ROOT/scripts/vm-stageb-run.sh" \
+  && fail "PASS_CONFIGURE (passes any install failure) must be gone" || true
 grep -q 'sudo firewall-cmd --permanent --get-zones' "$ROOT/scripts/lib/lab-malware-zone.sh" \
   || fail "lab-malware-zone must query permanent zones with sudo"
 grep -q '192.168.200.0/24' "$ROOT/scripts/lib/lab-malware-zone.sh" \

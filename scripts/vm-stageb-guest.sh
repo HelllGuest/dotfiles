@@ -69,9 +69,10 @@ export SKIP_FOXCAGE=1
 export SKIP_OLLAMA=1
 # Headless: no TTY prompts (git identity/hooks/GPG).
 export GIT_SETUP_NONINTERACTIVE=1
+INSTALL_LOG=/tmp/dotfiles-stageb-install.log
 set +e
-bash ./install.sh
-inst_rc=$?
+bash ./install.sh 2>&1 | tee "$INSTALL_LOG"
+inst_rc=${PIPESTATUS[0]}
 set -e
 echo "install.sh exit=$inst_rc"
 echo "DOTFILES_STAGEB_CONFIGURE=$cfg_rc"
@@ -81,16 +82,29 @@ echo "DOTFILES_STAGEB_INSTALL=$inst_rc"
 stageb_sudoers_rm
 trap - EXIT
 
-# PASS = configure + install both OK.
-# PASS_CONFIGURE = firewalld/configure OK; install soft-failed (minimal Stage A).
+# PASS          = configure + install both OK.
+# PASS_HEADLESS = install.sh failed ONLY on health checks that cannot pass in a
+#                 headless VM (no GNOME session, no browser/zsh launch, no Proton
+#                 API from CI networks). Any other failure is FAIL.
+HEADLESS_OK='GNOME extensions enabled|Zen user\.js missing|zinit not bootstrapped|Proton API'
 if (( cfg_rc == 0 && inst_rc == 0 )); then
   echo DOTFILES_STAGEB_RESULT=PASS
   exit 0
 fi
 if (( cfg_rc == 0 )); then
-  echo DOTFILES_STAGEB_RESULT=PASS_CONFIGURE
-  echo "NOTE: install.sh rc=$inst_rc (GNOME-less Stage A may soft-fail dconf/extensions)"
-  exit 0
+  sed -i 's/\x1b\[[0-9;]*m//g; s/\r$//' "$INSTALL_LOG"   # colours / CR break ^✗ matching
+  reasons="$(sed -n '/^Installation finished with failures:/,$p' "$INSTALL_LOG" | grep '^  - ' || true)"
+  other_reasons="$(grep -v 'Health check reported failures' <<<"$reasons" || true)"
+  unexpected="$(grep '^✗' "$INSTALL_LOG" | grep -vE "$HEADLESS_OK" || true)"
+  if [[ -n $reasons && -z $other_reasons && -z $unexpected ]]; then
+    echo DOTFILES_STAGEB_RESULT=PASS_HEADLESS
+    echo "NOTE: install.sh rc=$inst_rc only from headless-expected checks:"
+    grep '^✗' "$INSTALL_LOG" | sed 's/^/  /'
+    exit 0
+  fi
+  echo "Unexpected install.sh failures:"
+  [[ -n $other_reasons ]] && printf '%s\n' "$other_reasons"
+  [[ -n $unexpected ]] && printf '  %s\n' "$unexpected"
 fi
 echo DOTFILES_STAGEB_RESULT=FAIL
 exit 1

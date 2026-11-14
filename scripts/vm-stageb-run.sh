@@ -115,8 +115,8 @@ say "waiting for Stage B (up to 150 min)"
 deadline=$((SECONDS + 9000))
 result=""
 while (( SECONDS < deadline )); do
-  # PASS_CONFIGURE before PASS (PASS is a prefix). Allow trailing CR from serial.
-  if grep -a -q 'DOTFILES_STAGEB_RESULT=PASS_CONFIGURE' "$QEMU_LOG"; then result=PASS_CONFIGURE; break; fi
+  # PASS_HEADLESS before PASS (PASS is a prefix). Allow trailing CR from serial.
+  if grep -a -q 'DOTFILES_STAGEB_RESULT=PASS_HEADLESS' "$QEMU_LOG"; then result=PASS_HEADLESS; break; fi
   if grep -a -qE 'DOTFILES_STAGEB_RESULT=PASS([^_]|$)' "$QEMU_LOG"; then result=PASS; break; fi
   if grep -a -q 'DOTFILES_STAGEB_RESULT=FAIL' "$QEMU_LOG"; then result=FAIL; break; fi
   if grep -a -q 'DOTFILES_STAGEB_DONE=0' "$QEMU_LOG"; then result=PASS; break; fi
@@ -138,7 +138,7 @@ fi
 wait "$QEMU_PID" 2>/dev/null || true
 QEMU_PID=
 
-if [[ $result == PASS || $result == PASS_CONFIGURE ]]; then
+if [[ $result == PASS || $result == PASS_HEADLESS ]]; then
   say "$result: Stage B on VM"
   grep -a -E 'DOTFILES_STAGEB_|configure\.sh|firewalld|default.zone|install\.sh exit|✓ configure|Finished' "$QEMU_LOG" | tail -50
   exit 0
