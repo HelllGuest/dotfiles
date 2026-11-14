@@ -1,6 +1,7 @@
 # Changelog
 
 ## [Unreleased]
+- Stage A/B always install `github-cli` (`gh`) and `glab` (base + `packages/pacman.txt`).
 - Rename `firewalld-migrate.sh` → `firewalld-lab-zones.sh`; configure tag `SETUP_FIREWALLD`. No migrate wrapper. Stage A/B always install `htop`/`btop`/`fastfetch`/`firewalld`. Stage B VM harness + `CONFIGURE_UI` + noninteractive git/tsc. Docs howtos updated.
 - fix(install): `./install.sh` completes the AI stack — `AI_STACK_EXTRAS_ONLY=1` Continue/OpenCode↔ollama/`hr-proxy`, plus P15 `ollama-setup.sh` (`SKIP_OLLAMA=1` opts out).
 - fix(install): Stage B GDM udev keeps NVIDIA `0x10de` (P15 Optimus Wayland); T14s pacman filter drops `egl-wayland`; `stow`/`apply-profile`/`check.sh` ✗ fail `install.sh` via `fail_step` / non-zero exit.

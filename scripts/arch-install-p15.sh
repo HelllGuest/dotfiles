@@ -342,6 +342,7 @@ BASE_PKGS=(
   mkinitcpio snapper snap-pac zram-generator
   apparmor firewalld sbctl efibootmgr
   htop btop fastfetch
+  github-cli glab
 )
 say "pacstrap base system ($UCODE)"
 pacstrap -K /mnt "${BASE_PKGS[@]}"

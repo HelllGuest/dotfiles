@@ -7,7 +7,7 @@
 #
 # Builds: LUKS2(argon2id) + Btrfs(@ @home @snapshots @var_log @var_cache @tmp)
 #         + linux-lts (primary) + linux-hardened (fallback) + UKI + systemd-boot
-#         + minimal GNOME/Wayland + zram + AppArmor + UFW + Snapper + sbctl Secure Boot.
+#         + minimal GNOME/Wayland + zram + AppArmor + firewalld + Snapper + sbctl Secure Boot.
 #
 # Interactive: pick target disk, partition mode (auto-wipe OR manual, EFI optional),
 #              LUKS passphrase, hostname, timezone, locale, username + passwords.
@@ -125,7 +125,7 @@ ${cR}╔════════════════════════
 ║  HARDENED ARCH INSTALLER — THIS WILL DESTROY DATA ON DISK    ║
 ╚══════════════════════════════════════════════════════════════╝${c0}
 Stack: LUKS2 + Btrfs(+@tmp) + linux-lts/hardened + UKI + systemd-boot
-       + minimal GNOME + zram + AppArmor + UFW + Snapper + Secure Boot
+       + minimal GNOME + zram + AppArmor + firewalld + Snapper + Secure Boot
 EOF
 
 # ── 1. choose disk ──────────────────────────────────────────
@@ -314,6 +314,7 @@ BASE_PKGS=(
   mkinitcpio snapper snap-pac zram-generator
   apparmor firewalld sbctl efibootmgr
   htop btop fastfetch
+  github-cli glab
 )
 say "pacstrap base system ($UCODE)"
 pacstrap -K /mnt "${BASE_PKGS[@]}"

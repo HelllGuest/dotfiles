@@ -132,7 +132,7 @@ ${cR}╔════════════════════════
 ╚══════════════════════════════════════════════════════════════╝${c0}
 Machine: ThinkPad T14s Gen 3 AMD (Type 21CQ/21CR) — Rembrandt + amdgpu
 Stack:   LUKS2 + Btrfs(+@tmp) + linux-lts/hardened + UKI + systemd-boot
-         + minimal GNOME + zram + AppArmor + UFW + Snapper + Secure Boot
+         + minimal GNOME + zram + AppArmor + firewalld + Snapper + Secure Boot
 EOF
 
 # Soft DMI check — Gen 3 AMD types only (21CQ/21CR). VM / off-hardware: confirm.
@@ -338,6 +338,7 @@ BASE_PKGS=(
   mkinitcpio snapper snap-pac zram-generator
   apparmor firewalld sbctl efibootmgr
   htop btop fastfetch
+  github-cli glab
 )
 say "pacstrap base system ($UCODE)"
 pacstrap -K /mnt "${BASE_PKGS[@]}"

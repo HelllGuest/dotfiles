@@ -839,7 +839,7 @@ Configure firewalld (nftables backend, deny inbound):
 
 ```bash
 pacman -S firewalld
-# or: bash scripts/firewalld-lab-zones.sh   # from an existing UFW host
+# or: bash scripts/firewalld-lab-zones.sh   # drop + lab zones; removes ufw if present
 firewall-cmd --set-default-zone=drop
 systemctl enable --now firewalld
 ```

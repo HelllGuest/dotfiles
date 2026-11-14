@@ -81,6 +81,8 @@ grep -q 'systemctl mask ufw' "$INST" \
   || fail "arch-install-p15 must mask ufw before/with firewalld enable"
 grep -q 'htop btop fastfetch' "$INST" \
   || fail "arch-install-p15 base must include htop btop fastfetch"
+grep -q 'github-cli glab' "$INST" \
+  || fail "arch-install-p15 base must include github-cli glab"
 grep -qE 'systemctl enable.*\bufw\b' "$INST" \
   && fail "arch-install-p15 must not enable ufw" || true
 grep -qF 'DO_AUTO_PART=1' "$INST" \

@@ -27,6 +27,7 @@ ghostty
 ghidra
 gimp
 git-delta
+github-cli
 glab
 gdm
 gnome-console

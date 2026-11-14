@@ -47,10 +47,14 @@ grep -q 'systemctl mask ufw' "$ROOT/scripts/arch-install-t14s.sh" \
   || fail "arch-install-t14s must mask ufw before/with firewalld enable"
 grep -q 'htop btop fastfetch' "$ROOT/scripts/arch-install-t14s.sh" \
   || fail "arch-install-t14s base must include htop btop fastfetch"
+grep -q 'github-cli glab' "$ROOT/scripts/arch-install-t14s.sh" \
+  || fail "arch-install-t14s base must include github-cli glab"
 grep -q '^fastfetch$' "$ROOT/packages/pacman.txt" || fail "pacman.txt must include fastfetch"
 grep -q '^btop$' "$ROOT/packages/pacman.txt" || fail "pacman.txt must include btop"
 grep -q '^htop$' "$ROOT/packages/pacman.txt" || fail "pacman.txt must include htop"
 grep -q '^firewalld$' "$ROOT/packages/pacman.txt" || fail "pacman.txt must include firewalld"
+grep -q '^github-cli$' "$ROOT/packages/pacman.txt" || fail "pacman.txt must include github-cli"
+grep -q '^glab$' "$ROOT/packages/pacman.txt" || fail "pacman.txt must include glab"
 ! grep -qE '^ufw$' "$ROOT/packages/pacman.txt" || fail "pacman.txt must not include ufw"
 grep -q 'pacman -Rns --noconfirm ufw' "$ROOT/scripts/firewalld-lab-zones.sh" \
   || fail "firewalld-lab-zones must remove ufw package"
