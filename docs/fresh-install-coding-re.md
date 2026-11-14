@@ -167,6 +167,20 @@ sudo firewall-cmd --permanent --zone=lab-malware --list-all
 Details: [README — firewalld howto](../README.md#how-to-firewalld-lab-zones--lab-malware),
 [Verify Firewall](hardened-arch-gnome.md#verify-firewall).
 
+#### How to: ops / privacy kits
+
+```bash
+bash scripts/ops-hygiene.sh              # paccache + flatpak unused (auto on install)
+mat2 ./artifact.pdf && exiftool ./shot.jpg
+bleachbit
+bash scripts/usbguard-setup.sh           # opt-in USB allowlist
+bash scripts/dnscrypt-setup.sh           # opt-in encrypted DNS (MagicDNS may override)
+```
+
+Packages: `pacman-contrib`, `mat2`, `perl-image-exiftool`, `bleachbit`,
+`usbguard`, `dnscrypt-proxy` in `packages/pacman.txt`. Full howto:
+[README — ops / privacy kits](../README.md#how-to-ops--privacy-kits).
+
 #### How to: full bootstrap (`./install.sh`)
 
 ```bash

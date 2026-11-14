@@ -913,6 +913,22 @@ bash scripts/firewalld-tailscale.sh
 (Ubuntu/UFW wording; map to firewalld above):
 [Secure Ubuntu with UFW](https://tailscale.com/docs/how-to/secure-ubuntu-server-with-ufw).
 
+## Encrypted DNS (optional)
+
+Plain Cloudflare DNS via NetworkManager:
+`bash scripts/network-dns-setup.sh` (also run from `location-setup.sh`).
+
+Encrypted DNS (dnscrypt-proxy on loopback, then point NM at it):
+
+```bash
+bash scripts/dnscrypt-setup.sh
+# daemon only: SKIP_NM=1 bash scripts/dnscrypt-setup.sh
+```
+
+Listens on `127.0.0.1:53` and `[::1]:53`. Tailscale MagicDNS may override NM
+DNS while the mesh is up. Howto:
+[README — ops / privacy kits](../README.md#how-to-ops--privacy-kits).
+
 ## Libvirt disposable Kali (virbr0 NAT)
 
 firewalld default zone `drop` rejects unsolicited inbound; libvirt guest NAT
@@ -1236,12 +1252,30 @@ systemctl enable --now reflector.timer
 
 # PHASE 20 — GNOME PRIVACY
 
-Run as normal user:
+Prefer the unified hardener (GNOME + browsers + IDE/telemetry env):
+
+```bash
+bash scripts/privacy-hardener.sh
+```
+
+Manual GNOME-only (subset; hardener covers more):
 
 ```bash
 gsettings set org.gnome.desktop.privacy report-technical-problems false
 gsettings set org.gnome.desktop.privacy remember-recent-files false
 ```
+
+Extra kits from `packages/pacman.txt` (after `./install.sh`):
+
+| Tool | Role |
+|------|------|
+| `mat2` / `exiftool` | Strip or inspect metadata before share/upload |
+| `bleachbit` | Periodic UI / cache junk |
+| `ops-hygiene.sh` | `paccache` + `flatpak uninstall --unused` + weekly timer |
+| `usbguard-setup.sh` | Opt-in USB allowlist (BadUSB) |
+| `dnscrypt-setup.sh` | Opt-in encrypted DNS |
+
+Howto: [README — ops / privacy kits](../README.md#how-to-ops--privacy-kits).
 
 ---
 
@@ -1539,6 +1573,14 @@ pacman -Qtdq
 sudo pacman -Rns $(pacman -Qtdq)
 ```
 
+Ops hygiene (cache + unused Flatpak runtimes; also runs from `./install.sh` and
+`scripts/post-update.sh`):
+
+```bash
+bash scripts/ops-hygiene.sh
+systemctl is-enabled paccache.timer   # expect: enabled
+```
+
 ---
 
 # PHASE 27 — DOTFILES SETUP
@@ -1566,7 +1608,12 @@ cd ~/dotfiles
   Howtos: [configure](../README.md#how-to-configuresh-stage-b-tui),
   [VM Stage B](../README.md#how-to-stage-b-on-a-stage-a-qcow2),
   [firewalld](../README.md#how-to-firewalld-lab-zones--lab-malware).
-* Run `scripts/privacy-hardener.sh` (incl. `browser-hardening.sh`), `scripts/check.sh`, and `scripts/validate-configs.sh`
+* Run `scripts/privacy-hardener.sh` (incl. `browser-hardening.sh`), then
+  `scripts/ops-hygiene.sh` (paccache + flatpak unused + `paccache.timer`;
+  `SKIP_OPS_HYGIENE=1` skips), then `scripts/check.sh` and
+  `scripts/validate-configs.sh`. Opt-in USB/DNS:
+  `usbguard-setup.sh` / `dnscrypt-setup.sh` —
+  [howto](../README.md#how-to-ops--privacy-kits).
 
 Config-only (no package install; skips `zram`, `system`, and `gdm`; removes unmodified `/etc/skel` copies that block stow):
 
@@ -1672,6 +1719,19 @@ sudo firewall-cmd --permanent --zone=lab-malware --list-all
 
 If `virbr-malware` still sits under `libvirt` or `block`, re-run
 `bash scripts/firewalld-lab-zones.sh` (or `ensure_lab_malware_zone`).
+
+---
+
+# Verify ops / privacy kits
+
+Soft checks (`check.sh` prints ○ until enabled):
+
+```bash
+command -v mat2 exiftool bleachbit paccache usbguard dnscrypt-proxy
+systemctl is-enabled paccache.timer    # after ops-hygiene / install.sh
+systemctl is-active usbguard           # only after usbguard-setup.sh
+systemctl is-active dnscrypt-proxy     # only after dnscrypt-setup.sh
+```
 
 ---
 

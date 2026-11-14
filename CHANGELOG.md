@@ -1,6 +1,7 @@
 # Changelog
 
 ## [Unreleased]
+- Docs: ops/privacy howto in README + Phase 13/20/26/27 + Verify in hardened guide + fresh-install; install order lists `ops-hygiene.sh`.
 - Privacy/ops: `pacman-contrib`/`mat2`/`perl-image-exiftool`/`bleachbit`/`usbguard`/`dnscrypt-proxy` in `pacman.txt`; `ops-hygiene.sh` (paccache + flatpak unused + weekly timer; hooked from `install.sh`/`post-update.sh`); opt-in `usbguard-setup.sh` + `dnscrypt-setup.sh` (NM via `network-dns-setup.sh` IPv6 env).
 - AUR: add `bootvine-git` (systemd boot vine animation; [AUR](https://aur.archlinux.org/packages/bootvine-git)).
 - Stage A/B always install `github-cli` (`gh`) and `glab` (base + `packages/pacman.txt`).

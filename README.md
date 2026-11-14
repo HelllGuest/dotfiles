@@ -326,6 +326,30 @@ CONFIGURE_UI=plain bash scripts/configure.sh   # headless / serial
 Full `./install.sh` still installs Caveman + Ponytail. `SETUP_AI` alone is
 Ponytail-oriented (complementary hooks; no duplicate caveman install).
 
+#### How to: ops / privacy kits
+
+Packages land from `packages/pacman.txt` on `./install.sh`: `pacman-contrib`,
+`mat2`, `perl-image-exiftool` (`exiftool`), `bleachbit`, `usbguard`,
+`dnscrypt-proxy`. AUR also lists `bootvine-git` (boot animation).
+
+```bash
+# Auto on install / post-update (SKIP_OPS_HYGIENE=1 to skip):
+bash scripts/ops-hygiene.sh
+#   paccache -rk2 · flatpak uninstall --unused · enable paccache.timer
+
+mat2 ./report.pdf          # strip metadata before share/upload
+exiftool ./photo.jpg       # inspect / edit EXIF
+bleachbit                  # GUI junk cleaner
+
+# Opt-in (do not enable blind on remote hosts):
+bash scripts/usbguard-setup.sh   # allowlist plugged devices, then enable
+bash scripts/dnscrypt-setup.sh   # dnscrypt-proxy on 127.0.0.1/::1 + NM DNS
+# Tailscale MagicDNS may override NM DNS while connected — expected.
+```
+
+`check.sh` soft-probes these (○ until packages/services are present). Plain DNS
+override without encrypt: `bash scripts/network-dns-setup.sh` (or `--all-wifi`).
+
 #### How to: firewalld lab zones / `lab-malware`
 
 ```bash
@@ -427,8 +451,12 @@ cleanup-input-overrides.sh
 → install-photogimp.sh → install-foxcage.sh (if podman; SKIP_FOXCAGE=1 skips)
 → install-dash2dock.sh → install-extensions.sh
 → privacy-hardener.sh (incl. browser-hardening.sh)
+→ ops-hygiene.sh (paccache + flatpak unused + paccache.timer; SKIP_OPS_HYGIENE=1 skips)
 → firewalld-tailscale.sh (if tailscale) → check.sh → validate-configs.sh
 ```
+Opt-in after install (not auto): `bash scripts/usbguard-setup.sh`,
+`bash scripts/dnscrypt-setup.sh`. See
+[How to: ops / privacy kits](#how-to-ops--privacy-kits).
 REA backends: use `lab-re` (JDK21/Ghidra/jadx/rizin + `rea-agents@6.9.0`). Optional host MCP only:
 `bash scripts/install-rea.sh` (needs host JDK≥21).
 
@@ -493,7 +521,7 @@ Clipboard: selecting text auto-copies in kitty and ghostty (`copy_on_select`); i
 We take a "quiet by default" approach:
 - **GNOME Debloated:** Uses `gnome-shell` instead of the full `gnome` meta-package where possible.
 - **Opt-out defaults:** `stow/privacy` → `~/.config/environment.d/90-telemetry-optout.conf` (GUI session + `.shell-exports`). `scripts/privacy-hardener.sh` covers GNOME, browsers, IDE/Claude merges (Cursor-only `cursor.general.*` on Cursor trees; strips leftovers elsewhere), Flutter `reporting=0`, Headroom/AI. Rice also sets `org.gnome.desktop.notifications show-in-lock-screen false`. Re-run after upgrades: `bash scripts/privacy-hardener.sh` / `bash scripts/rice-setup.sh`.
-- **Ops / privacy kits:** `mat2` + `exiftool` (strip metadata before share), `bleachbit` (UI junk), `ops-hygiene.sh` (paccache + flatpak unused), opt-in `usbguard-setup.sh` / `dnscrypt-setup.sh`.
+- **Ops / privacy kits:** `mat2` + `exiftool` (strip metadata before share), `bleachbit` (UI junk), `ops-hygiene.sh` (paccache + flatpak unused; hooked from `install.sh` / `post-update.sh`), opt-in `usbguard-setup.sh` / `dnscrypt-setup.sh`. Full howto: [ops / privacy kits](#how-to-ops--privacy-kits).
 
 ---
 
@@ -595,6 +623,12 @@ cd ~ && source ~/.shell-functions && _lab_work_dir   # expect /srv/lab/out + ref
 ss -tlnp | grep -E ':8787|:11434'
 # 8787 → 127.0.0.1 only (Headroom). 11434 → 127.0.0.1 only on P15; absent on T14s.
 gsettings get org.gnome.desktop.notifications show-in-lock-screen   # false
+
+# Ops / privacy (soft — ○ until enabled):
+command -v mat2 exiftool bleachbit paccache usbguard dnscrypt-proxy
+systemctl is-enabled paccache.timer          # expect: enabled after ops-hygiene
+systemctl is-active usbguard                 # active only after usbguard-setup
+systemctl is-active dnscrypt-proxy           # active only after dnscrypt-setup
 
 for t in ~/dotfiles/tests/*.test.sh; do bash "$t" || break; done
 bash ~/t14s-arch-install/tests/smoke.test.sh   # if that repo is present
