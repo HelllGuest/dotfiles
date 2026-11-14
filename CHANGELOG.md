@@ -1,9 +1,7 @@
 # Changelog
 
 ## [Unreleased]
-- Rename `firewalld-migrate.sh` → `firewalld-lab-zones.sh`; configure tag `SETUP_FIREWALLD` (was `MIGRATE_FIREWALLD`). Script wires libvirt + lab-malware only (Stage A already owns drop); leftover `ufw` removed if present. No migrate wrapper kept.
-- Stage A/B always install `htop`/`btop`/`fastfetch`/`firewalld`; `check.sh` requires them and fails if firewalld is down or ufw remains.
-- Stage B VM harness (`vm-stageb-*.sh`), `CONFIGURE_UI`, noninteractive git/tsc, `install.sh` `CONFIGURE=1` → `fail_step`. Docs howtos updated.
+- Rename `firewalld-migrate.sh` → `firewalld-lab-zones.sh`; configure tag `SETUP_FIREWALLD`. No migrate wrapper. Stage A/B always install `htop`/`btop`/`fastfetch`/`firewalld`. Stage B VM harness + `CONFIGURE_UI` + noninteractive git/tsc. Docs howtos updated.
 - fix(install): `./install.sh` completes the AI stack — `AI_STACK_EXTRAS_ONLY=1` Continue/OpenCode↔ollama/`hr-proxy`, plus P15 `ollama-setup.sh` (`SKIP_OLLAMA=1` opts out).
 - fix(install): Stage B GDM udev keeps NVIDIA `0x10de` (P15 Optimus Wayland); T14s pacman filter drops `egl-wayland`; `stow`/`apply-profile`/`check.sh` ✗ fail `install.sh` via `fail_step` / non-zero exit.
 - Stage A: add `scripts/arch-install-p15.sh` (curl-able P15 Gen 1 / 20SU Optimus mirror of `arch-install-t14s.sh`) — `intel-ucode`, `intel_iommu` + `nvidia_drm.modeset` + nouveau blacklist, `nvidia-open-dkms`/`vulkan-intel`/`iHD`, charge thresholds, firewalld drop, optional `INSTALL_OLLAMA`, nvidia suspend/PM udev (profile parity); `tests/thinkpad-p15.test.sh`; README/CONTRIBUTING/fresh-install/hardened Phase 14 document the P15 path (prefer public `t14s-arch-install` `HW_PROFILE=p15` for TUI).
@@ -35,7 +33,7 @@
 - Dedup scripts: `scripts/lib/agent-skills.sh` shared by ecosystem + RE skill installers; `ai-rules/lib/vscode-settings-merge.sh` single VS Code telemetry merge (telemetry.sh + ai-rules/install.sh). Telemetry falls back to inferred repo root if `REPO_ROOT` is wrong; ai-rules creates `User/` only when the IDE config root already exists.
 - Agent skills (usage-aligned): ecosystem installer supports `owner/repo:skill` filters; packs for Meson/QEMU, Arch triage, hardening/git, web quality, agent-browser, superpowers workflows, OpenAI pdf/playwright; RE adds malware/mobile/Windows/forensics + memory-forensics. `check.sh` probes new skills. `ai-rules/install.sh` no longer merges `cursor.general.*` into Code/VSCodium (strips leftovers; was polluting stow + live settings via `sync-agent-skills`).
 - Kali disposable physical LAN: macvtap eth1; host RJ45 flushed (`kali-lan-host-prep` + polkit); guest eth1 DHCP without gateway/DNS; `lan-check`; dual-gateway/wifi clash fixed; aliases `kali-up-lan` / `kali-lan` / `kali-lan-check`.
-- Tailscale: `packages/pacman.txt` + `scripts/ufw-tailscale.sh` (allow `tailscale0` / `41641/udp` / route); wired in `install.sh` + `check.sh`; hardened-guide section. Docs: Brovi H155-381 CPE admin-only RE path (no public firmware).
+- Tailscale: `packages/pacman.txt` + `scripts/firewalld-tailscale.sh` (allow `tailscale0` / `41641/udp` / route); wired in `install.sh` + `check.sh`; hardened-guide section. Docs: Brovi H155-381 CPE admin-only RE path (no public firmware).
 - Docs: Kali default **isolated** (was wrongly NAT); NAT/UFW/`virbr0-up` + cloud-init SSH notes; P15 post-reboot NVIDIA checks; libvirt firewall section in hardened guide; CONTRIBUTING packages/`virbr0-up`/cmdline flags.
 - Host log fixes: `evolution-data-server` + `wireless-regdb` in `pacman.txt` (CalendarServer libs, Wi-Fi `regulatory.db`); `virbr0-up.service` in `stow/system` waits for libvirt default net (fixes boot race `Cannot find device virbr0`); kali setup installs/enables the unit.
 - P15 Optimus: harden nouveau kill (`install nouveau /bin/false`, `rd.driver.blacklist=nouveau` on cmdline) so proprietary NVIDIA binds after reboot; rebuild UKI embeds `/etc/kernel/cmdline`. Kali UFW also allows `192.168.122.0/24` forward.
