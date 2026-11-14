@@ -47,8 +47,12 @@ if [ -f "packages/pacman.txt" ]; then
         # shellcheck source=scripts/lib/dmi.sh
         source scripts/lib/dmi.sh
         if is_thinkpad_t14s; then
-            # Drop Intel/NVIDIA Optimus stack (incl. egl-wayland) on AMD T14s.
-            pkg_list="$(printf '%s\n' "$pkg_list" | grep -vxE 'intel-media-driver|vulkan-intel|nvidia-open-dkms|nvidia-prime|nvidia-utils|egl-wayland' || true)"
+            # AMD T14s: no Intel iGPU.
+            pkg_list="$(printf '%s\n' "$pkg_list" | grep -vxE 'intel-media-driver|vulkan-intel' || true)"
+        fi
+        if ! has_nvidia_gpu; then
+            # No NVIDIA card (T14s, VMs, other laptops): skip the Optimus stack + DKMS builds.
+            pkg_list="$(printf '%s\n' "$pkg_list" | grep -vxE 'nvidia-open-dkms|nvidia-prime|nvidia-utils|egl-wayland' || true)"
         fi
     fi
     if [ -n "$pkg_list" ]; then

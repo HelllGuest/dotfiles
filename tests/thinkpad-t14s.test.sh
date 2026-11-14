@@ -496,30 +496,54 @@ done
 grep -qx 'power-profiles-daemon' "$TMP/pk/ppd.out" || fail "PPD host must still get power-profiles-daemon"
 grep -qx 'power-profiles-daemon' "$TMP/pk/tuned.out" \
   && fail "tuned-ppd host must not request power-profiles-daemon (conflict aborts --noconfirm)" || true
-# T14s AMD host: Intel/NVIDIA GPU packages in pacman.txt must be filtered out,
-# while non-T14s hosts (e.g. P15) keep them.
+# GPU packages: Intel stack dropped on AMD T14s; NVIDIA stack kept only when an
+# NVIDIA display-class PCI function exists (P15), dropped elsewhere (T14s, VMs).
 mkdir -p "$TMP/pk/repo/scripts/lib"
 cp "$ROOT/scripts/lib/dmi.sh" "$TMP/pk/repo/scripts/lib/dmi.sh"
+mock_pci() { # $1 root, then vendor:class pairs
+  local root=$1 i=0 pair; shift
+  mkdir -p "$root"
+  for pair in "$@"; do
+    mkdir -p "$root/0000:0$i:00.0"
+    printf '%s\n' "${pair%%:*}" >"$root/0000:0$i:00.0/vendor"
+    printf '%s\n' "${pair#*:}" >"$root/0000:0$i:00.0/class"
+    i=$((i + 1))
+  done
+}
+mock_pci "$TMP/pci-amd" 0x1002:0x030000
+mock_pci "$TMP/pci-optimus" 0x8086:0x030000 0x10de:0x030000 0x10de:0x040300
+mock_pci "$TMP/pci-vm" 0x1234:0x030000 0x10de:0x040300   # NVIDIA audio only
 printf '%s\n' 'atuin' 'intel-media-driver' 'vulkan-intel' 'nvidia-open-dkms' \
   'nvidia-prime' 'nvidia-utils' 'egl-wayland' 'stow' >"$TMP/pk/repo/packages/pacman.txt"
-(cd "$TMP/pk/repo" && DMI_SYSFS_ROOT="$TMP/cr" PK_OUT="$TMP/pk/t14s.out" \
+(cd "$TMP/pk/repo" && DMI_SYSFS_ROOT="$TMP/cr" PCI_SYSFS_ROOT="$TMP/pci-amd" PK_OUT="$TMP/pk/t14s.out" \
   PATH="$TMP/pk/bin:$PATH" bash -c "$_pkgblk" >/dev/null) \
   || fail "install.sh package block failed (t14s)"
 grep -qx 'atuin' "$TMP/pk/t14s.out" || fail "t14s must keep atuin"
 grep -qx 'stow' "$TMP/pk/t14s.out" || fail "t14s must keep stow"
 grep -qE '^(intel-media-driver|vulkan-intel|nvidia-open-dkms|nvidia-prime|nvidia-utils|egl-wayland)$' \
   "$TMP/pk/t14s.out" && fail "t14s must filter out Intel/NVIDIA GPU packages" || true
-(cd "$TMP/pk/repo" && DMI_SYSFS_ROOT="$TMP/p15" PK_OUT="$TMP/pk/p15.out" \
+(cd "$TMP/pk/repo" && DMI_SYSFS_ROOT="$TMP/p15" PCI_SYSFS_ROOT="$TMP/pci-optimus" PK_OUT="$TMP/pk/p15.out" \
   PATH="$TMP/pk/bin:$PATH" bash -c "$_pkgblk" >/dev/null) \
   || fail "install.sh package block failed (p15)"
 for _gp in intel-media-driver vulkan-intel nvidia-open-dkms nvidia-prime nvidia-utils egl-wayland; do
-  grep -qx "$_gp" "$TMP/pk/p15.out" || fail "non-t14s must keep $_gp"
+  grep -qx "$_gp" "$TMP/pk/p15.out" || fail "Optimus P15 must keep $_gp"
 done
+(cd "$TMP/pk/repo" && DMI_SYSFS_ROOT="$TMP/p15" PCI_SYSFS_ROOT="$TMP/pci-vm" PK_OUT="$TMP/pk/vm.out" \
+  PATH="$TMP/pk/bin:$PATH" bash -c "$_pkgblk" >/dev/null) \
+  || fail "install.sh package block failed (vm)"
+grep -qx 'intel-media-driver' "$TMP/pk/vm.out" || fail "non-t14s without NVIDIA must keep Intel packages"
+grep -qE '^(nvidia-open-dkms|nvidia-prime|nvidia-utils|egl-wayland)$' "$TMP/pk/vm.out" \
+  && fail "host without an NVIDIA display device must skip NVIDIA packages" || true
 unset _gp
+# has_nvidia_gpu: display class only (audio companion alone does not count).
+(source "$ROOT/scripts/lib/dmi.sh"; PCI_SYSFS_ROOT="$TMP/pci-optimus" has_nvidia_gpu) \
+  || fail "has_nvidia_gpu must detect NVIDIA 0x03 class"
+(source "$ROOT/scripts/lib/dmi.sh"; PCI_SYSFS_ROOT="$TMP/pci-vm" has_nvidia_gpu) \
+  && fail "has_nvidia_gpu must ignore NVIDIA HDMI audio / non-NVIDIA VGA" || true
 # All-filtered manifest on T14s: must exit 0 and not invoke pacman -S.
 printf '%s\n' 'intel-media-driver' 'nvidia-open-dkms' 'egl-wayland' >"$TMP/pk/repo/packages/pacman.txt"
 rm -f "$TMP/pk/allfilt.out"
-(cd "$TMP/pk/repo" && DMI_SYSFS_ROOT="$TMP/cr" PK_OUT="$TMP/pk/allfilt.out" \
+(cd "$TMP/pk/repo" && DMI_SYSFS_ROOT="$TMP/cr" PCI_SYSFS_ROOT="$TMP/pci-amd" PK_OUT="$TMP/pk/allfilt.out" \
   PATH="$TMP/pk/bin:$PATH" bash -e -c "$_pkgblk" >/dev/null) \
   || fail "install.sh package block failed when all packages filtered"
 [[ ! -e "$TMP/pk/allfilt.out" ]] || fail "all-filtered manifest must not invoke pacman -S"

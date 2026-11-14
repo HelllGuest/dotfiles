@@ -63,10 +63,10 @@ if [[ -f "$REPO_ROOT/scripts/lib/dmi.sh" ]]; then
     warn "DMI does not match P15: $(dmi_label)"
   fi
   if has_nvidia_gpu; then
-    ok "NVIDIA GPU present (lspci)"
-    lspci -nn 2>/dev/null | grep -iE 'vga|3d|display.*\[10de:' || true
+    ok "NVIDIA GPU present (PCI vendor 10de, display class)"
+    lspci -nn 2>/dev/null | grep -iE '(vga|3d|display).*\[10de:' || true
   else
-    warn "no NVIDIA VGA/3D in lspci — Optimus profile will skip NVIDIA block"
+    warn "no NVIDIA display device on PCI — Optimus profile will skip NVIDIA block"
   fi
 else
   warn "repo lib/dmi.sh missing — run from cloned dotfiles"

@@ -40,7 +40,14 @@ is_laptop_chassis() {
   return 1
 }
 
+# NVIDIA display-class PCI function (vendor 0x10de, class 0x03xxxx). Reads sysfs,
+# so it works before drivers or pciutils are installed. HDMI-audio / USB-C
+# companion functions (other classes) do not count.
 has_nvidia_gpu() {
-  command -v lspci >/dev/null 2>&1 || return 1
-  lspci -nn 2>/dev/null | grep -qiE 'vga|3d|display.*\[10de:'
+  local dev root="${PCI_SYSFS_ROOT:-/sys/bus/pci/devices}"
+  for dev in "$root"/*; do
+    [[ -r $dev/vendor && -r $dev/class ]] || continue
+    [[ $(<"$dev/vendor") == 0x10de && $(<"$dev/class") == 0x03* ]] && return 0
+  done
+  return 1
 }
