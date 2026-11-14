@@ -30,19 +30,21 @@ This guide prioritizes:
 * laptop battery longevity
 * developer workflows
 
-> **Automated:** This guide is implemented end-to-end by [`scripts/arch-install.sh`](../scripts/arch-install.sh) — run it from the Arch ISO instead of the manual phases:
+> **Automated Stage A:** canonical public installer
+> [t14s-arch-install](https://github.com/HelllGuest/t14s-arch-install)
+> (`HW_PROFILE=t14s` for 21CQ/21CR, `HW_PROFILE=p15` for 20SU Optimus). Dotfiles
+> [`arch-install-t14s.sh`](../scripts/arch-install-t14s.sh) /
+> [`arch-install-p15.sh`](../scripts/arch-install-p15.sh) /
+> [`arch-install.sh`](../scripts/arch-install.sh) are thin handoffs only.
 > ```bash
-> bash <(curl -fsSL https://raw.githubusercontent.com/HelllGuest/dotfiles/main/scripts/arch-install.sh)
+> bash <(curl -fsSL https://raw.githubusercontent.com/HelllGuest/t14s-arch-install/main/install.sh)
+> # or: …/dotfiles/main/scripts/arch-install-t14s.sh  # HW_PROFILE=t14s
+> # or: …/dotfiles/main/scripts/arch-install-p15.sh   # HW_PROFILE=p15
 > ```
-> **ThinkPad T14s Gen 3 AMD** (type **21CQ/21CR**): use [`scripts/arch-install-t14s.sh`](../scripts/arch-install-t14s.sh) instead — same stack with `amd_iommu` / `amd_pstate`, `amd-ucode` (not `intel_iommu`), plus `mesa` / `vulkan-radeon` / `fprintd` / `sof-firmware`. After first-boot `./install.sh`, `profiles/thinkpad-t14s.sh` repairs Intel cmdline leftovers and applies charge thresholds (see Phase 14).
-> ```bash
-> bash <(curl -fsSL https://raw.githubusercontent.com/HelllGuest/dotfiles/main/scripts/arch-install-t14s.sh)
-> ```
-> **ThinkPad P15 Gen 1** (type **20SU** Optimus): use [`scripts/arch-install-p15.sh`](../scripts/arch-install-p15.sh) — `intel-ucode`, `intel_iommu` / `nvidia_drm.modeset` / nouveau blacklist, `nvidia-open-dkms` + `vulkan-intel` + `LIBVA=iHD`, charge thresholds, optional `ollama-cuda`. Prefer public Stage A [t14s-arch-install](https://github.com/HelllGuest/t14s-arch-install) with `HW_PROFILE=p15` for TUI/DRYRUN. After first-boot `./install.sh` → `profiles/thinkpad-p15.sh`.
-> ```bash
-> bash <(curl -fsSL https://raw.githubusercontent.com/HelllGuest/dotfiles/main/scripts/arch-install-p15.sh)
-> ```
-> Rehearse first in a UEFI VM with [`scripts/arch-install-vmtest.sh`](../scripts/arch-install-vmtest.sh) (full install on a virtual disk; host disks untouched). For machine scripts: `INSTALLER=arch-install-t14s.sh` or `INSTALLER=arch-install-p15.sh scripts/arch-install-vmtest.sh` (confirm past the DMI warn in the VM). The manual phases below remain the reference for what it does and for customizing.
+> After first boot: `./install.sh` → `profiles/thinkpad-t14s.sh` or
+> `thinkpad-p15.sh`. Rehearse with
+> [`arch-install-vmtest.sh`](../scripts/arch-install-vmtest.sh). Manual phases
+> below remain the reference for what Stage A does.
 
 > **Dotfiles:** After completing this guide, continue with [PHASE 27 — Dotfiles Setup](#phase-27--dotfiles-setup) or jump to the [dotfiles README](../README.md) for shell and maintenance. For coding, reverse engineering, and malware-lab purpose stacks on this ThinkPad, see [fresh-install-coding-re.md](fresh-install-coding-re.md).
 

@@ -227,25 +227,22 @@ Layout stays flat on purpose: GNU Stow package roots, curl-able installers, and
 
 ### 0. Bare-metal Arch install (Stage A, from the ISO)
 
-Preferred dual-host installer: **[t14s-arch-install](https://github.com/HelllGuest/t14s-arch-install)** —
-`HW_PROFILE` auto-detects ThinkPad T14s Gen 3 AMD (`21CQ`/`21CR`) or P15 Gen 1
-(`20SU` Optimus). Seeds **firewalld** (`nftables`, default zone `drop`), optional
-P15-only `ollama-cuda` on `127.0.0.1:11434` (Quadro T1000 4GB).
+**Canonical Stage A:** **[t14s-arch-install](https://github.com/HelllGuest/t14s-arch-install)**
+(`HW_PROFILE=t14s|p15`, TUI/DRYRUN/answers). Seeds **firewalld** (`nftables`,
+default zone `drop`); optional P15 `ollama-cuda` on `127.0.0.1:11434`.
 
-In-tree mirrors (same stack):
 ```bash
-# from the Arch ISO (UEFI, as root). AUTO wipe, or MANUAL with EFI optional/reuse.
-bash <(curl -fsSL https://raw.githubusercontent.com/HelllGuest/dotfiles/main/scripts/arch-install.sh)
+# Preferred (from Arch ISO, UEFI, root):
+bash <(curl -fsSL https://raw.githubusercontent.com/HelllGuest/t14s-arch-install/main/install.sh)
 
-# ThinkPad T14s Gen 3 AMD (21CQ/21CR) — AMD cmdline/hostname:
-bash <(curl -fsSL https://raw.githubusercontent.com/HelllGuest/dotfiles/main/scripts/arch-install-t14s.sh)
-
-# ThinkPad P15 Gen 1 (20SU) — Intel/NVIDIA Optimus + optional ollama-cuda:
-bash <(curl -fsSL https://raw.githubusercontent.com/HelllGuest/dotfiles/main/scripts/arch-install-p15.sh)
+# Thin URL-stable wrappers in this repo (hand off to the same installer):
+bash <(curl -fsSL https://raw.githubusercontent.com/HelllGuest/dotfiles/main/scripts/arch-install-t14s.sh)  # HW_PROFILE=t14s
+bash <(curl -fsSL https://raw.githubusercontent.com/HelllGuest/dotfiles/main/scripts/arch-install-p15.sh)   # HW_PROFILE=p15
+bash <(curl -fsSL https://raw.githubusercontent.com/HelllGuest/dotfiles/main/scripts/arch-install.sh)       # DMI detect
 ```
-Generic path mirrors [docs/hardened-arch-gnome.md](docs/hardened-arch-gnome.md).
-Rehearse in a UEFI VM first — `scripts/arch-install-vmtest.sh` (OVMF qemu; host
-disks untouched). Then continue with **1. Full Bootstrap** (Stage B) below.
+
+Manual phases: [docs/hardened-arch-gnome.md](docs/hardened-arch-gnome.md).
+Rehearse: `scripts/arch-install-vmtest.sh`. Then **1. Full Bootstrap** (Stage B).
 
 ### 1. Full Bootstrap (Recommended)
 Installs packages, stows configs into `$HOME`, installs `stow/system/` into `/etc` as root-owned files, restores GNOME settings, and runs health checks.
@@ -265,11 +262,12 @@ ThinkPad system configs (kernel cmdline templates, sleep, Wayland env, units) li
 
 **Stage A — from the Arch ISO (bare metal):**
 ```text
-# Preferred: HelllGuest/t14s-arch-install (HW_PROFILE=t14s|p15, firewalld drop, optional ollama-cuda)
-scripts/arch-install-vmtest.sh   # optional: full UEFI VM install (host disks untouched)
-scripts/arch-install.sh          # dual-host mirror: LUKS + Btrfs(@tmp) + UKI + sbctl + GNOME + firewalld
-scripts/arch-install-t14s.sh     # T14s Gen 3 AMD (21CQ/21CR): amd_iommu + amd_pstate + mesa/vulkan-radeon
-scripts/arch-install-p15.sh      # P15 Gen 1 (20SU): intel_iommu + nvidia modeset + Optimus + optional ollama
+# Canonical: HelllGuest/t14s-arch-install (HW_PROFILE=t14s|p15)
+# Thin wrappers (scripts/arch-install{,-t14s,-p15}.sh) only hand off — no second body
+scripts/arch-install-vmtest.sh   # optional UEFI VM rehearsal (host disks untouched)
+scripts/arch-install-t14s.sh     # → HW_PROFILE=t14s
+scripts/arch-install-p15.sh      # → HW_PROFILE=p15
+scripts/arch-install.sh          # → DMI detect / TUI radio
 → reboot, remove ISO
 ```
 

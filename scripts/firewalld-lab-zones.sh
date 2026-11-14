@@ -72,29 +72,45 @@ fi
 # Host-only malware net (no forward / no NAT)
 MALWARE_XML="$(mktemp)"
 trap 'rm -f "$MALWARE_XML"' EXIT
+# dns enable=no → INetSim owns :53; dhcp-option=6 still advertises 192.168.200.1
+# so guest resolv.conf is not empty.
 cat >"$MALWARE_XML" <<'EOF'
-<network>
+<network xmlns:dnsmasq="http://libvirt.org/schemas/network/dnsmasq/1.0">
   <name>virbr-malware</name>
   <bridge name="virbr-malware" stp="on" delay="0"/>
   <domain name="malware.lab"/>
+  <dns enable="no"/>
   <ip address="192.168.200.1" netmask="255.255.255.0">
     <dhcp>
       <range start="192.168.200.50" end="192.168.200.99"/>
     </dhcp>
   </ip>
+  <dnsmasq:options>
+    <dnsmasq:option value="dhcp-option=6,192.168.200.1"/>
+  </dnsmasq:options>
 </network>
 EOF
 
 if command -v virsh >/dev/null 2>&1; then
+  _redef=0
   if ! sudo virsh net-info virbr-malware >/dev/null 2>&1; then
     echo "→ Defining libvirt host-only network virbr-malware..."
     sudo virsh net-define "$MALWARE_XML"
+  else
+    _xml="$(sudo virsh net-dumpxml virbr-malware 2>/dev/null || true)"
+    if grep -q '<forward' <<<"$_xml" \
+      || ! grep -qE "<dns[^>]*enable=['\"]no['\"]" <<<"$_xml" \
+      || ! grep -q 'dhcp-option=6,192.168.200.1' <<<"$_xml"; then
+      _redef=1
+    fi
   fi
-  if sudo virsh net-dumpxml virbr-malware 2>/dev/null | grep -q '<forward'; then
+  if [[ $_redef -eq 1 ]]; then
+    echo "→ Redefining virbr-malware (no forward; dns off; DHCP DNS=192.168.200.1)..."
     sudo virsh net-destroy virbr-malware 2>/dev/null || true
     sudo virsh net-undefine virbr-malware 2>/dev/null || true
     sudo virsh net-define "$MALWARE_XML"
   fi
+  unset -v _redef _xml
   sudo virsh net-autostart virbr-malware 2>/dev/null || true
   sudo virsh net-start virbr-malware 2>/dev/null || true
 fi

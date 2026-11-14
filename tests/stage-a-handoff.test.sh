@@ -1,0 +1,100 @@
+#!/usr/bin/env bash
+# Thin Stage A wrappers → HelllGuest/t14s-arch-install.
+set -euo pipefail
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+fail() { echo "FAIL: $*" >&2; exit 1; }
+
+for f in \
+  "$ROOT/scripts/lib/stage-a-handoff.sh" \
+  "$ROOT/scripts/arch-install.sh" \
+  "$ROOT/scripts/arch-install-t14s.sh" \
+  "$ROOT/scripts/arch-install-p15.sh"
+do
+  [[ -f $f ]] || fail "missing $f"
+  bash -n "$f" || fail "bash -n $f"
+done
+[[ -x $ROOT/scripts/arch-install.sh ]] || fail "arch-install.sh not executable"
+[[ -x $ROOT/scripts/arch-install-t14s.sh ]] || fail "arch-install-t14s.sh not executable"
+[[ -x $ROOT/scripts/arch-install-p15.sh ]] || fail "arch-install-p15.sh not executable"
+
+# Wrappers must stay thin (no embedded LUKS/pacstrap body)
+for w in arch-install.sh arch-install-t14s.sh arch-install-p15.sh; do
+  lines=$(wc -l <"$ROOT/scripts/$w")
+  (( lines < 80 )) || fail "$w too fat ($lines lines) — must hand off to t14s-arch-install"
+  grep -q 'stage_a_handoff' "$ROOT/scripts/$w" \
+    || fail "$w must call stage_a_handoff"
+  grep -qE 'cryptsetup|pacstrap|mkfs.btrfs' "$ROOT/scripts/$w" \
+    && fail "$w must not embed Stage A body" || true
+done
+
+grep -q 'stage_a_handoff t14s' "$ROOT/scripts/arch-install-t14s.sh" \
+  || fail "arch-install-t14s must hand off with profile t14s"
+grep -q 'stage_a_handoff p15' "$ROOT/scripts/arch-install-p15.sh" \
+  || fail "arch-install-p15 must hand off with profile p15"
+grep -q 'HelllGuest/t14s-arch-install' "$ROOT/scripts/arch-install-t14s.sh" \
+  || fail "arch-install-t14s must document canonical repo"
+grep -q 'HelllGuest/t14s-arch-install' "$ROOT/scripts/arch-install-p15.sh" \
+  || fail "arch-install-p15 must document canonical repo"
+
+# Resolution: local sibling checkout (this host has ~/t14s-arch-install)
+# shellcheck source=../scripts/lib/stage-a-handoff.sh
+source "$ROOT/scripts/lib/stage-a-handoff.sh"
+out="$(
+  STAGE_A_DRY_PRINT=1 STAGE_A_DOTFILES_ROOT="$ROOT" \
+    T14S_LOCAL="$ROOT/../t14s-arch-install" \
+    stage_a_handoff t14s
+)" || fail "dry handoff t14s failed"
+echo "$out" | grep -q '^local:' || fail "expected local resolution: $out"
+echo "$out" | grep -qx 'HW_PROFILE=t14s' || fail "expected HW_PROFILE=t14s: $out"
+echo "$out" | grep -q 'T14S_LIB_DIR=' || fail "expected T14S_LIB_DIR: $out"
+
+out="$(
+  STAGE_A_DRY_PRINT=1 STAGE_A_DOTFILES_ROOT="$ROOT" \
+    T14S_LOCAL="$ROOT/../t14s-arch-install" \
+    stage_a_handoff p15
+)" || fail "dry handoff p15 failed"
+echo "$out" | grep -qx 'HW_PROFILE=p15' || fail "expected HW_PROFILE=p15: $out"
+
+# Forced fetch: T14S_REF override (no network) → same commit for install URL
+out="$(
+  STAGE_A_DRY_PRINT=1 \
+    T14S_INSTALL_SH='' T14S_LOCAL=/nonexistent \
+    STAGE_A_DOTFILES_ROOT=/nonexistent \
+    HOME=/nonexistent \
+    T14S_REF=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa \
+    stage_a_handoff t14s
+)" || fail "dry fetch handoff with T14S_REF failed"
+echo "$out" | grep -q '^fetch:https://raw.githubusercontent.com/HelllGuest/t14s-arch-install/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/install.sh' \
+  || fail "expected T14S_REF override in fetch URL: $out"
+grep -q 't14s_resolve_base_url' "$ROOT/scripts/lib/stage-a-handoff.sh" \
+  || fail "stage-a-handoff must resolve main SHA via t14s_resolve_base_url"
+grep -q "application/vnd.github.sha" "$ROOT/scripts/lib/stage-a-handoff.sh" \
+  || fail "stage-a-handoff must use GitHub commits API Accept: sha"
+
+# Canonical repo still owns hardware seeds (when sibling present)
+CANON="$ROOT/../t14s-arch-install"
+if [[ -f $CANON/install.sh && -f $CANON/lib/80-chroot-setup.sh ]]; then
+  grep -q 'amd_iommu=on' "$CANON/lib/80-chroot-setup.sh" \
+    || fail "canonical Stage A missing amd_iommu"
+  grep -q 'nvidia_drm.modeset=1' "$CANON/lib/80-chroot-setup.sh" \
+    || fail "canonical Stage A missing nvidia modeset"
+  grep -q 'thinkpad-charge-thresholds' "$CANON/lib/80-chroot-setup.sh" \
+    || fail "canonical Stage A missing charge thresholds"
+  grep -q 'github-cli glab' "$CANON/lib/50-packages.sh" \
+    || fail "canonical base must include github-cli glab"
+  grep -q 'htop btop fastfetch' "$CANON/lib/50-packages.sh" \
+    || fail "canonical base must include htop btop fastfetch"
+else
+  echo "NOTE: skip canonical seed checks (no sibling t14s-arch-install)"
+fi
+
+grep -q 'INSTALLER=' "$ROOT/scripts/arch-install-vmtest.sh" \
+  || fail "arch-install-vmtest must support INSTALLER="
+grep -q 'STAGE_A_HANDOFF_URL=http://10.0.2.2' "$ROOT/scripts/arch-install-vmtest.sh" \
+  || fail "vmtest must print STAGE_A_HANDOFF_URL for local lib/"
+grep -q 'T14S_BASE_URL=http://10.0.2.2' "$ROOT/scripts/arch-install-vmtest.sh" \
+  || fail "vmtest must print T14S_BASE_URL for local Stage A tree"
+grep -q 'failed to fetch' "$ROOT/scripts/arch-install-t14s.sh" \
+  || fail "wrappers must fail clearly when handoff curl fails"
+
+echo "PASS: stage-a-handoff.test.sh"

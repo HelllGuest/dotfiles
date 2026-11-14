@@ -3,7 +3,7 @@
 #
 # Generates /etc/usbguard/rules.conf from the live device set when empty/missing,
 # so the keyboard/mouse you are using now stay allowed. Re-plug new devices
-# later need: sudo usbguard allow-device <id>  (or usbguard-rule-generator).
+# later need: sudo usbguard list-devices && sudo usbguard allow-device <id> -p
 #
 # Usage:
 #   bash scripts/usbguard-setup.sh
@@ -22,13 +22,19 @@ if ! command -v usbguard >/dev/null 2>&1; then
   die "usbguard not installed — pacman -S usbguard (or ./install.sh)"
 fi
 
-if [[ ! -f $RULES ]] || [[ ! -s $RULES ]] || [[ "${FORCE_REGEN:-0}" == 1 ]]; then
+# rules.conf is root:root 0600 — unprivileged [[ -f ]] lies; probe with sudo.
+_rules_present=0
+if sudo test -s "$RULES" 2>/dev/null; then
+  _rules_present=1
+fi
+
+if [[ $_rules_present -eq 0 || ${FORCE_REGEN:-0} == 1 ]]; then
   say "generate allowlist from currently connected USB devices → $RULES"
   tmp="$(mktemp)"
   # shellcheck disable=SC2064
   trap 'rm -f "$tmp"' EXIT
   # Root sees the full USB set (HID used for this session included).
-  if ! sudo usbguard generate-policy >"$tmp"; then
+  if ! sudo usbguard generate-policy | tee "$tmp" >/dev/null; then
     die "usbguard generate-policy failed"
   fi
   if [[ ! -s $tmp ]]; then
@@ -53,4 +59,5 @@ else
   echo "✓ rules ready (SKIP_ENABLE=1 — not starting service)"
 fi
 
-echo "  new device: sudo usbguard list-devices && sudo usbguard allow-device <id>"
+echo "  new device: sudo usbguard list-devices && sudo usbguard allow-device <id> -p"
+unset -v _rules_present

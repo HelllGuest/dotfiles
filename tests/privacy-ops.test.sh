@@ -22,6 +22,10 @@ grep -q 'PRIMARY_DNS6' "$ROOT/scripts/network-dns-setup.sh" \
   || fail "network-dns-setup.sh must honor PRIMARY_DNS6"
 grep -q 'sudo usbguard generate-policy' "$ROOT/scripts/usbguard-setup.sh" \
   || fail "usbguard-setup must sudo generate-policy before enable"
+grep -q 'list-devices && sudo usbguard allow-device' "$ROOT/scripts/usbguard-setup.sh" \
+  || fail "usbguard hint: list-devices then allow-device -p (not list-devices -p)"
+! grep -q 'list-devices -p' "$ROOT/scripts/usbguard-setup.sh" \
+  || fail "usbguard list-devices does not take -p"
 grep -q "listen_addresses = \\['127.0.0.1:53', '\\[::1\\]:53'\\]" \
   "$ROOT/scripts/dnscrypt-setup.sh" \
   || fail "dnscrypt-setup must listen on 127.0.0.1 and ::1"

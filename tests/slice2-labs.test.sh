@@ -111,6 +111,14 @@ grep -q 'CONFIGURE_UI' "$ROOT/scripts/configure.sh" \
   || fail "configure must support CONFIGURE_UI override"
 grep -q -- '--add-source=192.168.200.0/24' "$ROOT/scripts/lib/lab-malware-zone.sh" \
   || fail "lab-malware-zone must permanently add source 192.168.200.0/24"
+grep -q '67/udp' "$ROOT/scripts/lib/lab-malware-zone.sh" \
+  || fail "lab-malware zone must allow DHCP (67/udp) under DROP"
+grep -E 'for spec in .*68/udp' "$ROOT/scripts/lib/lab-malware-zone.sh" \
+  && fail "lab-malware zone must not open 68/udp (host is DHCP server)" || true
+grep -qE "<dns[^>]*enable=['\"]no['\"]" "$ROOT/scripts/firewalld-lab-zones.sh" \
+  || fail "virbr-malware XML must set dns enable=no (INetSim owns DNS)"
+grep -q 'dhcp-option=6,192.168.200.1' "$ROOT/scripts/firewalld-lab-zones.sh" \
+  || fail "virbr-malware DHCP must advertise DNS 192.168.200.1 (INetSim)"
 grep -q 'sudo firewall-cmd --permanent --get-zones' "$ROOT/scripts/firewalld-lab-zones.sh" \
   || fail "firewalld-lab-zones must query zones with sudo"
 

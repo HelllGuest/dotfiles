@@ -27,28 +27,11 @@ done
 [[ -x "$ROOT/scripts/thinkpad-charge-thresholds.sh" ]] \
   || fail "thinkpad-charge-thresholds.sh not executable"
 
-# Installer AMD defaults (no Intel leftover on fresh path)
-grep -q 'amd_iommu=on' "$ROOT/scripts/arch-install-t14s.sh" \
-  || fail "arch-install-t14s must set amd_iommu=on"
-grep -q 'amd_pstate=active' "$ROOT/scripts/arch-install-t14s.sh" \
-  || fail "arch-install-t14s must set amd_pstate=active"
-grep -q 'UCODE=amd-ucode' "$ROOT/scripts/arch-install-t14s.sh" \
-  || fail "arch-install-t14s must default UCODE=amd-ucode"
-grep -qE 'intel_iommu=on' "$ROOT/scripts/arch-install-t14s.sh" \
-  && fail "arch-install-t14s must not set intel_iommu=on" || true
-# Soft DMI gate must require type codes (not bare T14s name)
-grep -qF "grep -qiE '21CQ|21CR'" "$ROOT/scripts/arch-install-t14s.sh" \
-  || fail "installer DMI soft-check must require 21CQ|21CR"
-grep -q 'firewalld' "$ROOT/scripts/arch-install-t14s.sh" \
-  || fail "arch-install-t14s must install/enable firewalld"
-grep -q 'DefaultZone=drop' "$ROOT/scripts/arch-install-t14s.sh" \
-  || fail "arch-install-t14s must set firewalld DefaultZone=drop"
-grep -q 'systemctl mask ufw' "$ROOT/scripts/arch-install-t14s.sh" \
-  || fail "arch-install-t14s must mask ufw before/with firewalld enable"
-grep -q 'htop btop fastfetch' "$ROOT/scripts/arch-install-t14s.sh" \
-  || fail "arch-install-t14s base must include htop btop fastfetch"
-grep -q 'github-cli glab' "$ROOT/scripts/arch-install-t14s.sh" \
-  || fail "arch-install-t14s base must include github-cli glab"
+# Stage A is thin handoff → public t14s-arch-install (HW_PROFILE=t14s)
+grep -q 'stage_a_handoff t14s' "$ROOT/scripts/arch-install-t14s.sh" \
+  || fail "arch-install-t14s must hand off with profile t14s"
+grep -q 'HelllGuest/t14s-arch-install' "$ROOT/scripts/arch-install-t14s.sh" \
+  || fail "arch-install-t14s must point at canonical public Stage A"
 grep -q '^fastfetch$' "$ROOT/packages/pacman.txt" || fail "pacman.txt must include fastfetch"
 grep -q '^btop$' "$ROOT/packages/pacman.txt" || fail "pacman.txt must include btop"
 grep -q '^htop$' "$ROOT/packages/pacman.txt" || fail "pacman.txt must include htop"
@@ -60,32 +43,13 @@ grep -q 'pacman -Rns --noconfirm ufw' "$ROOT/scripts/firewalld-lab-zones.sh" \
   || fail "firewalld-lab-zones must remove ufw package"
 grep -qE '"btop"|"htop"' "$ROOT/scripts/check.sh" \
   || fail "check.sh must require btop and htop"
-grep -qE 'systemctl enable.*\bufw\b' "$ROOT/scripts/arch-install-t14s.sh" \
-  && fail "arch-install-t14s must not enable ufw" || true
 grep -qE '(^|[[:space:]_/])20SU' "$ROOT/scripts/lib/dmi.sh" \
   || fail "is_thinkpad_p15 must match 20SU (Stage A parity)"
-grep -qF 'DO_AUTO_PART=1' "$ROOT/scripts/arch-install-t14s.sh" \
-  || fail "AUTO wipe must be deferred (DO_AUTO_PART) until after identity"
-# Identity validators: real inputs via shared lib; drift-check vs installers
+# Identity validators live in install-identity.sh (Stage A owns its own copy)
 IDLIB="$ROOT/scripts/lib/install-identity.sh"
 [[ -f $IDLIB ]] || fail "missing $IDLIB"
 # shellcheck source=scripts/lib/install-identity.sh
 source "$IDLIB"
-extract_fn() { # $1 file $2 name — body including signature
-  awk -v n="$2" '
-    $0 ~ "^" n "\\(\\)" {grab=1}
-    grab {print; if ($0 == "}") exit}
-  ' "$1"
-}
-for fn in valid_hostname valid_username valid_timezone valid_locale valid_keymap; do
-  for inst in \
-    "$ROOT/scripts/arch-install-t14s.sh" \
-    "$ROOT/scripts/arch-install.sh"
-  do
-    diff -u <(extract_fn "$IDLIB" "$fn") <(extract_fn "$inst" "$fn") >/dev/null \
-      || fail "drift: $fn differs between install-identity.sh and $(basename "$inst")"
-  done
-done
 valid_hostname thinkpad-t14s || fail "hostname thinkpad-t14s should pass"
 valid_hostname a || fail "hostname a should pass"
 valid_hostname -bad && fail "hostname -bad should fail" || true
@@ -152,25 +116,6 @@ env -u KEYMAP_DIR PATH="$TMP/id/bin:/usr/bin:/bin" bash -c '
   valid_keymap "..." && exit 13
   exit 0
 ' "$IDLIB" || fail "stub localectl: us/dvo pass / u. and ... must fail (grep -F)"
-# shellcheck disable=SC2016  # intentional literal $USERNAME in installer source
-grep -qF 'valid_username "$USERNAME"' "$ROOT/scripts/arch-install-t14s.sh" \
-  || fail "installer must call valid_username before wipe"
-# ok profile only on DMI match branch (not after override YES)
-awk '
-  /ok "target profile: T14s Gen 3 AMD \(21CQ\/21CR\)"/ {
-    if (prev !~ /21CQ\|21CR/) { print "FAIL: ok profile not gated by DMI"; exit 1 }
-    found=1
-  }
-  { prev=$0 }
-  END { if (!found) { print "FAIL: missing ok profile"; exit 1 } }
-' "$ROOT/scripts/arch-install-t14s.sh" \
-  || fail "ok target profile must only print on DMI match"
-grep -qF 'First login via GDM (Wayland) if GNOME installed cleanly' \
-  "$ROOT/scripts/arch-install-t14s.sh" \
-  || fail "finish text must not hard-claim GDM"
-grep -qF 'systemctl is-active thinkpad-charge-thresholds.service' \
-  "$ROOT/scripts/arch-install-t14s.sh" \
-  || fail "finish summary should mention charge service"
 
 # Profile repairs generic-install Intel leftovers
 grep -q 'intel_iommu=' "$ROOT/profiles/thinkpad-t14s.sh" \
@@ -195,16 +140,6 @@ grep -q '^fprintd$' "$ROOT/packages/thinkpad-t14s.txt" \
   || fail "packages/thinkpad-t14s.txt must list fprintd"
 grep -q '^libva-mesa-driver$' "$ROOT/packages/thinkpad-t14s.txt" \
   && fail "packages/thinkpad-t14s.txt must not list obsolete libva-mesa-driver" || true
-grep -q 'vulkan-radeon' "$ROOT/scripts/arch-install-t14s.sh" \
-  || fail "arch-install-t14s must pacstrap vulkan-radeon"
-grep -q 'libva-utils' "$ROOT/scripts/arch-install-t14s.sh" \
-  || fail "arch-install-t14s must pacstrap libva-utils"
-grep -q 'wireless-regdb' "$ROOT/scripts/arch-install-t14s.sh" \
-  || fail "arch-install-t14s must pacstrap wireless-regdb"
-grep -q '71-thinkpad-t14s-touchpad-wakeup.rules' "$ROOT/scripts/arch-install-t14s.sh" \
-  || fail "arch-install-t14s must seed 71-thinkpad-t14s-touchpad-wakeup.rules"
-grep -q '61-thinkpad-charge-limit.rules' "$ROOT/scripts/arch-install-t14s.sh" \
-  || fail "arch-install-t14s must seed 61-thinkpad-charge-limit.rules"
 grep -q '71-thinkpad-t14s-touchpad-wakeup.rules' "$ROOT/profiles/thinkpad-t14s.sh" \
   || fail "profiles/thinkpad-t14s.sh must install 71-thinkpad-t14s-touchpad-wakeup.rules"
 grep -q '61-thinkpad-charge-limit.rules' "$ROOT/profiles/thinkpad-t14s.sh" \
@@ -225,50 +160,13 @@ grep -q 'yoga-tablet-mode.service' "$ROOT/scripts/gnome-session-setup.sh" \
   || fail "gnome-session-setup.sh must disable leftover yoga-tablet-mode.service"
 grep -qE 'is_thinkpad_x1|yoga-tablet-mode' "$ROOT/scripts/validate-configs.sh" \
   && fail "validate-configs.sh must not gate or check yoga-tablet-mode / is_thinkpad_x1" || true
-grep -q 'thinkpad-charge-thresholds.conf' "$ROOT/scripts/arch-install-t14s.sh" \
-  || fail "arch-install-t14s must ship charge tmpfiles"
-grep -q 'thinkpad-charge-thresholds.service' "$ROOT/scripts/arch-install-t14s.sh" \
-  || fail "arch-install-t14s must enable charge oneshot"
-grep -q 'After=multi-user.target' "$ROOT/scripts/arch-install-t14s.sh" \
-  || fail "charge oneshot must After=multi-user.target"
-grep -q '/usr/local/lib/thinkpad/apply-charge-thresholds.sh' "$ROOT/scripts/arch-install-t14s.sh" \
-  || fail "installer apply path must be /usr/local/lib/thinkpad/"
-grep -q '/usr/local/lib/t14s/' "$ROOT/scripts/arch-install-t14s.sh" \
-  && fail "installer must not use legacy /usr/local/lib/t14s/" || true
-# Installer heredoc must match canonical BAT0 template (w-lines)
-while IFS= read -r line; do
-  [[ "$line" == w\ * ]] || continue
-  grep -qF "$line" "$ROOT/scripts/arch-install-t14s.sh" \
-    || fail "arch-install-t14s heredoc missing conf line: $line"
-done <"$ROOT/scripts/lib/thinkpad-charge-thresholds.conf"
-# Apply/unit heredocs must match rendered templates (parity; curl installer embeds copy)
 for f in \
   "$ROOT/scripts/lib/apply-charge-thresholds.sh.tmpl" \
-  "$ROOT/scripts/lib/thinkpad-charge-thresholds.service.tmpl"
+  "$ROOT/scripts/lib/thinkpad-charge-thresholds.service.tmpl" \
+  "$ROOT/scripts/lib/thinkpad-charge-thresholds.conf"
 do
-  [[ -f $f ]] || fail "missing template $f"
+  [[ -f $f ]] || fail "missing $f"
 done
-_rend="$ROOT/scripts/lib"
-_exp_apply="$(mktemp)"
-_exp_unit="$(mktemp)"
-sed -e 's|@@START@@|70|g' -e 's|@@END@@|80|g' -e \
-  's|@@APPLY@@|/usr/local/lib/thinkpad/apply-charge-thresholds.sh|g' \
-  "$_rend/apply-charge-thresholds.sh.tmpl" >"$_exp_apply"
-sed -e 's|@@START@@|70|g' -e 's|@@END@@|80|g' -e \
-  's|@@APPLY@@|/usr/local/lib/thinkpad/apply-charge-thresholds.sh|g' \
-  "$_rend/thinkpad-charge-thresholds.service.tmpl" >"$_exp_unit"
-# Every non-empty line from rendered templates must appear in the installer.
-while IFS= read -r line; do
-  [[ -n $line ]] || continue
-  grep -qF "$line" "$ROOT/scripts/arch-install-t14s.sh" \
-    || fail "installer apply heredoc drifted from template: $line"
-done <"$_exp_apply"
-while IFS= read -r line; do
-  [[ -n $line ]] || continue
-  grep -qF "$line" "$ROOT/scripts/arch-install-t14s.sh" \
-    || fail "installer unit heredoc drifted from template: $line"
-done <"$_exp_unit"
-rm -f "$_exp_apply" "$_exp_unit"
 grep -q 'POWER_SUPPLY_ROOT' "$ROOT/scripts/thinkpad-charge-thresholds.sh" \
   || fail "charge helper must support POWER_SUPPLY_ROOT for tests"
 grep -q 'thinkpad-charge-thresholds.service' "$ROOT/scripts/thinkpad-charge-thresholds.sh" \
@@ -277,22 +175,6 @@ grep -q '/usr/local/lib/thinkpad/' "$ROOT/scripts/thinkpad-charge-thresholds.sh"
   || fail "helper default apply path must be /usr/local/lib/thinkpad/"
 grep -q 'install -m' "$ROOT/scripts/thinkpad-charge-thresholds.sh" \
   || fail "helper must install with explicit mode (not raw 0600 mktemp copy)"
-# Generic installer must NOT claim charge setup (machine scripts do: t14s + p15)
-grep -q 'thinkpad-charge-thresholds' "$ROOT/scripts/arch-install.sh" \
-  && fail "arch-install.sh must not seed charge thresholds (use arch-install-t14s/p15)" || true
-
-# Passwords must not enter arch-chroot via environ (/proc leak).
-for _inst in arch-install-t14s.sh arch-install.sh; do
-  grep -q '\.install-secrets' "$ROOT/scripts/$_inst" \
-    || fail "$_inst must use .install-secrets for chroot passwords"
-  grep -E 'arch-chroot.*/mnt env' -A6 "$ROOT/scripts/$_inst" | grep -q 'USER_PASS=' \
-    && fail "$_inst must not pass USER_PASS via arch-chroot env" || true
-  grep -E 'arch-chroot.*/mnt env' -A6 "$ROOT/scripts/$_inst" | grep -q 'ROOT_PASS=' \
-    && fail "$_inst must not pass ROOT_PASS via arch-chroot env" || true
-done
-unset _inst
-grep -q 'HelllGuest/t14s-arch-install' "$ROOT/scripts/arch-install-t14s.sh" \
-  || fail "arch-install-t14s must point at canonical public Stage A"
 grep -q 'systemctl is-enabled thinkpad-charge-thresholds.service' \
   "$ROOT/docs/hardened-arch-gnome.md" \
   || fail "Verify Battery Thresholds must check service enabled"
@@ -652,18 +534,4 @@ grep -q 'pacman -Q tuned-ppd' "$ROOT/profiles/thinkpad-t14s.sh" \
   || fail "T14s profile must keep tuned + tuned-ppd instead of forcing PPD"
 grep -q 'pacman -Q tuned-ppd' "$ROOT/profiles/laptop.sh" \
   || fail "laptop profile must not install PPD over tuned-ppd"
-for _seed in \
-  's2idle.conf' \
-  'thinkpad-lid.conf' \
-  'zz-x86-64-v3.conf' \
-  '99-wayland.conf' \
-  'LIBVA_DRIVER_NAME=radeonsi' \
-  '61-gdm-wayland.rules' \
-  'gdm.service.d/override.conf'
-do
-  grep -q "$_seed" "$ROOT/scripts/arch-install-t14s.sh" \
-    || fail "arch-install-t14s.sh must seed $_seed for first boot"
-done
-unset -v _seed
-
 echo "PASS: thinkpad-t14s tests"

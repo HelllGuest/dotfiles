@@ -1,24 +1,21 @@
 #!/usr/bin/env bash
-# arch-install-vmtest.sh — dry-run an Arch installer in a UEFI qemu VM (no real disks).
+# arch-install-vmtest.sh — dry-run Stage A in a UEFI qemu VM (no real disks).
 #
-# Boots the Arch ISO in an OVMF/UEFI VM with a blank virtual disk, and serves the
-# local installer script over loopback so you can run it end-to-end against
-# /dev/vda only. Nothing on your physical machine is touched.
+# Serves local scripts/ and (if present) a sibling t14s-arch-install checkout so
+# the guest rehearses YOUR tree, not GitHub main.
 #
 #   ~/dotfiles/scripts/arch-install-vmtest.sh
 #   INSTALLER=arch-install-t14s.sh ~/dotfiles/scripts/arch-install-vmtest.sh
-#   # inside the VM's ISO shell:
-#   bash <(curl -fsSL http://10.0.2.2:8000/arch-install.sh)
-#   # or for T14s AMD script (confirm past DMI warn in the VM):
-#   bash <(curl -fsSL http://10.0.2.2:8000/arch-install-t14s.sh)
 #
-# Env overrides: INSTALLER (arch-install.sh|arch-install-t14s.sh), WORK, DISK_SIZE
-#   (80G: full ./install.sh needs ~40G), RAM (4096), PORT (8000), ISO, FRESH=1
+# Env: INSTALLER, WORK, DISK_SIZE, RAM, PORT (scripts, default 8000),
+#      T14S_PORT (canonical tree, default PORT+1), ISO, FRESH=1,
+#      T14S_LOCAL (override path to t14s-arch-install)
 set -euo pipefail
 say(){ printf '\e[1;34m>>\e[0m %s\n' "$*"; }
 die(){ printf '\e[1;31mERR\e[0m %s\n' "$*" >&2; exit 1; }
 
 SCRIPTS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+DOTFILES_ROOT="$(cd "$SCRIPTS_DIR/.." && pwd)"
 INSTALLER=${INSTALLER:-arch-install.sh}
 [[ $INSTALLER == */* || $INSTALLER == *..* ]] && die "INSTALLER must be a basename under scripts/"
 [[ -f "$SCRIPTS_DIR/$INSTALLER" ]] || die "$INSTALLER not found next to this script"
@@ -27,12 +24,14 @@ DISK="$WORK/test-disk.qcow2"
 DISK_SIZE=${DISK_SIZE:-80G}
 RAM=${RAM:-4096}
 PORT=${PORT:-8000}
+T14S_PORT=${T14S_PORT:-$((PORT + 1))}
 ISO=${ISO:-}
+T14S_DIR="${T14S_LOCAL:-$DOTFILES_ROOT/../t14s-arch-install}"
+[[ -d $T14S_DIR ]] && T14S_DIR="$(cd "$T14S_DIR" && pwd)" || T14S_DIR=""
 
 # 1. dependencies (qemu + OVMF firmware)
 need=()
 command -v qemu-system-x86_64 >/dev/null || need+=(qemu-full)
-# prefer system qemu-img — Android SDK ships its own that may shadow it in PATH
 QEMU_IMG=/usr/bin/qemu-img; [[ -x $QEMU_IMG ]] || QEMU_IMG=qemu-img
 ovmf_code=""; ovmf_vars_src=""
 for c in /usr/share/edk2/x64/OVMF_CODE.4m.fd /usr/share/edk2/x64/OVMF_CODE.fd \
@@ -62,27 +61,43 @@ say "ISO: $ISO"
 [[ -f $DISK ]] || { say "creating blank ${DISK_SIZE} disk"; "$QEMU_IMG" create -f qcow2 "$DISK" "$DISK_SIZE" >/dev/null; }
 cp -f "$ovmf_vars_src" "$WORK/OVMF_VARS.fd"
 
-# 4. serve installer over loopback (qemu guest reaches host at 10.0.2.2)
+# 4. serve local trees (guest → 10.0.2.2)
+#    PORT     → scripts/  (wrappers + lib/stage-a-handoff.sh)
+#    T14S_PORT → t14s-arch-install/ (install.sh + lib/*.sh) when present
 ( cd "$SCRIPTS_DIR" && exec python3 -m http.server "$PORT" --bind 127.0.0.1 ) &>/dev/null &
 HTTP_PID=$!
-trap 'kill "$HTTP_PID" 2>/dev/null || true' EXIT
+T14S_HTTP_PID=""
+if [[ -n $T14S_DIR && -f $T14S_DIR/install.sh ]]; then
+  ( cd "$T14S_DIR" && exec python3 -m http.server "$T14S_PORT" --bind 127.0.0.1 ) &>/dev/null &
+  T14S_HTTP_PID=$!
+  say "serving local Stage A from $T14S_DIR on :$T14S_PORT"
+else
+  say "no local t14s-arch-install — guest resolves GitHub main→SHA (or T14S_REF)"
+fi
+trap 'kill "$HTTP_PID" ${T14S_HTTP_PID:-} 2>/dev/null || true' EXIT
 sleep 1
+
+T14S_ENV=""
+if [[ -n $T14S_HTTP_PID ]]; then
+  T14S_ENV="T14S_BASE_URL=http://10.0.2.2:${T14S_PORT} T14S_INSTALL_URL=http://10.0.2.2:${T14S_PORT}/install.sh"
+fi
 
 cat <<EOF
 
-  ┌─ VM smoke test ─────────────────────────────────────────────┐
-   Inside the VM's Arch ISO root shell, run the installer:
-     ${0##*/} serves scripts/ at http://10.0.2.2:$PORT/
-     Active INSTALLER=${INSTALLER}
+  ┌─ VM smoke test (local trees) ───────────────────────────────┐
+   Serves scripts/ at http://10.0.2.2:${PORT}/
+   $([ -n "$T14S_HTTP_PID" ] && echo "Serves t14s-arch-install at http://10.0.2.2:${T14S_PORT}/" || echo "No local t14s-arch-install — pinned GitHub fetch")
+   Active INSTALLER=${INSTALLER}
 
-     bash <(curl -fsSL http://10.0.2.2:$PORT/${INSTALLER})
+   Inside the Arch ISO root shell:
 
-   • Disk mode: AUTO · target: /dev/vda (the ONLY disk in the VM)
-   • Tests: partition+format, LUKS, btrfs(+@tmp), UKIs, systemd-boot
-   • T14s script: confirm past DMI warn (VM has no 21CQ/21CR); AMD ucode OK
-   • After 'reboot', remove ISO: VM boot menu → disk, expect GDM
-   • Reset between runs:  FRESH=1 ${0##*/}
-   • T14s: INSTALLER=arch-install-t14s.sh ${0##*/}
+     STAGE_A_HANDOFF_URL=http://10.0.2.2:${PORT}/lib/stage-a-handoff.sh \\
+     ${T14S_ENV} \\
+     bash <(curl -fsSL http://10.0.2.2:${PORT}/${INSTALLER})
+
+   • Do NOT rely on DOTFILES_RAW here (server root is already scripts/)
+   • Wrappers set HW_PROFILE (t14s / p15) or DMI-detect (arch-install.sh)
+   • Disk: AUTO · /dev/vda only · FRESH=1 to wipe qcow2
    • Virtual disk: $DISK
   └─────────────────────────────────────────────────────────────┘
 

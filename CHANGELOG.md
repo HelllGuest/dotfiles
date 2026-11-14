@@ -1,6 +1,8 @@
 # Changelog
 
 ## [Unreleased]
+- Stage A handoff harden: vmtest serves local trees; resolve `main`→SHA once (or `T14S_REF` override); clear curl errors; usbguard `list-devices` + `allow-device -p`; virbr-malware `dns enable=no` + `dhcp-option=6,192.168.200.1` + DHCP `67/udp` on lab-malware.
+- Stage A: collapse four installers — `arch-install{,-t14s,-p15}.sh` are thin handoffs via `lib/stage-a-handoff.sh` to canonical [t14s-arch-install](https://github.com/HelllGuest/t14s-arch-install) (`HW_PROFILE=t14s|p15`). Docs + tests retargeted.
 - Docs: ops/privacy howto in README + Phase 13/20/26/27 + Verify in hardened guide + fresh-install; install order lists `ops-hygiene.sh`.
 - Privacy/ops: `pacman-contrib`/`mat2`/`perl-image-exiftool`/`bleachbit`/`usbguard`/`dnscrypt-proxy` in `pacman.txt`; `ops-hygiene.sh` (paccache + flatpak unused + weekly timer; hooked from `install.sh`/`post-update.sh`); opt-in `usbguard-setup.sh` + `dnscrypt-setup.sh` (NM via `network-dns-setup.sh` IPv6 env).
 - AUR: add `bootvine-git` (systemd boot vine animation; [AUR](https://aur.archlinux.org/packages/bootvine-git)).
