@@ -324,6 +324,13 @@ if [ -f "scripts/privacy-hardener.sh" ]; then
     bash scripts/privacy-hardener.sh || fail_step "Privacy hardener failed."
 fi
 
+# 4.1 Ops hygiene: weekly paccache.timer + optional cache/flatpak prune
+# Full prune: default. Skip with SKIP_OPS_HYGIENE=1. usbguard/dnscrypt stay opt-in
+# (bash scripts/usbguard-setup.sh / bash scripts/dnscrypt-setup.sh).
+if [ "${SKIP_OPS_HYGIENE:-0}" != 1 ] && [ -f "scripts/ops-hygiene.sh" ]; then
+    bash scripts/ops-hygiene.sh || echo "Ops hygiene skipped."
+fi
+
 # 4.5 Tailscale + firewalld (optional; no-op if firewalld inactive / tailscale absent)
 if [ -f "scripts/firewalld-tailscale.sh" ] && command -v tailscale >/dev/null 2>&1; then
     bash scripts/firewalld-tailscale.sh || echo "Tailscale firewalld rules skipped."

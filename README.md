@@ -462,7 +462,7 @@ Key runtime dependencies (`scripts/check.sh` asserts binaries, shell tools, syml
 
 **GNOME dock:** Dash2Dock Animated via `scripts/install-dash2dock.sh` (EGO; listed in `gnome/extensions.txt`)
 
-**AUR** (via `install-aur.sh`, bootstraps `paru` if needed): `blesh-git`, `curlie`, `forgit`, GNOME shell extensions, `vscodium-bin` (settings in `stow/vscode/`)
+**AUR** (via `install-aur.sh`, bootstraps `paru` if needed): `blesh-git`, `bootvine-git`, `curlie`, `forgit`, GNOME shell extensions, `vscodium-bin` (settings in `stow/vscode/`)
 
 **Flatpaks** (via `install-flatpaks.sh`): Brave, Zen, Google Chrome, LibreWolf, Proton VPN, Android Studio. Chrome may be `--system` or `--user`; both satisfy `check.sh` / hardening presence checks. Browser telemetry debloat: `scripts/browser-hardening.sh` (Chrome = `chromium-base` only; Brave = base + `brave-extra`; Zen `user.js` per real profile + Flatpak `systemconfig` + `/etc/firefox/policies` for native; LibreWolf upstream + `librewolf.overrides.cfg`). Launch Zen once before re-running hardening if profiles are new. `/etc` policy paths need sudo.
 
@@ -493,6 +493,7 @@ Clipboard: selecting text auto-copies in kitty and ghostty (`copy_on_select`); i
 We take a "quiet by default" approach:
 - **GNOME Debloated:** Uses `gnome-shell` instead of the full `gnome` meta-package where possible.
 - **Opt-out defaults:** `stow/privacy` → `~/.config/environment.d/90-telemetry-optout.conf` (GUI session + `.shell-exports`). `scripts/privacy-hardener.sh` covers GNOME, browsers, IDE/Claude merges (Cursor-only `cursor.general.*` on Cursor trees; strips leftovers elsewhere), Flutter `reporting=0`, Headroom/AI. Rice also sets `org.gnome.desktop.notifications show-in-lock-screen false`. Re-run after upgrades: `bash scripts/privacy-hardener.sh` / `bash scripts/rice-setup.sh`.
+- **Ops / privacy kits:** `mat2` + `exiftool` (strip metadata before share), `bleachbit` (UI junk), `ops-hygiene.sh` (paccache + flatpak unused), opt-in `usbguard-setup.sh` / `dnscrypt-setup.sh`.
 
 ---
 
@@ -535,6 +536,11 @@ We take a "quiet by default" approach:
 | Task | Command |
 |------|---------|
 | Full update | `sudo pacman -Syu && ./install.sh && bash scripts/post-update.sh` |
+| Ops hygiene | `bash scripts/ops-hygiene.sh` — `paccache -rk2`, `flatpak uninstall --unused`, enable `paccache.timer` |
+| Metadata strip | `mat2 file.pdf` / `exiftool file.jpg` (share/upload path) |
+| UI junk cleaner | `bleachbit` (GUI) or `bleachbit -c …` |
+| USB allowlist | `bash scripts/usbguard-setup.sh` (generates rules from plugged devices, then enables) |
+| Encrypted DNS | `bash scripts/dnscrypt-setup.sh` (dnscrypt-proxy → 127.0.0.1; MagicDNS may override while Tailscale is up) |
 | Health check | `~/dotfiles/scripts/check.sh` |
 | Docs lint | `~/dotfiles/scripts/lint-docs.sh` (CI also runs this + `all_stow_files.txt` + `bash -n` + `tests/*.test.sh`) |
 | System files (`stow/system/`) | `bash scripts/system-setup.sh` |

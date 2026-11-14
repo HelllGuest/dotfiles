@@ -1,6 +1,8 @@
 # Changelog
 
 ## [Unreleased]
+- Privacy/ops: `pacman-contrib`/`mat2`/`perl-image-exiftool`/`bleachbit`/`usbguard`/`dnscrypt-proxy` in `pacman.txt`; `ops-hygiene.sh` (paccache + flatpak unused + weekly timer; hooked from `install.sh`/`post-update.sh`); opt-in `usbguard-setup.sh` + `dnscrypt-setup.sh` (NM via `network-dns-setup.sh` IPv6 env).
+- AUR: add `bootvine-git` (systemd boot vine animation; [AUR](https://aur.archlinux.org/packages/bootvine-git)).
 - Stage A/B always install `github-cli` (`gh`) and `glab` (base + `packages/pacman.txt`).
 - Rename `firewalld-migrate.sh` → `firewalld-lab-zones.sh`; configure tag `SETUP_FIREWALLD`. No migrate wrapper. Stage A/B always install `htop`/`btop`/`fastfetch`/`firewalld`. Stage B VM harness + `CONFIGURE_UI` + noninteractive git/tsc. Docs howtos updated.
 - fix(install): `./install.sh` completes the AI stack — `AI_STACK_EXTRAS_ONLY=1` Continue/OpenCode↔ollama/`hr-proxy`, plus P15 `ollama-setup.sh` (`SKIP_OLLAMA=1` opts out).

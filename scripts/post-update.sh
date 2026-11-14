@@ -30,4 +30,9 @@ if command -v tldr >/dev/null 2>&1; then
     tldr --update
 fi
 
+# Pacman cache + unused Flatpak runtimes (weekly timer stays enabled)
+if [ "${SKIP_OPS_HYGIENE:-0}" != 1 ] && [ -f "$REPO_ROOT/scripts/ops-hygiene.sh" ]; then
+    bash "$REPO_ROOT/scripts/ops-hygiene.sh" || true
+fi
+
 echo "Maintenance complete!"

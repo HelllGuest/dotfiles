@@ -1,4 +1,5 @@
 blesh-git
+bootvine-git
 curlie
 forgit
 gnome-shell-extension-appindicator

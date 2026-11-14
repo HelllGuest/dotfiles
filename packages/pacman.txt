@@ -103,3 +103,10 @@ zoxide
 zram-generator
 zsh
 firewalld
+# Ops hygiene / privacy tooling (scripts/ops-hygiene.sh, usbguard-setup.sh, dnscrypt-setup.sh)
+pacman-contrib
+mat2
+perl-image-exiftool
+bleachbit
+usbguard
+dnscrypt-proxy

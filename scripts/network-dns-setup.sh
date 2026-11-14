@@ -11,6 +11,8 @@ set -euo pipefail
 
 PRIMARY_DNS="${PRIMARY_DNS:-1.1.1.1}"
 SECONDARY_DNS="${SECONDARY_DNS:-1.0.0.1}"
+PRIMARY_DNS6="${PRIMARY_DNS6:-2606:4700:4700::1111}"
+SECONDARY_DNS6="${SECONDARY_DNS6:-2606:4700:4700::1001}"
 MODE="active"
 TARGET=""
 
@@ -19,6 +21,8 @@ while [[ $# -gt 0 ]]; do
         --all-wifi) MODE="all-wifi"; shift ;;
         -h|--help)
             echo "Usage: $(basename "$0") [--all-wifi] [connection-name]"
+            echo "Env: PRIMARY_DNS SECONDARY_DNS PRIMARY_DNS6 SECONDARY_DNS6"
+            echo "Encrypted DNS: bash scripts/dnscrypt-setup.sh (sets 127.0.0.1 / ::1)"
             exit 0
             ;;
         *)
@@ -55,11 +59,11 @@ fi
 
 for conn in "${CONNECTIONS[@]}"; do
     [[ -z "$conn" ]] && continue
-    echo "→ $conn: DNS ${PRIMARY_DNS} ${SECONDARY_DNS} (ignore auto-dns)"
+    echo "→ $conn: DNS ${PRIMARY_DNS} ${SECONDARY_DNS} / ${PRIMARY_DNS6} ${SECONDARY_DNS6} (ignore auto-dns)"
     nmcli connection modify "$conn" \
         ipv4.dns "${PRIMARY_DNS} ${SECONDARY_DNS}" \
         ipv4.ignore-auto-dns yes \
-        ipv6.dns "2606:4700:4700::1111 2606:4700:4700::1001" \
+        ipv6.dns "${PRIMARY_DNS6} ${SECONDARY_DNS6}" \
         ipv6.ignore-auto-dns yes
 done
 
