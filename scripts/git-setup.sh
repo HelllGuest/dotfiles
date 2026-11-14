@@ -28,9 +28,14 @@ fi
 mkdir -p "$HOME/.config"
 cd "$STOW_DIR" || exit 1
 
-# Replace plain files that block stow (e.g. prior manual git config)
+# Replace plain files that block stow (e.g. prior manual git config).
+# Skip anything that already resolves into the stow package: when stow folded
+# ~/.config/git into a single dir symlink, the files look "plain" but ARE the
+# repo's tracked config, and removing them would delete them from the repo.
+pkg_real="$(cd "$STOW_DIR/git/.config/git" && pwd -P)"
 for f in config ignore work.conf personal.conf; do
   target="$HOME/.config/git/$f"
+  [[ -e "$target" && "$(readlink -f "$target")" == "$pkg_real/"* ]] && continue
   if [[ -f "$target" && ! -L "$target" ]]; then
     cp -a "$target" "${target}.bak.$(date +%Y%m%d)" 2>/dev/null || true
     rm -f "$target"
