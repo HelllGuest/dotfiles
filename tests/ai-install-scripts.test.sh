@@ -57,6 +57,20 @@ grep -q 'GNOME_CLIPBOARD_REF:-6eca59f2efd9441df3bfbdfc27df0ce35d16b881' \
   "$ROOT/scripts/fetch-gnome-extensions.sh" || fail "gnome-clipboard commit pin missing"
 grep -q 'd56f73e11e070035971b0d51ca5139296d4ac918e720b3724d8782668f9f6988' \
   "$ROOT/scripts/fetch-gnome-extensions.sh" || fail "gnome-clipboard SHA-256 pin missing"
+grep -q 'npx --yes' "$ROOT/scripts/fetch-gnome-extensions.sh" \
+  || fail "fetch-gnome-extensions must use non-interactive npx --yes for tsc shim"
+grep -q 'GIT_SETUP_NONINTERACTIVE' "$ROOT/scripts/git-setup.sh" \
+  || fail "git-setup must support GIT_SETUP_NONINTERACTIVE"
+grep -q 'CONFIGURE_UI' "$ROOT/scripts/configure.sh" \
+  || fail "configure.sh must honor CONFIGURE_UI"
+grep -q 'fail_step "configure.sh failed' "$ROOT/install.sh" \
+  || fail "install.sh CONFIGURE=1 must fail_step when configure.sh fails"
+grep -q 'PASS_CONFIGURE' "$ROOT/scripts/vm-stageb-guest.sh" \
+  || fail "vm-stageb-guest must emit PASS_CONFIGURE for soft install fail"
+grep -q 'sudo firewall-cmd --permanent --get-zones' "$ROOT/scripts/lib/lab-malware-zone.sh" \
+  || fail "lab-malware-zone must query permanent zones with sudo"
+grep -q '192.168.200.0/24' "$ROOT/scripts/lib/lab-malware-zone.sh" \
+  || fail "lab-malware-zone must bind source 192.168.200.0/24"
 grep -q 'fail_step' "$ROOT/install.sh" \
   || fail "install.sh must track critical failures via fail_step"
 grep -q 'INSTALL_FAILED' "$ROOT/install.sh" \

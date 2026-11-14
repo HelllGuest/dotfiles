@@ -9,6 +9,12 @@ STOW_DIR="$REPO_ROOT/stow"
 
 echo "→ Git config setup..."
 
+# No TTY (piped/CI/VM serial): never block on identity/hooks prompts.
+if [[ "${GIT_SETUP_NONINTERACTIVE:-}" != "1" && ! -t 0 ]]; then
+  export GIT_SETUP_NONINTERACTIVE=1
+  echo "  (stdin not a TTY → GIT_SETUP_NONINTERACTIVE=1)"
+fi
+
 sudo pacman -S --needed --noconfirm git git-delta pinentry-gnome3 2>/dev/null || \
   pacman -S --needed --noconfirm git git-delta pinentry-gnome3 2>/dev/null || true
 
@@ -47,7 +53,16 @@ else
   DEFAULT_NAME=$(git config --global user.name 2>/dev/null || echo "")
   DEFAULT_EMAIL=$(git config --global user.email 2>/dev/null || echo "")
   if [[ "${GIT_SETUP_NONINTERACTIVE:-}" == "1" ]]; then
-    echo "  Skipping identity prompts (GIT_SETUP_NONINTERACTIVE=1, no prior email)."
+    GIT_NAME="${DEFAULT_NAME:-Anoop Kumar}"
+    GIT_EMAIL="${DEFAULT_EMAIL:-helllguest@pm.me}"
+    # Replace placeholder / empty identity with defaults (no prompts).
+    if [[ -z $DEFAULT_EMAIL || $DEFAULT_EMAIL == "your@email.com" ]]; then
+      git config --global user.name "$GIT_NAME"
+      git config --global user.email "$GIT_EMAIL"
+      echo "  ✓ Identity defaults (noninteractive): $GIT_NAME <$GIT_EMAIL>"
+    else
+      echo "  ✓ Identity already set: $(git config --global user.name) <$DEFAULT_EMAIL>"
+    fi
   else
     echo ""
     read -rp "  Name  [${DEFAULT_NAME:-Anoop Kumar}]: " GIT_NAME

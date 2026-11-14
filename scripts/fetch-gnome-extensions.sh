@@ -71,6 +71,26 @@ install_gnome_clipboard() {
     unzip -qo "$tmp/src.zip" -d "$tmp"
     src="$(find "$tmp" -maxdepth 1 -type d -name 'gnome-clipboard-*' | head -1)"
     [[ -n "$src" ]] || die "gnome-clipboard source tree missing"
+    # Upstream transpile.sh falls back to bare `npx -p typescript tsc` (prompts;
+    # hangs headless CI/VM). Prefer pacman/system tsc; else shim with npx --yes.
+    export npm_config_yes=true NPM_CONFIG_YES=true
+    local tsc_shim_dir=""
+    if ! command -v tsc >/dev/null 2>&1; then
+        if command -v pacman >/dev/null 2>&1; then
+            sudo pacman -S --needed --noconfirm typescript 2>/dev/null || true
+        fi
+    fi
+    if ! command -v tsc >/dev/null 2>&1; then
+        command -v npx >/dev/null 2>&1 || die "tsc/npx missing — install typescript or node"
+        tsc_shim_dir="$(mktemp -d)"
+        cat >"$tsc_shim_dir/tsc" <<'EOF'
+#!/usr/bin/env bash
+exec npx --yes -p typescript tsc "$@"
+EOF
+        chmod +x "$tsc_shim_dir/tsc"
+        PATH="$tsc_shim_dir:$PATH"
+        export PATH
+    fi
     make -C "$src" build
     zip="$src/${uuid}.shell-extension.zip"
     [[ -f "$zip" ]] || die "clipboard zip missing after build"
@@ -86,7 +106,7 @@ install_gnome_clipboard() {
     find "$dir" -type d -exec chmod 755 {} +
     find "$dir" -type f -exec chmod 644 {} +
     [[ -f "$dir/extension.js" ]] || die "clipboard extension.js missing after install"
-    rm -rf "$tmp"
+    rm -rf "$tmp" ${tsc_shim_dir:+"$tsc_shim_dir"}
 }
 
 mkdir -p "$EXT_ROOT"

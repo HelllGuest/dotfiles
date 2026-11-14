@@ -123,8 +123,8 @@ Thank you for helping improve this setup. Follow these guidelines to keep the re
 
 | Role | Scripts |
 |------|---------|
-| Bootstrap | `install.sh`, `configure.sh` (Stage B TUI — see README howto; fail-fast modules; P15 ollama default on), `stow-only.sh`, `minimal-stow.sh`, `arch-install.sh`, `arch-install-t14s.sh`, `arch-install-p15.sh`, `arch-install-vmtest.sh`, `p15-dotfiles-preflight.sh`, `apply-profile.sh`, `detect-profile.sh` |
-| Containers / VM / labs | `agent-run.sh` (hardened rootless Podman; `stow/containers`), `kali-disposable.sh`, `kali-lan-host-prep.sh`, `labs-setup.sh`, `lab-detonate.sh`, `lab-mcp.sh`, `lib/lab-malware-zone.sh` |
+| Bootstrap | `install.sh`, `configure.sh` (Stage B TUI — `CONFIGURE_UI=plain` / dialog / whiptail; fail-fast; P15 ollama default on), `vm-stageb-run.sh` / `vm-stageb-guest.sh` (qcow2 Stage B harness), `stow-only.sh`, `minimal-stow.sh`, `arch-install.sh`, `arch-install-t14s.sh`, `arch-install-p15.sh`, `arch-install-vmtest.sh`, `p15-dotfiles-preflight.sh`, `apply-profile.sh`, `detect-profile.sh` |
+| Containers / VM / labs | `agent-run.sh` (hardened rootless Podman; `stow/containers`), `kali-disposable.sh`, `kali-lan-host-prep.sh`, `labs-setup.sh`, `lab-detonate.sh`, `lab-mcp.sh`, `lib/lab-malware-zone.sh` (iface + `192.168.200.0/24` → `lab-malware`) |
 | Packages | `install-flatpaks.sh`, `install-aur.sh`, `bootstrap-aur.sh`, `install-fonts.sh` |
 | GNOME / desktop | `gnome-session-setup.sh`, `install-extensions.sh`, `fetch-gnome-extensions.sh`, `install-dash2dock.sh`, `gnome-console-setup.sh`, `rice-setup.sh`, `gdm-setup.sh`, `backup-gsettings.sh`, `restore-gsettings.sh`, `reset-input-defaults.sh`, `cleanup-input-overrides.sh` |
 | Location / VPN / firewall | `location-setup.sh`, `vpn-location-sync.sh`, `proton-connectivity-check.sh`, `proton-seed-serverlist.sh`, `firewalld-migrate.sh`, `firewalld-tailscale.sh`, `ollama-setup.sh` |

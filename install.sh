@@ -65,11 +65,17 @@ if [ -f "scripts/apply-profile.sh" ]; then
         || fail_step "Profile application failed (sudo / hardware setup) — see output above."
 fi
 
-# 1.06 Stage B configurator (firewalld / ollama / profile) — TTY only
-if [ "${SKIP_CONFIGURE:-0}" != 1 ] && [ -t 0 ] && [ -f scripts/configure.sh ]; then
+# 1.06 Stage B configurator (firewalld / ollama / labs / rice) — opt-in.
+# Default: print hint only (Stage A already seeds firewalld drop). Force with
+# CONFIGURE=1; skip with SKIP_CONFIGURE=1. Headless: CONFIGURE_UI=plain.
+if [ "${SKIP_CONFIGURE:-0}" != 1 ] && [ -f scripts/configure.sh ]; then
     if [ "${CONFIGURE:-0}" = 1 ] || [ "${CONFIGURE:-}" = Y ]; then
-        bash scripts/configure.sh || echo "configure.sh reported issues."
-    else
+        if [ ! -t 0 ] && [ -z "${CONFIGURE_UI:-}" ]; then
+            export CONFIGURE_UI=plain
+        fi
+        bash scripts/configure.sh \
+            || fail_step "configure.sh failed — see module output above."
+    elif [ -t 0 ]; then
         echo "Stage B modules: run  bash scripts/configure.sh  (or CONFIGURE=1 ./install.sh)"
     fi
 fi
@@ -163,7 +169,8 @@ if [ -f "scripts/gdm-setup.sh" ]; then
     bash scripts/gdm-setup.sh || echo "GDM setup skipped."
 fi
 
-# 3.3 Git global config (interactive: identity, hooks, signing)
+# 3.3 Git global config (identity, hooks, signing). Noninteractive when
+# stdin is not a TTY or GIT_SETUP_NONINTERACTIVE=1 (applies defaults).
 if [ -f "scripts/git-setup.sh" ]; then
     bash scripts/git-setup.sh || echo "Git setup skipped."
 fi

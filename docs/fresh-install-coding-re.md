@@ -126,6 +126,8 @@ Then remove the ISO, reboot, and log into GNOME.
 ### Stage B — Dotfiles (requires an active GNOME session)
 
 Two paths: modular TUI (`configure.sh`) or full bootstrap (`./install.sh`).
+Headless / qcow2: see [How to: Stage B VM](../README.md#how-to-stage-b-on-a-stage-a-qcow2)
+(or run `bash scripts/vm-stageb-run.sh`).
 
 #### How to: modular TUI (`configure.sh`)
 
@@ -134,13 +136,14 @@ git clone https://github.com/HelllGuest/dotfiles.git ~/dotfiles
 cd ~/dotfiles
 bash scripts/p15-dotfiles-preflight.sh   # P15 only; skip on T14s
 bash scripts/configure.sh                # dialog → whiptail → plain
+# CONFIGURE_UI=plain bash scripts/configure.sh   # serial / CI / no TTY
 ```
 
 Checklist tags (fail-fast on module error):
 
 | Tag | Default | Effect |
 |-----|---------|--------|
-| `MIGRATE_FIREWALLD` | on | drop + `libvirt`/`virbr0` + `lab-malware`/`virbr-malware` |
+| `MIGRATE_FIREWALLD` | on | drop + `libvirt`/`virbr0` + `lab-malware` (iface + `192.168.200.0/24`) |
 | `APPLY_PROFILE` | off | re-run machine profile |
 | `SETUP_OLLAMA` | on **only on P15** | `ollama-setup.sh` → `127.0.0.1:11434` |
 | `SETUP_LABS` | off | build/pull lab images; shell wrappers |
@@ -148,7 +151,21 @@ Checklist tags (fail-fast on module error):
 | `SETUP_AI` | off | Headroom/`hr-*`, Ponytail, Continue FIM (not Caveman) |
 | `SETUP_RICE` | off | Gruvbox + `show-in-lock-screen false` |
 
-Full howto table: [README — configure.sh](../README.md#how-to-configuresh-stage-b-tui).
+Full howto: [README — configure.sh](../README.md#how-to-configuresh-stage-b-tui).
+
+#### How to: firewalld migrate / `lab-malware`
+
+```bash
+bash scripts/firewalld-migrate.sh
+# or: source scripts/lib/lab-malware-zone.sh && ensure_lab_malware_zone
+sudo firewall-cmd --get-default-zone
+sudo firewall-cmd --get-active-zones
+sudo firewall-cmd --permanent --zone=lab-malware --list-all
+# expect: virbr-malware iface + source 192.168.200.0/24; target DROP
+```
+
+Details: [README — firewalld howto](../README.md#how-to-firewalld-migrate--lab-malware),
+[Verify Firewall](hardened-arch-gnome.md#verify-firewall).
 
 #### How to: full bootstrap (`./install.sh`)
 
@@ -156,6 +173,7 @@ Full howto table: [README — configure.sh](../README.md#how-to-configuresh-stag
 cd ~/dotfiles
 bash scripts/p15-dotfiles-preflight.sh   # P15 only
 ./install.sh                             # Caveman + Ponytail + packages + stow + …
+# Headless pipe: GIT_SETUP_NONINTERACTIVE=1 ./install.sh
 # Explicit Optimus re-run if needed: bash profiles/thinkpad-p15.sh
 # Optional REA host MCP (prefer lab-re): bash scripts/install-rea.sh
 exec zsh
@@ -165,6 +183,10 @@ tr ' ' '\n' </proc/cmdline | grep -E 'nvidia_drm|blacklist=nouveau'
 lspci -nnk -d 10de: | grep -A2 'Kernel driver'   # expect: nvidia (not nouveau)
 prime-run nvidia-smi -L
 ```
+
+`git-setup.sh` / clipboard fetch stay noninteractive when stdin is not a TTY
+(see README [git-setup](../README.md#how-to-git-setupsh-identity--hooks) and
+[extensions](../README.md#how-to-gnome-extension-zips-fetch-gnome-extensionssh) howtos).
 
 Step order: [README — what `./install.sh` runs](../README.md#script-execution-order-fresh-machine).
 
@@ -396,9 +418,10 @@ cannot read `$HOME`). Each `start` rebuilds `kali-session.qcow2` unless
 **NAT / firewalld:** `setup` and `start --nat` bind `virbr0` to the stock
 `libvirt` zone (forward + masquerade for guest subnet `192.168.122.0/24`) and
 bring the bridge up. Prefer `bash scripts/firewalld-migrate.sh` if zones are
-missing. Boot unit `virbr0-up.service` (from `stow/system/`, also installed by
-`setup`) starts the libvirt `default` network then `ip link set virbr0 up` so
-the bridge exists after reboot. Cloud-init NoCloud seed sets hostname `kali-disposable`, enables
+missing ([howto](../README.md#how-to-firewalld-migrate--lab-malware)). Boot unit
+`virbr0-up.service` (from `stow/system/`, also installed by `setup`) starts the
+libvirt `default` network then `ip link set virbr0 up` so the bridge exists
+after reboot. Cloud-init NoCloud seed sets hostname `kali-disposable`, enables
 password SSH, and uses a fresh `instance-id` each overlay. Isolated login
 defaults to `kali`/`kali`. NAT/LAN generates a random password (or
 `KALI_PASSWORD`), prints it, and stores it in `kali-session.password` under

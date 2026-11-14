@@ -845,9 +845,12 @@ systemctl enable --now firewalld
 ```
 
 Libvirt: bind `virbr0` to zone `libvirt`. Air-gapped malware net: host-only
-`virbr-malware` in zone `lab-malware` (DROP, no masq/forward; see
-`scripts/lib/lab-malware-zone.sh` / `firewalld-migrate.sh`). Pre-Slice-2B hosts
-may still list the bridge under `libvirt`/`block` until migrate is re-run.
+`virbr-malware` in zone `lab-malware` (iface **and** source `192.168.200.0/24`;
+DROP, no masq/forward; see `scripts/lib/lab-malware-zone.sh` /
+`firewalld-migrate.sh`). Permanent firewall-cmd queries need sudo under polkit.
+Pre-Slice-2B hosts may still list the bridge under `libvirt`/`block` until
+migrate is re-run. Howto:
+[README — firewalld migrate](../README.md#how-to-firewalld-migrate--lab-malware).
 
 Default behavior:
 
@@ -919,10 +922,12 @@ over opening the host default zone. `scripts/firewalld-migrate.sh` and
 
 * permanent `--zone=libvirt --add-interface=virbr0` (inherits when bridge appears)
 * runtime `--change-interface=virbr0` when the iface exists
-* host-only `virbr-malware` → zone `lab-malware` (DROP; no NAT/forward)
+* host-only `virbr-malware` → zone `lab-malware` (iface + source
+  `192.168.200.0/24`; DROP; no NAT/forward)
 * Upgrade note: if `virbr-malware` still sits in `libvirt` or `block`, re-run
   `bash scripts/firewalld-migrate.sh` (or `ensure_lab_malware_zone`) so the
-  bridge leaves those zones
+  bridge leaves those zones; confirm with
+  `sudo firewall-cmd --permanent --zone=lab-malware --list-all`
 
 Boot unit `virbr0-up.service` (from `stow/system/`, installed by
 `system-setup.sh` / kali `setup`) runs `virsh net-start default` then
@@ -1554,10 +1559,13 @@ cd ~/dotfiles
 * Stow configs to `$HOME` (skips `zram` and `gdm`); install `system/` into `/etc` as root-owned files via `scripts/system-setup.sh`; materialize `zram-generator.conf` via `scripts/zram-setup.sh`
 * Apply GNOME session dconf (`gnome/dconf/user.conf`), Console settings, Dash2Dock + extensions, location spoofing, and stock input defaults (`scripts/reset-input-defaults.sh` + `scripts/cleanup-input-overrides.sh`)
 * Configure GDM, Git, Neovim, Headroom proxy + MCP (`scripts/headroom-setup.sh`), AI coding/RE agents + plugins + skills (`sync-agent-skills.sh`, `install-coding-agents.sh`, `install-caveman.sh`, `install-ponytail.sh`, `install-android-ui-skills.sh`, `install-ghidra-cli.sh`, `install-obscura.sh`, `install-re-skills.sh`, `install-ecosystem-skills.sh`; REA via `lab-re`), PhotoGIMP, and foxcage (`install-foxcage.sh`, Firefox in rootless Podman when `podman` exists).
-* Stage B modular TUI: `bash scripts/configure.sh` (dialog/whiptail/plain; fail-fast;
-  `MIGRATE_FIREWALLD` on by default; `SETUP_OLLAMA` on only for P15; `SETUP_LABS` /
-  `SETUP_DETONATE` / `SETUP_AI` / `SETUP_RICE` opt-in). See
-  [README — configure.sh howto](../README.md#how-to-configuresh-stage-b-tui).
+* Stage B modular TUI: `bash scripts/configure.sh` (dialog/whiptail/plain;
+  override with `CONFIGURE_UI=…`; fail-fast; `MIGRATE_FIREWALLD` on by default;
+  `SETUP_OLLAMA` on only for P15; `SETUP_LABS` / `SETUP_DETONATE` / `SETUP_AI` /
+  `SETUP_RICE` opt-in). Optional qcow2 harness: `bash scripts/vm-stageb-run.sh`.
+  Howtos: [configure](../README.md#how-to-configuresh-stage-b-tui),
+  [VM Stage B](../README.md#how-to-stage-b-on-a-stage-a-qcow2),
+  [firewalld](../README.md#how-to-firewalld-migrate--lab-malware).
 * Run `scripts/privacy-hardener.sh` (incl. `browser-hardening.sh`), `scripts/check.sh`, and `scripts/validate-configs.sh`
 
 Config-only (no package install; skips `zram`, `system`, and `gdm`; removes unmodified `/etc/skel` copies that block stow):
@@ -1649,16 +1657,21 @@ Expected output shows IOMMU entries confirming Intel VT-d is active.
 
 # Verify Firewall
 
+This tree uses **firewalld** (`nftables`, default zone `drop`). UFW should be
+masked. Full howto:
+[README — firewalld migrate](../README.md#how-to-firewalld-migrate--lab-malware).
+
 ```bash
-systemctl is-active ufw
-sudo ufw status verbose
-sudo iptables -S ufw-before-input | grep -c ESTABLISHED
+systemctl is-enabled ufw                  # expect: masked
+systemctl is-active firewalld             # expect: active
+sudo firewall-cmd --get-default-zone      # expect: drop
+sudo firewall-cmd --get-active-zones      # virbr0→libvirt; virbr-malware→lab-malware
+sudo firewall-cmd --permanent --zone=lab-malware --list-all
+# expect: interfaces: virbr-malware; sources: 192.168.200.0/24; target: DROP
 ```
 
-Expect `active`, `Status: active`, and a count of at least `1`. `ufw status`
-alone is not enough: it reports `active` even when `ufw.service` failed at boot
-and loaded no `before.rules` (then reply traffic, DNS included, is dropped).
-Fix with `sudo ufw reload` and check `journalctl -b -u ufw`.
+If `virbr-malware` still sits under `libvirt` or `block`, re-run
+`bash scripts/firewalld-migrate.sh` (or `ensure_lab_malware_zone`).
 
 ---
 

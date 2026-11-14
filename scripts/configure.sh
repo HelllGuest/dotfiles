@@ -8,11 +8,14 @@ cd "$REPO_ROOT"
 # shellcheck source=lib/dmi.sh
 source "$REPO_ROOT/scripts/lib/dmi.sh"
 
-UI=plain
-if command -v dialog >/dev/null 2>&1; then
-  UI=dialog
-elif command -v whiptail >/dev/null 2>&1; then
-  UI=whiptail
+# CONFIGURE_UI=plain|dialog|whiptail — force backend (VM / CI: plain).
+UI=${CONFIGURE_UI:-plain}
+if [[ -z ${CONFIGURE_UI:-} ]]; then
+  if command -v dialog >/dev/null 2>&1; then
+    UI=dialog
+  elif command -v whiptail >/dev/null 2>&1; then
+    UI=whiptail
+  fi
 fi
 
 is_p15=0

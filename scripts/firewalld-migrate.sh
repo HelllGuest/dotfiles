@@ -52,7 +52,7 @@ sudo systemctl enable --now firewalld
 sudo firewall-cmd --set-default-zone=drop || true
 
 # libvirt zone XML ships with the libvirt package (not firewalld alone).
-if ! firewall-cmd --permanent --get-zones 2>/dev/null | grep -qw libvirt; then
+if ! sudo firewall-cmd --permanent --get-zones 2>/dev/null | grep -qw libvirt; then
   echo "→ Installing libvirt (provides firewalld libvirt zone + virsh)..."
   sudo pacman -S --needed --noconfirm libvirt
   sudo firewall-cmd --reload || true
@@ -67,7 +67,7 @@ fi
 # Permanent add-interface so zone sticks when bridge appears later.
 echo "→ Binding virbr0 to firewalld zone libvirt (permanent)..."
 sudo firewall-cmd --permanent --zone=libvirt --add-interface=virbr0 \
-  || firewall-cmd --permanent --zone=libvirt --list-interfaces 2>/dev/null | grep -qw virbr0 \
+  || sudo firewall-cmd --permanent --zone=libvirt --list-interfaces 2>/dev/null | grep -qw virbr0 \
   || { echo "firewalld-migrate: failed to bind virbr0 → libvirt" >&2; exit 1; }
 if [[ -d /sys/class/net/virbr0 ]]; then
   sudo firewall-cmd --zone=libvirt --change-interface=virbr0 \
@@ -118,6 +118,6 @@ if [[ -d /sys/class/net/virbr-malware ]]; then
     || { echo "firewalld-migrate: re-assert virbr-malware → lab-malware failed" >&2; exit 1; }
 fi
 
-echo "✓ firewalld active (default=$(firewall-cmd --get-default-zone 2>/dev/null || echo ?))"
+echo "✓ firewalld active (default=$(sudo firewall-cmd --get-default-zone 2>/dev/null || echo ?))"
 echo "  virbr0 → libvirt zone; virbr-malware → lab-malware zone (DROP, no masq/forward)"
 echo "  UFW backup: $BACKUP"

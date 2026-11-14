@@ -160,7 +160,7 @@ Animated GNOME dock ([Dash2Dock Lite](https://github.com/icedman/dash2dock-lite)
 bash scripts/install-dash2dock.sh
 ```
 
-UUID `dash2dock-lite@icedman.github.com` is in `gnome/extensions.txt` and `gnome/dconf/user.conf`. EGO zip still declares Shell ≤50; the install script patches `metadata.json` for **Shell 51** (unofficial — may still break). Other non-AUR zips (blur, caffeine, clipboard) install via `scripts/fetch-gnome-extensions.sh` (`GNOME_EXT_FETCH=1 bash scripts/install-extensions.sh`). **Wayland:** log out → log in (`Meta.restart` is disabled). Prefs: `gnome-extensions prefs dash2dock-lite@icedman.github.com`.
+UUID `dash2dock-lite@icedman.github.com` is in `gnome/extensions.txt` and `gnome/dconf/user.conf`. EGO zip still declares Shell ≤50; the install script patches `metadata.json` for **Shell 51** (unofficial — may still break). Other non-AUR zips (blur, caffeine, clipboard) install via `scripts/fetch-gnome-extensions.sh` (`GNOME_EXT_FETCH=1 bash scripts/install-extensions.sh`). Clipboard builds from a pinned GitHub commit and needs `tsc` (prefers pacman `typescript`; else non-interactive `npx --yes`). **Wayland:** log out → log in (`Meta.restart` is disabled). Prefs: `gnome-extensions prefs dash2dock-lite@icedman.github.com`.
 
 ### Shortcuts
 
@@ -251,6 +251,10 @@ disks untouched). Then continue with **1. Full Bootstrap** (Stage B) below.
 Installs packages, stows configs into `$HOME`, installs `stow/system/` into `/etc` as root-owned files, restores GNOME settings, and runs health checks.
 ```bash
 ./install.sh
+# Optional: run Stage B TUI modules during install (fails hard if a module fails):
+# CONFIGURE=1 ./install.sh
+# Headless / serial: CONFIGURE=1 CONFIGURE_UI=plain ./install.sh
+# Skip foxcage / ollama: SKIP_FOXCAGE=1 SKIP_OLLAMA=1 ./install.sh
 ```
 
 Machine profiles run in `./install.sh` via `scripts/apply-profile.sh` **after** `packages/pacman.txt` (exactly one profile): `profiles/$(hostname).sh` if it exists, otherwise `scripts/detect-profile.sh` (ThinkPad P15 → `thinkpad-p15`, ThinkPad T14s Gen 3 AMD 21CQ/21CR → `thinkpad-t14s`, other ThinkPads/laptop chassis → `laptop`). Pacman first so Optimus/NVIDIA packages exist before `thinkpad-p15` enables services and rebuilds UKIs (on `thinkpad-t14s` AMD hosts, `./install.sh` skips the Intel/NVIDIA GPU packages in `packages/pacman.txt`, including `egl-wayland`). There is no `nvidia.sh`; Optimus setup is inside `profiles/thinkpad-p15.sh`.
@@ -297,14 +301,15 @@ scripts/thinkpad-charge-thresholds.sh  # tmpfiles + late-boot service; profile /
 
 #### How to: `configure.sh` (Stage B TUI)
 
-UI backend: **dialog** if present, else **whiptail**, else plain checklist on the
-TTY (Arch often has whiptail only — `pacman -S dialog` optional). Abort/Cancel
-exits without running modules. Selected modules **fail-fast** (a failing module
-stops the script; no silent `|| true`).
+UI backend (auto): **dialog** if present, else **whiptail**, else plain checklist
+on the TTY (Arch often has whiptail only — `pacman -S dialog` optional). Force
+with `CONFIGURE_UI=plain|dialog|whiptail` (use `plain` on serial / CI / no TTY).
+Abort/Cancel exits without running modules. Selected modules **fail-fast** (a
+failing module stops the script; no silent `|| true`).
 
 | Tag | Default | Runs |
 |-----|---------|------|
-| `MIGRATE_FIREWALLD` | on | `firewalld-migrate.sh` → drop + `virbr0`/`libvirt` + `virbr-malware`/`lab-malware` |
+| `MIGRATE_FIREWALLD` | on | `firewalld-migrate.sh` → drop + `virbr0`/`libvirt` + `virbr-malware`/`lab-malware` (iface + `192.168.200.0/24`) |
 | `APPLY_PROFILE` | off | `apply-profile.sh` |
 | `SETUP_OLLAMA` | **on for P15 (20SU)**; off on T14s | `ollama-setup.sh` (skipped with msg if not P15) |
 | `SETUP_LABS` | off | `labs-setup.sh` (triage/re/android/web images) |
@@ -314,27 +319,86 @@ stops the script; no silent `|| true`).
 
 ```bash
 bash scripts/configure.sh
+CONFIGURE_UI=plain bash scripts/configure.sh   # headless / serial
 # Re-run anytime; MIGRATE_FIREWALLD is safe to repeat.
 ```
 
 Full `./install.sh` still installs Caveman + Ponytail. `SETUP_AI` alone is
 Ponytail-oriented (complementary hooks; no duplicate caveman install).
 
-**Firewalld zones (after `firewalld-migrate.sh` / configure):**
-```text
-default zone: drop
-virbr0          → libvirt          (kali-disposable / NAT guests)
-virbr-malware   → lab-malware      (192.168.200.0/24 host-only; DROP; no masq/forward)
-```
-
-Hosts upgraded from Slice 1 may still show `virbr-malware` under `libvirt` or
-`block` (zone `lab-malware` missing). Re-apply once:
+#### How to: firewalld migrate / `lab-malware`
 
 ```bash
 bash scripts/firewalld-migrate.sh
-# or: source scripts/lib/lab-malware-zone.sh && ensure_lab_malware_zone
-firewall-cmd --get-active-zones   # virbr-malware must list under lab-malware only
+# or only the malware zone:
+source scripts/lib/lab-malware-zone.sh && ensure_lab_malware_zone
 ```
+
+Expected zones:
+
+```text
+default zone: drop
+virbr0          → libvirt          (kali-disposable / NAT guests)
+virbr-malware   → lab-malware      (iface + source 192.168.200.0/24; DROP; no masq/forward)
+```
+
+`ensure_lab_malware_zone` (shared by migrate + `lab-detonate`) binds **both**
+the interface and the `192.168.200.0/24` source, unbinds `virbr-malware` from
+`libvirt`/`block`, and uses `sudo` for permanent queries (polkit). Hosts
+upgraded from Slice 1 may still show the bridge under `libvirt` or `block`.
+
+```bash
+sudo firewall-cmd --get-default-zone          # drop
+sudo firewall-cmd --get-active-zones          # virbr-malware under lab-malware only
+sudo firewall-cmd --permanent --zone=lab-malware --list-all
+# expect: interfaces: virbr-malware; sources: 192.168.200.0/24; target: DROP; masquerade: no
+```
+
+#### How to: Stage B on a Stage A qcow2
+
+Needs `~/arch-vmtest/test-disk.qcow2` from `t14s-arch-install` `tests/vm-run.sh`,
+KVM, and edk2 OVMF. Host mounts this repo read-only via 9p.
+
+```bash
+bash scripts/vm-stageb-run.sh
+# overrides: DISK=… GUEST_USER=t14svm GUEST_PASS=… LUKS_PASS=… RAM=4096
+```
+
+Guest (`vm-stageb-guest.sh`): `CONFIGURE_UI=plain` + empty checklist line →
+defaults (`MIGRATE_FIREWALLD` on), then `./install.sh` with
+`SKIP_CONFIGURE=1`, `SKIP_FOXCAGE=1`, `SKIP_OLLAMA=1`,
+`GIT_SETUP_NONINTERACTIVE=1`. Temporary NOPASSWD is removed before RESULT.
+
+| RESULT | Meaning | Harness exit |
+|--------|---------|--------------|
+| `PASS` | configure + install both 0 | 0 |
+| `PASS_CONFIGURE` | configure 0; install soft-fail (minimal Stage A / no GNOME) | 0 |
+| `FAIL` | configure failed (or guest aborted) | 1 |
+
+Wait budget: 150 min (nested pacman is slow).
+
+#### How to: `git-setup.sh` (identity / hooks)
+
+```bash
+bash scripts/git-setup.sh
+GIT_SETUP_NONINTERACTIVE=1 bash scripts/git-setup.sh
+```
+
+Interactive: prompts for name/email, hooks, optional GPG/SSH signing.
+Noninteractive when `GIT_SETUP_NONINTERACTIVE=1` **or** stdin is not a TTY:
+skips prompts, enables hooks template, applies default name/email if unset
+(or placeholder `your@email.com`).
+
+#### How to: GNOME extension zips (`fetch-gnome-extensions.sh`)
+
+```bash
+GNOME_EXT_FETCH=1 bash scripts/install-extensions.sh
+# or: bash scripts/fetch-gnome-extensions.sh
+```
+
+Installs EGO blur/caffeine, builds pinned `gnome-clipboard` (needs `tsc`:
+pacman `typescript` preferred, else `npx --yes`), then Dash2Dock. Safe to
+re-run. Enable via `install-extensions.sh`; Wayland needs log out → log in.
 
 **Lab commands (after `labs-setup.sh` / configure SETUP_LABS):**
 ```text
@@ -412,7 +476,7 @@ Clipboard: selecting text auto-copies in kitty and ghostty (`copy_on_select`); i
 
 **GDM:** `scripts/gdm-setup.sh` copies greeter config to `/etc` (not stow — GDM cannot read `$HOME`), enables Wayland, compiles greeter dconf, and enables `gdm.service`. Greeter changes appear after **reboot** (or `sudo systemctl restart gdm`, which logs you out). Optional fingerprint: `scripts/fingerprint-setup.sh`.
 
-**Git:** `stow/git/` + `scripts/git-setup.sh` — delta pager, rebase defaults, global ignore, optional hooks and signing. URL shorthands: `git clone gh:user/repo`.
+**Git:** `stow/git/` + `scripts/git-setup.sh` — delta pager, rebase defaults, global ignore, optional hooks and signing. Headless: see [How to: git-setup.sh](#how-to-git-setupsh-identity--hooks). URL shorthands: `git clone gh:user/repo`.
 
 **Neovim:** `scripts/nvim-setup.sh` — Lazy.nvim plugins, Treesitter parsers, Mason LSP on first launch. Leader = Space.
 
@@ -444,9 +508,11 @@ We take a "quiet by default" approach:
 | `check.sh`: Chrome / Brave policies ✗ | `/etc` policy files missing or stale | `bash scripts/browser-hardening.sh` (needs sudo for `/etc`) |
 | `evolution-data-server` / `wireless-regdb` (or any `pacman.txt` package) missing | Older `install.sh` fed `#` comment lines to pacman (`target not found: # …`), aborting the whole package step | Pull, then re-run `./install.sh` (comments are stripped now) |
 | `unsafe path transition /etc` during `pacman` | `/etc` owned by user (old `gdm-setup.sh` used `rsync -a`) | `bash scripts/gdm-setup.sh` (restores root + 755), or `sudo chown root:root /etc && sudo chmod 755 /etc` |
-| No inbound / wrong default zone | firewalld not migrated or default ≠ `drop` | `bash scripts/firewalld-migrate.sh`; `firewall-cmd --get-default-zone` |
-| `virbr-malware` listed under `libvirt` / `block` | Pre-`lab-malware` bind left over | `bash scripts/firewalld-migrate.sh` or `ensure_lab_malware_zone`; confirm with `--get-active-zones` |
+| No inbound / wrong default zone | firewalld not migrated or default ≠ `drop` | `bash scripts/firewalld-migrate.sh`; `sudo firewall-cmd --get-default-zone` |
+| `virbr-malware` listed under `libvirt` / `block` | Pre-`lab-malware` bind left over | [firewalld howto](#how-to-firewalld-migrate--lab-malware); confirm iface + `192.168.200.0/24` |
 | `INVALID_ZONE: lab-malware` | Zone never created on this host | Same as above (`lib/lab-malware-zone.sh`) |
+| Stage B VM hangs on Name/Email or `npx` prompt | Interactive git / clipboard build on serial | Pull fixes; harness sets `GIT_SETUP_NONINTERACTIVE` + non-interactive `tsc` |
+| `DOTFILES_STAGEB_RESULT=PASS_CONFIGURE` | Install soft-failed on minimal Stage A | Expected without full GNOME; firewalld path still OK |
 | SSH blocked after migrate | drop zone has no 22/tcp | `sudo firewall-cmd --permanent --add-service=ssh && sudo firewall-cmd --reload` (only if you need SSH) |
 | Spoof location sync does nothing | `vpn-location-sync` failed under `pkexec` | `bash scripts/location-setup.sh`; panel → Sync spoofed location |
 | Touchpad clicks broken after old dotfiles | Legacy synaptics inhibit/udev | `bash scripts/cleanup-input-overrides.sh` (sudo), log out |
@@ -484,7 +550,8 @@ We take a "quiet by default" approach:
 | REA in lab-re | `lab-re` / rebuild `podman build -t localhost/lab-re labs/lab-re` (`rea-agents@6.9.0`) |
 | REA host MCP (optional) | `bash scripts/install-rea.sh` (needs JDK≥21; Hopper: `INSTALL_HOPPER=1`) |
 | Labs / detonate / MCP | `bash scripts/labs-setup.sh`; `lab-detonate` / `lab-mcp` |
-| Stage B TUI | `bash scripts/configure.sh` ([howto](#how-to-configuresh-stage-b-tui)) |
+| Stage B TUI | `bash scripts/configure.sh` ([howto](#how-to-configuresh-stage-b-tui)); `CONFIGURE_UI=plain` for serial/CI |
+| Stage B VM harness | `bash scripts/vm-stageb-run.sh` (needs Stage A `test-disk.qcow2`) |
 | Gruvbox rice | `bash scripts/rice-setup.sh` |
 | Live lab/firewall health | See checklist below |
 | Obscura (CDP/MCP) | `bash scripts/install-obscura.sh` ([docs](https://docs.obscura.sh/)) |
@@ -511,8 +578,8 @@ systemctl is-enabled ufw                  # expect: masked
 systemctl is-active firewalld             # expect: active
 firewall-cmd --get-default-zone           # expect: drop
 firewall-cmd --get-active-zones           # virbr0→libvirt; virbr-malware→lab-malware only
-firewall-cmd --permanent --zone=lab-malware --list-all
-#   target: DROP; masquerade: no; interface: virbr-malware
+sudo firewall-cmd --permanent --zone=lab-malware --list-all
+#   target: DROP; masquerade: no; interfaces: virbr-malware; sources: 192.168.200.0/24
 
 lab-re --check
 podman images | grep localhost/lab-
