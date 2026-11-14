@@ -839,7 +839,7 @@ Configure firewalld (nftables backend, deny inbound):
 
 ```bash
 pacman -S firewalld
-# or: bash scripts/firewalld-migrate.sh   # from an existing UFW host
+# or: bash scripts/firewalld-lab-zones.sh   # from an existing UFW host
 firewall-cmd --set-default-zone=drop
 systemctl enable --now firewalld
 ```
@@ -847,10 +847,10 @@ systemctl enable --now firewalld
 Libvirt: bind `virbr0` to zone `libvirt`. Air-gapped malware net: host-only
 `virbr-malware` in zone `lab-malware` (iface **and** source `192.168.200.0/24`;
 DROP, no masq/forward; see `scripts/lib/lab-malware-zone.sh` /
-`firewalld-migrate.sh`). Permanent firewall-cmd queries need sudo under polkit.
+`firewalld-lab-zones.sh`). Permanent firewall-cmd queries need sudo under polkit.
 Pre-Slice-2B hosts may still list the bridge under `libvirt`/`block` until
-migrate is re-run. Howto:
-[README — firewalld migrate](../README.md#how-to-firewalld-migrate--lab-malware).
+`firewalld-lab-zones.sh` is re-run. Howto:
+[README — firewalld lab zones](../README.md#how-to-firewalld-lab-zones--lab-malware).
 
 Default behavior:
 
@@ -892,7 +892,7 @@ sudo systemctl enable --now waydroid-nat.service
 
 This service ensures the masquerade rule is added exactly once and survives
 firewall reloads. If container forwarding fails, confirm `waydroid0` is in a
-zone that permits forward (or use the stock `libvirt` pattern from migrate).
+zone that permits forward (or use the stock `libvirt` pattern from lab-zones).
 
 ## Tailscale + firewalld
 
@@ -917,7 +917,7 @@ bash scripts/firewalld-tailscale.sh
 
 firewalld default zone `drop` rejects unsolicited inbound; libvirt guest NAT
 needs `virbr0` in the stock `libvirt` zone (forward + masquerade). Prefer that
-over opening the host default zone. `scripts/firewalld-migrate.sh` and
+over opening the host default zone. `scripts/firewalld-lab-zones.sh` and
 `scripts/kali-disposable.sh setup` / `start --nat`:
 
 * permanent `--zone=libvirt --add-interface=virbr0` (inherits when bridge appears)
@@ -925,7 +925,7 @@ over opening the host default zone. `scripts/firewalld-migrate.sh` and
 * host-only `virbr-malware` → zone `lab-malware` (iface + source
   `192.168.200.0/24`; DROP; no NAT/forward)
 * Upgrade note: if `virbr-malware` still sits in `libvirt` or `block`, re-run
-  `bash scripts/firewalld-migrate.sh` (or `ensure_lab_malware_zone`) so the
+  `bash scripts/firewalld-lab-zones.sh` (or `ensure_lab_malware_zone`) so the
   bridge leaves those zones; confirm with
   `sudo firewall-cmd --permanent --zone=lab-malware --list-all`
 
@@ -1560,12 +1560,12 @@ cd ~/dotfiles
 * Apply GNOME session dconf (`gnome/dconf/user.conf`), Console settings, Dash2Dock + extensions, location spoofing, and stock input defaults (`scripts/reset-input-defaults.sh` + `scripts/cleanup-input-overrides.sh`)
 * Configure GDM, Git, Neovim, Headroom proxy + MCP (`scripts/headroom-setup.sh`), AI coding/RE agents + plugins + skills (`sync-agent-skills.sh`, `install-coding-agents.sh`, `install-caveman.sh`, `install-ponytail.sh`, `install-android-ui-skills.sh`, `install-ghidra-cli.sh`, `install-obscura.sh`, `install-re-skills.sh`, `install-ecosystem-skills.sh`; REA via `lab-re`), PhotoGIMP, and foxcage (`install-foxcage.sh`, Firefox in rootless Podman when `podman` exists).
 * Stage B modular TUI: `bash scripts/configure.sh` (dialog/whiptail/plain;
-  override with `CONFIGURE_UI=…`; fail-fast; `MIGRATE_FIREWALLD` on by default;
+  override with `CONFIGURE_UI=…`; fail-fast; `SETUP_FIREWALLD` on by default;
   `SETUP_OLLAMA` on only for P15; `SETUP_LABS` / `SETUP_DETONATE` / `SETUP_AI` /
   `SETUP_RICE` opt-in). Optional qcow2 harness: `bash scripts/vm-stageb-run.sh`.
   Howtos: [configure](../README.md#how-to-configuresh-stage-b-tui),
   [VM Stage B](../README.md#how-to-stage-b-on-a-stage-a-qcow2),
-  [firewalld](../README.md#how-to-firewalld-migrate--lab-malware).
+  [firewalld](../README.md#how-to-firewalld-lab-zones--lab-malware).
 * Run `scripts/privacy-hardener.sh` (incl. `browser-hardening.sh`), `scripts/check.sh`, and `scripts/validate-configs.sh`
 
 Config-only (no package install; skips `zram`, `system`, and `gdm`; removes unmodified `/etc/skel` copies that block stow):
@@ -1659,7 +1659,7 @@ Expected output shows IOMMU entries confirming Intel VT-d is active.
 
 This tree uses **firewalld** (`nftables`, default zone `drop`). UFW should be
 masked. Full howto:
-[README — firewalld migrate](../README.md#how-to-firewalld-migrate--lab-malware).
+[README — firewalld lab zones](../README.md#how-to-firewalld-lab-zones--lab-malware).
 
 ```bash
 systemctl is-enabled ufw                  # expect: masked
@@ -1671,7 +1671,7 @@ sudo firewall-cmd --permanent --zone=lab-malware --list-all
 ```
 
 If `virbr-malware` still sits under `libvirt` or `block`, re-run
-`bash scripts/firewalld-migrate.sh` (or `ensure_lab_malware_zone`).
+`bash scripts/firewalld-lab-zones.sh` (or `ensure_lab_malware_zone`).
 
 ---
 

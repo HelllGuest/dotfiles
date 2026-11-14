@@ -34,7 +34,7 @@ fi
 cd "$DEST"
 echo "→ tree ready at $DEST ($(du -sh . | awk '{print $1}'))"
 
-# VM-only: temporary NOPASSWD so long install.sh / migrate scripts never block.
+# VM-only: temporary NOPASSWD so long install.sh / zone scripts never block.
 SUDOERS_DROP=/etc/sudoers.d/t14s-vm-stageb
 GUEST_NAME="$(id -un)"
 stageb_sudoers_rm() {
@@ -47,8 +47,8 @@ printf '%s\n' "$PASS" | sudo -S -p '' bash -c \
 trap 'stageb_sudoers_rm' EXIT
 sudo -n true || { echo "FAIL: sudo -n still blocked"; echo DOTFILES_STAGEB_RESULT=FAIL; exit 1; }
 
-echo "=== configure.sh (defaults: MIGRATE_FIREWALLD) ==="
-# plain UI: empty line keeps checklist defaults (MIGRATE_FIREWALLD on)
+echo "=== configure.sh (defaults: SETUP_FIREWALLD) ==="
+# plain UI: empty line keeps checklist defaults (SETUP_FIREWALLD on)
 set +e
 # Force plain UI: dialog/whiptail hang with no TTY on serial.
 printf '\n' | CONFIGURE_UI=plain bash scripts/configure.sh

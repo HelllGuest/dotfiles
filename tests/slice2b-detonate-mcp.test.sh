@@ -30,8 +30,8 @@ ZONE_LIB="$ROOT/scripts/lib/lab-malware-zone.sh"
 [[ -f $ZONE_LIB ]] || fail "missing lib/lab-malware-zone.sh"
 grep -q 'ensure_lab_malware_zone' "$ROOT/scripts/lab-detonate.sh" \
   || fail "detonate must call ensure_lab_malware_zone"
-grep -q 'ensure_lab_malware_zone' "$ROOT/scripts/firewalld-migrate.sh" \
-  || fail "firewalld-migrate must call ensure_lab_malware_zone"
+grep -q 'ensure_lab_malware_zone' "$ROOT/scripts/firewalld-lab-zones.sh" \
+  || fail "firewalld-lab-zones must call ensure_lab_malware_zone"
 grep -q 'set-target=DROP' "$ZONE_LIB" \
   || fail "lab-malware must set-target=DROP"
 grep -q 'remove-masquerade' "$ZONE_LIB" \

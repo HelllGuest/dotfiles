@@ -541,7 +541,7 @@ if command -v tailscale >/dev/null 2>&1; then
             echo "○ firewalld active but tailscale0 not in trusted — bash scripts/firewalld-tailscale.sh"
         fi
     else
-        echo "○ firewalld inactive (run scripts/firewalld-migrate.sh)"
+        echo "○ firewalld inactive (run scripts/firewalld-lab-zones.sh)"
     fi
 else
     echo "○ tailscale not installed"
@@ -551,19 +551,19 @@ if systemctl is-active --quiet firewalld 2>/dev/null; then
 elif systemctl is-enabled --quiet firewalld 2>/dev/null; then
     check_fail "firewalld enabled but not active"
 else
-    check_fail "firewalld not enabled — pacman -S firewalld && bash scripts/firewalld-migrate.sh"
+    check_fail "firewalld not enabled — pacman -S firewalld && bash scripts/firewalld-lab-zones.sh"
 fi
 if pacman -Q ufw >/dev/null 2>&1; then
-    check_fail "ufw package still installed — remove with: bash scripts/firewalld-migrate.sh"
+    check_fail "ufw package still installed — remove with: bash scripts/firewalld-lab-zones.sh"
 else
     echo "✓ ufw not installed"
 fi
 if systemctl is-active --quiet ufw 2>/dev/null; then
-    check_fail "ufw.service is active — run bash scripts/firewalld-migrate.sh"
+    check_fail "ufw.service is active — run bash scripts/firewalld-lab-zones.sh"
 elif systemctl is-enabled ufw 2>&1 | grep -qi masked; then
     echo "✓ ufw masked"
 elif systemctl is-enabled --quiet ufw 2>/dev/null; then
-    check_fail "ufw.service is enabled — run bash scripts/firewalld-migrate.sh"
+    check_fail "ufw.service is enabled — run bash scripts/firewalld-lab-zones.sh"
 fi
 
 echo "--- Proton VPN ---"

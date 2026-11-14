@@ -166,7 +166,7 @@ UUID `dash2dock-lite@icedman.github.com` is in `gnome/extensions.txt` and `gnome
 
 Shell functions (`fe`, `rge`, `gai`, `fcd`, …), `Ctrl+R` / `Ctrl+T` / `Alt+C`, terminal and GNOME keys: [gnome/keybindings.md](gnome/keybindings.md). Modern aliases (when installed): `eza`, `bat`, `rg`, `fd`, `dust`, `duf`, `delta`, etc.
 
-Disposable Kali lab (libvirt overlay): `kali-up` (isolated) / `kali-up-nat` / `kali-up-lan` (NAT + physical RJ45) / `kali-lan` / `kali-wipe` / `kali-stop` / `kali-st` / `kali` — see [keybindings](gnome/keybindings.md#disposable-kali) and [fresh-install RE guide](docs/fresh-install-coding-re.md#disposable-kali). NAT needs `virbr0` in firewalld **libvirt** zone (`firewalld-migrate.sh`). Physical LAN uses macvtap on `KALI_LAN_IFACE` (default `enp0s31f6`) → guest eth1.
+Disposable Kali lab (libvirt overlay): `kali-up` (isolated) / `kali-up-nat` / `kali-up-lan` (NAT + physical RJ45) / `kali-lan` / `kali-wipe` / `kali-stop` / `kali-st` / `kali` — see [keybindings](gnome/keybindings.md#disposable-kali) and [fresh-install RE guide](docs/fresh-install-coding-re.md#disposable-kali). NAT needs `virbr0` in firewalld **libvirt** zone (`firewalld-lab-zones.sh`). Physical LAN uses macvtap on `KALI_LAN_IFACE` (default `enp0s31f6`) → guest eth1.
 
 ### Starship
 
@@ -309,7 +309,7 @@ failing module stops the script; no silent `|| true`).
 
 | Tag | Default | Runs |
 |-----|---------|------|
-| `MIGRATE_FIREWALLD` | on | `firewalld-migrate.sh` → drop + `virbr0`/`libvirt` + `virbr-malware`/`lab-malware` (iface + `192.168.200.0/24`) |
+| `SETUP_FIREWALLD` | on | `firewalld-lab-zones.sh` → drop + `virbr0`/`libvirt` + `virbr-malware`/`lab-malware` (iface + `192.168.200.0/24`) |
 | `APPLY_PROFILE` | off | `apply-profile.sh` |
 | `SETUP_OLLAMA` | **on for P15 (20SU)**; off on T14s | `ollama-setup.sh` (skipped with msg if not P15) |
 | `SETUP_LABS` | off | `labs-setup.sh` (triage/re/android/web images) |
@@ -320,16 +320,16 @@ failing module stops the script; no silent `|| true`).
 ```bash
 bash scripts/configure.sh
 CONFIGURE_UI=plain bash scripts/configure.sh   # headless / serial
-# Re-run anytime; MIGRATE_FIREWALLD is safe to repeat.
+# Re-run anytime; SETUP_FIREWALLD is safe to repeat.
 ```
 
 Full `./install.sh` still installs Caveman + Ponytail. `SETUP_AI` alone is
 Ponytail-oriented (complementary hooks; no duplicate caveman install).
 
-#### How to: firewalld migrate / `lab-malware`
+#### How to: firewalld lab zones / `lab-malware`
 
 ```bash
-bash scripts/firewalld-migrate.sh
+bash scripts/firewalld-lab-zones.sh
 # or only the malware zone:
 source scripts/lib/lab-malware-zone.sh && ensure_lab_malware_zone
 ```
@@ -342,7 +342,7 @@ virbr0          → libvirt          (kali-disposable / NAT guests)
 virbr-malware   → lab-malware      (iface + source 192.168.200.0/24; DROP; no masq/forward)
 ```
 
-`ensure_lab_malware_zone` (shared by migrate + `lab-detonate`) binds **both**
+`ensure_lab_malware_zone` (shared by `firewalld-lab-zones` + `lab-detonate`) binds **both**
 the interface and the `192.168.200.0/24` source, unbinds `virbr-malware` from
 `libvirt`/`block`, and uses `sudo` for permanent queries (polkit). Hosts
 upgraded from Slice 1 may still show the bridge under `libvirt` or `block`.
@@ -365,7 +365,7 @@ bash scripts/vm-stageb-run.sh
 ```
 
 Guest (`vm-stageb-guest.sh`): `CONFIGURE_UI=plain` + empty checklist line →
-defaults (`MIGRATE_FIREWALLD` on), then `./install.sh` with
+defaults (`SETUP_FIREWALLD` on), then `./install.sh` with
 `SKIP_CONFIGURE=1`, `SKIP_FOXCAGE=1`, `SKIP_OLLAMA=1`,
 `GIT_SETUP_NONINTERACTIVE=1`. Temporary NOPASSWD is removed before RESULT.
 
@@ -508,12 +508,12 @@ We take a "quiet by default" approach:
 | `check.sh`: Chrome / Brave policies ✗ | `/etc` policy files missing or stale | `bash scripts/browser-hardening.sh` (needs sudo for `/etc`) |
 | `evolution-data-server` / `wireless-regdb` (or any `pacman.txt` package) missing | Older `install.sh` fed `#` comment lines to pacman (`target not found: # …`), aborting the whole package step | Pull, then re-run `./install.sh` (comments are stripped now) |
 | `unsafe path transition /etc` during `pacman` | `/etc` owned by user (old `gdm-setup.sh` used `rsync -a`) | `bash scripts/gdm-setup.sh` (restores root + 755), or `sudo chown root:root /etc && sudo chmod 755 /etc` |
-| No inbound / wrong default zone | firewalld not migrated or default ≠ `drop` | `bash scripts/firewalld-migrate.sh`; `sudo firewall-cmd --get-default-zone` |
-| `virbr-malware` listed under `libvirt` / `block` | Pre-`lab-malware` bind left over | [firewalld howto](#how-to-firewalld-migrate--lab-malware); confirm iface + `192.168.200.0/24` |
+| No inbound / wrong default zone | firewalld zones not applied or default ≠ `drop` | `bash scripts/firewalld-lab-zones.sh`; `sudo firewall-cmd --get-default-zone` |
+| `virbr-malware` listed under `libvirt` / `block` | Pre-`lab-malware` bind left over | [firewalld howto](#how-to-firewalld-lab-zones--lab-malware); confirm iface + `192.168.200.0/24` |
 | `INVALID_ZONE: lab-malware` | Zone never created on this host | Same as above (`lib/lab-malware-zone.sh`) |
 | Stage B VM hangs on Name/Email or `npx` prompt | Interactive git / clipboard build on serial | Pull fixes; harness sets `GIT_SETUP_NONINTERACTIVE` + non-interactive `tsc` |
 | `DOTFILES_STAGEB_RESULT=PASS_CONFIGURE` | Install soft-failed on minimal Stage A | Expected without full GNOME; firewalld path still OK |
-| SSH blocked after migrate | drop zone has no 22/tcp | `sudo firewall-cmd --permanent --add-service=ssh && sudo firewall-cmd --reload` (only if you need SSH) |
+| SSH blocked after lab-zones | drop zone has no 22/tcp | `sudo firewall-cmd --permanent --add-service=ssh && sudo firewall-cmd --reload` (only if you need SSH) |
 | Spoof location sync does nothing | `vpn-location-sync` failed under `pkexec` | `bash scripts/location-setup.sh`; panel → Sync spoofed location |
 | Touchpad clicks broken after old dotfiles | Legacy synaptics inhibit/udev | `bash scripts/cleanup-input-overrides.sh` (sudo), log out |
 | Ghostty needs 2 clicks / fails from app grid | systemd `notify-reload` vs late SIGUSR2 ([#14394](https://github.com/ghostty-org/ghostty/discussions/14394)) | Stow `ghostty` drop-in sets `Type=notify`; `systemctl --user daemon-reload` |

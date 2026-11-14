@@ -1,41 +1,32 @@
 #!/usr/bin/env bash
-# firewalld-migrate.sh — replace UFW with firewalld (nftables, default drop).
-# Rewires libvirt virbr0 → libvirt zone; creates host-only virbr-malware → lab-malware.
+# firewalld-lab-zones.sh — ensure firewalld drop + lab/libvirt zone binds.
+#
+# Stage A already installs firewalld (DefaultZone=drop). This script wires:
+#   virbr0        → libvirt      (Kali / NAT guests)
+#   virbr-malware → lab-malware  (host-only 192.168.200.0/24; DROP; no masq/forward)
+#
+# Idempotent. Safe to re-run. Does not install or enable UFW.
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 # shellcheck source=lib/lab-malware-zone.sh
 source "$REPO_ROOT/scripts/lib/lab-malware-zone.sh"
 
-STAMP="$(date +%Y%m%d%H%M%S)"
-BACKUP="/var/backups/dotfiles-ufw-${STAMP}"
+echo "→ Ensuring firewalld + CLI monitors..."
+sudo pacman -S --needed --noconfirm firewalld htop btop fastfetch
 
-echo "→ Backing up UFW config to $BACKUP (if present)..."
-if [[ -d /etc/ufw ]]; then
-  sudo install -d -m 0700 "$BACKUP"
-  sudo cp -a /etc/ufw "$BACKUP/" 2>/dev/null || true
-fi
-
-if command -v ufw >/dev/null 2>&1; then
-  echo "→ Disabling UFW..."
-  sudo ufw --force disable 2>/dev/null || true
-fi
-sudo systemctl disable --now ufw 2>/dev/null || true
-sudo systemctl mask ufw 2>/dev/null || true
+# Hygiene: never let a leftover ufw package fight nftables.
 if pacman -Q ufw >/dev/null 2>&1; then
-  echo "→ Removing ufw package..."
+  echo "→ Removing leftover ufw package..."
+  sudo systemctl disable --now ufw 2>/dev/null || true
+  sudo systemctl mask ufw 2>/dev/null || true
   sudo pacman -Rns --noconfirm ufw || true
 fi
-
-echo "→ Installing firewalld..."
-sudo pacman -S --needed --noconfirm firewalld
-# Ensure CLI monitors from Stage B package list are present.
-sudo pacman -S --needed --noconfirm htop btop fastfetch || true
 
 echo "→ Configuring nftables backend + default zone drop..."
 sudo install -d -m 0755 /etc/firewalld
 if [[ ! -f /etc/firewalld/firewalld.conf ]]; then
-  printf '%s\n' '# managed by firewalld-migrate.sh' 'DefaultZone=drop' 'FirewallBackend=nftables' \
+  printf '%s\n' '# managed by firewalld-lab-zones.sh' 'DefaultZone=drop' 'FirewallBackend=nftables' \
     | sudo tee /etc/firewalld/firewalld.conf >/dev/null
 else
   if sudo grep -q '^FirewallBackend=' /etc/firewalld/firewalld.conf; then
@@ -53,8 +44,7 @@ fi
 sudo systemctl unmask firewalld 2>/dev/null || true
 sudo systemctl enable --now firewalld
 
-# Default zone — --set-default-zone already persists; --permanent is invalid here
-# (firewall-cmd: "Can't use stand-alone options with other options").
+# --set-default-zone already persists; --permanent is invalid with it.
 sudo firewall-cmd --set-default-zone=drop || true
 
 # libvirt zone XML ships with the libvirt package (not firewalld alone).
@@ -64,20 +54,19 @@ if ! sudo firewall-cmd --permanent --get-zones 2>/dev/null | grep -qw libvirt; t
   sudo firewall-cmd --reload || true
 fi
 
-# libvirt default NAT (virbr0) → libvirt zone
 if command -v virsh >/dev/null 2>&1; then
   sudo systemctl enable --now libvirtd.service 2>/dev/null || true
   sudo virsh net-start default 2>/dev/null || true
   sudo virsh net-autostart default 2>/dev/null || true
 fi
-# Permanent add-interface so zone sticks when bridge appears later.
+
 echo "→ Binding virbr0 to firewalld zone libvirt (permanent)..."
 sudo firewall-cmd --permanent --zone=libvirt --add-interface=virbr0 \
   || sudo firewall-cmd --permanent --zone=libvirt --list-interfaces 2>/dev/null | grep -qw virbr0 \
-  || { echo "firewalld-migrate: failed to bind virbr0 → libvirt" >&2; exit 1; }
+  || { echo "firewalld-lab-zones: failed to bind virbr0 → libvirt" >&2; exit 1; }
 if [[ -d /sys/class/net/virbr0 ]]; then
   sudo firewall-cmd --zone=libvirt --change-interface=virbr0 \
-    || { echo "firewalld-migrate: runtime virbr0 → libvirt failed" >&2; exit 1; }
+    || { echo "firewalld-lab-zones: runtime virbr0 → libvirt failed" >&2; exit 1; }
 fi
 
 # Host-only malware net (no forward / no NAT)
@@ -101,7 +90,6 @@ if command -v virsh >/dev/null 2>&1; then
     echo "→ Defining libvirt host-only network virbr-malware..."
     sudo virsh net-define "$MALWARE_XML"
   fi
-  # Ensure forward mode is none (host-only): redefine if an older NAT copy exists.
   if sudo virsh net-dumpxml virbr-malware 2>/dev/null | grep -q '<forward'; then
     sudo virsh net-destroy virbr-malware 2>/dev/null || true
     sudo virsh net-undefine virbr-malware 2>/dev/null || true
@@ -114,16 +102,14 @@ fi
 echo "→ Binding virbr-malware to firewalld zone lab-malware..."
 ensure_lab_malware_zone
 
-# libvirt may reattach bridges at start; re-assert runtime zones.
 if [[ -d /sys/class/net/virbr0 ]]; then
   sudo firewall-cmd --zone=libvirt --change-interface=virbr0 \
-    || { echo "firewalld-migrate: re-assert virbr0 → libvirt failed" >&2; exit 1; }
+    || { echo "firewalld-lab-zones: re-assert virbr0 → libvirt failed" >&2; exit 1; }
 fi
 if [[ -d /sys/class/net/virbr-malware ]]; then
   sudo firewall-cmd --zone=lab-malware --change-interface=virbr-malware \
-    || { echo "firewalld-migrate: re-assert virbr-malware → lab-malware failed" >&2; exit 1; }
+    || { echo "firewalld-lab-zones: re-assert virbr-malware → lab-malware failed" >&2; exit 1; }
 fi
 
 echo "✓ firewalld active (default=$(sudo firewall-cmd --get-default-zone 2>/dev/null || echo ?))"
-echo "  virbr0 → libvirt zone; virbr-malware → lab-malware zone (DROP, no masq/forward)"
-echo "  UFW backup: $BACKUP"
+echo "  virbr0 → libvirt; virbr-malware → lab-malware (DROP, no masq/forward)"

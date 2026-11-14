@@ -166,7 +166,7 @@ cmd_setup_host() {
     sudo_do systemctl enable --now virbr0-up.service 2>/dev/null || true
   fi
   sudo_do ip link set virbr0 up 2>/dev/null || true
-  # firewalld: libvirt zone owns virbr0 (see scripts/firewalld-migrate.sh).
+  # firewalld: libvirt zone owns virbr0 (see scripts/firewalld-lab-zones.sh).
   if command -v firewall-cmd >/dev/null 2>&1 && systemctl is-active --quiet firewalld 2>/dev/null; then
     sudo_do firewall-cmd --permanent --zone=libvirt --change-interface=virbr0 2>/dev/null || true
     sudo_do firewall-cmd --zone=libvirt --change-interface=virbr0 2>/dev/null || true

@@ -69,7 +69,7 @@ if [[ $is_p15 -eq 1 ]]; then
 fi
 
 OPTS="$(checklist "Stage B modules" \
-  MIGRATE_FIREWALLD "firewalld migrate (drop + libvirt + lab-malware)" on \
+  SETUP_FIREWALLD "firewalld lab zones (drop + libvirt + lab-malware)" on \
   APPLY_PROFILE "Re-run machine profile (detect / hostname)" off \
   SETUP_OLLAMA "P15: ollama-cuda + qwen models (localhost)" "$OLLAMA_STATE" \
   SETUP_LABS "Labs lab-triage/re/android/web (+ capture image)" off \
@@ -88,8 +88,8 @@ run_mod() {
 selected() { echo "$OPTS" | grep -qx "$1"; }
 
 # Fail-fast: module errors propagate (no || true swallow).
-if selected MIGRATE_FIREWALLD; then
-  run_mod firewalld bash "$REPO_ROOT/scripts/firewalld-migrate.sh"
+if selected SETUP_FIREWALLD; then
+  run_mod firewalld bash "$REPO_ROOT/scripts/firewalld-lab-zones.sh"
 fi
 
 if selected APPLY_PROFILE; then

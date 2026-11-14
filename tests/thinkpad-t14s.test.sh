@@ -52,8 +52,8 @@ grep -q '^btop$' "$ROOT/packages/pacman.txt" || fail "pacman.txt must include bt
 grep -q '^htop$' "$ROOT/packages/pacman.txt" || fail "pacman.txt must include htop"
 grep -q '^firewalld$' "$ROOT/packages/pacman.txt" || fail "pacman.txt must include firewalld"
 ! grep -qE '^ufw$' "$ROOT/packages/pacman.txt" || fail "pacman.txt must not include ufw"
-grep -q 'pacman -Rns --noconfirm ufw' "$ROOT/scripts/firewalld-migrate.sh" \
-  || fail "firewalld-migrate must remove ufw package"
+grep -q 'pacman -Rns --noconfirm ufw' "$ROOT/scripts/firewalld-lab-zones.sh" \
+  || fail "firewalld-lab-zones must remove ufw package"
 grep -qE '"btop"|"htop"' "$ROOT/scripts/check.sh" \
   || fail "check.sh must require btop and htop"
 grep -qE 'systemctl enable.*\bufw\b' "$ROOT/scripts/arch-install-t14s.sh" \

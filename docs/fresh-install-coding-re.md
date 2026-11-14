@@ -143,7 +143,7 @@ Checklist tags (fail-fast on module error):
 
 | Tag | Default | Effect |
 |-----|---------|--------|
-| `MIGRATE_FIREWALLD` | on | drop + `libvirt`/`virbr0` + `lab-malware` (iface + `192.168.200.0/24`) |
+| `SETUP_FIREWALLD` | on | drop + `libvirt`/`virbr0` + `lab-malware` (iface + `192.168.200.0/24`) |
 | `APPLY_PROFILE` | off | re-run machine profile |
 | `SETUP_OLLAMA` | on **only on P15** | `ollama-setup.sh` → `127.0.0.1:11434` |
 | `SETUP_LABS` | off | build/pull lab images; shell wrappers |
@@ -153,10 +153,10 @@ Checklist tags (fail-fast on module error):
 
 Full howto: [README — configure.sh](../README.md#how-to-configuresh-stage-b-tui).
 
-#### How to: firewalld migrate / `lab-malware`
+#### How to: firewalld lab zones / `lab-malware`
 
 ```bash
-bash scripts/firewalld-migrate.sh
+bash scripts/firewalld-lab-zones.sh
 # or: source scripts/lib/lab-malware-zone.sh && ensure_lab_malware_zone
 sudo firewall-cmd --get-default-zone
 sudo firewall-cmd --get-active-zones
@@ -164,7 +164,7 @@ sudo firewall-cmd --permanent --zone=lab-malware --list-all
 # expect: virbr-malware iface + source 192.168.200.0/24; target DROP
 ```
 
-Details: [README — firewalld howto](../README.md#how-to-firewalld-migrate--lab-malware),
+Details: [README — firewalld howto](../README.md#how-to-firewalld-lab-zones--lab-malware),
 [Verify Firewall](hardened-arch-gnome.md#verify-firewall).
 
 #### How to: full bootstrap (`./install.sh`)
@@ -417,8 +417,8 @@ cannot read `$HOME`). Each `start` rebuilds `kali-session.qcow2` unless
 
 **NAT / firewalld:** `setup` and `start --nat` bind `virbr0` to the stock
 `libvirt` zone (forward + masquerade for guest subnet `192.168.122.0/24`) and
-bring the bridge up. Prefer `bash scripts/firewalld-migrate.sh` if zones are
-missing ([howto](../README.md#how-to-firewalld-migrate--lab-malware)). Boot unit
+bring the bridge up. Prefer `bash scripts/firewalld-lab-zones.sh` if zones are
+missing ([howto](../README.md#how-to-firewalld-lab-zones--lab-malware)). Boot unit
 `virbr0-up.service` (from `stow/system/`, also installed by `setup`) starts the
 libvirt `default` network then `ip link set virbr0 up` so the bridge exists
 after reboot. Cloud-init NoCloud seed sets hostname `kali-disposable`, enables

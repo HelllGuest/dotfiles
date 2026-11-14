@@ -35,7 +35,7 @@ ensure_net() {
   need virsh
   sudo systemctl enable --now libvirtd.service 2>/dev/null || true
   if ! virsh_s net-info virbr-malware >/dev/null 2>&1; then
-    die "virbr-malware missing — run: bash scripts/firewalld-migrate.sh"
+    die "virbr-malware missing — run: bash scripts/firewalld-lab-zones.sh"
   fi
   virsh_s net-start virbr-malware 2>/dev/null || true
   virsh_s net-autostart virbr-malware 2>/dev/null || true

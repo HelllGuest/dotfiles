@@ -3,7 +3,7 @@
 set -euo pipefail
 
 command -v firewall-cmd >/dev/null 2>&1 || {
-  echo "firewalld-tailscale: firewall-cmd missing — run scripts/firewalld-migrate.sh first" >&2
+  echo "firewalld-tailscale: firewall-cmd missing — run scripts/firewalld-lab-zones.sh first" >&2
   exit 0
 }
 systemctl is-active --quiet firewalld 2>/dev/null || {
