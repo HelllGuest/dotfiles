@@ -22,9 +22,15 @@ if command -v ufw >/dev/null 2>&1; then
 fi
 sudo systemctl disable --now ufw 2>/dev/null || true
 sudo systemctl mask ufw 2>/dev/null || true
+if pacman -Q ufw >/dev/null 2>&1; then
+  echo "→ Removing ufw package..."
+  sudo pacman -Rns --noconfirm ufw || true
+fi
 
 echo "→ Installing firewalld..."
 sudo pacman -S --needed --noconfirm firewalld
+# Ensure CLI monitors from Stage B package list are present.
+sudo pacman -S --needed --noconfirm htop btop fastfetch || true
 
 echo "→ Configuring nftables backend + default zone drop..."
 sudo install -d -m 0755 /etc/firewalld

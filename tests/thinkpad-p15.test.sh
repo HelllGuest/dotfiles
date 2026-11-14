@@ -79,6 +79,8 @@ grep -q 'DefaultZone=drop' "$INST" \
   || fail "arch-install-p15 must set firewalld DefaultZone=drop"
 grep -q 'systemctl mask ufw' "$INST" \
   || fail "arch-install-p15 must mask ufw before/with firewalld enable"
+grep -q 'htop btop fastfetch' "$INST" \
+  || fail "arch-install-p15 base must include htop btop fastfetch"
 grep -qE 'systemctl enable.*\bufw\b' "$INST" \
   && fail "arch-install-p15 must not enable ufw" || true
 grep -qF 'DO_AUTO_PART=1' "$INST" \

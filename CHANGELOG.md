@@ -1,6 +1,7 @@
 # Changelog
 
 ## [Unreleased]
+- Packages/firewall: Stage A base + `pacman.txt` always install `htop`/`btop`/`fastfetch`/`firewalld`; migrate and Stage A remove/mask **ufw** (no UFW package). `check.sh` requires the three CLIs and fails if firewalld is down or ufw is still installed/enabled.
 - Stage B VM harness: `scripts/vm-stageb-run.sh` + `vm-stageb-guest.sh` (9p mount, `CONFIGURE_UI=plain`, `GIT_SETUP_NONINTERACTIVE`, RESULT `PASS` / `PASS_CONFIGURE` / `FAIL`). `configure.sh` honors `CONFIGURE_UI`. `lab-malware-zone` + migrate use sudo for permanent queries; bind iface **and** `192.168.200.0/24`. `fetch-gnome-extensions` clipboard build prefers pacman `typescript` / non-interactive `npx --yes`. `git-setup` auto-noninteractive when stdin is not a TTY and applies identity defaults. `install.sh`: `CONFIGURE=1` runs configure with `fail_step` (auto `CONFIGURE_UI=plain` when stdin is not a TTY). Docs: README howtos (configure / firewalld / VM Stage B / git-setup / GNOME fetch); fresh-install + hardened Verify Firewall (firewalld, not UFW); t14s-arch-install Stage B howto; CONTRIBUTING.
 - fix(install): `./install.sh` completes the AI stack — `AI_STACK_EXTRAS_ONLY=1` Continue/OpenCode↔ollama/`hr-proxy`, plus P15 `ollama-setup.sh` (`SKIP_OLLAMA=1` opts out).
 - fix(install): Stage B GDM udev keeps NVIDIA `0x10de` (P15 Optimus Wayland); T14s pacman filter drops `egl-wayland`; `stow`/`apply-profile`/`check.sh` ✗ fail `install.sh` via `fail_step` / non-zero exit.

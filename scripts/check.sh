@@ -9,7 +9,7 @@ check_fail() { printf '✗ %s\n' "$*"; CHECK_FAILED=$((CHECK_FAILED + 1)); }
 echo "Running health check..."
 
 # 1. Check for required binaries
-REQUIRED_BINARIES=("stow" "zsh" "starship" "nvim" "ghostty" "fastfetch" "dconf" "jq")
+REQUIRED_BINARIES=("stow" "zsh" "starship" "nvim" "ghostty" "fastfetch" "btop" "htop" "dconf" "jq")
 SHELL_BINARIES=("atuin" "fzf" "fd" "rg" "bat" "eza" "zoxide" "direnv" "delta")
 for bin in "${REQUIRED_BINARIES[@]}"; do
     if command -v "$bin" >/dev/null 2>&1; then
@@ -549,9 +549,21 @@ fi
 if systemctl is-active --quiet firewalld 2>/dev/null; then
     echo "✓ firewalld active (default=$(firewall-cmd --get-default-zone 2>/dev/null || echo ?))"
 elif systemctl is-enabled --quiet firewalld 2>/dev/null; then
-    echo "○ firewalld enabled but not active"
+    check_fail "firewalld enabled but not active"
 else
-    echo "○ firewalld not enabled"
+    check_fail "firewalld not enabled — pacman -S firewalld && bash scripts/firewalld-migrate.sh"
+fi
+if pacman -Q ufw >/dev/null 2>&1; then
+    check_fail "ufw package still installed — remove with: bash scripts/firewalld-migrate.sh"
+else
+    echo "✓ ufw not installed"
+fi
+if systemctl is-active --quiet ufw 2>/dev/null; then
+    check_fail "ufw.service is active — run bash scripts/firewalld-migrate.sh"
+elif systemctl is-enabled ufw 2>&1 | grep -qi masked; then
+    echo "✓ ufw masked"
+elif systemctl is-enabled --quiet ufw 2>/dev/null; then
+    check_fail "ufw.service is enabled — run bash scripts/firewalld-migrate.sh"
 fi
 
 echo "--- Proton VPN ---"

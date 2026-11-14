@@ -341,6 +341,7 @@ BASE_PKGS=(
   reflector pacman-contrib
   mkinitcpio snapper snap-pac zram-generator
   apparmor firewalld sbctl efibootmgr
+  htop btop fastfetch
 )
 say "pacstrap base system ($UCODE)"
 pacstrap -K /mnt "${BASE_PKGS[@]}"

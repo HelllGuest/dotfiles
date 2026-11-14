@@ -45,6 +45,17 @@ grep -q 'DefaultZone=drop' "$ROOT/scripts/arch-install-t14s.sh" \
   || fail "arch-install-t14s must set firewalld DefaultZone=drop"
 grep -q 'systemctl mask ufw' "$ROOT/scripts/arch-install-t14s.sh" \
   || fail "arch-install-t14s must mask ufw before/with firewalld enable"
+grep -q 'htop btop fastfetch' "$ROOT/scripts/arch-install-t14s.sh" \
+  || fail "arch-install-t14s base must include htop btop fastfetch"
+grep -q '^fastfetch$' "$ROOT/packages/pacman.txt" || fail "pacman.txt must include fastfetch"
+grep -q '^btop$' "$ROOT/packages/pacman.txt" || fail "pacman.txt must include btop"
+grep -q '^htop$' "$ROOT/packages/pacman.txt" || fail "pacman.txt must include htop"
+grep -q '^firewalld$' "$ROOT/packages/pacman.txt" || fail "pacman.txt must include firewalld"
+! grep -qE '^ufw$' "$ROOT/packages/pacman.txt" || fail "pacman.txt must not include ufw"
+grep -q 'pacman -Rns --noconfirm ufw' "$ROOT/scripts/firewalld-migrate.sh" \
+  || fail "firewalld-migrate must remove ufw package"
+grep -qE '"btop"|"htop"' "$ROOT/scripts/check.sh" \
+  || fail "check.sh must require btop and htop"
 grep -qE 'systemctl enable.*\bufw\b' "$ROOT/scripts/arch-install-t14s.sh" \
   && fail "arch-install-t14s must not enable ufw" || true
 grep -qE '(^|[[:space:]_/])20SU' "$ROOT/scripts/lib/dmi.sh" \
