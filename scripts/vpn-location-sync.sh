@@ -1,9 +1,10 @@
 #!/usr/bin/env bash
-# vpn-location-sync.sh — sync /etc/geolocation with Proton VPN exit or home (Dubai)
+# vpn-location-sync.sh — sync /etc/geolocation with Proton VPN exit or home location
 #
 # When proton0 is up: geolocate the VPN exit IP (one HTTPS request via the tunnel)
 # and write /etc/geolocation so GeoClue + Night Theme Switcher use VPN sun times.
-# When VPN is down: restore the home location from stow/system/etc/geolocation.
+# When VPN is down: restore the home location from stow/system/etc/geolocation.local
+# (gitignored), else the tracked placeholder stow/system/etc/geolocation.
 #
 # Triggered by NetworkManager dispatcher (99-vpn-location). Manual: vpn-location-sync
 
@@ -47,6 +48,7 @@ resolve_repo_root() {
 REPO_ROOT="$(resolve_repo_root || true)"
 if [[ -n "$REPO_ROOT" ]]; then
     HOME_GEO="$REPO_ROOT/stow/system/etc/geolocation"
+    [[ -f "$HOME_GEO.local" ]] && HOME_GEO="$HOME_GEO.local"
 elif [[ -f "$INSTALLED_HOME_GEO" ]]; then
     HOME_GEO="$INSTALLED_HOME_GEO"
 else

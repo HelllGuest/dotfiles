@@ -416,8 +416,9 @@ GIT_SETUP_NONINTERACTIVE=1 bash scripts/git-setup.sh
 
 Interactive: prompts for name/email, hooks, optional GPG/SSH signing.
 Noninteractive when `GIT_SETUP_NONINTERACTIVE=1` **or** stdin is not a TTY:
-skips prompts, enables hooks template, applies default name/email if unset
-(or placeholder `your@email.com`).
+skips prompts and enables the hooks template. Identity comes from
+`GIT_USER_NAME` / `GIT_USER_EMAIL` or an existing config; with neither, it is
+left unset (no built-in name/email) and the script prints how to set it.
 
 Shared settings live in the tracked `stow/git/.config/git/config`. Machine-local
 settings (name/email, signing key, credential helper, `templateDir`) go to
@@ -521,7 +522,7 @@ Clipboard: selecting text auto-copies in kitty and ghostty (`copy_on_select`); i
 
 **GNOME session:** `scripts/gnome-session-setup.sh` — dconf profile, Dash2Dock install, and extensions. Super+1–4 workspaces. Mouse/touchpad/keyboard use **stock GNOME defaults** (reset on session setup via `scripts/reset-input-defaults.sh`).
 
-**Location spoofing:** `scripts/location-setup.sh` — static GeoClue coords in `/etc/geolocation` (home Dubai; VPN exit when `proton0` is up). Panel extension `proton-vpn@helllguest` shows spoofed coords and **Sync spoofed location** (runs `pkexec vpn-location-sync sync`). Manual: `vpn-location-sync` or `sudo vpn-location-sync sync`.
+**Location spoofing:** `scripts/location-setup.sh` — static GeoClue coords in `/etc/geolocation` (home from gitignored `stow/system/etc/geolocation.local`, else a Greenwich placeholder; VPN exit when `proton0` is up). Panel extension `proton-vpn@helllguest` shows spoofed coords and **Sync spoofed location** (runs `pkexec vpn-location-sync sync`). Manual: `vpn-location-sync` or `sudo vpn-location-sync sync`.
 
 **Fonts:** Run `scripts/install-fonts.sh` for top Nerd Fonts (JetBrains Mono, Meslo, FiraCode, Cascadia, Iosevka, etc.)
 

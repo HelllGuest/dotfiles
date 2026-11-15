@@ -182,4 +182,4 @@ Status-area menu for connect/disconnect and **Spoofed location** (reads `/etc/ge
 | Sync spoofed location | Runs `pkexec vpn-location-sync sync` — needs `location-setup.sh` + wheel polkit rule |
 | Manual sync | `vpn-location-sync` or `sudo vpn-location-sync sync` |
 
-Coords follow VPN exit when `proton0` is up; home (Dubai) when disconnected. Does not spoof browser geolocation (WebRTC/IP).
+Coords follow VPN exit when `proton0` is up; home location (`stow/system/etc/geolocation.local`) when disconnected. Does not spoof browser geolocation (WebRTC/IP).

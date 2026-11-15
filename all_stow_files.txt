@@ -56,7 +56,7 @@ stow/proton-vpn/.local/share/gnome-shell/extensions/proton-vpn@helllguest/metada
 stow/starship/.config/starship.toml
 stow/system/etc/NetworkManager/dispatcher.d/99-vpn-location
 stow/system/etc/environment.d/99-wayland.conf
-stow/system/etc/geoclue/conf.d/99-static-dubai.conf
+stow/system/etc/geoclue/conf.d/99-static-location.conf
 stow/system/etc/geolocation
 stow/system/etc/makepkg.conf.d/zz-x86-64-v3.conf
 stow/system/etc/polkit-1/rules.d/50-kali-lan-host-prep.rules

@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
-# location-setup.sh — GeoClue location spoofing (home Dubai + Proton VPN sync)
+# location-setup.sh — GeoClue location spoofing (home location + Proton VPN sync)
 #
 # - Disables GeoClue IP/WiFi lookup (no real-location leak)
-# - Home coords in stow/system/etc/geolocation (Dubai)
+# - Home coords in stow/system/etc/geolocation.local (gitignored); falls back to
+#   the tracked placeholder stow/system/etc/geolocation
 # - vpn-location-sync.sh updates /etc/geolocation to VPN exit when proton0 is up
 # - NetworkManager dispatcher triggers sync on connect/disconnect
 # - GNOME panel extension proton-vpn@helllguest shows spoofed location + manual sync
@@ -13,14 +14,20 @@ set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 STOW_DIR="$REPO_ROOT/stow"
-GEO_FILE="$REPO_ROOT/stow/system/etc/geolocation"
-GEOCLUE_DROPIN="$REPO_ROOT/stow/system/etc/geoclue/conf.d/99-static-dubai.conf"
+GEO_TEMPLATE="$REPO_ROOT/stow/system/etc/geolocation"
+GEO_LOCAL="$REPO_ROOT/stow/system/etc/geolocation.local"
+GEOCLUE_DROPIN="$REPO_ROOT/stow/system/etc/geoclue/conf.d/99-static-location.conf"
 NM_DISPATCHER="$REPO_ROOT/stow/system/etc/NetworkManager/dispatcher.d/99-vpn-location"
 POLKIT_RULE="$REPO_ROOT/stow/system/etc/polkit-1/rules.d/50-vpn-location-sync.rules"
 VPN_SYNC="$REPO_ROOT/scripts/vpn-location-sync.sh"
 
-if [[ ! -f "$GEO_FILE" ]]; then
-  echo "Missing: $GEO_FILE" >&2
+if [[ -f "$GEO_LOCAL" ]]; then
+  GEO_FILE="$GEO_LOCAL"
+elif [[ -f "$GEO_TEMPLATE" ]]; then
+  GEO_FILE="$GEO_TEMPLATE"
+  echo "  ⚠ Using placeholder home location — cp $GEO_TEMPLATE $GEO_LOCAL and edit lat/lon"
+else
+  echo "Missing: $GEO_TEMPLATE" >&2
   exit 1
 fi
 
@@ -36,7 +43,12 @@ sudo install -d -m 0755 -o root -g root /usr/local/share/vpn-location-sync
 sudo install -m 0644 -o root -g root "$GEO_FILE" /usr/local/share/vpn-location-sync/home.geolocation
 
 echo "→ Installing GeoClue config (static file only, no IP/WiFi)..."
-sudo install -m 0644 -o root -g root "$GEOCLUE_DROPIN" /etc/geoclue/conf.d/99-static-dubai.conf
+sudo install -m 0644 -o root -g root "$GEOCLUE_DROPIN" /etc/geoclue/conf.d/99-static-location.conf
+# Drop drop-ins from before the rename (99-static-<city>.conf).
+for _old in /etc/geoclue/conf.d/99-static-*.conf; do
+  [[ -e $_old && $_old != */99-static-location.conf ]] && sudo rm -f "$_old"
+done
+unset _old
 
 echo "→ Installing NetworkManager VPN location dispatcher..."
 sudo install -m 0755 -o root -g root "$NM_DISPATCHER" /etc/NetworkManager/dispatcher.d/99-vpn-location
@@ -68,7 +80,7 @@ fi
 
 echo ""
 echo "✓ Location spoofing ready."
-echo "  Home:     stow/system/etc/geolocation (Dubai)"
+echo "  Home:     ${GEO_FILE#"$REPO_ROOT"/}"
 echo "  VPN:      auto-sync on proton0 up/down"
 echo "  Manual:   vpn-location-sync  |  panel menu → Sync location now"
 echo "  Panel:    proton-vpn@helllguest → Spoofed location section"

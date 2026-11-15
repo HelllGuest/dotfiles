@@ -1,7 +1,9 @@
-# Dubai, UAE — static GeoClue location (no IP/WiFi geolocation lookup).
-# Used by Night Theme Switcher sun times, Night Light, Weather, etc.
-# See: scripts/location-setup.sh
-25.2048
-55.2708
-5
+# Placeholder home location (Royal Observatory, Greenwich): static GeoClue file,
+# no IP/WiFi geolocation lookup. Used by Night Theme Switcher sun times, Night
+# Light, Weather, etc. Real home location: copy this file to
+# stow/system/etc/geolocation.local (gitignored) and edit it; location-setup.sh
+# and vpn-location-sync prefer the .local file. Format: lat, lon, alt (m), accuracy (m).
+51.4779
+-0.0015
+46
 1000

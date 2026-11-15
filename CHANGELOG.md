@@ -1,7 +1,8 @@
 # Changelog
 
 ## [Unreleased]
-- fix: `git-setup.sh` no longer deletes `stow/git/.config/git/*` through a folded `~/.config/git` stow dir, and writes machine-local settings (identity, signing, credential helper, `templateDir`) to `~/.gitconfig` instead of the tracked config.
+- privacy: home location is no longer published. `stow/system/etc/geolocation` is a Greenwich placeholder; the real location goes in gitignored `stow/system/etc/geolocation.local`, preferred by `location-setup.sh` and `vpn-location-sync`. GeoClue drop-in renamed to `99-static-location.conf` (old `99-static-*.conf` removed on setup).
+- fix: `git-setup.sh` has no built-in name/email (identity from `GIT_USER_NAME`/`GIT_USER_EMAIL`, existing config, or prompts), no longer deletes `stow/git/.config/git/*` through a folded `~/.config/git` stow dir, and writes machine-local settings (identity, signing, credential helper, `templateDir`) to `~/.gitconfig` instead of the tracked config.
 - fix(gpu): `has_nvidia_gpu` reads PCI sysfs (vendor `0x10de`, class `0x03*`); the old `lspci` regex matched any VGA device. `./install.sh` installs `nvidia-open-dkms`/`nvidia-prime`/`nvidia-utils`/`egl-wayland` only when an NVIDIA display device exists (T14s, VMs, other laptops skip it).
 - fix(vm-stageb): `PASS_CONFIGURE` (passed any `install.sh` failure) replaced by `PASS_HEADLESS` — pass only when every failure is a headless-expected health check (GNOME extensions, Zen `user.js`, zinit, Proton API).
 - Verified: fresh Stage A + Stage B VM run (`PASS_HEADLESS`, git config deployed, no NVIDIA build); live `virbr-malware` guest gets a `192.168.200.x` lease with DNS `192.168.200.1` and no real DNS / internet.
@@ -130,7 +131,7 @@
 - UFW: silenced `[UFW BLOCK]` log spam by silently dropping link-local multicast (`224.0.0.0/4`) + IGMP in `before.rules` (same deny posture, no logging).
 - Shell: added terminal-agnostic long-command desktop notifications — `notify-send` fires when an interactive command exceeds `CMD_NOTIFY_THRESHOLD` (default 10s), with ✓/✗ status, exit code and duration. Core + zsh hooks in `.shell-functions`; bash registers via atuin/ble.sh preexec arrays (DEBUG-trap fallback) at the end of `.bashrc`. Works in ghostty, kitty and GNOME Console; skipped on plain TTY/SSH.
 - Theme auto-switch: fixed broken day/night switching. Catppuccin GTK theme names were missing the `+default` suffix (installed as `catppuccin-{latte,mocha}-blue-standard+default`) so GTK fell back to Adwaita; corrected in `user.conf` + `extensions.conf`. Set Night Theme Switcher to follow GNOME Night Light (`time/manual-schedule=false`) instead of an un-customized manual schedule, so theme re-syncs on resume/login (no more missed sunrise/sunset).
-- Theme auto-switch (NTS v82): Night Theme Switcher v82 dropped built-in gtk/cursor variants; obsolete `gtk-variants` dconf keys were ignored. Added `scripts/night-theme-hook.sh` hooked via NTS sunrise/sunset commands for Catppuccin latte/mocha GTK; NTS `color-scheme` set to prefer-light/prefer-dark; removed hardcoded gtk/color-scheme/cursor from `user.conf`; stopped `theme-switch.sh` forcing prefer-dark when NTS active; Dubai fallback location in `extensions.conf`.
+- Theme auto-switch (NTS v82): Night Theme Switcher v82 dropped built-in gtk/cursor variants; obsolete `gtk-variants` dconf keys were ignored. Added `scripts/night-theme-hook.sh` hooked via NTS sunrise/sunset commands for Catppuccin latte/mocha GTK; NTS `color-scheme` set to prefer-light/prefer-dark; removed hardcoded gtk/color-scheme/cursor from `user.conf`; stopped `theme-switch.sh` forcing prefer-dark when NTS active; fallback location in `extensions.conf`.
 
 ## [1.17.0] - 2026-06-02
 - Suspend: switched X1 to S3 `deep` via `sleep.conf.d` (`SuspendState=mem` + `MemorySleepMode=deep`); lower standby drain than s2idle. *(Superseded: current cmdline + `sleep.conf.d` pin s2idle; see Unreleased.)*
@@ -138,7 +139,7 @@
 - Ghostty: fixed config errors for 1.3.x — dropped removed `gtk-prefer-dark-theme`, `quick-terminal-size = 40%` (unit required), `keybind` key `backquote` (was `grave`); quick terminal now `global:` toggle.
 
 ## [1.16.0] - 2026-05-31
-- GNOME session: workspaces, touchpad, keyboard repeat, night light (Dubai), power/lid rules.
+- GNOME session: workspaces, touchpad, keyboard repeat, night light, power/lid rules.
 - Extensions: Blur My Shell, Just Perfection, Tactile, Vitals, Gesture Improvements, Night Theme Switcher.
 - Catppuccin GTK day/night stack; `gnome/dconf/user.conf` + `extensions.conf`.
 - X1 Yoga tablet mode handler (`yoga-tablet-mode.service`) via iio-sensor-proxy + lid state.

@@ -92,3 +92,6 @@ builds/st/st-*.diff
 /early_cpio
 /config
 /VERSION
+
+# Real home location for GeoClue (scripts/location-setup.sh); never commit
+stow/system/etc/geolocation.local

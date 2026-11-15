@@ -73,6 +73,8 @@ check "foreign cmdline untouched" \
     grep -qx "rd.luks.name=keep=cryptroot nvidia_drm.modeset=1" "$root/etc/kernel/cmdline"
 check "location-owned file skipped" \
     test ! -e "$root/etc/geolocation"
+check "private home location (geolocation.local) never installed" \
+    test ! -e "$root/etc/geolocation.local"
 
 run_setup "$root" SYSTEM_IS_AMDGPU=0
 check "second run is a no-op" \

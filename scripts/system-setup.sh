@@ -38,7 +38,8 @@ fi
 # Installed by scripts/location-setup.sh; /etc/geolocation is rewritten at runtime.
 LOCATION_OWNED=(
     etc/geolocation
-    etc/geoclue/conf.d/99-static-dubai.conf
+    etc/geolocation.local
+    etc/geoclue/conf.d/99-static-location.conf
     etc/NetworkManager/dispatcher.d/99-vpn-location
     etc/polkit-1/rules.d/50-vpn-location-sync.rules
     etc/polkit-1/rules.d/50-kali-lan-host-prep.rules
