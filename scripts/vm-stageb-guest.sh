@@ -69,6 +69,8 @@ export SKIP_FOXCAGE=1
 export SKIP_OLLAMA=1
 # Headless: no TTY prompts (git identity/hooks/GPG).
 export GIT_SETUP_NONINTERACTIVE=1
+# Throwaway identity so the guest exercises the identity path (git-setup.sh has no defaults).
+export GIT_USER_NAME="${GIT_USER_NAME:-vmtest}" GIT_USER_EMAIL="${GIT_USER_EMAIL:-vmtest@example.com}"
 INSTALL_LOG=/tmp/dotfiles-stageb-install.log
 set +e
 bash ./install.sh 2>&1 | tee "$INSTALL_LOG"

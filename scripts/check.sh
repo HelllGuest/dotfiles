@@ -253,7 +253,8 @@ fi
 if git config --get user.email >/dev/null 2>&1; then
     echo "✓ Git identity: $(git config --get user.name) <$(git config --get user.email)>"
 else
-    check_fail "Git identity not set"
+    # Not a failure: git-setup.sh deliberately ships no default identity.
+    echo "⚠ Git identity not set (git config --global user.name/user.email, or GIT_USER_NAME/GIT_USER_EMAIL with git-setup.sh)"
 fi
 
 echo "--- Neovim ---"
