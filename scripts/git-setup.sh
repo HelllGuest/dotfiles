@@ -51,6 +51,12 @@ fi
 
 chmod +x "$GIT_CONFIG_DIR/templates/hooks/"* 2>/dev/null || true
 
+# Machine-local settings (identity, signing, credential helper, templateDir)
+# belong in ~/.gitconfig, not the tracked XDG config. `git config --global`
+# writes to $XDG/git/config when ~/.gitconfig is absent — i.e. into this repo.
+# git reads both files; ~/.gitconfig is read last, so its values win.
+[[ -e "$HOME/.gitconfig" ]] || : >"$HOME/.gitconfig"
+
 CURRENT_EMAIL=$(git config --global user.email 2>/dev/null || true)
 if [[ -n "$CURRENT_EMAIL" && "$CURRENT_EMAIL" != "your@email.com" && "${GIT_SETUP_NONINTERACTIVE:-}" == "1" ]]; then
   echo "  ✓ Identity already set: $(git config --global user.name) <$CURRENT_EMAIL>"
