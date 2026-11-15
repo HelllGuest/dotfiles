@@ -49,8 +49,10 @@ covers AMD/NVIDIA/Intel when those modules are present. Details:
 Prefer QEMU/libvirt isolation. Never detonate unknown samples on the host.
 
 `packages/pacman.txt` lists Intel and NVIDIA GPU packages used by the P15
-profile. On T14s Gen 3 AMD (`21CQ`/`21CR`), `./install.sh` automatically
-filters those packages out before invoking `pacman -S`.
+profile. `./install.sh` filters them before invoking `pacman -S`: Intel
+packages are dropped on T14s Gen 3 AMD (`21CQ`/`21CR`), and NVIDIA packages
+are kept only when `has_nvidia_gpu` (PCI vendor `10de`, display class) finds
+an NVIDIA card, so VMs and other laptops never build the NVIDIA DKMS module.
 
 ---
 
@@ -158,7 +160,8 @@ bash scripts/firewalld-lab-zones.sh
 sudo firewall-cmd --get-default-zone
 sudo firewall-cmd --get-active-zones
 sudo firewall-cmd --permanent --zone=lab-malware --list-all
-# expect: virbr-malware iface + source 192.168.200.0/24; target DROP
+# expect: virbr-malware iface + source 192.168.200.0/24; target DROP; 67/udp listed
+# guest on virbr-malware: 192.168.200.x lease, DNS 192.168.200.1, no real DNS
 ```
 
 Details: [README — firewalld howto](../README.md#how-to-firewalld-lab-zones--lab-malware),

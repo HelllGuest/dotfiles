@@ -849,7 +849,9 @@ systemctl enable --now firewalld
 Libvirt: bind `virbr0` to zone `libvirt`. Air-gapped malware net: host-only
 `virbr-malware` in zone `lab-malware` (iface **and** source `192.168.200.0/24`;
 DROP, no masq/forward; see `scripts/lib/lab-malware-zone.sh` /
-`firewalld-lab-zones.sh`). Permanent firewall-cmd queries need sudo under polkit.
+`firewalld-lab-zones.sh`). The network has libvirt DNS disabled; dnsmasq only
+serves DHCP (`67/udp`) and hands out `192.168.200.1` (INetSim) as DNS, so guest
+lookups never reach real resolvers. Permanent firewall-cmd queries need sudo under polkit.
 Pre-Slice-2B hosts may still list the bridge under `libvirt`/`block` until
 `firewalld-lab-zones.sh` is re-run. Howto:
 [README — firewalld lab zones](../README.md#how-to-firewalld-lab-zones--lab-malware).
@@ -941,7 +943,8 @@ over opening the host default zone. `scripts/firewalld-lab-zones.sh` and
 * permanent `--zone=libvirt --add-interface=virbr0` (inherits when bridge appears)
 * runtime `--change-interface=virbr0` when the iface exists
 * host-only `virbr-malware` → zone `lab-malware` (iface + source
-  `192.168.200.0/24`; DROP; no NAT/forward)
+  `192.168.200.0/24`; DROP; no NAT/forward; ports 53, 67/udp DHCP, 80, 443,
+  10080, 10443; libvirt DNS disabled so only INetSim answers `:53`)
 * Upgrade note: if `virbr-malware` still sits in `libvirt` or `block`, re-run
   `bash scripts/firewalld-lab-zones.sh` (or `ensure_lab_malware_zone`) so the
   bridge leaves those zones; confirm with
@@ -1597,7 +1600,7 @@ cd ~/dotfiles
 
 `./install.sh` (run from a GNOME session; full step-by-step order in [README — Script execution order](../README.md#script-execution-order-fresh-machine)) will:
 
-* Install packages from `packages/pacman.txt` (kernels, shells, terminals, CLI tools; skips Intel/NVIDIA GPU packages on ThinkPad T14s Gen 3 AMD and skips `power-profiles-daemon` when `tuned-ppd` is present)
+* Install packages from `packages/pacman.txt` (kernels, shells, terminals, CLI tools; skips Intel GPU packages on ThinkPad T14s Gen 3 AMD; installs the NVIDIA stack only when an NVIDIA display device is on PCI; skips `power-profiles-daemon` when `tuned-ppd` is present)
 * Apply **after** `pacman.txt` exactly one machine profile via `scripts/apply-profile.sh`: `profiles/$(hostname).sh` if present, otherwise `scripts/detect-profile.sh` (`thinkpad-p15`, `thinkpad-t14s`, or `laptop`). Optimus/NVIDIA setup is inside `thinkpad-p15.sh` (no `nvidia.sh`).
 * Install Flatpaks from `packages/flatpak.txt` (Brave, Zen, Chrome, LibreWolf, Proton VPN, Android Studio) and AUR packages from `packages/aur.txt` (bootstraps `paru` if no helper exists)
 * Stow configs to `$HOME` (skips `zram` and `gdm`); install `system/` into `/etc` as root-owned files via `scripts/system-setup.sh`; materialize `zram-generator.conf` via `scripts/zram-setup.sh`

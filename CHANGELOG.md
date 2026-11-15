@@ -1,6 +1,10 @@
 # Changelog
 
 ## [Unreleased]
+- fix: `git-setup.sh` no longer deletes `stow/git/.config/git/*` through a folded `~/.config/git` stow dir, and writes machine-local settings (identity, signing, credential helper, `templateDir`) to `~/.gitconfig` instead of the tracked config.
+- fix(gpu): `has_nvidia_gpu` reads PCI sysfs (vendor `0x10de`, class `0x03*`); the old `lspci` regex matched any VGA device. `./install.sh` installs `nvidia-open-dkms`/`nvidia-prime`/`nvidia-utils`/`egl-wayland` only when an NVIDIA display device exists (T14s, VMs, other laptops skip it).
+- fix(vm-stageb): `PASS_CONFIGURE` (passed any `install.sh` failure) replaced by `PASS_HEADLESS` — pass only when every failure is a headless-expected health check (GNOME extensions, Zen `user.js`, zinit, Proton API).
+- Verified: fresh Stage A + Stage B VM run (`PASS_HEADLESS`, git config deployed, no NVIDIA build); live `virbr-malware` guest gets a `192.168.200.x` lease with DNS `192.168.200.1` and no real DNS / internet.
 - Stage A handoff harden: vmtest serves local trees; resolve `main`→SHA once (or `T14S_REF` override); clear curl errors; usbguard `list-devices` + `allow-device -p`; virbr-malware `dns enable=no` + `dhcp-option=6,192.168.200.1` + DHCP `67/udp` on lab-malware.
 - Stage A: collapse four installers — `arch-install{,-t14s,-p15}.sh` are thin handoffs via `lib/stage-a-handoff.sh` to canonical [t14s-arch-install](https://github.com/HelllGuest/t14s-arch-install) (`HW_PROFILE=t14s|p15`). Docs + tests retargeted.
 - Docs: ops/privacy howto in README + Phase 13/20/26/27 + Verify in hardened guide + fresh-install; install order lists `ops-hygiene.sh`.

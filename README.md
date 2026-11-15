@@ -254,7 +254,7 @@ Installs packages, stows configs into `$HOME`, installs `stow/system/` into `/et
 # Skip foxcage / ollama: SKIP_FOXCAGE=1 SKIP_OLLAMA=1 ./install.sh
 ```
 
-Machine profiles run in `./install.sh` via `scripts/apply-profile.sh` **after** `packages/pacman.txt` (exactly one profile): `profiles/$(hostname).sh` if it exists, otherwise `scripts/detect-profile.sh` (ThinkPad P15 → `thinkpad-p15`, ThinkPad T14s Gen 3 AMD 21CQ/21CR → `thinkpad-t14s`, other ThinkPads/laptop chassis → `laptop`). Pacman first so Optimus/NVIDIA packages exist before `thinkpad-p15` enables services and rebuilds UKIs (on `thinkpad-t14s` AMD hosts, `./install.sh` skips the Intel/NVIDIA GPU packages in `packages/pacman.txt`, including `egl-wayland`). There is no `nvidia.sh`; Optimus setup is inside `profiles/thinkpad-p15.sh`.
+Machine profiles run in `./install.sh` via `scripts/apply-profile.sh` **after** `packages/pacman.txt` (exactly one profile): `profiles/$(hostname).sh` if it exists, otherwise `scripts/detect-profile.sh` (ThinkPad P15 → `thinkpad-p15`, ThinkPad T14s Gen 3 AMD 21CQ/21CR → `thinkpad-t14s`, other ThinkPads/laptop chassis → `laptop`). Pacman first so Optimus/NVIDIA packages exist before `thinkpad-p15` enables services and rebuilds UKIs (GPU packages in `packages/pacman.txt`: the Intel packages are skipped on the AMD T14s, and the NVIDIA packages (`nvidia-open-dkms`, `nvidia-prime`, `nvidia-utils`, `egl-wayland`) are installed only when `has_nvidia_gpu` finds an NVIDIA display device on PCI, so the T14s, VMs and other laptops skip the NVIDIA stack and its DKMS builds). There is no `nvidia.sh`; Optimus setup is inside `profiles/thinkpad-p15.sh`.
 
 ThinkPad system configs (kernel cmdline templates, sleep, Wayland env, units) live in `stow/system/` and are installed by `scripts/system-setup.sh` as **root-owned regular files**, never stow symlinks (re-run it after editing `stow/system/`). Why, and how the cmdline UUID is handled: [hardened guide — `system/` files](docs/hardened-arch-gnome.md#kernel-cmdline--system-files-installed-not-stowed). On **T14s Gen 3 AMD**, check `cat /sys/power/mem_sleep`, `lscpu | grep -i ryzen`, `grep -E 'amd_iommu|amd_pstate' /proc/cmdline`, and charge thresholds under `/sys/class/power_supply/BAT*/charge_control_*_threshold`. On **P15**, verify Optimus/`prime-run` after reboot (`lspci -nnk -d 10de:`, charge 70–80). Installer + profile pull `mesa` / `vulkan-radeon` / `fprintd` (libva via mesa) on AMD; P15 Stage A (`arch-install-p15.sh` or `t14s-arch-install` `HW_PROFILE=p15`) seeds NVIDIA Optimus + optional ollama-cuda, and `profiles/thinkpad-p15.sh` refreshes it.
 
@@ -364,6 +364,12 @@ virbr0          → libvirt          (kali-disposable / NAT guests)
 virbr-malware   → lab-malware      (iface + source 192.168.200.0/24; DROP; no masq/forward)
 ```
 
+`virbr-malware` is defined with `<dns enable="no"/>`, so libvirt's dnsmasq only
+serves DHCP (`67/udp`, allowed in `lab-malware`) and advertises `192.168.200.1`
+as the guest's DNS server. Nothing answers on `:53` until INetSim runs
+(`lab-detonate.sh`), so lookups never reach real DNS. The zone has no ICMP
+rule: guests cannot ping the gateway; test with a port instead.
+
 `ensure_lab_malware_zone` (shared by `firewalld-lab-zones` + `lab-detonate`) binds **both**
 the interface and the `192.168.200.0/24` source, unbinds `virbr-malware` from
 `libvirt`/`block`, and uses `sudo` for permanent queries (polkit). Hosts
@@ -374,6 +380,8 @@ sudo firewall-cmd --get-default-zone          # drop
 sudo firewall-cmd --get-active-zones          # virbr-malware under lab-malware only
 sudo firewall-cmd --permanent --zone=lab-malware --list-all
 # expect: interfaces: virbr-malware; sources: 192.168.200.0/24; target: DROP; masquerade: no
+#   ports include 53/udp 53/tcp 67/udp
+ss -ulpn | grep '192.168.200.1:53'            # empty until INetSim runs (no libvirt DNS)
 ```
 
 #### How to: Stage B on a Stage A qcow2
@@ -410,6 +418,11 @@ Interactive: prompts for name/email, hooks, optional GPG/SSH signing.
 Noninteractive when `GIT_SETUP_NONINTERACTIVE=1` **or** stdin is not a TTY:
 skips prompts, enables hooks template, applies default name/email if unset
 (or placeholder `your@email.com`).
+
+Shared settings live in the tracked `stow/git/.config/git/config`. Machine-local
+settings (name/email, signing key, credential helper, `templateDir`) go to
+`~/.gitconfig`, which the script creates first, so running it never modifies
+the repo. git reads both files; `~/.gitconfig` wins on conflicts.
 
 #### How to: GNOME extension zips (`fetch-gnome-extensions.sh`)
 
