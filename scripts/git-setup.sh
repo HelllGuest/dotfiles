@@ -63,26 +63,26 @@ if [[ -n "$CURRENT_EMAIL" && "$CURRENT_EMAIL" != "your@email.com" && "${GIT_SETU
 else
   DEFAULT_NAME=$(git config --global user.name 2>/dev/null || echo "")
   DEFAULT_EMAIL=$(git config --global user.email 2>/dev/null || echo "")
+  # No built-in identity: this repo is public and runs on other people's machines.
+  # Noninteractive: GIT_USER_NAME / GIT_USER_EMAIL, else leave identity unset.
   if [[ "${GIT_SETUP_NONINTERACTIVE:-}" == "1" ]]; then
-    GIT_NAME="${DEFAULT_NAME:-Anoop Kumar}"
-    GIT_EMAIL="${DEFAULT_EMAIL:-helllguest@pm.me}"
-    # Replace placeholder / empty identity with defaults (no prompts).
-    if [[ -z $DEFAULT_EMAIL || $DEFAULT_EMAIL == "your@email.com" ]]; then
-      git config --global user.name "$GIT_NAME"
-      git config --global user.email "$GIT_EMAIL"
-      echo "  ✓ Identity defaults (noninteractive): $GIT_NAME <$GIT_EMAIL>"
-    else
-      echo "  ✓ Identity already set: $(git config --global user.name) <$DEFAULT_EMAIL>"
-    fi
+    GIT_NAME="${GIT_USER_NAME:-$DEFAULT_NAME}"
+    GIT_EMAIL="${GIT_USER_EMAIL:-$DEFAULT_EMAIL}"
+    [[ $GIT_EMAIL == "your@email.com" ]] && GIT_EMAIL=""
   else
     echo ""
-    read -rp "  Name  [${DEFAULT_NAME:-Anoop Kumar}]: " GIT_NAME
-    read -rp "  Email [${DEFAULT_EMAIL:-helllguest@pm.me}]: " GIT_EMAIL
-    GIT_NAME="${GIT_NAME:-${DEFAULT_NAME:-Anoop Kumar}}"
-    GIT_EMAIL="${GIT_EMAIL:-${DEFAULT_EMAIL:-helllguest@pm.me}}"
+    read -rp "  Name  [${DEFAULT_NAME}]: " GIT_NAME
+    read -rp "  Email [${DEFAULT_EMAIL}]: " GIT_EMAIL
+    GIT_NAME="${GIT_NAME:-$DEFAULT_NAME}"
+    GIT_EMAIL="${GIT_EMAIL:-$DEFAULT_EMAIL}"
+  fi
+  if [[ -n $GIT_NAME && -n $GIT_EMAIL ]]; then
     git config --global user.name "$GIT_NAME"
     git config --global user.email "$GIT_EMAIL"
-    echo "  ✓ $GIT_NAME <$GIT_EMAIL>"
+    echo "  ✓ Identity: $GIT_NAME <$GIT_EMAIL>"
+  else
+    echo "  ⚠ Git identity not set — later: git config --global user.name/user.email"
+    echo "    (or rerun with GIT_USER_NAME=… GIT_USER_EMAIL=…)"
   fi
 fi
 
@@ -104,8 +104,8 @@ fi
 if [[ "${GIT_SETUP_NONINTERACTIVE:-}" != "1" ]]; then
   read -rp "→ Configure GPG commit signing? (y/N): " GPG_SETUP
   if [[ "${GPG_SETUP,,}" == "y" ]]; then
-    GIT_NAME=$(git config --global user.name)
-    GIT_EMAIL=$(git config --global user.email)
+    GIT_NAME=$(git config --global user.name || true)
+    GIT_EMAIL=$(git config --global user.email || true)
     gpg --list-secret-keys --keyid-format=long 2>/dev/null | grep -A1 "sec" || true
     read -rp "  GPG key ID (Enter to generate Ed25519): " GPG_KEY
     if [[ -z "$GPG_KEY" ]]; then
@@ -139,7 +139,7 @@ EOF
     SSH_KEY=$(ls "$HOME/.ssh/id_ed25519.pub" 2>/dev/null || ls "$HOME/.ssh/"id_*.pub 2>/dev/null | head -1)
     if [[ -n "$SSH_KEY" ]]; then
       ALLOWED_SIGNERS="$GIT_CONFIG_DIR/allowed_signers"
-      GIT_EMAIL=$(git config --global user.email)
+      GIT_EMAIL=$(git config --global user.email || true)
       echo "$GIT_EMAIL namespaces=\"git\" $(cat "$SSH_KEY")" >> "$ALLOWED_SIGNERS"
       git config --global gpg.format ssh
       git config --global user.signingkey "$SSH_KEY"
