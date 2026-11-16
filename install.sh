@@ -43,6 +43,10 @@ if [ -f "packages/pacman.txt" ]; then
     if pacman -Q tuned-ppd >/dev/null 2>&1; then
         pkg_list="$(printf '%s\n' "$pkg_list" | grep -vx 'power-profiles-daemon' || true)"
     fi
+    # Same for rust vs rustup (Stage A installs rustup; rustup provides cargo/rustc).
+    if pacman -Q rustup >/dev/null 2>&1; then
+        pkg_list="$(printf '%s\n' "$pkg_list" | grep -vx 'rust' || true)"
+    fi
     if [ -f "scripts/lib/dmi.sh" ]; then
         # shellcheck source=scripts/lib/dmi.sh
         source scripts/lib/dmi.sh

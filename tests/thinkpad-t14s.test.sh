@@ -468,25 +468,30 @@ grep -q 'phase-14--thinkpad-optimization' "$ROOT/docs/fresh-install-coding-re.md
 
 # install.sh package step: pacman reads targets from stdin and does NOT skip
 # "#" lines, so comments/blanks must be stripped; with tuned-ppd installed,
-# power-profiles-daemon must be dropped. Run the real block with stubs.
+# power-profiles-daemon must be dropped; with rustup installed, rust must be
+# dropped (same --noconfirm conflict abort). Run the real block with stubs.
 _pkgblk="$(awk '/^if \[ -f "packages\/pacman.txt" \]; then$/{f=1} f; f&&/^fi$/{exit}' "$ROOT/install.sh")"
 [[ -n $_pkgblk ]] || fail "install.sh pacman.txt block not found"
 mkdir -p "$TMP/pk/bin" "$TMP/pk/repo/packages"
 printf '%s\n' '# comment' 'bash' '' '  # indented comment' 'power-profiles-daemon' \
-  'zsh   # trailing comment' >"$TMP/pk/repo/packages/pacman.txt"
+  'rust' 'zsh   # trailing comment' >"$TMP/pk/repo/packages/pacman.txt"
 cat >"$TMP/pk/bin/sudo" <<'STUB'
 #!/usr/bin/env bash
 exec "$@"
 STUB
 cat >"$TMP/pk/bin/pacman" <<'STUB'
 #!/usr/bin/env bash
-if [[ $1 == -Q ]]; then [[ -n ${PK_TUNED:-} && $2 == tuned-ppd ]]; exit; fi
+if [[ $1 == -Q ]]; then
+  [[ -n ${PK_TUNED:-} && $2 == tuned-ppd ]] && exit 0
+  [[ -n ${PK_RUSTUP:-} && $2 == rustup ]] && exit 0
+  exit 1
+fi
 cat >"$PK_OUT"
 STUB
 chmod +x "$TMP/pk/bin/sudo" "$TMP/pk/bin/pacman"
 for _mode in ppd tuned; do
   _tuned=""; [[ $_mode == tuned ]] && _tuned=1
-  (cd "$TMP/pk/repo" && PK_TUNED="$_tuned" PK_OUT="$TMP/pk/$_mode.out" \
+  (cd "$TMP/pk/repo" && PK_TUNED="$_tuned" PK_RUSTUP="$_tuned" PK_OUT="$TMP/pk/$_mode.out" \
     PATH="$TMP/pk/bin:$PATH" bash -c "$_pkgblk" >/dev/null) \
     || fail "install.sh package block failed ($_mode)"
   grep -q '#' "$TMP/pk/$_mode.out" && fail "pacman stdin must not contain comments ($_mode)"
@@ -496,6 +501,9 @@ done
 grep -qx 'power-profiles-daemon' "$TMP/pk/ppd.out" || fail "PPD host must still get power-profiles-daemon"
 grep -qx 'power-profiles-daemon' "$TMP/pk/tuned.out" \
   && fail "tuned-ppd host must not request power-profiles-daemon (conflict aborts --noconfirm)" || true
+grep -qx 'rust' "$TMP/pk/ppd.out" || fail "host without rustup must still get rust"
+grep -qx 'rust' "$TMP/pk/tuned.out" \
+  && fail "rustup host must not request rust (conflict aborts --noconfirm)" || true
 # GPU packages: Intel stack dropped on AMD T14s; NVIDIA stack kept only when an
 # NVIDIA display-class PCI function exists (P15), dropped elsewhere (T14s, VMs).
 mkdir -p "$TMP/pk/repo/scripts/lib"
