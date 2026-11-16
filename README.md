@@ -498,7 +498,7 @@ Key runtime dependencies (`scripts/check.sh` asserts binaries, shell tools, syml
 
 **Graphics (optional):** `gimp` + PhotoGIMP via `scripts/install-photogimp.sh`
 
-**Sandboxed browser (optional):** [foxcage](https://gitlab.com/grepular/foxcage) runs Firefox in a rootless Podman container (`scripts/install-foxcage.sh`, pinned commit + SHA-256; needs Wayland, `podman`, `passt`, `xdg-dbus-proxy`). `foxcage @tmp <url>` opens a throwaway cage. Not set as default browser; opt in with `xdg-settings set default-web-browser foxcage.desktop`.
+**Sandboxed browser (optional):** [foxcage](https://gitlab.com/grepular/foxcage) runs Firefox in a rootless Podman container (`scripts/install-foxcage.sh`, pinned commit + SHA-256; needs Wayland, `podman`, `passt`, `xdg-dbus-proxy`, plus `fuse-overlayfs`, set as `mount_program` in `stow/containers` `storage.conf` because linux-hardened has no unprivileged overlayfs). `foxcage @tmp <url>` opens a throwaway cage. Not set as default browser; opt in with `xdg-settings set default-web-browser foxcage.desktop`.
 
 **GNOME dock:** Dash2Dock Animated via `scripts/install-dash2dock.sh` (EGO; listed in `gnome/extensions.txt`)
 

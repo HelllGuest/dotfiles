@@ -13,6 +13,14 @@ grep -q 'f9a87fc60e3c3b3b740ec0dcf64ac1c72287d65cc63269822dd805fb98d0a8fe' "$SCR
   || fail "script SHA-256 pin missing"
 grep -qx 'xdg-dbus-proxy' "$ROOT/packages/pacman.txt" || fail "pacman.txt missing xdg-dbus-proxy"
 grep -qx 'passt' "$ROOT/packages/pacman.txt" || fail "pacman.txt missing passt"
+# linux-hardened lacks unprivileged overlayfs; without FUSE, rootless storage fails.
+grep -qx 'fuse-overlayfs' "$ROOT/packages/pacman.txt" || fail "pacman.txt missing fuse-overlayfs"
+grep -q 'missing+=(fuse-overlayfs)' "$SCRIPT" || fail "install-foxcage.sh must warn without fuse-overlayfs"
+grep -q 'podman storage unusable' "$ROOT/scripts/check.sh" || fail "check.sh must probe podman storage"
+# buildah's build-context overlay ignores auto-detection; needs explicit mount_program.
+grep -qx 'mount_program = "/usr/bin/fuse-overlayfs"' \
+  "$ROOT/stow/containers/.config/containers/storage.conf" \
+  || fail "storage.conf must set overlay mount_program (podman build on linux-hardened)"
 grep -q 'scripts/install-foxcage.sh' "$ROOT/install.sh" || fail "install.sh does not run install-foxcage.sh"
 grep -q 'SKIP_FOXCAGE:-0' "$ROOT/install.sh" || fail "install.sh must honor SKIP_FOXCAGE"
 grep -B3 'bash scripts/install-foxcage.sh' "$ROOT/install.sh" | grep -q 'command -v podman' \

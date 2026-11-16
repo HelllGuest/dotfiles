@@ -56,6 +56,8 @@ missing=()
 command -v podman >/dev/null 2>&1 || missing+=(podman)
 command -v pasta >/dev/null 2>&1 || missing+=(passt)
 command -v xdg-dbus-proxy >/dev/null 2>&1 || missing+=(xdg-dbus-proxy)
+# linux-hardened: no unprivileged overlayfs, so rootless Podman needs FUSE.
+command -v fuse-overlayfs >/dev/null 2>&1 || missing+=(fuse-overlayfs)
 if ((${#missing[@]})); then
   echo "warning: missing runtime deps: ${missing[*]} — sudo pacman -S --needed ${missing[*]}" >&2
 fi

@@ -9,6 +9,7 @@ stow/bash/.inputrc
 stow/btop/.config/btop/btop.conf
 stow/btop/.config/btop/themes/gruvbox_dark.theme
 stow/containers/.config/containers/containers.conf
+stow/containers/.config/containers/storage.conf
 stow/continue/.continue/config.yaml
 stow/contour/.config/contour/contour.yml
 stow/cursor/.config/Cursor/User/settings.json

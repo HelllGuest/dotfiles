@@ -73,6 +73,9 @@ crun
 netavark
 aardvark-dns
 passt
+# linux-hardened has no unprivileged overlayfs (CONFIG_OVERLAY_FS_UNPRIVILEGED
+# unset); rootless Podman uses this via stow/containers storage.conf mount_program.
+fuse-overlayfs
 catatonit
 bubblewrap
 # foxcage (Firefox in rootless Podman): D-Bus filtering proxy
