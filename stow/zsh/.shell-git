@@ -5,24 +5,23 @@ export FORGIT_NO_ALIASES=1
 export FORGIT_LOG_GRAPH_ENABLE=true
 export FORGIT_COPY_CMD='wl-copy'
 
-if [[ -n "${ZSH_VERSION:-}" ]]; then
-    : # forgit loaded via zinit in .zsh-plugins
-elif [[ -f /usr/share/zsh/site-functions/forgit.plugin.zsh ]]; then
-    # shellcheck disable=SC1091
-    source /usr/share/zsh/site-functions/forgit.plugin.zsh
+# zsh: zinit loads forgit after the first prompt (`wait`), so its functions do
+# not exist yet here; aliases resolve at call time, so define them anyway.
+# bash: the AUR package ships one bash+zsh script under the zsh plugins dir.
+_forgit_plugin=/usr/share/zsh/plugins/forgit/forgit.plugin.zsh
+if [[ -z "${ZSH_VERSION:-}" && -f "$_forgit_plugin" ]]; then
+    # shellcheck disable=SC1090
+    source "$_forgit_plugin"
 fi
+unset _forgit_plugin
 
-_forgit_ready() {
-    whence forgit::add &>/dev/null 2>&1 || declare -f forgit::add &>/dev/null 2>&1
-}
-
-if _forgit_ready; then
+if [[ -n "${ZSH_VERSION:-}" ]] || declare -F forgit::add >/dev/null 2>&1; then
     alias gfga='forgit::add'
     alias gfgd='forgit::diff'
     alias gfglo='forgit::log'
     alias gfgclean='forgit::clean'
     alias gfgrb='forgit::rebase'
-    alias gfgst='forgit::stash show'
+    alias gfgst='forgit::stash::show'
     alias gfgco='forgit::checkout::file'
     alias gfgcob='forgit::checkout::branch'
     alias gfgcoc='forgit::checkout::commit'

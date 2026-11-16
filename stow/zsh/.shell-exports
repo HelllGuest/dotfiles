@@ -62,22 +62,28 @@ fi
 # ghidra-cli (akiselev): ~/.cargo/bin/ghidra shadows Arch GUI /usr/bin/ghidra
 export GHIDRA_INSTALL_DIR="${GHIDRA_INSTALL_DIR:-/opt/ghidra}"
 # Prefer newest full JDK >= 21 (Android may set JAVA_HOME to 17)
-if [[ -z "${GHIDRA_CLI_JAVA_HOME:-}" ]]; then
-  _ghidra_jdk=""
-  _ghidra_jdk_ver=0
+_ghidra_pick_jdk() {
+  # zsh errors on an unmatched glob (no JDK installed); bash keeps it literal
+  # and the -x check below skips it.
+  [[ -n "${ZSH_VERSION:-}" ]] && setopt local_options null_glob
+  local _cand _ver _jdk="" _jdk_ver=0
   for _cand in /usr/lib/jvm/java-*-openjdk; do
     [[ -x "${_cand}/bin/javac" ]] || continue
     _ver="${_cand##*/java-}"
     _ver="${_ver%%-*}"
     [[ "${_ver}" =~ ^[0-9]+$ ]] || continue
-    if (( _ver >= 21 && _ver > _ghidra_jdk_ver )); then
-      _ghidra_jdk="${_cand}"
-      _ghidra_jdk_ver="${_ver}"
+    if (( _ver >= 21 && _ver > _jdk_ver )); then
+      _jdk="${_cand}"
+      _jdk_ver="${_ver}"
     fi
   done
-  [[ -n "${_ghidra_jdk}" ]] && export GHIDRA_CLI_JAVA_HOME="${_ghidra_jdk}"
-  unset _ghidra_jdk _ghidra_jdk_ver _cand _ver
+  [[ -n "${_jdk}" ]] && export GHIDRA_CLI_JAVA_HOME="${_jdk}"
+  return 0
+}
+if [[ -z "${GHIDRA_CLI_JAVA_HOME:-}" ]]; then
+  _ghidra_pick_jdk
 fi
+unset -f _ghidra_pick_jdk
 
 # Go
 export GOPATH="$HOME/go"
