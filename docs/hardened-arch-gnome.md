@@ -649,7 +649,7 @@ title   Arch Linux (Hardened)
 linux   /vmlinuz-linux-hardened
 initrd  /intel-ucode.img
 initrd  /initramfs-linux-hardened.img
-options rd.luks.name=YOUR_UUID=cryptroot root=/dev/mapper/cryptroot rootflags=subvol=@ rw quiet loglevel=3 mem_sleep_default=s2idle apparmor=1 security=apparmor intel_iommu=on
+options rd.luks.name=YOUR_UUID=cryptroot rd.luks.options=discard root=/dev/mapper/cryptroot rootflags=subvol=@ rw quiet loglevel=3 mem_sleep_default=s2idle lsm=landlock,lockdown,yama,integrity,apparmor,bpf intel_iommu=on
 ```
 
 ---
@@ -667,7 +667,7 @@ title   Arch Linux (LTS)
 linux   /vmlinuz-linux-lts
 initrd  /intel-ucode.img
 initrd  /initramfs-linux-lts.img
-options rd.luks.name=YOUR_UUID=cryptroot root=/dev/mapper/cryptroot rootflags=subvol=@ rw quiet loglevel=3 mem_sleep_default=s2idle apparmor=1 security=apparmor intel_iommu=on
+options rd.luks.name=YOUR_UUID=cryptroot rd.luks.options=discard root=/dev/mapper/cryptroot rootflags=subvol=@ rw quiet loglevel=3 mem_sleep_default=s2idle lsm=landlock,lockdown,yama,integrity,apparmor,bpf intel_iommu=on
 ```
 
 ---
@@ -1301,8 +1301,10 @@ nano /etc/kernel/cmdline
 Contents (single line):
 
 ```text
-rd.luks.name=YOUR_UUID=cryptroot root=/dev/mapper/cryptroot rootflags=subvol=@ rw quiet loglevel=3 mem_sleep_default=s2idle apparmor=1 security=apparmor intel_iommu=on
+rd.luks.name=YOUR_UUID=cryptroot rd.luks.options=discard root=/dev/mapper/cryptroot rootflags=subvol=@ rw quiet loglevel=3 mem_sleep_default=s2idle lsm=landlock,lockdown,yama,integrity,apparmor,bpf intel_iommu=on
 ```
+
+`rd.luks.options=discard` lets `fstrim.timer` reach the SSD through LUKS (the free-block layout becomes visible to someone holding the disk; contents stay encrypted). On an existing install without it: `sudo cryptsetup --allow-discards --persistent refresh cryptroot`, then check `lsblk -D /dev/mapper/cryptroot` (DISC-GRAN non-zero). `lsm=` replaces the deprecated `security=apparmor`.
 
 ---
 
