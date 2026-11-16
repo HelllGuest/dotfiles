@@ -809,6 +809,11 @@ Apply:
 sysctl --system
 ```
 
+`scripts/system-setup.sh` also installs `/etc/sysctl.d/99-perf.conf`
+(`kernel.perf_event_paranoid = 2`): linux-hardened defaults to 3, which blocks
+`perf` for every non-root user. Attaching a debugger to a running process
+(`gdb -p`, `strace -p`) still needs `sudo` because of `ptrace_scope = 1`.
+
 ---
 
 ## User namespaces (required for Flatpak / Podman under linux-hardened)
@@ -1700,7 +1705,7 @@ Ensure profiles are in **enforce** mode.
 # Verify IOMMU
 
 ```bash
-dmesg | grep -i iommu
+sudo dmesg | grep -i iommu   # kernel.dmesg_restrict = 1 (Phase 12)
 ```
 
 Expected output shows IOMMU entries confirming Intel VT-d is active.

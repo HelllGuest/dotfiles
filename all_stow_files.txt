@@ -62,6 +62,7 @@ stow/system/etc/geolocation
 stow/system/etc/makepkg.conf.d/zz-x86-64-v3.conf
 stow/system/etc/polkit-1/rules.d/50-kali-lan-host-prep.rules
 stow/system/etc/polkit-1/rules.d/50-vpn-location-sync.rules
+stow/system/etc/sysctl.d/99-perf.conf
 stow/system/etc/systemd/logind.conf.d/thinkpad-lid.conf
 stow/system/etc/systemd/sleep.conf.d/s2idle.conf
 stow/system/etc/systemd/system/virbr0-up.service

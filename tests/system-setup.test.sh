@@ -67,6 +67,9 @@ check "700 parent dir made traversable" \
     test "$(mode_of "$root/etc/environment.d")" = 755
 check "installed file mode 644" \
     test "$(mode_of "$root/etc/environment.d/99-wayland.conf")" = 644
+check "perf sysctl installed 644 (linux-hardened defaults paranoid to 3)" \
+    bash -c 'test "$(stat -c %a "$1")" = 644 && grep -qx "kernel.perf_event_paranoid = 2" "$1"' _ \
+      "$root/etc/sysctl.d/99-perf.conf"
 check "default: 99-wayland.conf keeps LIBVA_DRIVER_NAME=iHD" \
     grep -qx "LIBVA_DRIVER_NAME=iHD" "$root/etc/environment.d/99-wayland.conf"
 check "foreign cmdline untouched" \

@@ -152,6 +152,9 @@ changed_list=" ${changed[*]} "
 if [[ "$changed_list" == *" etc/udev/rules.d/"* ]]; then
     sudo udevadm control --reload || true
 fi
+if [[ "$changed_list" == *" etc/sysctl.d/"* ]]; then
+    sudo sysctl --system >/dev/null || echo "WARN: sysctl --system failed; reboot to apply sysctl.d." >&2
+fi
 if [[ "$changed_list" == *" etc/modprobe.d/"* ]]; then
     echo "Rebuilding UKIs (modprobe.d changed)..."
     sudo mkinitcpio -P
