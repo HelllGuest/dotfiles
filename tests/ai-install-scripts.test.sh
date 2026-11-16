@@ -366,8 +366,13 @@ grep -q 'Remote Control' "$ROOT/stow/privacy/.config/environment.d/90-telemetry-
 
 # Browser telemetry hardening
 [[ -f "$ROOT/browsers/policies/chromium-base.json" ]] || fail "missing chromium-base.json"
-grep -q 'CloudReportingEnabled' "$ROOT/browsers/policies/chromium-base.json" \
-  || fail "chromium-base missing CloudReportingEnabled"
+# CloudReportingEnabled is cloud_only (ignored in local JSON); removed/misspelled keys are no-ops.
+for _bad in CloudReportingEnabled SafeBrowsingExtendedReportingEnabled SpellcheckServiceEnabled \
+  AutofillAddressEnabled AutofillCreditCardEnabled PromotionalTabsEnabled; do
+  grep -q "\"$_bad\"" "$ROOT/browsers/policies/chromium-base.json" \
+    && fail "chromium-base must not set removed/deprecated/misspelled $_bad"
+done
+unset _bad
 grep -q 'DnsOverHttpsMode' "$ROOT/browsers/policies/chromium-base.json" \
   || fail "chromium-base missing DnsOverHttpsMode (Chrome+Brave parity)"
 grep -q 'ChromeCleanupReportingEnabled' "$ROOT/browsers/policies/chromium-base.json" \
@@ -386,8 +391,8 @@ grep -q 'flatpak_ext_arch' "$ROOT/scripts/lib/browsers.sh" \
   || fail "browsers.sh must define flatpak_ext_arch"
 grep -q 'zen_systemconfig_dir' "$ROOT/scripts/check.sh" \
   || fail "check.sh must use zen_systemconfig_dir (arch parity)"
-grep -q 'CloudReportingEnabled missing' "$ROOT/scripts/check.sh" \
-  || fail "check.sh must ✗ stale Chrome CloudReporting"
+grep -q 'policies stale vs repo' "$ROOT/scripts/check.sh" \
+  || fail "check.sh must ✗ deployed Chromium policies that differ from the repo"
 grep -q 'check_fail()' "$ROOT/scripts/check.sh" \
   || fail "check.sh must define check_fail for ✗ probes"
 grep -q 'CHECK_FAILED' "$ROOT/scripts/check.sh" \
@@ -413,17 +418,25 @@ bash -n "$ROOT/scripts/browser-hardening.sh" || fail "bash -n browser-hardening.
 bash -n "$ROOT/scripts/lib/browsers.sh" || fail "bash -n browsers.sh"
 grep -q "arm64) printf 'aarch64'" "$ROOT/scripts/lib/browsers.sh" \
   || fail "flatpak_ext_arch must map arm64 to aarch64"
-# Chrome uses base only when chrome-extra.json is absent
-[[ ! -f "$ROOT/browsers/policies/chrome-extra.json" ]] \
-  || fail "chrome-extra.json stub should be removed (base-only Chrome policies)"
-jq -e '.CloudReportingEnabled == false and .DnsOverHttpsMode == "off"' \
+jq -e '.MetricsReportingEnabled == false and .DnsOverHttpsMode == "off"
+  and .SpellCheckServiceEnabled == false and .PromotionsEnabled == false
+  and (.AutofillSettings[0].url_pattern == "*")' \
   "$ROOT/browsers/policies/chromium-base.json" >/dev/null \
   || fail "chromium-base missing core privacy keys"
-# Optional extra still merges when present (Brave path)
+# Brand overlays merge over base (Chrome: Google AI features; Brave: Brave services).
+jq -s 'add' "$ROOT/browsers/policies/chromium-base.json" \
+  "$ROOT/browsers/policies/chrome-extra.json" \
+  | jq -e '.AIModeSettings == 1 and .HelpMeWriteSettings == 2 and .MetricsReportingEnabled == false' >/dev/null \
+  || fail "chrome policy merge broken"
 jq -s 'add' "$ROOT/browsers/policies/chromium-base.json" \
   "$ROOT/browsers/policies/brave-extra.json" \
-  | jq -e '.BraveP3AEnabled == false and .CloudReportingEnabled == false' >/dev/null \
+  | jq -e '.BraveP3AEnabled == false and .BraveStatsPingEnabled == false and .MetricsReportingEnabled == false' >/dev/null \
   || fail "brave policy merge broken"
+for _bad in BraveStatsUsagePingEnabled BraveLeoEnabled; do
+  grep -q "\"$_bad\"" "$ROOT/browsers/policies/brave-extra.json" \
+    && fail "brave-extra must not set nonexistent $_bad"
+done
+unset _bad
 
 # Behavioral: kimi MCP merge preserves sibling servers
 python3 - <<'PY' || fail "kimi mcp merge simulation failed"

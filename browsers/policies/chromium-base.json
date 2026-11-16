@@ -1,26 +1,32 @@
 {
   "MetricsReportingEnabled": false,
-  "CloudReportingEnabled": false,
-  "SafeBrowsingExtendedReportingEnabled": false,
   "SafeBrowsingSurveysEnabled": false,
+  "FeedbackSurveysEnabled": false,
   "DomainReliabilityAllowed": false,
   "PasswordLeakDetectionEnabled": false,
   "UserFeedbackAllowed": false,
   "UrlKeyedAnonymizedDataCollectionEnabled": false,
+  "WebRtcEventLogCollectionAllowed": false,
   "ShoppingListEnabled": false,
   "ChromeVariations": 2,
   "DnsOverHttpsMode": "off",
   "BrowserSignin": 0,
   "SyncDisabled": true,
-  "SpellcheckServiceEnabled": false,
+  "SpellCheckServiceEnabled": false,
   "SearchSuggestEnabled": false,
   "AlternateErrorPagesEnabled": false,
   "NetworkPredictionOptions": 2,
   "DefaultBrowserSettingEnabled": false,
-  "AutofillAddressEnabled": false,
-  "AutofillCreditCardEnabled": false,
+  "AutofillSettings": [
+    {
+      "url_pattern": "*",
+      "blocked_types": ["contact_info", "identity_docs", "travel", "payments"]
+    }
+  ],
+  "PaymentMethodQueryEnabled": false,
   "PasswordManagerEnabled": false,
-  "PromotionalTabsEnabled": false,
+  "PromotionsEnabled": false,
   "BackgroundModeEnabled": false,
-  "EnableMediaRouter": false
+  "EnableMediaRouter": false,
+  "BlockThirdPartyCookies": true
 }

@@ -63,7 +63,7 @@ Thank you for helping improve this setup. Follow these guidelines to keep the re
 - Keep `pacman.txt`, `aur.txt`, `flatpak.txt`, and `browsers.txt` in sync with configs that depend on them.
 - `evolution-data-server` — required by `gnome-shell-calendar-server` (`libecal` / `libedataserver`).
 - `wireless-regdb` — provides `/usr/lib/firmware/regulatory.db` (Wi-Fi regdomain).
-- Browser policies: `browsers/policies/chromium-base.json` (Chrome uses this alone); optional brand overlays (`brave-extra.json`; omit file = base only). Zen: `zen-policies.json` + `browsers/zen/user.js`. LibreWolf: `browsers/librewolf/librewolf.overrides.cfg`. Deploy via `scripts/lib/browsers.sh` / `browser-hardening.sh`.
+- Browser policies: `browsers/policies/chromium-base.json` (Chrome + Brave) merged with brand overlays `chrome-extra.json` (Google AI/services) and `brave-extra.json` (Brave services); missing overlay = base only. Validate names against the current [Chrome policy list](https://chromeenterprise.google/policies/) and brave-core `policy_definitions/BraveSoftware` (names are case-sensitive; unknown, `cloud_only` and removed keys are silently ignored). Zen: `zen-policies.json` + `browsers/zen/user.js`. LibreWolf: `browsers/librewolf/librewolf.overrides.cfg`. Deploy via `scripts/lib/browsers.sh` / `browser-hardening.sh`.
 - Shell plugin packages: pacman extras in `pacman.txt`; AUR plugins such as **forgit** and **blesh-git** belong in `aur.txt`.
 
 ### GNOME (`gnome/`)

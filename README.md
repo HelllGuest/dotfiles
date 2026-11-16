@@ -190,7 +190,7 @@ dotfiles/
 │   ├── zram/ gdm/   # templates → zram-setup.sh / gdm-setup.sh
 │   ├── kitty/ ghostty/ alacritty/ contour/
 │   └── nvim/ starship/ atuin/ git/ vscode/ cursor/ … 
-├── browsers/        # chromium-base (+ brave-extra); zen; LibreWolf
+├── browsers/        # chromium-base (+ chrome-extra, brave-extra); zen; LibreWolf
 ├── packages/        # pacman.txt, flatpak.txt, aur.txt, re-extra.txt, thinkpad-t14s.txt, …
 ├── profiles/        # thinkpad-p15 | thinkpad-t14s | laptop | p15
 ├── scripts/         # Installers, setup, check (lib/ = dmi, charge conf, shared helpers)
@@ -505,7 +505,7 @@ Key runtime dependencies (`scripts/check.sh` asserts binaries, shell tools, syml
 
 **AUR** (via `install-aur.sh`, bootstraps `paru` if needed): `blesh-git`, `bootvine-git`, `curlie`, `forgit`, GNOME shell extensions, `vscodium-bin` (settings in `stow/vscode/`)
 
-**Flatpaks** (via `install-flatpaks.sh`): Brave, Zen, Google Chrome, LibreWolf, Proton VPN, Android Studio. Chrome may be `--system` or `--user`; both satisfy `check.sh` / hardening presence checks. Browser telemetry debloat: `scripts/browser-hardening.sh` (Chrome = `chromium-base` only; Brave = base + `brave-extra`; Zen `user.js` per real profile + Flatpak `systemconfig` + `/etc/firefox/policies` for native; LibreWolf upstream + `librewolf.overrides.cfg`). Launch Zen once before re-running hardening if profiles are new. `/etc` policy paths need sudo.
+**Flatpaks** (via `install-flatpaks.sh`): Brave, Zen, Google Chrome, LibreWolf, Proton VPN, Android Studio. Chrome may be `--system` or `--user`; both satisfy `check.sh` / hardening presence checks. Browser telemetry debloat: `scripts/browser-hardening.sh` (Chrome = `chromium-base` + `chrome-extra`, which turns off Google AI features (AI Mode, Help Me Write, Gemini on pages, on-device model download); Brave = base + `brave-extra`; `check.sh` fails if the deployed Chrome/Brave policy differs from the repo; verify in `chrome://policy` / `brave://policy`; Zen `user.js` per real profile + Flatpak `systemconfig` + `/etc/firefox/policies` for native; LibreWolf upstream + `librewolf.overrides.cfg`). Launch Zen once before re-running hardening if profiles are new. `/etc` policy paths need sudo.
 
 **Terminals:** `kitty` (primary; Super+Return), `ghostty`, optional `alacritty` / `contour`, plus `gnome-console` (kgx). Rice: `bash scripts/rice-setup.sh` (Gruvbox accents; privacy: `show-in-lock-screen false`). Optional suckless `st`: `bash scripts/build-st.sh` (`builds/st/`).
 

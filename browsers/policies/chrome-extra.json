@@ -1,0 +1,18 @@
+{
+  "AIModeSettings": 1,
+  "ThirdPartyAiChatSettings": 1,
+  "SearchContentSharingSettings": 1,
+  "HelpMeWriteSettings": 2,
+  "TabCompareSettings": 2,
+  "HistorySearchSettings": 2,
+  "DevToolsGenAiSettings": 2,
+  "CreateThemesSettings": 2,
+  "AutofillGenAiSettings": 2,
+  "GeminiActOnWebSettings": 1,
+  "GeminiSparkSettings": 1,
+  "GenAILocalFoundationalModelSettings": 1,
+  "BuiltInAIAPIsEnabled": false,
+  "GoogleSearchSidePanelEnabled": false,
+  "MediaRecommendationsEnabled": false,
+  "NTPCardsVisible": false
+}

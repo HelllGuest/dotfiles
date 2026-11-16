@@ -336,23 +336,21 @@ for policy in /etc/opt/chrome/policies/managed/00-privacy.json /etc/brave/polici
         check_fail "$policy missing (run scripts/browser-hardening.sh)"
     fi
 done
-if [[ -f /etc/opt/chrome/policies/managed/00-privacy.json ]] \
-  && grep -q '"CloudReportingEnabled": false' /etc/opt/chrome/policies/managed/00-privacy.json; then
-    echo "✓ Chrome CloudReportingEnabled=false"
-elif [[ -f /etc/opt/chrome/policies/managed/00-privacy.json ]]; then
-    check_fail "Chrome CloudReportingEnabled missing (bash scripts/browser-hardening.sh)"
-else
-    check_fail "Chrome policy file missing (bash scripts/browser-hardening.sh)"
-fi
-if [[ -f /etc/brave/policies/managed/00-privacy.json ]] \
-  && grep -q '"CloudReportingEnabled": false' /etc/brave/policies/managed/00-privacy.json \
-  && grep -q '"BraveP3AEnabled": false' /etc/brave/policies/managed/00-privacy.json; then
-    echo "✓ Brave CloudReporting + P3A off"
-elif [[ -f /etc/brave/policies/managed/00-privacy.json ]]; then
-    check_fail "Brave policies stale (bash scripts/browser-hardening.sh)"
-else
-    check_fail "Brave policy file missing (bash scripts/browser-hardening.sh)"
-fi
+# Deployed Chromium policies must equal base + brand overlay from the repo.
+check_chromium_policy() {
+    local label=$1 extra=$2 dest=$3 want
+    if [[ ! -f "$dest" ]]; then
+        check_fail "$label policy file missing (bash scripts/browser-hardening.sh)"
+    elif ! want="$(chromium_policy_json "$extra" 2>/dev/null | jq -S .)"; then
+        check_fail "$label policy check needs jq + browsers/policies (bash scripts/browser-hardening.sh)"
+    elif [[ "$(jq -S . "$dest" 2>/dev/null)" == "$want" ]]; then
+        echo "✓ $label policies match repo ($(jq length "$dest") keys)"
+    else
+        check_fail "$label policies stale vs repo (bash scripts/browser-hardening.sh)"
+    fi
+}
+check_chromium_policy Chrome "$CHROME_EXTRA" /etc/opt/chrome/policies/managed/00-privacy.json
+check_chromium_policy Brave "$BRAVE_EXTRA" /etc/brave/policies/managed/00-privacy.json
 if [[ -f /etc/firefox/policies/policies.json ]] \
   && grep -q '"DisableTelemetry": true' /etc/firefox/policies/policies.json; then
     echo "✓ /etc/firefox/policies/policies.json DisableTelemetry"
