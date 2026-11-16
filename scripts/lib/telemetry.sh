@@ -33,7 +33,6 @@ source "$_TELEMETRY_MERGE_LIB"
 unset _TELEMETRY_MERGE_LIB
 
 # Stable aliases for callers / tests.
-TELEMETRY_VSCODE_KEYS=("${VSCODE_TELEMETRY_FAMILY_KEYS[@]}")
 TELEMETRY_CURSOR_KEYS=("${VSCODE_TELEMETRY_CURSOR_KEYS[@]}")
 telemetry_is_cursor_settings_path() { vscode_is_cursor_settings_path "$@"; }
 telemetry_keys_for_settings_path() { vscode_telemetry_keys_for_path "$@"; }

@@ -2,7 +2,7 @@
 Type=Application
 Name=Lab RE
 Comment=Reverse-engineering Podman sandbox
-Exec=bash -lc 'lab-re'
+Exec=bash -ic "lab-re"
 Icon=utilities-terminal
 Terminal=true
 Categories=Development;Security;

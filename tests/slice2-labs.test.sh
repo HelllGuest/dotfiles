@@ -138,4 +138,41 @@ grep -q 'env_var.LAB_BADGE' "$ROOT/stow/starship/.config/starship.toml" \
 [[ ! -f $ROOT/stow/kitty/.config/kitty/theme.conf ]] \
   || fail "kitty must stay stock (no theme.conf)"
 
+# Desktop launchers: lab-* are .bashrc functions, so Exec must be an interactive
+# bash (bash -lc skips .bashrc); quotes must be spec-valid (double, not single).
+APPS="$ROOT/stow/applications/.local/share/applications"
+for fn in lab-re lab-android; do
+  grep -qx "Exec=bash -ic \"$fn\"" "$APPS/$fn.desktop" \
+    || fail "$fn.desktop must use Exec=bash -ic \"$fn\""
+done
+grep -q "^Exec=.*'" "$APPS"/*.desktop && fail "launcher Exec must not use single quotes"
+if command -v desktop-file-validate >/dev/null 2>&1; then
+  desktop-file-validate "$APPS"/*.desktop 2>&1 | grep -v ' hint: ' | grep -q . \
+    && fail "desktop-file-validate: $(desktop-file-validate "$APPS"/*.desktop 2>&1 | grep -v ' hint: ' | head -1)"
+fi
+grep -q 'BASH_EXECUTION_STRING' "$ROOT/stow/bash/.bashrc" \
+  || fail ".bashrc must not attach ble.sh for bash -ic launchers"
+# Terminal=true launchers open in kitty via xdg-terminal-exec.
+grep -qx 'xdg-terminal-exec' "$ROOT/packages/pacman.txt" || fail "pacman.txt missing xdg-terminal-exec"
+[[ "$(grep -v '^#' "$ROOT/stow/kitty/.config/xdg-terminals.list" | head -1)" == kitty.desktop ]] \
+  || fail "xdg-terminals.list must prefer kitty.desktop"
+
+# Re-exec into kitty with no args must not pass an empty argument (bash printf
+# '%q ' with zero args yields '', which became podman's container command).
+if command -v script >/dev/null 2>&1; then
+  STUB="$(mktemp -d)"
+  trap 'rm -rf -- "$STUB"' EXIT
+  printf '#!/bin/sh\nfor a in "$@"; do printf "<%%s>" "$a"; done; echo\n' >"$STUB/kitty"
+  chmod +x "$STUB/kitty"
+  for sh in bash zsh; do
+    command -v "$sh" >/dev/null 2>&1 || continue
+    out="$(script -qec "env -i HOME=/nonexistent TERM=xterm SHELL=/bin/sh PATH=$STUB:/usr/bin:/bin \
+      $sh -c 'source \"$ROOT/stow/zsh/.shell-functions\"; _lab_reexec_kitty T \"#000\" lab-re'" /dev/null 2>&1 | tr -d '\r')"
+    grep -q '<-c><lab-re >' <<<"$out" || fail "$sh: zero-arg kitty re-exec must run 'lab-re ' (got: $out)"
+    grep -q "<lab-re ''" <<<"$out" && fail "$sh: zero-arg kitty re-exec passed an empty argument"
+  done
+else
+  echo "NOTE: skip kitty re-exec check (no script(1) for a pty)"
+fi
+
 echo "PASS: slice2-labs.test.sh"

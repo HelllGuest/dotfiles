@@ -2,7 +2,7 @@
 Type=Application
 Name=Lab Android
 Comment=Android / Flutter Podman sandbox
-Exec=bash -lc 'lab-android'
+Exec=bash -ic "lab-android"
 Icon=utilities-terminal
 Terminal=true
 Categories=Development;

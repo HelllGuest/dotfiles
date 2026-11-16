@@ -35,6 +35,7 @@ stow/gnome-text-editor/.local/share/gtksourceview-5/styles/gruvbox-dark.xml
 stow/htop/.config/htop/htoprc
 stow/kitty/.config/kitty/kitty.conf
 stow/kitty/.config/kitty/sessions/dev.conf
+stow/kitty/.config/xdg-terminals.list
 stow/npm/.node-version
 stow/npm/.npmrc
 stow/nvim/.config/nvim/init.lua

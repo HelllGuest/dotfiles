@@ -207,8 +207,10 @@ _lab_reexec_kitty() {
     _has kitty || return 1
     [[ -z "${KITTY_WINDOW_ID:-}${KITTY_PID:-}" ]] || return 1
     [[ -t 1 ]] || return 1
-    local qargs
-    printf -v qargs '%q ' "$@"
+    # bash's printf applies the format once even with no args, yielding '' (an
+    # empty argument that becomes podman's container command), so guard on $#.
+    local qargs=""
+    (($#)) && printf -v qargs '%q ' "$@"
     exec kitty --title "$title" \
         --override "active_border_color=${accent}" \
         --override "active_tab_background=${accent}" \

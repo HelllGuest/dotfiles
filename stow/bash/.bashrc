@@ -79,7 +79,8 @@ if command -v fnm >/dev/null 2>&1; then
     eval "$(fnm env --use-on-cd --shell bash)"
 fi
 
-if [[ -f "${XDG_DATA_HOME}/blesh/ble.sh" ]]; then
+# Not for `bash -ic CMD` (desktop launchers): no line editor needed to run one command.
+if [[ -f "${XDG_DATA_HOME}/blesh/ble.sh" && -z "${BASH_EXECUTION_STRING:-}" ]]; then
     # shellcheck disable=SC1091
     source "${XDG_DATA_HOME}/blesh/ble.sh" --attach=none
     bleopt editor=nvim 2>/dev/null || true

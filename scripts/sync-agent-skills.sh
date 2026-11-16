@@ -101,7 +101,7 @@ shopt -u nullglob
 for _host_skill in ghidra-cli-host obscura-host; do
   HOST_SKILL="${REPO_ROOT}/skills/${_host_skill}"
   if [[ -f "$HOST_SKILL/SKILL.md" ]]; then
-    rm -rf "${AGENTS}/${_host_skill}"
+    rm -rf "${AGENTS:?}/${_host_skill}"
     cp -a "$HOST_SKILL" "${AGENTS}/${_host_skill}"
     echo "  refreshed agents/${_host_skill}"
   fi

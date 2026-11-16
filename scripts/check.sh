@@ -394,6 +394,18 @@ else
     echo "○ LibreWolf Flatpak not installed"
 fi
 
+echo "--- Shell rc (tracked) ---"
+# Third-party installers (Antigravity, …) append to ~/.zshrc / ~/.bashrc, which
+# are stow symlinks into this repo; such lines belong in ~/.zshrc.local / ~/.bashrc.local.
+for _rc in "$REPO_ROOT/stow/zsh/.zshrc" "$REPO_ROOT/stow/bash/.bashrc"; do
+    if _hits="$(grep -n -iE '^# (Added|Generated) by .*install' "$_rc" 2>/dev/null)"; then
+        echo "○ installer lines in ${_rc#"$REPO_ROOT"/} (move to ~/.$(basename "$_rc" | tr -d .).local): ${_hits%%$'\n'*}"
+    else
+        echo "✓ no installer-appended lines in ${_rc#"$REPO_ROOT"/}"
+    fi
+done
+unset _rc _hits
+
 echo "--- Shell (bash/zsh) privacy ---"
 if grep -q '90-telemetry-optout.conf' "${HOME}/.shell-exports" 2>/dev/null \
   || grep -q '90-telemetry-optout.conf' "$REPO_ROOT/stow/zsh/.shell-exports" 2>/dev/null; then

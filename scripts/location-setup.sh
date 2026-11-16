@@ -13,7 +13,6 @@
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-STOW_DIR="$REPO_ROOT/stow"
 GEO_TEMPLATE="$REPO_ROOT/stow/system/etc/geolocation"
 GEO_LOCAL="$REPO_ROOT/stow/system/etc/geolocation.local"
 GEOCLUE_DROPIN="$REPO_ROOT/stow/system/etc/geoclue/conf.d/99-static-location.conf"

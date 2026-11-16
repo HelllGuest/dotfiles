@@ -36,23 +36,30 @@ grep -q 'HelllGuest/t14s-arch-install' "$ROOT/scripts/arch-install-t14s.sh" \
 grep -q 'HelllGuest/t14s-arch-install' "$ROOT/scripts/arch-install-p15.sh" \
   || fail "arch-install-p15 must document canonical repo"
 
-# Resolution: local sibling checkout (this host has ~/t14s-arch-install)
+# Resolution: local checkout. Use a fixture so CI / hosts without a sibling
+# ~/t14s-arch-install still exercise the local path (no network).
 # shellcheck source=../scripts/lib/stage-a-handoff.sh
 source "$ROOT/scripts/lib/stage-a-handoff.sh"
+T14S_FIXTURE_ROOT="$(mktemp -d)"
+trap 'rm -rf -- "$T14S_FIXTURE_ROOT"' EXIT
+T14S_FIXTURE="$T14S_FIXTURE_ROOT/t14s-arch-install"
+mkdir -p "$T14S_FIXTURE/lib"
+printf '#!/usr/bin/env bash\nexit 0\n' >"$T14S_FIXTURE/install.sh"
 # Local path must not call GitHub API (works with no network)
 _run_local_handoff() {
   STAGE_A_DRY_PRINT=1 STAGE_A_DOTFILES_ROOT="$ROOT" \
-    T14S_LOCAL="$ROOT/../t14s-arch-install" \
+    T14S_LOCAL="$T14S_FIXTURE" \
     stage_a_handoff t14s
 }
 if command -v unshare >/dev/null 2>&1 && unshare -rn true 2>/dev/null; then
   out="$(unshare -rn bash -c '
     set -euo pipefail
     ROOT="'"$ROOT"'"
+    T14S_FIXTURE="'"$T14S_FIXTURE"'"
     # shellcheck source=/dev/null
     source "$ROOT/scripts/lib/stage-a-handoff.sh"
     STAGE_A_DRY_PRINT=1 STAGE_A_DOTFILES_ROOT="$ROOT" \
-      T14S_LOCAL="$ROOT/../t14s-arch-install" \
+      T14S_LOCAL="$T14S_FIXTURE" \
       stage_a_handoff t14s
   ')" || fail "offline local handoff failed (must not need GitHub API)"
 else
@@ -73,7 +80,7 @@ PY
 
 out="$(
   STAGE_A_DRY_PRINT=1 STAGE_A_DOTFILES_ROOT="$ROOT" \
-    T14S_LOCAL="$ROOT/../t14s-arch-install" \
+    T14S_LOCAL="$T14S_FIXTURE" \
     stage_a_handoff p15
 )" || fail "dry handoff p15 failed"
 echo "$out" | grep -qx 'HW_PROFILE=p15' || fail "expected HW_PROFILE=p15: $out"

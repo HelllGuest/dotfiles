@@ -49,6 +49,8 @@ jdk-openjdk
 jdk17-openjdk
 jq
 kitty
+# Terminal=true launchers: GNOME execs xdg-terminal-exec (kitty via stow/kitty xdg-terminals.list)
+xdg-terminal-exec
 vulkan-intel
 less
 libinput

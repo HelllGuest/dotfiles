@@ -1,0 +1,5 @@
+# Preferred terminals for xdg-terminal-exec (GNOME's default-applications
+# terminal), used for Terminal=true launchers such as Lab RE / Kali.
+kitty.desktop
+com.mitchellh.ghostty.desktop
+org.gnome.Console.desktop
