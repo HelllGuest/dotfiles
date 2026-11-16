@@ -100,6 +100,7 @@ Thank you for helping improve this setup. Follow these guidelines to keep the re
 | Privacy / telemetry / browsers | `README.md` (Privacy + Flatpaks), `CONTRIBUTING.md` (packages), `docs/hardened-arch-gnome.md` (Phase 27), `stow/privacy`, `scripts/lib/telemetry.sh`, `CHANGELOG.md` |
 | PhotoGIMP / GIMP | `README.md` (PhotoGIMP section), `CHANGELOG.md` |
 | foxcage (pin bump) | `scripts/install-foxcage.sh` header (update steps), `tests/foxcage.test.sh` pins, `README.md`, `CHANGELOG.md` |
+| Kali image (pin bump) | `scripts/kali-disposable.sh` `KALI_IMAGE_URL` (per-release `cloud-images/kali-<ver>/`, never `current/`) + `KALI_IMAGE_SHA256` from that dir's `SHA256SUMS`; `CHANGELOG.md` |
 | Dash2Dock / GNOME dock | `README.md` (Dash2Dock section), `CHANGELOG.md` |
 | Troubleshooting table | `README.md` when adding recurring install/shell issues |
 | CI / lint / tests / stow inventory | `.github/workflows/ci.yml`, `scripts/lint-docs.sh`, `tests/`, `CHANGELOG.md` |
@@ -124,7 +125,7 @@ Thank you for helping improve this setup. Follow these guidelines to keep the re
 | Role | Scripts |
 |------|---------|
 | Bootstrap | `install.sh`, `configure.sh` (Stage B TUI), `vm-stageb-run.sh` / `vm-stageb-guest.sh`, `stow-only.sh`, `minimal-stow.sh`, thin Stage A handoffs `arch-install{,-t14s,-p15}.sh` + `lib/stage-a-handoff.sh` (canonical: t14s-arch-install), `arch-install-vmtest.sh`, `p15-dotfiles-preflight.sh`, `apply-profile.sh`, `detect-profile.sh` |
-| Containers / VM / labs | `agent-run.sh` (hardened rootless Podman; `stow/containers`), `kali-disposable.sh`, `kali-lan-host-prep.sh`, `labs-setup.sh`, `lab-detonate.sh`, `lab-mcp.sh`, `lib/lab-malware-zone.sh` (iface + `192.168.200.0/24` → `lab-malware`) |
+| Containers / VM / labs | `agent-run.sh` (hardened rootless Podman; `stow/containers`, whose `storage.conf` sets `fuse-overlayfs` as `mount_program` for linux-hardened), `kali-disposable.sh`, `kali-lan-host-prep.sh`, `labs-setup.sh`, `lab-detonate.sh`, `lab-mcp.sh`, `lib/lab-malware-zone.sh` (iface + `192.168.200.0/24` → `lab-malware`) |
 | Packages | `install-flatpaks.sh`, `install-aur.sh`, `bootstrap-aur.sh`, `install-fonts.sh` |
 | GNOME / desktop | `gnome-session-setup.sh`, `install-extensions.sh`, `fetch-gnome-extensions.sh`, `install-dash2dock.sh`, `gnome-console-setup.sh`, `rice-setup.sh`, `gdm-setup.sh`, `backup-gsettings.sh`, `restore-gsettings.sh`, `reset-input-defaults.sh`, `cleanup-input-overrides.sh` |
 | Location / VPN / firewall | `location-setup.sh`, `vpn-location-sync.sh`, `proton-connectivity-check.sh`, `proton-seed-serverlist.sh`, `firewalld-lab-zones.sh` (libvirt + lab-malware), `firewalld-tailscale.sh`, `ollama-setup.sh`, `dnscrypt-setup.sh` (encrypted DNS; NM via `network-dns-setup.sh`) |

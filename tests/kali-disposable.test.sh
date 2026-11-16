@@ -75,10 +75,15 @@ grep -q 'resolve_kali_password' "$ROOT/scripts/kali-disposable.sh" \
   || fail "kali must resolve guest password (no fixed kali/kali on nat/lan)"
 grep -q 'kali-session.password' "$ROOT/scripts/kali-disposable.sh" \
   || fail "kali must persist networked guest password under VM_DIR"
-# Live URL must not 404 (pin basename matches current/ index).
-_kali_url="$(grep -oE 'https://kali\.download/cloud-images/current/kali-linux-[^"]+\.tar\.xz' \
+# Live URL must not 404. Pin a per-release dir: current/ drops the file on the next release.
+grep -q 'cloud-images/current/' "$ROOT/scripts/kali-disposable.sh" \
+  && fail "KALI_IMAGE_URL must pin cloud-images/kali-<ver>/, not current/"
+_kali_url="$(grep -oE 'https://kali\.download/cloud-images/kali-[0-9.]+/kali-linux-[^"]+\.tar\.xz' \
   "$ROOT/scripts/kali-disposable.sh" | head -1)"
 [[ -n "$_kali_url" ]] || fail "could not extract default KALI_IMAGE_URL"
+_kali_ver="${_kali_url#*/cloud-images/kali-}"; _kali_ver="${_kali_ver%%/*}"
+[[ $_kali_url == *"/kali-linux-${_kali_ver}-cloud-"* ]] || fail "Kali dir and file versions differ: $_kali_url"
+unset _kali_ver
 _kali_code="$(curl -fsSIL -o /dev/null -w '%{http_code}' "$_kali_url" 2>/dev/null || echo 000)"
 [[ "$_kali_code" == "200" ]] || fail "default Kali image URL returned HTTP $_kali_code (want 200): $_kali_url"
 unset _kali_url _kali_code

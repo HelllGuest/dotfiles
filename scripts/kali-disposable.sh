@@ -60,7 +60,8 @@ ensure_vm_dir() {
 }
 
 # Official cloud image (amd64). Bump URL + SHA together (see SHA256SUMS on kali.download).
-KALI_IMAGE_URL="${KALI_IMAGE_URL:-https://kali.download/cloud-images/current/kali-linux-2026.3-cloud-genericcloud-amd64.tar.xz}"
+# Pin the per-release dir, not current/: current/ drops this file at the next release.
+KALI_IMAGE_URL="${KALI_IMAGE_URL:-https://kali.download/cloud-images/kali-2026.3/kali-linux-2026.3-cloud-genericcloud-amd64.tar.xz}"
 KALI_IMAGE_SHA256="${KALI_IMAGE_SHA256:-087a9c43b6082b0a6aae666debe26c9edf6e3960a90952fc94720e755d628e58}"
 KALI_PASS_FILE="${KALI_PASS_FILE:-}"  # set in ensure path; default under VM_DIR
 
@@ -223,7 +224,7 @@ cmd_fetch_base() {
   local got
   got="$(sha256sum "$tmp/kali.tar.xz" | awk '{print $1}')"
   [[ "$got" == "$KALI_IMAGE_SHA256" ]] \
-    || die "Kali image SHA-256 mismatch (got $got want $KALI_IMAGE_SHA256). Refusing to install. If you bumped KALI_IMAGE_URL, refresh KALI_IMAGE_SHA256 from https://kali.download/cloud-images/current/SHA256SUMS"
+    || die "Kali image SHA-256 mismatch (got $got want $KALI_IMAGE_SHA256). Refusing to install. If you bumped KALI_IMAGE_URL, refresh KALI_IMAGE_SHA256 from ${KALI_IMAGE_URL%/*}/SHA256SUMS"
   echo "→ SHA-256 ok"
   echo "→ extracting..."
   tar -xJf "$tmp/kali.tar.xz" -C "$tmp"

@@ -166,7 +166,7 @@ UUID `dash2dock-lite@icedman.github.com` is in `gnome/extensions.txt` and `gnome
 
 Shell functions (`fe`, `rge`, `gai`, `fcd`, …), `Ctrl+R` / `Ctrl+T` / `Alt+C`, terminal and GNOME keys: [gnome/keybindings.md](gnome/keybindings.md). Modern aliases (when installed): `eza`, `bat`, `rg`, `fd`, `dust`, `duf`, `delta`, etc.
 
-Disposable Kali lab (libvirt overlay): `kali-up` (isolated) / `kali-up-nat` / `kali-up-lan` (NAT + physical RJ45) / `kali-lan` / `kali-wipe` / `kali-stop` / `kali-st` / `kali` — see [keybindings](gnome/keybindings.md#disposable-kali) and [fresh-install RE guide](docs/fresh-install-coding-re.md#disposable-kali). NAT needs `virbr0` in firewalld **libvirt** zone (`firewalld-lab-zones.sh`). Physical LAN uses macvtap on `KALI_LAN_IFACE` (default `enp0s31f6`) → guest eth1.
+Disposable Kali lab (libvirt overlay): `kali-up` (isolated) / `kali-up-nat` / `kali-up-lan` (NAT + physical RJ45) / `kali-lan` / `kali-wipe` / `kali-stop` / `kali-st` / `kali` — see [keybindings](gnome/keybindings.md#disposable-kali) and [fresh-install RE guide](docs/fresh-install-coding-re.md#disposable-kali). NAT needs `virbr0` in firewalld **libvirt** zone (`firewalld-lab-zones.sh`). Physical LAN uses macvtap on `KALI_LAN_IFACE` (default `enp0s31f6`, else the first wired NIC) → guest eth1. macvtap needs a wired NIC; Wi-Fi-only hosts (T14s without a USB Ethernet adapter) can use isolated or NAT only.
 
 ### Starship
 
@@ -440,6 +440,7 @@ re-run. Enable via `install-extensions.sh`; Wayland needs log out → log in.
 ```text
 lab-triage | lab-re | lab-android | lab-web | lab-detonate | lab-mcp
 ```
+Images build with rootless Podman. On linux-hardened that needs `fuse-overlayfs` (in `pacman.txt`) and the stowed `containers` package (`storage.conf`); `bash scripts/check.sh` reports it under "Podman (rootless)".
 
 **What `./install.sh` runs, in order:**
 ```text
@@ -543,6 +544,7 @@ We take a "quiet by default" approach:
 |---------|--------|-----|
 | `Can't find an installed Node version matching …` on terminal open | **fnm** `--use-on-cd` + project `engines` / `.nvmrc` | `fnm install 22` or `fnm install` in project; or drop `--use-on-cd` in dotfiles |
 | `$FZF_DEFAULT_OPTS: unknown action: copy-selection` | fzf 0.72 lacks `copy-selection` | Fixed in dotfiles; `exec zsh` / `exec bash` |
+| Podman / foxcage / `lab-*`: `kernel does not support overlay fs: 'overlay' is not supported over btrfs`, or `podman build`: `mount overlay … operation not permitted` | linux-hardened has no unprivileged overlayfs (`CONFIG_OVERLAY_FS_UNPRIVILEGED` unset); the btrfs wording is misleading | `sudo pacman -S fuse-overlayfs`; `stow -R containers` (`storage.conf` sets `mount_program`) |
 | `docker` tries Podman socket / `connect: no such file` | Stale `DOCKER_HOST` or Podman socket missing | `systemctl --user enable --now podman.socket`; new shell; or `FORCE_DOCKER=1` for real dockerd |
 | `s2idle [deep]` / `mem_sleep_default=deep` after upgrades | Cmdline or BIOS drifted from s2idle pin | BIOS Sleep = Windows and Linux; `bash scripts/system-setup.sh`; reboot |
 | Charge thresholds reset every boot | Missing tmpfiles **and/or** late-boot unit (`thinkpad_acpi` BAT* can appear after tmpfiles) | `bash scripts/thinkpad-charge-thresholds.sh` (optional `CHARGE_START`/`CHARGE_END`; installs tmpfiles + `thinkpad-charge-thresholds.service`) |

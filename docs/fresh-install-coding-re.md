@@ -429,6 +429,11 @@ cannot read `$HOME`). Each `start` rebuilds `kali-session.qcow2` unless
 `KEEP_OVERLAY=1`. No host shares. Defaults: **isolated** net, 4096 MiB RAM,
 4 vCPU (`KALI_RAM_MB` / `KALI_VCPUS` / `KALI_NET` / `KALI_VM_DIR` override).
 
+The base image is the official Kali cloud image, pinned by `KALI_IMAGE_URL`
+(per-release `cloud-images/kali-<ver>/` folder, not `current/`, which drops
+the file at the next release) and checked against `KALI_IMAGE_SHA256` before
+install. `--lan` needs a wired NIC (`KALI_LAN_IFACE`); Wi-Fi cannot carry macvtap.
+
 **NAT / firewalld:** `setup` and `start --nat` bind `virbr0` to the stock
 `libvirt` zone (forward + masquerade for guest subnet `192.168.122.0/24`) and
 bring the bridge up. Prefer `bash scripts/firewalld-lab-zones.sh` if zones are
