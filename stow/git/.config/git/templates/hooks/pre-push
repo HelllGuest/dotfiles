@@ -1,6 +1,19 @@
 #!/usr/bin/env bash
 # Fast checks before push — skip with git push --no-verify
 
+# Nothing to check in this repo: stay silent.
+[[ -f package.json || -f pnpm-workspace.yaml || -f Cargo.toml || -f go.mod \
+  || -f pyproject.toml || -f setup.py ]] || exit 0
+
+# This hook is global (core.hooksPath) and the checks below run repo-defined
+# code: npm/pnpm scripts, cargo build.rs/proc-macros. Only do that in repos
+# you marked trusted (local config is never transferred by a clone):
+#   git config --local hooks.trusted true
+if [[ "$(git config --local --bool hooks.trusted 2>/dev/null)" != true ]]; then
+  echo "  pre-push: checks skipped (untrusted repo; enable: git config --local hooks.trusted true)" >&2
+  exit 0
+fi
+
 run_check() {
   local name="$1"
   shift

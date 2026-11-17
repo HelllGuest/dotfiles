@@ -5,9 +5,10 @@ RUN pacman -Syu --noconfirm --needed \
       nodejs npm \
       nss atk at-spi2-core cups libdrm libxkbcommon libxcomposite \
       libxdamage libxfixes libxrandr mesa alsa-lib pango cairo gtk3 \
+      mise \
     && pacman -Scc --noconfirm \
-    && useradd -m -u 1000 lab \
-    && curl -fsSL https://mise.run | MISE_INSTALL_PATH=/usr/local/bin/mise sh
+    && useradd -m -u 1000 lab
+# mise from the signed Arch repo (was: curl https://mise.run | sh, unverified).
 
 USER lab
 ENV LAB_BADGE="[WEB]" \
@@ -19,10 +20,9 @@ ENV PATH="/home/lab/.npm-global/bin:${PATH}"
 
 WORKDIR /home/lab
 # Playwright browsers + MCP servers (Chrome DevTools / Playwright).
+# Pinned only: a failed install must fail the build, not fall back to latest.
 RUN mkdir -p /home/lab/.npm-global \
  && npm install -g @playwright/mcp@0.0.39 playwright@1.49.0 \
- && npx --yes playwright install chromium \
- || npm install -g @playwright/mcp playwright \
  && npx --yes playwright install chromium
 
 COPY --chown=lab:lab mcp-playwright.sh /usr/local/bin/mcp-playwright

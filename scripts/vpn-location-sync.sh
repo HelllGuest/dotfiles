@@ -10,7 +10,8 @@
 
 set -euo pipefail
 
-CURL="${VPN_LOCATION_CURL:-/usr/bin/curl}"
+# Fixed path: a root script must not take the binary it runs from the env.
+CURL=/usr/bin/curl
 INSTALLED_HOME_GEO="/usr/local/share/vpn-location-sync/home.geolocation"
 
 resolve_repo_root() {
@@ -45,15 +46,29 @@ resolve_repo_root() {
     return 1
 }
 
-REPO_ROOT="$(resolve_repo_root || true)"
-if [[ -n "$REPO_ROOT" ]]; then
-    HOME_GEO="$REPO_ROOT/stow/system/etc/geolocation"
-    [[ -f "$HOME_GEO.local" ]] && HOME_GEO="$HOME_GEO.local"
-elif [[ -f "$INSTALLED_HOME_GEO" ]]; then
-    HOME_GEO="$INSTALLED_HOME_GEO"
+# As root (NM dispatcher, or pkexec without a password via the polkit rule)
+# never read a user-writable path: a symlink planted at the user's
+# geolocation(.local) would make root copy any file (e.g. /etc/shadow) to the
+# world-readable /etc/geolocation. Root only uses the root-owned copy that
+# location-setup.sh installs; the repo lookup is for unprivileged runs.
+HOME_GEO=""
+if (( EUID == 0 )); then
+    if [[ -f "$INSTALLED_HOME_GEO" && ! -L "$INSTALLED_HOME_GEO" \
+          && "$(stat -c %u "$INSTALLED_HOME_GEO")" == 0 ]]; then
+        HOME_GEO="$INSTALLED_HOME_GEO"
+    fi
 else
+    REPO_ROOT="$(resolve_repo_root || true)"
+    if [[ -n "$REPO_ROOT" ]]; then
+        HOME_GEO="$REPO_ROOT/stow/system/etc/geolocation"
+        [[ -f "$HOME_GEO.local" ]] && HOME_GEO="$HOME_GEO.local"
+    elif [[ -f "$INSTALLED_HOME_GEO" ]]; then
+        HOME_GEO="$INSTALLED_HOME_GEO"
+    fi
+fi
+if [[ -z "$HOME_GEO" ]]; then
     log() { printf '[vpn-location-sync] %s\n' "$*"; }
-    log "ERROR: could not find home geolocation (run location-setup.sh)" >&2
+    log "ERROR: no trusted home geolocation (run location-setup.sh; root uses $INSTALLED_HOME_GEO only)" >&2
     exit 1
 fi
 GEO_FILE="/etc/geolocation"
@@ -90,12 +105,10 @@ restart_geoclue() {
 
 fetch_vpn_coords() {
     local json="" lat lon city country
-    # Prefer lookup bound to the VPN iface so we never touch the real egress.
+    # Only through the tunnel: an unbound fallback would send the real (ISP)
+    # address to ipapi.co whenever the tunnel is not carrying traffic.
     if ip link show "$VPN_IF" 2>/dev/null | grep -q 'LOWER_UP'; then
         json="$("$CURL" -sf --max-time 15 --interface "$VPN_IF" https://ipapi.co/json/ 2>/dev/null || true)"
-    fi
-    if [[ -z "$json" ]]; then
-        json="$("$CURL" -sf --max-time 15 https://ipapi.co/json/ 2>/dev/null || true)"
     fi
     if [[ -z "$json" ]]; then
         log "ERROR: could not geolocate VPN exit IP" >&2
@@ -105,10 +118,16 @@ fetch_vpn_coords() {
     lon="$(echo "$json" | jq -r '.longitude // empty')"
     city="$(echo "$json" | jq -r '.city // "unknown"')"
     country="$(echo "$json" | jq -r '.country_name // .country // "unknown"')"
-    if [[ -z "$lat" || -z "$lon" ]]; then
+    # Network data lands in /etc as root: accept plain decimal degrees only,
+    # and keep the label on its one comment line (no newlines/control chars).
+    local num='^-?[0-9]{1,3}(\.[0-9]+)?$'
+    if [[ ! $lat =~ $num || ! $lon =~ $num ]] \
+        || (( ${lat%%.*} < -90 || ${lat%%.*} > 90 || ${lon%%.*} < -180 || ${lon%%.*} > 180 )); then
         log "ERROR: invalid geolocation response" >&2
         return 1
     fi
+    city="$(printf '%s' "$city" | tr -d '[:cntrl:]' | cut -c1-64)"
+    country="$(printf '%s' "$country" | tr -d '[:cntrl:]' | cut -c1-64)"
     write_geolocation "$lat" "$lon" "Proton VPN exit — ${city}, ${country}"
 }
 

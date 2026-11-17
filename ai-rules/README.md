@@ -105,15 +105,23 @@ In any IDE / CLI chat:
   skips format check for Merge/Revert/fixup!/squash! and empty messages),
   `prepare-commit-msg` (branch-name prefill; ignores text below
   `commit.verbose` scissors),
-  `pre-commit` (if `stow/` + `all_stow_files.txt` exist: refresh or fail when
-  inventory is stale vs `scripts/list-stow-files.sh`),
-  `pre-push` (only if `package.json` or `pnpm-workspace.yaml` exists: with
+  `pre-commit` (if `stow/` + `all_stow_files.txt` exist **in `~/dotfiles` or a
+  trusted repo**: refresh or fail when inventory is stale vs
+  `scripts/list-stow-files.sh`),
+  `pre-push` (**trusted repos only**; only if `package.json` or `pnpm-workspace.yaml` exists: with
   `tsconfig.json`, hard-fail `tsc` when a `"tsc"` script exists via pnpm/npm;
   else soft `pnpm exec tsc --noEmit || true` when pnpm is present; hard-fail
   lint when a `"lint"` script exists; with `Cargo.toml`: `cargo check` +
   clippy `-D warnings`; with `go.mod`: `go vet`; with `pyproject.toml` or
   `setup.py` and `ruff` on PATH: `ruff check`).
   Unset: `git config --global --unset core.hooksPath`
+* **Trusted repos:** these hooks are global, and `pre-push` / `pre-commit` run
+  repo-defined code (npm/pnpm scripts, cargo build scripts, the repo's
+  `list-stow-files.sh`). They only do so where you opted in:
+  `git config --local hooks.trusted true` (local config is never cloned, so an
+  untrusted repo cannot set it). Elsewhere `pre-push` prints a skip note.
+  After updating the kit, re-run `bash ai-rules/install.sh` to refresh the
+  installed copy.
 * Prefer granular Claude env vars (in kit) over umbrella
   `CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC` (breaks auto-update).
 * Cursor Privacy Mode is not the same as crash reporting; the kit sets

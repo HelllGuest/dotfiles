@@ -50,16 +50,30 @@ cmd_setup() {
     "$CAPTURE_LOG/inetsim" "$CAPTURE_LOG/polarproxy" "$LAB_ROOT/samples" "$LAB_ROOT/out"
   say "Building lab-capture (INetSim) image..."
   podman build -t localhost/lab-capture:latest "$REPO_ROOT/labs/lab-capture"
-  # Optional PolarProxy binary (host-side; not baked — Netresec URL varies)
-  if [[ ! -x $CAPTURE_LOG/PolarProxy ]]; then
-    say "Fetching PolarProxy (optional)..."
+  # Optional PolarProxy binary (host-side; not baked — Netresec URL varies).
+  # It runs on the host, and Netresec publishes no checksum for "latest", so
+  # install only a download whose SHA-256 the operator supplied after checking
+  # it: POLARPROXY_SHA256=<sha256 of the zip> bash scripts/lab-detonate.sh setup
+  if [[ ! -x $CAPTURE_LOG/PolarProxy && -z ${POLARPROXY_SHA256:-} ]]; then
+    echo "○ PolarProxy skipped (unverifiable download). To add it: fetch the zip, verify it," >&2
+    echo "  then re-run setup with POLARPROXY_SHA256=<its sha256>. INetSim-only capture still works." >&2
+  elif [[ ! -x $CAPTURE_LOG/PolarProxy ]]; then
+    [[ ${POLARPROXY_SHA256,,} =~ ^[0-9a-f]{64}$ ]] || die "POLARPROXY_SHA256 must be 64 hex chars"
+    say "Fetching PolarProxy (optional, SHA-256 pinned)..."
     tmp=$(mktemp -d)
     if curl -fsSL "https://www.netresec.com/?download=PolarProxy" -o "$tmp/pp.zip" \
       || curl -fsSL "https://www.netresec.com/files/PolarProxy_latest_linux-x64.zip" -o "$tmp/pp.zip"; then
+      got=$(sha256sum "$tmp/pp.zip" | awk '{print $1}')
+      if [[ $got != "${POLARPROXY_SHA256,,}" ]]; then
+        rm -rf -- "$tmp"
+        die "PolarProxy SHA-256 mismatch (got $got) — not installed"
+      fi
       unzip -qo "$tmp/pp.zip" -d "$tmp/out"
       bin=$(find "$tmp/out" -type f -name PolarProxy | head -1)
       if [[ -n $bin ]]; then
         install -m 0755 "$bin" "$CAPTURE_LOG/PolarProxy"
+        # Record what was verified: capture-up only runs a matching binary.
+        sha256sum "$CAPTURE_LOG/PolarProxy" | awk '{print $1}' >"$CAPTURE_LOG/PolarProxy.verified"
         say "PolarProxy → $CAPTURE_LOG/PolarProxy"
       fi
     else
@@ -79,18 +93,36 @@ cmd_capture_up() {
     || die "build capture image first: lab-detonate.sh setup"
 
   # Rootful host network so guests on 192.168.200.0/24 reach INetSim on BIND_IP.
-  if podman container exists lab-inetsim 2>/dev/null; then
-    say "lab-inetsim already defined"
-    sudo podman start lab-inetsim 2>/dev/null || true
-  else
-    say "Starting INetSim (sudo podman --network=host, bind $BIND_IP)..."
-    sudo podman run -d --name lab-inetsim --network=host --restart=unless-stopped \
-      -v "$CAPTURE_LOG/inetsim:/var/log/inetsim:Z" \
-      -e LAB_CAPTURE_BIND="$BIND_IP" \
-      localhost/lab-capture:latest
-  fi
+  # INetSim parses malware traffic: run it with only the caps it needs (bind
+  # :53/:80/:443, switch to user inetsim, own its log dir), no new privileges
+  # and a read-only root. Recreated every time (stateless; logs on the host
+  # volume) so an older container cannot keep its original, broader caps.
+  sudo podman rm -f lab-inetsim >/dev/null 2>&1 || true
+  # Captures (mail, FTP uploads, HTTP POST bodies) on the host: they survive the
+  # recreate above and are writable despite the read-only root.
+  local data="$CAPTURE_LOG/inetsim-data"
+  sudo install -d -m 0755 "$CAPTURE_LOG/inetsim" "$data/smtp" "$data/ftp-upload" "$data/http-postdata"
+  say "Starting INetSim (sudo podman --network=host, bind $BIND_IP)..."
+  sudo podman run -d --name lab-inetsim --network=host --restart=unless-stopped \
+    --cap-drop ALL --cap-add NET_BIND_SERVICE --cap-add SETUID --cap-add SETGID --cap-add CHOWN \
+    --security-opt no-new-privileges --read-only --tmpfs /tmp \
+    -v "$CAPTURE_LOG/inetsim:/var/log/inetsim:Z" \
+    -v "$data/smtp:/var/lib/inetsim/smtp:Z" \
+    -v "$data/ftp-upload:/var/lib/inetsim/ftp/upload:Z" \
+    -v "$data/http-postdata:/var/lib/inetsim/http/postdata:Z" \
+    -e LAB_CAPTURE_BIND="$BIND_IP" \
+    localhost/lab-capture:latest
 
-  if [[ -x $CAPTURE_LOG/PolarProxy ]]; then
+  # Only a binary installed by setup after SHA-256 verification (older,
+  # unverified downloads have no matching .verified record).
+  local pp_ok=0
+  if [[ -x $CAPTURE_LOG/PolarProxy && -f $CAPTURE_LOG/PolarProxy.verified ]] \
+    && [[ $(sha256sum "$CAPTURE_LOG/PolarProxy" | awk '{print $1}') == "$(cat "$CAPTURE_LOG/PolarProxy.verified")" ]]; then
+    pp_ok=1
+  elif [[ -x $CAPTURE_LOG/PolarProxy ]]; then
+    echo "○ PolarProxy not started: binary was not installed by a verified setup (delete it, re-run setup with POLARPROXY_SHA256)" >&2
+  fi
+  if (( pp_ok )); then
     if pgrep -f "[P]olarProxy" >/dev/null 2>&1; then
       say "PolarProxy already running"
     else
@@ -103,8 +135,8 @@ cmd_capture_up() {
         >"$CAPTURE_LOG/polarproxy/polarproxy.log" 2>&1 &
       echo $! >"$CAPTURE_LOG/polarproxy/polarproxy.pid"
     fi
-  else
-    echo "○ PolarProxy binary missing — INetSim only (re-run setup to fetch)"
+  elif [[ ! -x $CAPTURE_LOG/PolarProxy ]]; then
+    echo "○ PolarProxy binary missing — INetSim only (setup with POLARPROXY_SHA256=<verified sha256> to add it)"
   fi
   echo "✓ capture up. Guests: DNS/HTTP/HTTPS → ${BIND_IP}; TLS mitm via :10443 if PolarProxy running"
   echo "  pcaps/logs: $CAPTURE_LOG"
@@ -121,16 +153,36 @@ cmd_capture_down() {
   echo "✓ capture down"
 }
 
+# Pinned Alpine cloud images (url sha512), from Alpine's published .sha512 files.
+ALPINE_IMAGES=(
+  "https://dl-cdn.alpinelinux.org/alpine/v3.20/releases/cloud/nocloud_alpine-3.20.3-x86_64-bios-cloudinit-r0.qcow2 73bd1fdfd9a0b4db250c923630a415a054ed1ae869e6ff4a121b49d28b2fb3a2a21a948bd0c121e5640f3f16c68cfb574b72fd6a4395a788a71f7f279c1c52e3"
+  "https://dl-cdn.alpinelinux.org/alpine/v3.19/releases/cloud/nocloud_alpine-3.19.1-x86_64-bios-cloudinit-r0.qcow2 f122b0e9e832cf90bda49ca73b800105ab4aa193bd340cba641e6acbda1da9aa5571de87870561380ac69bdb2dcd428590e7b4a898f7f62b559f5c12a4aefc01"
+)
+
 fetch_linux_base() {
-  [[ -f $LINUX_BASE ]] && return 0
+  local entry url want got
+  if [[ -f $LINUX_BASE ]]; then
+    # Images fetched before pinning are re-checked, never trusted blindly.
+    got=$(sha512sum "$LINUX_BASE" | awk '{print $1}')
+    for entry in "${ALPINE_IMAGES[@]}"; do
+      [[ $got == "${entry##* }" ]] && return 0
+    done
+    die "$LINUX_BASE matches no pinned Alpine SHA-512 — delete it to fetch a verified image"
+  fi
   say "Downloading Alpine cloud image → $LINUX_BASE"
-  curl -fsSL "https://dl-cdn.alpinelinux.org/alpine/v3.20/releases/cloud/nocloud_alpine-3.20.3-x86_64-bios-cloudinit-r0.qcow2" \
-    -o "$LINUX_BASE.partial" \
-    || curl -fsSL "https://dl-cdn.alpinelinux.org/alpine/v3.19/releases/cloud/nocloud_alpine-3.19.1-x86_64-bios-cloudinit-r0.qcow2" \
-      -o "$LINUX_BASE.partial" \
-    || die "Alpine cloud image download failed"
-  mv "$LINUX_BASE.partial" "$LINUX_BASE"
-  chmod 444 "$LINUX_BASE"
+  for entry in "${ALPINE_IMAGES[@]}"; do
+    url=${entry% *} want=${entry##* }
+    curl -fsSL "$url" -o "$LINUX_BASE.partial" || continue
+    got=$(sha512sum "$LINUX_BASE.partial" | awk '{print $1}')
+    if [[ $got == "$want" ]]; then
+      mv "$LINUX_BASE.partial" "$LINUX_BASE"
+      chmod 444 "$LINUX_BASE"
+      return 0
+    fi
+    echo "WARN: SHA-512 mismatch for $url — discarded" >&2
+  done
+  rm -f -- "$LINUX_BASE.partial"
+  die "no verified Alpine cloud image (download failed or checksum mismatch)"
 }
 
 cmd_linux_define() {

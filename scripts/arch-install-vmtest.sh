@@ -52,7 +52,17 @@ fi
 if [[ -z $ISO || ! -f $ISO ]]; then
   ISO="$WORK/archlinux-x86_64.iso"
   say "downloading latest Arch ISO (~1.2G) -> $ISO"
-  curl -fSL --retry 3 -o "$ISO" https://geo.mirror.pkgbuild.com/iso/latest/archlinux-x86_64.iso
+  ISO_URL=https://geo.mirror.pkgbuild.com/iso/latest
+  # Verify before booting: a truncated/tampered ISO must never reach the VM.
+  want=$(curl -fsSL "$ISO_URL/sha256sums.txt" | awk '$2 == "archlinux-x86_64.iso" {print $1}')
+  [[ $want =~ ^[0-9a-f]{64}$ ]] || die "could not read ISO SHA-256 from $ISO_URL/sha256sums.txt"
+  curl -fSL --retry 3 -o "$ISO.partial" "$ISO_URL/archlinux-x86_64.iso"
+  got=$(sha256sum "$ISO.partial" | awk '{print $1}')
+  if [[ $got != "$want" ]]; then
+    rm -f -- "$ISO.partial"
+    die "ISO SHA-256 mismatch (got $got, want $want)"
+  fi
+  mv -f "$ISO.partial" "$ISO"
 fi
 say "ISO: $ISO"
 

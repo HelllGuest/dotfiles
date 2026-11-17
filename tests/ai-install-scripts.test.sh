@@ -373,6 +373,13 @@ for _bad in CloudReportingEnabled SafeBrowsingExtendedReportingEnabled Spellchec
     && fail "chromium-base must not set removed/deprecated/misspelled $_bad"
 done
 unset _bad
+# WebRTC must not reveal the ISP/LAN address behind the VPN.
+python3 -c 'import json,sys; sys.exit(json.load(open(sys.argv[1])).get("WebRtcIPHandling") != "default_public_interface_only")' \
+  "$ROOT/browsers/policies/chromium-base.json" || fail "chromium-base must set WebRtcIPHandling=default_public_interface_only"
+for _k in media.peerconnection.ice.default_address_only media.peerconnection.ice.no_host; do
+  grep -qF "user_pref(\"$_k\", true);" "$ROOT/browsers/zen/user.js" || fail "zen user.js must set $_k=true"
+done
+unset -v _k
 grep -q 'DnsOverHttpsMode' "$ROOT/browsers/policies/chromium-base.json" \
   || fail "chromium-base missing DnsOverHttpsMode (Chrome+Brave parity)"
 grep -q 'ChromeCleanupReportingEnabled' "$ROOT/browsers/policies/chromium-base.json" \
@@ -471,6 +478,12 @@ fi
 rm -rf "$tmpdir"
 
 # ghidra-cli installer: rustup default stable bootstrap + unlocked cargo fallback
+# headroom proxies all API traffic (sees keys): pinned, never auto-upgraded.
+_hr="$ROOT/scripts/install-headroom.sh"
+grep -qE '^HEADROOM_VERSION="\$\{HEADROOM_VERSION:-[0-9]+\.[0-9]+\.[0-9]+\}"' "$_hr" || fail "headroom must pin HEADROOM_VERSION"
+grep -q 'pipx install --force "\$HEADROOM_SPEC"' "$_hr" || fail "headroom must install the pinned spec"
+! grep -qE 'headroom update|pipx upgrade|pipx install "headroom-ai\[all\]"$' "$_hr" || fail "headroom must not auto-upgrade or install unpinned"
+unset -v _hr
 grep -q 'rustup default stable' "$ROOT/scripts/install-ghidra-cli.sh" \
   || fail "install-ghidra-cli must bootstrap rustup default stable when unconfigured"
 grep -q 'cargo install --git "\$GHIDRA_CLI_GIT" --tag "\$GHIDRA_CLI_TAG" --force' \

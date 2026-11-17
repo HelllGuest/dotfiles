@@ -51,6 +51,67 @@ grep -q '_lab_work_dir' "$ROOT/stow/zsh/.shell-functions" \
   || fail "labs must guard HOME/root work mounts"
 grep -q 'refusing to mount' "$ROOT/stow/zsh/.shell-functions" \
   || fail "labs must warn on HOME/root work mounts"
+# Lab images: no remote script piped to a shell; npm installs stay pinned.
+for _cf in "$ROOT"/labs/*/Containerfile; do
+  ! grep -v '^[[:space:]]*#' "$_cf" | grep -qE '(curl|wget)[^#]*\|[[:space:]]*([A-Z_]+=[^ ]+[[:space:]]+)*(ba|z)?sh\b' \
+    || fail "$(basename "$(dirname "$_cf")"): no curl|sh in Containerfiles"
+done
+! grep -qE 'npm install -g @playwright/mcp playwright$|\|\| *npm install' "$ROOT/labs/lab-web/Containerfile" \
+  || fail "lab-web must not fall back to unpinned npm installs"
+grep -qE '^\s+mise \\$' "$ROOT/labs/lab-web/Containerfile" || fail "lab-web must install mise from pacman"
+unset -v _cf
+
+# Labs keep the default seccomp filter (malware-facing); lab-re only adds SYS_PTRACE.
+_fns="$ROOT/stow/zsh/.shell-functions"
+! grep -v '^\s*#' "$_fns" | grep -q 'seccomp=unconfined' || fail "labs must not disable seccomp"
+! grep -v '^\s*#' "$_fns" | grep -qE -- '--privileged|label=disable|apparmor=unconfined|--pid[ =]host|--network[ =]host' \
+  || fail "labs must not use privileged/host-namespace podman flags"
+_re="$(awk '/^lab-re\(\) \{/{f=1} f; f&&/^}$/{exit}' "$_fns")"
+grep -q -- '--cap-add SYS_PTRACE' <<<"$_re" || fail "lab-re needs SYS_PTRACE for gdb attach"
+unset -v _fns _re
+
+# /work is mounted rw into the labs: run the real _lab_work_dir (bash + zsh)
+# against home, its ancestors, hidden config dirs, the dotfiles repo, samples.
+_wd_fn="$(awk '/^_lab_work_dir\(\) \{/{f=1} f; f&&/^}$/{exit}' "$ROOT/scripts/lib/lab-workdir.sh")"
+[[ -n $_wd_fn ]] || fail "could not extract _lab_work_dir"
+_wd="$(mktemp -d)"; _wd="$(cd "$_wd" && pwd -P)"
+# Samples live outside the fake home so each refusal rule is tested on its own.
+mkdir -p "$_wd/home/u/.config/x" "$_wd/home/u/dotfiles/stow" "$_wd/home/u/proj/a" \
+  "$_wd/srv/lab/samples" "$_wd/home/u/labs/out"
+for _sh in bash zsh; do
+  command -v "$_sh" >/dev/null || continue
+  for _case in "home/u:refuse" "home:refuse" ".:refuse" "home/u/.config:refuse" "home/u/.config/x:refuse" \
+      "home/u/dotfiles:refuse" "home/u/dotfiles/stow:refuse" "srv/lab:refuse" "srv/lab/samples:refuse" "srv:refuse" \
+      "home/u/proj:allow" "home/u/proj/a:allow"; do
+    _dir="$_wd/${_case%%:*}"; _want=${_case##*:}
+    _got="$(cd "$_dir" && HOME="$_wd/home/u" LAB_OUT="$_wd/home/u/labs/out" LAB_SAMPLES="$_wd/srv/lab/samples" \
+      "$_sh" -c "$_wd_fn"$'\n''_lab_work_dir' 2>/dev/null)"
+    if [[ $_want == refuse ]]; then
+      [[ $_got == "$_wd/home/u/labs/out" ]] || fail "$_sh: /work must refuse ${_case%%:*} (got $_got)"
+    else
+      [[ $_got == "$_dir" ]] || fail "$_sh: /work must allow ${_case%%:*} (got $_got)"
+    fi
+  done
+done
+rm -rf "$_wd"; unset -v _wd _wd_fn _sh _case _dir _want _got
+# One implementation: lab-* wrappers and lab-mcp.sh both use the shared lib, and
+# the wrappers fail closed when it is missing.
+grep -q 'source "$(cd "$(dirname "$0")" && pwd)/lib/lab-workdir.sh"' "$ROOT/scripts/lab-mcp.sh" \
+  || fail "lab-mcp.sh must use scripts/lib/lab-workdir.sh"
+! grep -qE 'refusing|readlink -f -- "\$\{HOME' "$ROOT/scripts/lab-mcp.sh" || fail "lab-mcp.sh must not keep its own work-dir logic"
+# Behaviour: lab-mcp's work_dir refuses $HOME like the wrappers.
+_wfn="$(grep -E '^work_dir\(\)' "$ROOT/scripts/lab-mcp.sh")"
+_h="$(mktemp -d)"; _h="$(cd "$_h" && pwd -P)"; mkdir -p "$_h/out"
+_got="$(cd "$_h" && HOME="$_h" LAB_OUT="$_h/out" LAB_SAMPLES=/nonexistent bash -c \
+  'source "$1"; '"$_wfn"'; work_dir' _ "$ROOT/scripts/lib/lab-workdir.sh" 2>/dev/null)"
+[[ $_got == "$_h/out" ]] || fail "lab-mcp work_dir must refuse \$HOME (got $_got)"
+rm -rf -- "$_h"; unset -v _wfn _h _got
+grep -q 'scripts/lib/lab-workdir.sh"' "$ROOT/stow/zsh/.shell-functions" || fail ".shell-functions must source the shared work-dir lib"
+[[ $(grep -cF 'work=$(_lab_work_dir) || return 1' "$ROOT/stow/zsh/.shell-functions") -eq 3 ]] \
+  || fail "every lab must stop when _lab_work_dir refuses"
+_o="$(DOTFILES_DIR=/nonexistent HOME=/tmp bash -c 'source "$1" >/dev/null 2>&1; _lab_work_dir' _ "$ROOT/stow/zsh/.shell-functions" 2>&1)" \
+  && fail "missing lab-workdir.sh must fail closed (got: $_o)"
+unset -v _o
 grep -q 'SYS_PTRACE' "$ROOT/stow/zsh/.shell-functions" \
   || fail "lab-re must add SYS_PTRACE"
 grep -q 'seccomp=unconfined' "$ROOT/stow/zsh/.shell-functions" \

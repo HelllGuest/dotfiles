@@ -115,7 +115,12 @@ if declare -F _cmd_notify_end >/dev/null 2>&1; then
     fi
 fi
 
-[ -f ~/.config/secrets/env ] && source ~/.config/secrets/env
+# Owner-only before loading (same as zsh: .zsh-plugins chmods it).
+if [ -f ~/.config/secrets/env ]; then
+    chmod 600 ~/.config/secrets/env 2>/dev/null
+    # shellcheck disable=SC1090
+    source ~/.config/secrets/env
+fi
 [[ -f ~/.bashrc.local ]] && source ~/.bashrc.local
 
 # >>> headroom persistent env >>>

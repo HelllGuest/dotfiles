@@ -28,5 +28,6 @@
   "PromotionsEnabled": false,
   "BackgroundModeEnabled": false,
   "EnableMediaRouter": false,
-  "BlockThirdPartyCookies": true
+  "BlockThirdPartyCookies": true,
+  "WebRtcIPHandling": "default_public_interface_only"
 }

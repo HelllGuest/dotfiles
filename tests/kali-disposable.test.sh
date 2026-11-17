@@ -129,6 +129,23 @@ grep -q 'ip addr flush' "$ROOT/scripts/kali-lan-host-prep.sh" \
   || fail "kali-lan-host-prep must flush RJ45 addrs so wifi keeps default"
 grep -q 'lan-check' "$ROOT/scripts/kali-disposable.sh" \
   || fail "kali must expose lan-check"
+# kali-lan-host-prep runs as root without a password (polkit): only a physical
+# wired Ethernet NIC may be flushed — never Wi-Fi, the VPN tunnel or virtual links.
+_vf="$(awk '/^valid_lan_iface\(\) \{/{f=1} f; f&&/^}$/{exit}' "$ROOT/scripts/kali-lan-host-prep.sh")"
+[[ -n $_vf ]] || fail "kali-lan-host-prep must define valid_lan_iface"
+_sys="$(mktemp -d)"
+trap 'rm -rf -- "$_sys"' EXIT
+_mk() { mkdir -p "$_sys/$1"; echo "$2" >"$_sys/$1/type"; [[ $3 == dev ]] && mkdir -p "$_sys/$1/device"; [[ ${4:-} ]] && mkdir -p "$_sys/$1/$4"; return 0; }
+_mk enp1s0 1 dev; _mk wlan0 1 dev wireless; _mk wlp2s0 1 dev phy80211; _mk proton0 65534 none
+_mk virbr0 1 none; _mk veth0 1 none
+_vl() { bash -c "$_vf"$'\n''valid_lan_iface "$1" "$2"' _ "$1" "$_sys" >/dev/null; }
+_vl enp1s0 || fail "valid_lan_iface must accept a physical Ethernet NIC"
+for _bad in wlan0 wlp2s0 proton0 virbr0 veth0 missing0 .. ../enp1s0 'en p' aaaaaaaaaaaaaaaa; do
+  _vl "$_bad" && fail "valid_lan_iface must reject '$_bad'"
+done
+grep -q 'valid_lan_iface "\$IFACE" /sys/class/net' "$ROOT/scripts/kali-lan-host-prep.sh" \
+  || fail "kali-lan-host-prep must validate IFACE before touching it"
+unset -v _vf _bad; unset -f _mk _vl
 [[ -f "$ROOT/stow/system/etc/polkit-1/rules.d/50-kali-lan-host-prep.rules" ]] \
   || fail "missing polkit rule for kali-lan-host-prep"
 grep -q 'kali-lan-check\|lan-check' "$ROOT/stow/zsh/.shell-aliases" \

@@ -81,4 +81,74 @@ grep -q 'lab-capture' "$ROOT/scripts/labs-setup.sh" \
 grep -E '(-v|--bind).*\.ssh|\.gnupg' "$ROOT/scripts/lab-mcp.sh" \
   && fail "lab-mcp must not mount secrets" || true
 
+# inetsim.conf: only option names INetSim knows (http_port/https_port/dns_port
+# and create_html_index were silently ignored with warnings).
+! grep -qE '^(http_port|https_port|dns_port|create_html_index)[[:space:]]' "$ROOT/labs/lab-capture/inetsim.conf" \
+  || fail "inetsim.conf uses option names INetSim does not know"
+# INetSim (rootful, host network, parses malware traffic): minimal caps,
+# no-new-privileges, read-only root; recreated so old broad containers go away.
+_det="$ROOT/scripts/lab-detonate.sh"
+_run="$(awk '/sudo podman run -d --name lab-inetsim/{f=1} f; f&&/localhost\/lab-capture:latest/{exit}' "$_det")"
+for _f in '--cap-drop ALL' '--cap-add NET_BIND_SERVICE' '--cap-add SETUID' '--cap-add SETGID' '--cap-add CHOWN' \
+    '--security-opt no-new-privileges' '--read-only'; do
+  grep -qF -- "$_f" <<<"$_run" || fail "INetSim container must use $_f"
+done
+! grep -qE -- '--privileged|--cap-add (ALL|SYS_ADMIN|NET_ADMIN|DAC_OVERRIDE)' <<<"$_run" || fail "INetSim must not get broad caps"
+grep -q 'sudo podman rm -f lab-inetsim' "$_det" || fail "capture-up must recreate lab-inetsim (old containers keep old caps)"
+# Read-only root: every dir INetSim writes (logs, SMTP mbox, FTP uploads, HTTP
+# POST bodies) must be a host volume, prepared writable without DAC_OVERRIDE.
+for _d in /var/log/inetsim /var/lib/inetsim/smtp /var/lib/inetsim/ftp/upload /var/lib/inetsim/http/postdata; do
+  grep -qE ":${_d}:Z\"" <<<"$_run" || fail "INetSim must mount $_d from the host (read-only root)"
+  grep -qF "$_d" "$ROOT/labs/lab-capture/entrypoint.sh" || fail "entrypoint must prepare $_d"
+done
+grep -q 'chown root:inetsim "\$d"' "$ROOT/labs/lab-capture/entrypoint.sh" \
+  && grep -q 'chmod 0775 "\$d"' "$ROOT/labs/lab-capture/entrypoint.sh" \
+  || fail "entrypoint must make writable dirs root:inetsim 0775 (no DAC_OVERRIDE)"
+
+# PolarProxy runs on the host: never install an unverified download.
+_set="$(awk '/^cmd_setup\(\) \{/{f=1} f; f&&/^}$/{exit}' "$_det")"
+_T="$(mktemp -d)"; mkdir -p "$_T/bin" "$_T/log"
+printf '#!/bin/sh\nwhile [ $# -gt 0 ]; do [ "$1" = -o ] && { printf fakezip > "$2"; shift; }; shift; done\n' >"$_T/bin/curl"
+printf '#!/bin/sh\nexit 0\n' >"$_T/bin/podman"; chmod +x "$_T"/bin/*
+_pp() { PATH="$_T/bin:$PATH" bash -c 'say(){ :; }; die(){ echo "DIE $*"; exit 3; }; ensure_net(){ :; }; sudo(){ :; }
+  DET_DIR=$1 CAPTURE_LOG=$1 LAB_ROOT=$1 REPO_ROOT=$1 USER=x; '"$_set"'; cmd_setup' _ "$_T/log" 2>&1; }
+_o="$(_pp)"; [[ ! -e $_T/log/PolarProxy ]] && grep -q 'PolarProxy skipped' <<<"$_o" \
+  || fail "PolarProxy must not be fetched without POLARPROXY_SHA256: $_o"
+_o="$(POLARPROXY_SHA256=$(printf '%064d' 0) _pp)" || true; grep -q 'SHA-256 mismatch' <<<"$_o" && [[ ! -e $_T/log/PolarProxy ]] \
+  || fail "PolarProxy with a wrong SHA-256 must not be installed: $_o"
+
+# Alpine detonation base image: SHA-512 pinned; a tampered download is discarded.
+_fl="$(awk '/^ALPINE_IMAGES=\(/{f=1} f; f&&/^}$/{exit}' "$_det")"
+grep -cE '^  "https://dl-cdn.alpinelinux.org/[^ ]+ [0-9a-f]{128}"$' <<<"$_fl" | grep -qx 2 \
+  || fail "both Alpine images must carry a pinned SHA-512"
+_good="$(printf fakezip | sha512sum | awk '{print $1}')"
+_al() { PATH="$_T/bin:$PATH" bash -c 'say(){ :; }; die(){ echo "DIE $*"; exit 3; }; '"$_fl"'
+  ALPINE_IMAGES=("https://x/a.qcow2 $2"); LINUX_BASE=$1; fetch_linux_base' _ "$_T/base.qcow2" "$1" 2>&1; }
+_o="$(_al "$(printf '%0128d' 0)")" && fail "tampered Alpine image must be rejected: $_o"
+[[ ! -e $_T/base.qcow2 && ! -e $_T/base.qcow2.partial ]] || fail "rejected image must not remain"
+_al "$_good" >/dev/null || fail "matching Alpine image must be accepted"
+[[ -f $_T/base.qcow2 ]] || fail "verified Alpine image must be installed"
+# Images downloaded before pinning are re-checked, not trusted.
+chmod u+w "$_T/base.qcow2"; printf 'old-unverified' >"$_T/base.qcow2"
+_o="$(_al "$_good")" && fail "existing unpinned Alpine image must be refused: $_o"
+grep -q 'matches no pinned' <<<"$_o" || fail "refusal must explain how to recover: $_o"
+chmod u+w "$_T/base.qcow2"; printf fakezip >"$_T/base.qcow2"; _al "$_good" >/dev/null || fail "existing image matching the pin must be reused"
+
+# capture-up starts PolarProxy only if setup recorded a verified hash for it.
+_cu="$(awk '/^cmd_capture_up\(\) \{/{f=1} f; f&&/^}$/{exit}' "$_det")"
+mkdir -p "$_T/cl/polarproxy"; printf '#!/bin/sh\n' >"$_T/cl/PolarProxy"; chmod +x "$_T/cl/PolarProxy"
+printf '#!/bin/sh\necho started >>"%s/nohup.log"\n' "$_T" >"$_T/bin/nohup"; printf '#!/bin/sh\nexit 1\n' >"$_T/bin/pgrep"
+chmod +x "$_T/bin/nohup" "$_T/bin/pgrep"
+_cap() { PATH="$_T/bin:$PATH" bash -c 'say(){ :; }; die(){ echo "DIE $*"; exit 3; }; ensure_net(){ :; }; need(){ :; }; sudo(){ :; }
+  CAPTURE_LOG=$1 BIND_IP=192.168.200.1; '"$_cu"'; cmd_capture_up' _ "$_T/cl" 2>&1; wait; }
+_o="$(_cap)"; sleep 1; [[ ! -e $_T/nohup.log ]] && grep -q 'not installed by a verified setup' <<<"$_o" \
+  || fail "unverified PolarProxy must not start: $_o"
+sha256sum "$_T/cl/PolarProxy" | awk '{print $1}' >"$_T/cl/PolarProxy.verified"
+# PolarProxy is started in the background (nohup … &): give the stub a moment.
+_started() { local _; for _ in 1 2 3 4 5 6 7 8 9 10; do [[ -e $_T/nohup.log ]] && return 0; sleep 0.2; done; return 1; }
+_cap >/dev/null; _started || fail "verified PolarProxy must start"
+rm -f "$_T/nohup.log"; printf 'tampered\n' >>"$_T/cl/PolarProxy"
+_cap >/dev/null; ! _started || fail "PolarProxy changed after verification must not start"
+rm -rf -- "$_T"; unset -v _det _run _f _set _T _o _fl _good _cu; unset -f _pp _al _cap _started
+
 echo "PASS: slice2b-detonate-mcp.test.sh"

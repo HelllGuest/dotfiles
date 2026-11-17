@@ -220,19 +220,14 @@ _lab_reexec_kitty() {
 }
 
 # Resolve /work bind. Never mount $HOME or / (would leak ssh/gnupg secret dirs).
-_lab_work_dir() {
-    local cwd home out
-    cwd=$(pwd -P 2>/dev/null || pwd)
-    home=$(readlink -f -- "${HOME:-/}" 2>/dev/null || echo "$HOME")
-    out=$(readlink -f -- "$LAB_OUT" 2>/dev/null || echo "$LAB_OUT")
-    if [[ "$cwd" == "$home" || "$cwd" == "/" ]]; then
-        echo "lab: refusing to mount $cwd as /work (home/root leak). Using $out — cd into a project first." >&2
-        [[ -d $out ]] || mkdir -p "$out"
-        printf '%s' "$out"
-        return
-    fi
-    printf '%s' "$cwd"
-}
+# _lab_work_dir lives in scripts/lib/lab-workdir.sh (shared with lab-mcp.sh).
+# Without it the labs fail closed instead of mounting an unchecked cwd.
+if [[ -r "${DOTFILES_DIR:-$HOME/dotfiles}/scripts/lib/lab-workdir.sh" ]]; then
+    # shellcheck source=/dev/null
+    source "${DOTFILES_DIR:-$HOME/dotfiles}/scripts/lib/lab-workdir.sh"
+else
+    _lab_work_dir() { echo "lab: missing \${DOTFILES_DIR:-~/dotfiles}/scripts/lib/lab-workdir.sh — refusing to mount /work" >&2; return 1; }
+fi
 
 _lab_podman() {
     # $1 image $2 badge $3 network
@@ -263,7 +258,7 @@ _lab_podman() {
     local samples out work
     samples=$(readlink -f -- "$LAB_SAMPLES" 2>/dev/null || echo "$LAB_SAMPLES")
     out=$(readlink -f -- "$LAB_OUT" 2>/dev/null || echo "$LAB_OUT")
-    work=$(_lab_work_dir)
+    work=$(_lab_work_dir) || return 1
     [[ -d $samples ]] || { echo "lab: missing $samples — run: bash ~/dotfiles/scripts/labs-setup.sh" >&2; return 1; }
     [[ -d $out ]] || mkdir -p "$out"
     _has podman || { echo "lab: podman missing" >&2; return 1; }
@@ -299,7 +294,7 @@ lab-triage() {
     if _has bwrap; then
         local samples work
         samples=$(readlink -f -- "$LAB_SAMPLES")
-        work=$(_lab_work_dir)
+        work=$(_lab_work_dir) || return 1
         [[ -d $samples ]] || { echo "lab-triage: $samples missing" >&2; return 1; }
         bwrap --ro-bind /usr /usr --ro-bind /bin /bin --ro-bind /lib /lib \
             --ro-bind /lib64 /lib64 --ro-bind /etc /etc --proc /proc --dev /dev \
@@ -314,10 +309,13 @@ lab-triage() {
 }
 
 lab-re() {
-    # SYS_PTRACE + seccomp=unconfined: gdb/frida inside container only (host ptrace_scope untouched).
+    # SYS_PTRACE: gdb / radare2 attach inside the container (host ptrace_scope untouched).
+    # Default seccomp stays on: gdb runs and attaches under it; only disabling
+    # ASLR for the inferior is refused (harmless warning). seccomp=unconfined
+    # would expose the full syscall surface to analysed binaries.
     _lab_reexec_kitty "lab-re" "#689d6a" lab-re "$@" && return
     _lab_podman localhost/lab-re:latest "[RE]" none \
-        --cap-add SYS_PTRACE --security-opt seccomp=unconfined "$@"
+        --cap-add SYS_PTRACE "$@"
 }
 
 lab-android() {
@@ -331,7 +329,7 @@ lab-android() {
     local samples out work
     samples=$(readlink -f -- "$LAB_SAMPLES")
     out=$(readlink -f -- "$LAB_OUT")
-    work=$(_lab_work_dir)
+    work=$(_lab_work_dir) || return 1
     [[ -d $samples ]] || { echo "lab-android: $samples missing — labs-setup.sh" >&2; return 1; }
     [[ -d $out ]] || mkdir -p "$out"
     podman run --rm -it --security-opt no-new-privileges --cap-drop ALL \

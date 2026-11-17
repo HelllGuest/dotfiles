@@ -49,6 +49,58 @@ if [[ "${SKIP_ENABLE:-0}" != 1 ]]; then
     || die "dnscrypt-proxy not active — journalctl -u dnscrypt-proxy"
 fi
 
+# Per-connection DNS (network-dns-setup.sh) only covers connections that exist
+# now: any Wi-Fi joined later would use its DHCP DNS in plaintext, outside
+# dnscrypt. NetworkManager global DNS overrides that for every connection.
+# Global DNS also overrides what Tailscale (MagicDNS on tailscale0) and Proton
+# VPN (NetShield DNS on proton0) push. Tailnet names keep working through a
+# per-domain section for the MagicDNS suffix; Proton lookups still go through
+# the tunnel to dnscrypt (encrypted), only NetShield filtering is bypassed.
+# install_nm_global_dns ETC_ROOT [TAILNET_SUFFIX]
+#   ETC_ROOT="" = real /etc via sudo; tests pass a dir.
+install_nm_global_dns() {
+  local root=$1 suffix=${2:-} dir conf
+  local -a sudo_=(sudo) lines
+  [[ -n $root ]] && sudo_=()
+  if [[ -n $suffix && ! $suffix =~ ^[a-z0-9-]+(\.[a-z0-9-]+)*\.ts\.net$ ]]; then
+    warn "ignoring unexpected Tailscale MagicDNS suffix"
+    suffix=""
+  fi
+  dir="$root/etc/NetworkManager/conf.d"
+  conf="$dir/90-dnscrypt-global-dns.conf"
+  lines=(
+    '# dotfiles (scripts/dnscrypt-setup.sh): every connection resolves via dnscrypt-proxy.'
+    '# Remove this file and reload NetworkManager to return to per-connection DNS.'
+  )
+  if [[ -n $suffix ]]; then
+    lines+=('[global-dns]' "searches=$suffix" '' "[global-dns-domain-$suffix]" 'servers=100.100.100.100' '')
+  fi
+  lines+=('[global-dns-domain-*]' 'servers=127.0.0.1,::1')
+  "${sudo_[@]}" install -d -m 0755 "$dir"
+  printf '%s\n' "${lines[@]}" | "${sudo_[@]}" tee "$conf" >/dev/null
+  "${sudo_[@]}" chmod 0644 "$conf"
+}
+
+tailnet_suffix() {
+  command -v tailscale >/dev/null 2>&1 || return 0
+  tailscale status --json 2>/dev/null | jq -r '.MagicDNSSuffix // empty' 2>/dev/null || true
+}
+
+if [[ "${SKIP_NM:-0}" != 1 && "${SKIP_NM_GLOBAL:-0}" != 1 ]]; then
+  say "NetworkManager global DNS → 127.0.0.1 / ::1 (covers networks joined later)"
+  _ts="$(tailnet_suffix)"
+  install_nm_global_dns "" "$_ts"
+  if [[ -n $_ts ]]; then
+    say "kept Tailscale MagicDNS for $_ts (100.100.100.100)"
+  elif command -v tailscale >/dev/null 2>&1; then
+    warn "Tailscale not logged in: re-run this script after 'tailscale up' to keep MagicDNS names"
+  fi
+  unset -v _ts
+  sudo nmcli general reload dns-full 2>/dev/null \
+    || sudo systemctl reload NetworkManager \
+    || warn "reload NetworkManager to apply global DNS"
+fi
+
 if [[ "${SKIP_NM:-0}" != 1 ]]; then
   if [[ -f "$REPO_ROOT/scripts/network-dns-setup.sh" ]]; then
     say "point NetworkManager DNS at dnscrypt (127.0.0.1 / ::1)"
@@ -61,9 +113,11 @@ if [[ "${SKIP_NM:-0}" != 1 ]]; then
   fi
 fi
 
-if command -v tailscale >/dev/null 2>&1 && tailscale status &>/dev/null; then
+if [[ "${SKIP_NM:-0}" == 1 || "${SKIP_NM_GLOBAL:-0}" == 1 ]] \
+  && command -v tailscale >/dev/null 2>&1 && tailscale status &>/dev/null; then
   warn "Tailscale is up — MagicDNS may override NM DNS while connected"
 fi
+echo "  note: global DNS fails closed — if dnscrypt-proxy stops, nothing resolves (systemctl status dnscrypt-proxy)"
 
 echo "✓ dnscrypt-proxy ready"
 echo "  verify: resolvectl query example.com 2>/dev/null || dig @127.0.0.1 example.com"

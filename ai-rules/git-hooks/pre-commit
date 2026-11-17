@@ -8,6 +8,13 @@ ROOT="$(git rev-parse --show-toplevel 2>/dev/null || true)"
 cd "$ROOT"
 
 [[ -d stow && -f all_stow_files.txt ]] || exit 0
+# Runs scripts/list-stow-files.sh from this repo: only in the dotfiles checkout
+# or a repo marked trusted (git config --local hooks.trusted true). Any cloned
+# repo could otherwise ship stow/ + all_stow_files.txt + that script.
+_dot="$(cd "${DOTFILES_DIR:-$HOME/dotfiles}" 2>/dev/null && pwd -P || true)"
+if [[ "$(pwd -P)" != "$_dot" && "$(git config --local --bool hooks.trusted 2>/dev/null)" != true ]]; then
+  exit 0
+fi
 
 if [[ ! -f scripts/list-stow-files.sh ]]; then
   echo ""

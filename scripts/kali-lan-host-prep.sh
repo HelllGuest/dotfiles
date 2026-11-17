@@ -17,8 +17,24 @@ IFACE="${1:-${KALI_LAN_IFACE:-enp0s31f6}}"
 
 die() { echo "ERROR: $*" >&2; exit 1; }
 
+# Runs as root without a password (pkexec + 50-kali-lan-host-prep.rules), so
+# any process of a wheel user can pick the argument. Accept only a physical
+# wired Ethernet NIC: never Wi-Fi, the VPN tunnel (proton0/wg/tun), bridges or
+# other virtual links, whose addresses/routes this script flushes.
+# valid_lan_iface NAME SYS_CLASS_NET  (sysfs root is a parameter for tests only)
+valid_lan_iface() {
+  local name=$1 sys=$2 type
+  [[ $name =~ ^[A-Za-z0-9_.:-]{1,15}$ && $name != . && $name != .. ]] || { echo "invalid interface name"; return 1; }
+  [[ -d $sys/$name ]] || { echo "missing iface $name"; return 1; }
+  [[ -e $sys/$name/device ]] || { echo "$name is not a physical NIC"; return 1; }
+  type=$(cat "$sys/$name/type" 2>/dev/null || true)
+  [[ $type == 1 ]] || { echo "$name is not Ethernet (type ${type:-?})"; return 1; }
+  [[ ! -e $sys/$name/wireless && ! -e $sys/$name/phy80211 ]] || { echo "$name is wireless"; return 1; }
+  return 0
+}
+
 [[ "$(id -u)" -eq 0 ]] || die "run as root (sudo/pkexec)"
-[[ -d "/sys/class/net/$IFACE" ]] || die "missing iface $IFACE"
+reason="$(valid_lan_iface "$IFACE" /sys/class/net)" || die "refusing $IFACE: $reason"
 
 echo "→ prep host LAN $IFACE for Kali macvtap (no host IP/gateway)"
 

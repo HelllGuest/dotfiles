@@ -10,19 +10,11 @@ set -euo pipefail
 
 die() { echo "ERR $*" >&2; exit 1; }
 
-work_dir() {
-  local cwd home out
-  cwd=$(pwd -P 2>/dev/null || pwd)
-  home=$(readlink -f -- "${HOME:-/}" 2>/dev/null || echo "$HOME")
-  out="${LAB_OUT:-/srv/lab/out}"
-  if [[ "$cwd" == "$home" || "$cwd" == "/" ]]; then
-    echo "lab-mcp: refusing HOME/root as /work — using $out" >&2
-    mkdir -p "$out"
-    printf '%s' "$out"
-    return
-  fi
-  printf '%s' "$cwd"
-}
+# Shared with the lab-* shell wrappers: never mount home, its ancestors,
+# hidden config dirs, the dotfiles repo or the samples dir as /work.
+# shellcheck source=lib/lab-workdir.sh
+source "$(cd "$(dirname "$0")" && pwd)/lib/lab-workdir.sh"
+work_dir() { LAB_OUT="${LAB_OUT:-/srv/lab/out}" _lab_work_dir; }
 
 run_web() {
   local cmd=$1

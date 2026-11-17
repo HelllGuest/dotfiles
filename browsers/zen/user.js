@@ -35,3 +35,8 @@ user_pref("widget.content.gtk", true);
 user_pref("layout.css.prefers-color-scheme.enabled", true);
 user_pref("browser.theme.content-theme", 0);
 user_pref("browser.theme.toolbar-theme", 0);
+
+// WebRTC: only the default-route interface (the tunnel when the VPN is up) and
+// no host/LAN candidates, so sites cannot learn the ISP or LAN address.
+user_pref("media.peerconnection.ice.default_address_only", true);
+user_pref("media.peerconnection.ice.no_host", true);
