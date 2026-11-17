@@ -363,7 +363,7 @@ if [[ -n "${ZSH_VERSION:-}" ]]; then
     }
     autoload -Uz add-zsh-hook
     add-zsh-hook chpwd _update_terminal_cwd
-    _update_terminal_cwd
+    [[ -t 1 ]] && _update_terminal_cwd   # no stray escape when stdout is not a tty
 fi
 
 # ── Long-command desktop notification (terminal-agnostic) ──────────────

@@ -1,6 +1,44 @@
 # .zsh-plugins — zinit stack + tool hooks
 
 fpath=(/usr/share/zsh/site-functions $fpath)
+_zsh_cache_dir="${XDG_CACHE_HOME:-$HOME/.cache}/zsh"
+[[ -d $_zsh_cache_dir/init ]] || mkdir -p "$_zsh_cache_dir/init" "$_zsh_cache_dir/zcompcache"
+
+# _zsh_cache_eval NAME CMD...: source CMD's output from a cache that is
+# regenerated when the tool's binary changes (saves a fork + exec per tool per
+# shell). Only for static init scripts; fnm env is per-shell and stays eval'd.
+_zsh_cache_eval() {
+    local name=$1; shift
+    local bin=${commands[$1]} cache="$_zsh_cache_dir/init/$name.zsh"
+    [[ -n $bin ]] || return 0
+    if [[ ! -s $cache || $bin -nt $cache ]]; then
+        if ! "$@" >| "$cache.tmp" 2>/dev/null || [[ ! -s $cache.tmp ]]; then
+            rm -f -- "$cache.tmp"
+            eval "$("$@")"
+            return
+        fi
+        mv -f -- "$cache.tmp" "$cache"
+    fi
+    source "$cache"
+}
+
+# compinit once, deferred (zinit turbo, after the first prompt). Full run with
+# the insecure-dir audit at most daily; the dump is touched afterwards because
+# compinit only rewrites it when the completion set changes (otherwise every
+# shell took the slow path forever). -i: ignore insecure fpath dirs (hardening).
+_dot_compinit() {
+    local dump="${ZDOTDIR:-$HOME}/.zcompdump"
+    local -a stale=( "$dump"(N.mh+24) )
+    autoload -Uz compinit
+    if [[ ! -s $dump || ${#stale} -gt 0 ]]; then
+        compinit -i -d "$dump"
+        touch -- "$dump"
+    else
+        compinit -C -i -d "$dump"
+    fi
+    # Compiled dump loads faster next time; built in the background.
+    { [[ $dump.zwc -nt $dump ]] || zcompile -R -- "$dump.zwc" "$dump"; } &!
+}
 
 # ── Autosuggest: history + live completion engine (richer autocomplete) ──
 # Set before zsh-autosuggestions loads (deferred via zinit atload below).
@@ -23,7 +61,7 @@ zinit wait lucid light-mode for \
     zsh-users/zsh-autosuggestions \
   blockf atpull'zinit creinstall -q .' \
     zsh-users/zsh-completions \
-  atinit"ZINIT[COMPINIT_OPTS]=-C; zicompinit; zicdreplay" \
+  atinit"_dot_compinit; zicdreplay" \
     zdharma-continuum/fast-syntax-highlighting \
   pick"autopair.zsh" \
     hlissner/zsh-autopair
@@ -34,16 +72,7 @@ zinit wait lucid for \
   wfxr/forgit \
   djui/alias-tips
 
-# ── Completion ──────────────────────────────────────────────
-autoload -Uz compinit
-# -i: ignore insecure (group/world-writable) fpath dirs instead of prompting (hardening).
-# Daily full regen runs the security check; -C path reuses dump for speed.
-if [[ -n ${ZDOTDIR:-$HOME}/.zcompdump(#qN.mh+24) ]]; then
-    compinit -i
-else
-    compinit -C -i
-fi
-
+# ── Completion (compinit: _dot_compinit, deferred above) ────
 zstyle ':completion:*' menu select
 zstyle ':completion:*' matcher-list 'm:{a-z}={A-Z}' 'r:|=*' 'l:|=* r:|=*'
 zstyle ':completion:*' list-colors "${(s.:.)LS_COLORS}"
@@ -51,7 +80,7 @@ zstyle ':completion:*:descriptions' format '[%d]'
 zstyle ':completion:*:git-checkout:*' sort false
 # completion cache (faster repeat completions)
 zstyle ':completion:*' use-cache on
-zstyle ':completion:*' cache-path "${XDG_CACHE_HOME:-$HOME/.cache}/zsh/zcompcache"
+zstyle ':completion:*' cache-path "$_zsh_cache_dir/zcompcache"
 # completer chain: exact → case-insensitive → fuzzy (typo-tolerant autocomplete)
 zstyle ':completion:*' completer _extensions _complete _match _approximate
 zstyle ':completion:*:approximate:*' max-errors 1 numeric
@@ -68,15 +97,12 @@ zstyle ':fzf-tab:*' switch-group ',' '.'
 HISTFILE="${XDG_STATE_HOME:-$HOME/.local/state}/zsh/history"
 HISTSIZE=100000
 SAVEHIST=100000
-mkdir -p "$(dirname "$HISTFILE")"
-mkdir -p "${XDG_CACHE_HOME:-$HOME/.cache}/zsh"   # completion cache dir
+[[ -d ${HISTFILE:h} ]] || mkdir -p "${HISTFILE:h}"
 
 setopt HIST_IGNORE_ALL_DUPS HIST_FIND_NO_DUPS HIST_IGNORE_SPACE
 setopt HIST_SAVE_NO_DUPS SHARE_HISTORY HIST_REDUCE_BLANKS EXTENDED_HISTORY
 
-if command -v atuin >/dev/null 2>&1; then
-    eval "$(atuin init zsh --disable-up-arrow)"
-fi
+_zsh_cache_eval atuin atuin init zsh --disable-up-arrow
 
 # ── Options ─────────────────────────────────────────────────
 setopt AUTO_CD AUTO_PUSHD PUSHD_IGNORE_DUPS PUSHD_SILENT
@@ -110,8 +136,8 @@ bindkey '^[[1;5C' forward-word
 bindkey '^[[1;5D' backward-word
 
 # ── fzf ─────────────────────────────────────────────────────
-if command -v fzf >/dev/null 2>&1; then
-    source <(fzf --zsh)
+if (( $+commands[fzf] )); then
+    _zsh_cache_eval fzf fzf --zsh
     export FZF_DEFAULT_COMMAND='fd --type f --hidden --follow --exclude .git'
     export FZF_CTRL_T_COMMAND="$FZF_DEFAULT_COMMAND"
     export FZF_ALT_C_COMMAND='fd --type d --hidden --follow --exclude .git'
@@ -128,19 +154,13 @@ if command -v fzf >/dev/null 2>&1; then
 fi
 
 # ── zoxide ──────────────────────────────────────────────────
-if command -v zoxide >/dev/null 2>&1; then
-    eval "$(zoxide init zsh --cmd cd)"
-fi
+_zsh_cache_eval zoxide zoxide init zsh --cmd cd
 
 # ── direnv ──────────────────────────────────────────────────
-if command -v direnv >/dev/null 2>&1; then
-    eval "$(direnv hook zsh)"
-fi
+_zsh_cache_eval direnv direnv hook zsh
 
 # ── fnm / uv ────────────────────────────────────────────────
 if command -v fnm >/dev/null 2>&1; then
     eval "$(fnm env --use-on-cd --shell zsh)"
 fi
-if command -v uv >/dev/null 2>&1; then
-    eval "$(uv generate-shell-completion zsh)"
-fi
+_zsh_cache_eval uv uv generate-shell-completion zsh

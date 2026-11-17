@@ -10,13 +10,8 @@ source ~/.shell-git
 
 [ -f ~/.config/secrets/env ] && source ~/.config/secrets/env
 
-if command -v fnm >/dev/null 2>&1; then
-    eval "$(fnm env --use-on-cd --shell zsh)"
-fi
-
-if command -v starship >/dev/null 2>&1; then
-    eval "$(starship init zsh)"
-fi
+# fnm env: .zsh-plugins (once). Starship's full init is cached (_zsh_cache_eval).
+_zsh_cache_eval starship starship init zsh --print-full-init
 
 [[ -f ~/.zshrc.local ]] && source ~/.zshrc.local
 

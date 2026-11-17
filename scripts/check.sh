@@ -48,6 +48,15 @@ for bin in "${SHELL_BINARIES[@]}"; do
     fi
 done
 
+echo "--- Login shell ---"
+_ls="$(getent passwd "$USER" | cut -d: -f7)"
+if command -v zsh >/dev/null 2>&1 && [[ "$(readlink -f "$_ls")" == "$(readlink -f "$(command -v zsh)")" ]]; then
+    echo "✓ login shell is zsh ($_ls)"
+else
+    check_fail "login shell is ${_ls:-unknown}, not zsh — sudo usermod -s /usr/bin/zsh $USER (or re-run ./install.sh)"
+fi
+unset _ls
+
 echo "--- AI tooling (optional) ---"
 for bin in claude cursor headroom; do
     if command -v "$bin" >/dev/null 2>&1; then
