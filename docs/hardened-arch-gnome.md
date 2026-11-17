@@ -910,7 +910,13 @@ chains ([docs](https://tailscale.com/docs/reference/netfilter-modes)). On a
 default-`drop` host still bind the mesh iface and allow WireGuard so policy is
 visible if netfilter mode is `off`:
 
+`./install.sh` installs `tailscale` but does not enable the daemon (a network
+service stays opt-in; Stage A enables it only when its Tailscale box is ticked).
+Without `tailscaled` there is no `tailscale0`, so bind the firewall after it is up:
+
 ```bash
+sudo systemctl enable --now tailscaled
+sudo tailscale up
 bash scripts/firewalld-tailscale.sh
 # equivalent:
 #   sudo firewall-cmd --permanent --zone=trusted --change-interface=tailscale0
@@ -934,8 +940,12 @@ bash scripts/dnscrypt-setup.sh
 # daemon only: SKIP_NM=1 bash scripts/dnscrypt-setup.sh
 ```
 
-Listens on `127.0.0.1:53` and `[::1]:53`. Tailscale MagicDNS may override NM
-DNS while the mesh is up. Howto:
+Listens on `127.0.0.1:53` and `[::1]:53`. NM global DNS
+(`/etc/NetworkManager/conf.d/90-dnscrypt-global-dns.conf`) pins every
+connection, VPN and Tailscale included, to it; the tailnet `*.ts.net` suffix
+still resolves via MagicDNS (`100.100.100.100`). Trade-offs: Proton NetShield
+is bypassed, and nothing resolves while dnscrypt-proxy is down. Skip the pin
+with `SKIP_NM_GLOBAL=1`. Howto:
 [README — ops / privacy kits](../README.md#how-to-ops--privacy-kits).
 
 ## Libvirt disposable Kali (virbr0 NAT)
@@ -1607,7 +1617,10 @@ cd ~/dotfiles
 
 `./install.sh` (run from a GNOME session; full step-by-step order in [README — Script execution order](../README.md#script-execution-order-fresh-machine)) will:
 
-* Install packages from `packages/pacman.txt` (kernels, shells, terminals, CLI tools; skips Intel GPU packages on ThinkPad T14s Gen 3 AMD; installs the NVIDIA stack only when an NVIDIA display device is on PCI; skips `power-profiles-daemon` when `tuned-ppd` is present)
+* Install packages from `packages/pacman.txt` (kernels, shells, terminals, CLI tools; skips Intel GPU packages on ThinkPad T14s Gen 3 AMD; installs the NVIDIA stack only when an NVIDIA display device is on PCI; skips `power-profiles-daemon` when `tuned-ppd` is present and `rust` when `rustup` is present; replaces an AUR `bootvine-git` left by older dotfiles with the official `bootvine`)
+* Enable the `bootvine` boot screen (`bootvine.service` + `bootvine-shutdown.service`; no `sd-bootvine` initrd hook, so the LUKS prompt is unchanged)
+* Apply the Orchis-Dark / Tela-blue-dark / Bibata-Modern-Ice theme to the session, libadwaita and Flatpak apps and the GDM login screen (`scripts/theme-setup.sh`, `scripts/gdm-shell-theme.sh`)
+* Record every failed step and exit 1 at the end (no silent skips; only `SKIP_*=1` opt-outs skip); `check.sh` fails on missing packages, empty dock icons and dead shortcuts
 * Apply **after** `pacman.txt` exactly one machine profile via `scripts/apply-profile.sh`: `profiles/$(hostname).sh` if present, otherwise `scripts/detect-profile.sh` (`thinkpad-p15`, `thinkpad-t14s`, or `laptop`). Optimus/NVIDIA setup is inside `thinkpad-p15.sh` (no `nvidia.sh`).
 * Install Flatpaks from `packages/flatpak.txt` (Brave, Zen, Chrome, LibreWolf, Proton VPN, Android Studio) and AUR packages from `packages/aur.txt` (bootstraps `paru` if no helper exists)
 * Stow configs to `$HOME` (skips `zram` and `gdm`); install `system/` into `/etc` as root-owned files via `scripts/system-setup.sh`; materialize `zram-generator.conf` via `scripts/zram-setup.sh`

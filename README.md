@@ -41,6 +41,8 @@ Both `~/.zshrc` and `~/.bashrc` source these files.
 | **you-should-use** | Alias usage hints |
 | **forgit** | fzf git UI |
 
+**Default shell + startup:** `./install.sh` makes zsh the login shell (`usermod -s`; Stage A already does at `useradd`) and `check.sh` fails if it is not. Interactive startup ≈50 ms: `compinit` runs once, deferred after the first prompt (`_dot_compinit`: daily full run with the insecure-dir audit, dump touched + `zcompile`d so the fast path is actually taken), static tool inits (starship, fzf, atuin, zoxide, direnv, uv) are sourced from `~/.cache/zsh/init/` and regenerated when the tool's binary changes (`_zsh_cache_eval`), `fnm env` runs once. `tests/zsh.test.sh` keeps a 250 ms budget.
+
 **History:** **atuin** is initialized with `--disable-up-arrow` (sqlite). `↑`/`↓` stay on prefix history-search. **`Ctrl+R`:** Zsh loads atuin then `fzf --zsh`, so **fzf** owns `^R`; Bash loads `fzf --bash` then atuin, so **atuin** owns `^R`. Config: `stow/atuin/.config/atuin/config.toml`.
 
 ### Bash stack (`.bashrc` + `.inputrc`)
@@ -96,7 +98,7 @@ To disable per-directory auto-switching (no prompt on shell start), remove `--us
 
 ### Headroom (Claude / Cursor token compression)
 
-**Headroom** compresses tool output and context before it hits the model (savings vary; see [upstream](https://github.com/headroomlabs-ai/headroom)). Installed user-local via **pipx** (`python-pipx` in `packages/pacman.txt`). `scripts/install-headroom.sh` installs or upgrades `headroom-ai[all]`.
+**Headroom** compresses tool output and context before it hits the model (savings vary; see [upstream](https://github.com/headroomlabs-ai/headroom)). Installed user-local via **pipx** (`python-pipx` in `packages/pacman.txt`). `scripts/install-headroom.sh` installs `headroom-ai[all]` at the pinned `HEADROOM_VERSION` (reinstalls only on mismatch; bump the pin to upgrade).
 
 ```bash
 bash scripts/headroom-setup.sh    # install/upgrade + MCP registration
@@ -311,7 +313,7 @@ failing module stops the script; no silent `|| true`).
 | `APPLY_PROFILE` | off | `apply-profile.sh` |
 | `SETUP_OLLAMA` | **on for P15 (20SU)**; off on T14s | `ollama-setup.sh` (skipped with msg if not P15) |
 | `SETUP_LABS` | off | `labs-setup.sh` (triage/re/android/web images) |
-| `SETUP_DETONATE` | off | `lab-detonate.sh setup` (capture + VMs) |
+| `SETUP_DETONATE` | off | `lab-detonate.sh setup` (capture + VMs; PolarProxy only with `POLARPROXY_SHA256=<verified sha256>`) |
 | `SETUP_AI` | off | `ai-stack-setup.sh` (Headroom/`hr-*`, Ponytail, Continue FIM; **not** Caveman — full `./install.sh` already did cores + extras + P15 ollama) |
 | `SETUP_RICE` | off | `rice-setup.sh` (Gruvbox + lock-screen notifications off) |
 
@@ -328,7 +330,12 @@ Ponytail-oriented (complementary hooks; no duplicate caveman install).
 
 Packages land from `packages/pacman.txt` on `./install.sh`: `pacman-contrib`,
 `mat2`, `perl-image-exiftool` (`exiftool`), `bleachbit`, `usbguard`,
-`dnscrypt-proxy`. AUR also lists `bootvine-git` (boot animation).
+`dnscrypt-proxy`. Boot screen: `bootvine` (official repo; a live tree of
+systemd jobs instead of scrolling log lines). `./install.sh` enables
+`bootvine.service` and `bootvine-shutdown.service` for the boot after the root
+is unlocked and for shutdown. It does not add the `sd-bootvine` initrd hook, so
+the LUKS prompt stays the stock one. Disable: `sudo systemctl disable
+bootvine.service bootvine-shutdown.service`.
 
 ```bash
 # Auto on install / post-update (SKIP_OPS_HYGIENE=1 to skip):
@@ -342,7 +349,9 @@ bleachbit                  # GUI junk cleaner
 # Opt-in (do not enable blind on remote hosts):
 bash scripts/usbguard-setup.sh   # allowlist plugged devices, then enable
 bash scripts/dnscrypt-setup.sh   # dnscrypt-proxy on 127.0.0.1/::1 + NM DNS
-# Tailscale MagicDNS may override NM DNS while connected — expected.
+# Pins all NM DNS to 127.0.0.1 via 90-dnscrypt-global-dns.conf (tailnet
+# *.ts.net → 100.100.100.100). Bypasses Proton NetShield; DNS fails if
+# dnscrypt-proxy stops. Opt out of the pin: SKIP_NM_GLOBAL=1.
 ```
 
 `check.sh` soft-probes these (○ until packages/services are present). Plain DNS
@@ -440,18 +449,19 @@ re-run. Enable via `install-extensions.sh`; Wayland needs log out → log in.
 ```text
 lab-triage | lab-re | lab-android | lab-web | lab-detonate | lab-mcp
 ```
-Images build with rootless Podman. On linux-hardened that needs `fuse-overlayfs` (in `pacman.txt`) and the stowed `containers` package (`storage.conf`); `bash scripts/check.sh` reports it under "Podman (rootless)".
+`lab-detonate.sh capture-up` keeps INetSim logs and captured SMTP/FTP/HTTP-POST data under `/srv/lab/capture` (`inetsim-data/`); the container runs read-only with minimal caps. PolarProxy starts only if its hash matches the one verified at setup. Images build with rootless Podman. On linux-hardened that needs `fuse-overlayfs` (in `pacman.txt`) and the stowed `containers` package (`storage.conf`); `bash scripts/check.sh` reports it under "Podman (rootless)".
 
 **What `./install.sh` runs, in order:**
 ```text
 cleanup-input-overrides.sh
-→ pacman < packages/pacman.txt
+→ sudo -v once + keep-alive (long AUR builds no longer time out the sudo prompt)
+→ pacman -Syu packages/pacman.txt (one batch; on failure retried per package)
 → apply-profile.sh (hostname e.g. p15, or detect-profile.sh — after packages so NVIDIA DKMS exists)
-→ install-flatpaks.sh → install-aur.sh (bootstraps paru)
+→ install-flatpaks.sh → install-aur.sh (bootstraps paru; --sudoloop; per-package retry)
 → install-fonts.sh → stow ($HOME; system/ via system-setup.sh; skips zram & gdm)
 → fnm install/default 22 → atuin import → zram-setup.sh
 → gnome-session-setup.sh → location-setup.sh → gnome-console-setup.sh
-→ gdm-setup.sh → git-setup.sh → nvim-setup.sh → headroom-setup.sh
+→ gdm-setup.sh → theme-setup.sh (Orchis/Tela/Bibata + GDM) → git-setup.sh → nvim-setup.sh → headroom-setup.sh
 → sync-agent-skills.sh → install-coding-agents.sh (OpenCode + Kimi + MCP; if npm)
 → install-caveman.sh (if npm) → install-ponytail.sh (if node) → install-android-ui-skills.sh (if npx)
 → install-ghidra-cli.sh (if ghidra)
@@ -467,6 +477,31 @@ cleanup-input-overrides.sh
 → ops-hygiene.sh (paccache + flatpak unused + paccache.timer; SKIP_OPS_HYGIENE=1 skips)
 → firewalld-tailscale.sh (if tailscale) → check.sh → validate-configs.sh
 ```
+Nothing is skipped quietly: every failed step, and every step whose prerequisite
+from `pacman.txt` is missing (npm, npx, node, podman, ghidra, …), is listed at
+the end and `./install.sh` exits 1. Only explicit `SKIP_*=1` opt-outs skip.
+`check.sh` ("Install completeness") fails on any missing pacman/AUR/Flatpak
+package, dock icon without an app, shortcut whose command is missing, or
+listed extension that is not installed.
+
+**Theme:** Orchis-Dark (GTK3, GTK4/libadwaita via `~/.config/gtk-4.0`, Shell via
+User Themes), Tela-blue-dark icons, Bibata-Modern-Ice cursor, blue accent; also
+for Flatpak apps (`flatpak override --user`) and the GDM login screen
+(`scripts/gdm-shell-theme.sh` rebuilds `gnome-shell-theme.gresource` from the
+stock copy after a headless GNOME Shell in GDM mode loads the stylesheet without
+CSS errors; a pacman hook re-applies it, with the same check, after gnome-shell
+upgrades). `theme-sync.service` (user) refreshes the Flatpak theme copy after
+orchis-theme upgrades; `check.sh` fails when it is stale. Login
+screen broken? Ctrl+Alt+F3, then `sudo gdm-shell-theme revert && sudo systemctl
+restart gdm`. Keep the stock greeter: `SKIP_GDM_SHELL_THEME=1`. GNOME Tweaks and
+Extension Manager are installed from `pacman.txt`.
+
+**Command-finished notifications:** kitty (`notify_on_cmd_finish`), Ghostty
+(`notify-on-command-finish`) and GNOME Console (via `vte.sh`) notify natively when
+a command over 15 s ends in an unfocused window (bash and zsh; the terminal is
+detected as the shell's parent process); elsewhere (Alacritty, Contour, tmux,
+nested shells) the shell hook sends `notify-send` (`CMD_NOTIFY_THRESHOLD`; the
+native 15 s lives in the kitty/Ghostty configs).
 Opt-in after install (not auto): `bash scripts/usbguard-setup.sh`,
 `bash scripts/dnscrypt-setup.sh`. See
 [How to: ops / privacy kits](#how-to-ops--privacy-kits).
@@ -503,7 +538,7 @@ Key runtime dependencies (`scripts/check.sh` asserts binaries, shell tools, syml
 
 **GNOME dock:** Dash2Dock Animated via `scripts/install-dash2dock.sh` (EGO; listed in `gnome/extensions.txt`)
 
-**AUR** (via `install-aur.sh`, bootstraps `paru` if needed): `blesh-git`, `bootvine-git`, `curlie`, `forgit`, GNOME shell extensions, `vscodium-bin` (settings in `stow/vscode/`)
+**AUR** (via `install-aur.sh`, bootstraps `paru` if needed): `blesh-git`, `forgit`, `gnome-shell-extension-just-perfection-desktop`, `vscodium-bin` (settings in `stow/vscode/`)
 
 **Flatpaks** (via `install-flatpaks.sh`): Brave, Zen, Google Chrome, LibreWolf, Proton VPN, Android Studio. Chrome may be `--system` or `--user`; both satisfy `check.sh` / hardening presence checks. Browser telemetry debloat: `scripts/browser-hardening.sh` (Chrome = `chromium-base` + `chrome-extra`, which turns off Google AI features (AI Mode, Help Me Write, Gemini on pages, on-device model download); Brave = base + `brave-extra`; `check.sh` fails if the deployed Chrome/Brave policy differs from the repo; verify in `chrome://policy` / `brave://policy`; Zen `user.js` per real profile + Flatpak `systemconfig` + `/etc/firefox/policies` for native; LibreWolf upstream + `librewolf.overrides.cfg`). Launch Zen once before re-running hardening if profiles are new. `/etc` policy paths need sudo.
 
@@ -523,7 +558,7 @@ Clipboard: selecting text auto-copies in kitty and ghostty (`copy_on_select`); i
 
 **GNOME session:** `scripts/gnome-session-setup.sh` — dconf profile, Dash2Dock install, and extensions. Super+1–4 workspaces. Mouse/touchpad/keyboard use **stock GNOME defaults** (reset on session setup via `scripts/reset-input-defaults.sh`).
 
-**Location spoofing:** `scripts/location-setup.sh` — static GeoClue coords in `/etc/geolocation` (home from gitignored `stow/system/etc/geolocation.local`, else a Greenwich placeholder; VPN exit when `proton0` is up). Panel extension `proton-vpn@helllguest` shows spoofed coords and **Sync spoofed location** (runs `pkexec vpn-location-sync sync`). Manual: `vpn-location-sync` or `sudo vpn-location-sync sync`.
+**Location spoofing:** `scripts/location-setup.sh` — static GeoClue coords in `/etc/geolocation` (home from gitignored `stow/system/etc/geolocation.local`, else a Greenwich placeholder; VPN exit when `proton0` is up). Panel extension `proton-vpn@helllguest` shows spoofed coords and **Sync spoofed location** (runs `pkexec vpn-location-sync sync`). Manual: `vpn-location-sync` or `sudo vpn-location-sync sync`. As root (dispatcher / `pkexec`) it only reads the root-owned copy in `/usr/local/share/vpn-location-sync/`, never your home directory, so re-run `location-setup.sh` after editing `geolocation.local`.
 
 **Fonts:** Run `scripts/install-fonts.sh` for top Nerd Fonts (JetBrains Mono, Meslo, FiraCode, Cascadia, Iosevka, etc.)
 
@@ -570,6 +605,7 @@ We take a "quiet by default" approach:
 | `proton-vpn@helllguest` missing from `gnome-extensions list` | Shell session cache stale / after uninstall | Log out → log in; never `gnome-extensions uninstall` a stowed UUID (deletes tree) |
 | Proton VPN app stuck on "Loading app" | Server list fetch hung | `bash scripts/proton-seed-serverlist.sh` (or `--kill`) |
 | `ghidra` CLI is the GUI / wrong Java | cargo bin shadows `/usr/bin/ghidra` | Use `ghidra-gui`; re-run `bash scripts/install-ghidra-cli.sh` |
+| ghidra-cli build: `openssl-sys` "only compatible with OpenSSL … 3" | Arch ships OpenSSL 4; ghidra-cli locks an older `openssl-sys` | `sudo pacman -S openssl-3`, then re-run `bash scripts/install-ghidra-cli.sh` (it builds against the compat package) |
 
 ---
 
@@ -582,7 +618,7 @@ We take a "quiet by default" approach:
 | Metadata strip | `mat2 file.pdf` / `exiftool file.jpg` (share/upload path) |
 | UI junk cleaner | `bleachbit` (GUI) or `bleachbit -c …` |
 | USB allowlist | `bash scripts/usbguard-setup.sh` (generates rules from plugged devices, then enables) |
-| Encrypted DNS | `bash scripts/dnscrypt-setup.sh` (dnscrypt-proxy → 127.0.0.1; MagicDNS may override while Tailscale is up) |
+| Encrypted DNS | `bash scripts/dnscrypt-setup.sh` (dnscrypt-proxy → 127.0.0.1; NM global DNS pins 127.0.0.1; tailnet names → MagicDNS) |
 | Health check | `~/dotfiles/scripts/check.sh` |
 | Docs lint | `~/dotfiles/scripts/lint-docs.sh` (CI also runs this + `all_stow_files.txt` + `bash -n` + `tests/*.test.sh`) |
 | System files (`stow/system/`) | `bash scripts/system-setup.sh` |
@@ -631,7 +667,8 @@ sudo firewall-cmd --permanent --zone=lab-malware --list-all
 
 lab-re --check
 podman images | grep localhost/lab-
-# From $HOME, lab wrappers refuse mounting home as /work (fallback /srv/lab/out):
+# lab wrappers + lab-mcp refuse /, $HOME, its ancestors, hidden dirs under it
+# and the dotfiles repo as /work (scripts/lib/lab-workdir.sh; fallback /srv/lab/out):
 cd ~ && source ~/.shell-functions && _lab_work_dir   # expect /srv/lab/out + refuse message
 
 ss -tlnp | grep -E ':8787|:11434'

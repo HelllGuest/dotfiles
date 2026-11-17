@@ -25,7 +25,7 @@ Thank you for helping improve this setup. Follow these guidelines to keep the re
 - **fzf:** do not add `copy-selection` to `FZF_DEFAULT_OPTS` (unsupported in fzf 0.72); use per-invocation `--bind` with `wl-copy` / `xclip` if needed.
 - **Containers:** `DOCKER_HOST` in `.shell-exports` only when Podman socket exists; do not force Podman when Docker is the target runtime.
 - **x86-64-v3:** `stow/system/etc/makepkg.conf.d/zz-x86-64-v3.conf` retunes local/AUR C/C++/Rust/Go builds for this Comet Lake CPU. User overlay: `stow/pacman/.config/pacman/makepkg.conf`. Rebuild hot extra/ packages with `scripts/rebuild-v3.sh` (default: zstd xz lz4), signed by a local rebuild-v3 key. Repo upgrades overwrite those packages; re-run the script. Do not use v4 (no AVX-512).
-- **Headroom:** optional pipx install/upgrade via `scripts/install-headroom.sh`; setup via `scripts/headroom-setup.sh`; shell entry points in `.shell-functions` (`hr-claude`, `hr-cursor`, `hr-proxy`) — do not also alias those names in `.shell-aliases`. Prefer `headroom install apply --preset persistent-service … --no-telemetry` over one-shot `hr-proxy` for always-on. Stowed shell rc may export `ANTHROPIC_BASE_URL` / `OPENAI_BASE_URL` for interactive shells; Cursor still needs manual Base URL paste in the IDE. RTK is separate (not under `~/.headroom/bin`). Document behavior in the README Headroom section when changing setup scripts.
+- **Headroom:** pinned pipx install via `scripts/install-headroom.sh` (`HEADROOM_VERSION`; no auto-upgrade, bump the pin deliberately); setup via `scripts/headroom-setup.sh`; shell entry points in `.shell-functions` (`hr-claude`, `hr-cursor`, `hr-proxy`) — do not also alias those names in `.shell-aliases`. Prefer `headroom install apply --preset persistent-service … --no-telemetry` over one-shot `hr-proxy` for always-on. Stowed shell rc may export `ANTHROPIC_BASE_URL` / `OPENAI_BASE_URL` for interactive shells; Cursor still needs manual Base URL paste in the IDE. RTK is separate (not under `~/.headroom/bin`). Document behavior in the README Headroom section when changing setup scripts.
 - **PhotoGIMP:** optional; `scripts/install-photogimp.sh` overwrites GIMP config under `~/.config/GIMP/<major.minor>`. Do not commit user GIMP config into stow.
 - **Dash2Dock:** install via `scripts/install-dash2dock.sh` (EGO zip, not stale AUR). Keep UUID in `gnome/extensions.txt` and `gnome/dconf/user.conf` `enabled-extensions`. Wayland: log out/in after install.
 - Do not reintroduce `.zsh-aliases` / `.zsh-exports` — use the `.shell-*` naming scheme.
@@ -68,15 +68,15 @@ Thank you for helping improve this setup. Follow these guidelines to keep the re
 
 ### GNOME (`gnome/`)
 
-- Export live settings: `./scripts/backup-gsettings.sh` (overwrites `gnome/dconf/user.conf`)
-- Ensure `user-theme` is `Default` (not `Generated-Theme`).
+- Export live settings: `./scripts/backup-gsettings.sh` (overwrites `gnome/dconf/user.conf`; re-asserts the lock-screen, autorun and privacy keys after the dump, so add new hardening keys to its `ENFORCED` table)
+- Theme is Orchis-Dark + Tela-blue-dark + Bibata-Modern-Ice (`scripts/theme-setup.sh`); keep `gtk-theme`, `icon-theme`, `cursor-theme` and `org/gnome/shell/extensions/user-theme` `name` in `user.conf` in sync with that script (and the greeter in `stow/gdm/…/00-login-screen`).
 - Avoid machine-specific paths unless intentionally updating the reference snapshot.
 - Do **not** commit touchpad/mouse/keyboard overrides unless deliberately changing from stock GNOME defaults; session setup resets peripherals via `scripts/reset-input-defaults.sh`.
 
 ### Location / VPN panel (`scripts/location-setup.sh`, `stow/proton-vpn/`)
 
 - Home template: `stow/system/etc/geolocation`; runtime file: `/etc/geolocation`.
-- `vpn-location-sync.sh` must work as root via `pkexec` and NetworkManager dispatcher — test with `sudo vpn-location-sync sync` and panel **Sync spoofed location**.
+- `vpn-location-sync.sh` must work as root via `pkexec` and NetworkManager dispatcher — test with `sudo vpn-location-sync sync` and panel **Sync spoofed location**. As root it reads home coords only from root-owned `/usr/local/share/vpn-location-sync/home.geolocation` (never the user's repo), and validates lookup results before writing `/etc/geolocation`.
 - After script changes, re-run `location-setup.sh` to install `/usr/local/bin/vpn-location-sync` and polkit rule.
 
 ---
@@ -116,8 +116,8 @@ Thank you for helping improve this setup. Follow these guidelines to keep the re
 - Markdown: `bash scripts/lint-docs.sh` (header spacing + tables). CI runs it;
   keep it out of `validate-configs.sh`.
 - Use `$HOME`-relative paths or repo-root detection — avoid hardcoding usernames.
-- Prefer `set -e` for install scripts; use guarded fallbacks where sudo may fail.
-- Shared helpers and templates live in `scripts/lib/` (`dmi.sh`, `install-identity.sh`, `browsers.sh`, `telemetry.sh`, `agent-skills.sh`, `input.sh`, `skel.sh`, `thinkpad-charge-thresholds.conf`, `apply-charge-thresholds.sh.tmpl`, `thinkpad-charge-thresholds.service.tmpl`). VS Code settings telemetry merge lives once in `ai-rules/lib/vscode-settings-merge.sh` (sourced by `telemetry.sh` + `ai-rules/install.sh`).
+- Prefer `set -e` for install scripts. In `install.sh` wrap steps in `run_step` and prerequisites in `need_cmd`; never `|| echo "…skipped"` / `|| true` a step (tests/install-completeness.test.sh enforces it).
+- Shared helpers and templates live in `scripts/lib/` (`dmi.sh`, `install-identity.sh`, `browsers.sh`, `telemetry.sh`, `agent-skills.sh`, `input.sh`, `lab-workdir.sh` (shared lab `/work` guard), `pkg-lists.sh` (package-list parsing shared by `install.sh`, installers and `check.sh`), `skel.sh`, `thinkpad-charge-thresholds.conf`, `apply-charge-thresholds.sh.tmpl`, `thinkpad-charge-thresholds.service.tmpl`). VS Code settings telemetry merge lives once in `ai-rules/lib/vscode-settings-merge.sh` (sourced by `telemetry.sh` + `ai-rules/install.sh`).
   Prefer sourcing those over copying snippets.
 
 ### Script map (keep flat; group by role)
