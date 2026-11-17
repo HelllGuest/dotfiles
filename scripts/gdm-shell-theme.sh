@@ -74,6 +74,46 @@ PY
 
 is_ours() { list_res "$1" | grep -qx "$PREFIX/$MARK"; }
 
+# compat_css STOCK THEME > OUT: THEME followed by the stock *layout* rules for
+# login / unlock / a11y selectors the theme does not define. A theme written
+# for an older GNOME Shell lacks newer greeter selectors (GNOME 51: the next /
+# a11y button icons), which then render at an unbounded default size and sit
+# flush against edges. Only size / spacing / radius declarations are copied,
+# never colours, so the theme's look is not overridden.
+compat_css() {
+    python3 -I - "$1" "$2" <<'PY_CSS'
+import re
+import sys
+
+def rules(css):
+    css = re.sub(r"/\*.*?\*/", "", css, flags=re.S)
+    return re.findall(r"([^{}]+)\{([^{}]*)\}", css)
+
+stock = open(sys.argv[1], encoding="utf-8").read()
+theme = open(sys.argv[2], encoding="utf-8").read()
+have = {s.strip() for sel, _ in rules(theme) for s in sel.split(",")}
+keep = (".login-dialog", ".unlock-dialog", ".a11y")
+sizing = {"icon-size", "-st-icon-style", "width", "height",
+          "min-width", "min-height", "max-width", "max-height",
+          "padding", "padding-top", "padding-right", "padding-bottom", "padding-left",
+          "margin", "margin-top", "margin-right", "margin-bottom", "margin-left",
+          "border-radius", "spacing"}
+out = []
+for sel, body in rules(stock):
+    sels = [s.strip() for s in sel.split(",") if s.strip()]
+    missing = [s for s in sels if s.startswith(keep) and s not in have]
+    decls = [d.strip() for d in body.split(";")
+             if d.strip() and d.split(":", 1)[0].strip() in sizing]
+    if missing and decls:
+        out.append(",\n".join(missing) + " {\n  " + ";\n  ".join(decls) + "; }")
+sys.stdout.write(theme)
+if out:
+    sys.stdout.write("\n\n/* gdm-shell-theme: stock GNOME Shell layout rules for greeter "
+                     "selectors this theme does not style */\n")
+    sys.stdout.write("\n\n".join(out) + "\n")
+PY_CSS
+}
+
 # stock_ok FILE: a readable gresource with the stylesheets GDM loads, and (on
 # the real system) unmodified per pacman — never save someone else's edit as
 # the "pristine" copy.
@@ -82,7 +122,8 @@ stock_ok() {
     res="$(list_res "$1" 2>/dev/null)" || return 1
     grep -qx "$PREFIX/gnome-shell-dark.css" <<<"$res" || return 1
     if [[ -z $ROOT ]] && command -v pacman >/dev/null; then
-        ! pacman -Qkk gnome-shell 2>/dev/null | grep -qF "${GR#"$ROOT"}"
+        # Non-backup mismatches are "warning:" lines on stderr: read both streams.
+        ! pacman -Qkk gnome-shell 2>&1 | grep -qF "${GR#"$ROOT"}"
     fi
 }
 
@@ -104,17 +145,34 @@ trial() {
         as_user=(runuser -u nobody --)
     fi
     log="$t/shell.log"
+    # Private bus with no service directories: nothing is D-Bus-activated
+    # (gvfsd-fuse / document portal would leave FUSE mounts in $t/run).
+    cat >"$t/bus.conf" <<BUS
+<!DOCTYPE busconfig PUBLIC "-//freedesktop//DTD D-BUS Bus Configuration 1.0//EN"
+ "http://www.freedesktop.org/standards/dbus/1.0/busconfig.dtd">
+<busconfig>
+  <type>session</type>
+  <listen>unix:tmpdir=$t/run</listen>
+  <auth>EXTERNAL</auth>
+  <policy context="default">
+    <allow send_destination="*" eavesdrop="true"/>
+    <allow eavesdrop="true"/>
+    <allow own="*"/>
+  </policy>
+</busconfig>
+BUS
+    chmod 644 "$t/bus.conf"
     # Own session/process group: every child (dbus-daemon, shell helpers) is
     # stopped and reaped before the throwaway home is removed.
     setsid "${as_user[@]}" env -i PATH=/usr/bin:/bin HOME="$t/home" XDG_RUNTIME_DIR="$t/run" \
         XDG_CONFIG_HOME="$t/home/.config" GSETTINGS_BACKEND=memory \
-        G_RESOURCE_OVERLAYS="$PREFIX=$res" \
-        timeout -s INT 30 dbus-run-session -- "$SHELL_BIN" --headless \
+        G_RESOURCE_OVERLAYS="$PREFIX=$res" GIO_USE_VFS=local GVFS_DISABLE_FUSE=1 \
+        timeout -s INT 30 dbus-run-session --config-file="$t/bus.conf" -- "$SHELL_BIN" --headless \
         --virtual-monitor 1280x800 --mode=gdm >"$log" 2>&1 &
     local pid=$!
     # Stylesheet load is logged within ~1 s; give it time to finish parsing.
     for ((i = 0; i < 40; i++)); do
-        grep -q "Opened file '$res/gnome-shell-dark.css' as a resource overlay" "$log" 2>/dev/null && break
+        grep -qF "$res/gnome-shell-dark.css" "$log" 2>/dev/null && break
         kill -0 "$pid" 2>/dev/null || break
         sleep 0.5
     done
@@ -127,14 +185,22 @@ trial() {
     kill -KILL -- "-$pid" 2>/dev/null || true
     wait "$pid" 2>/dev/null || true
     local ok=0
-    if ! grep -q "Opened file '$res/gnome-shell-dark.css' as a resource overlay" "$log"; then
+    # GLib logs the overlay file it opened ("Opened file '<path>' as a resource
+    # overlay"); match the path only, so a reworded message still counts.
+    if ! grep -qF "$res/gnome-shell-dark.css" "$log"; then
         echo "gdm-shell-theme: trial inconclusive (headless GNOME Shell never loaded the stylesheet):" >&2
         tail -5 "$log" >&2
         ok=1
     elif grep -E 'Error parsing stylesheet|Theme parsing error|parsing error:' "$log" >&2; then
         ok=1
     fi
-    rm -rf -- "$t"
+    # Backstop: anything still mounted below $t (FUSE helpers) is detached
+    # first, so the throwaway home is always removed.
+    local m
+    while IFS= read -r m; do
+        umount -l -- "$m" 2>/dev/null || fusermount3 -uz -- "$m" 2>/dev/null || fusermount -uz -- "$m" 2>/dev/null || true
+    done < <(findmnt -rn -o TARGET 2>/dev/null | grep -F -- "$t/" | sort -r)
+    rm -rf -- "$t" || echo "gdm-shell-theme: could not remove $t" >&2
     return "$ok"
 }
 
@@ -161,7 +227,8 @@ cmd_apply() {
     stock_light="$(cat "$work/res/gnome-shell-light.css")"
     cp -r "$src/." "$work/res/"
     rm -f -- "$work/res/gnome-shell.css"
-    cp "$src/gnome-shell.css" "$work/res/gnome-shell-dark.css"
+    compat_css "$work/res/gnome-shell-dark.css" "$src/gnome-shell.css" >"$work/res/gnome-shell-dark.css.new"
+    mv "$work/res/gnome-shell-dark.css.new" "$work/res/gnome-shell-dark.css"
     printf '%s\n' "$stock_light" >"$work/res/gnome-shell-light.css"
     if [[ -f $src/assets/dash-placeholder.svg && ! -f $work/res/dash-placeholder.svg ]]; then
         cp "$src/assets/dash-placeholder.svg" "$work/res/"

@@ -38,6 +38,8 @@ run() { XDG_CACHE_HOME="$T/cache" PATH="$T/bin:$PATH" zsh -f -c "$helpers
 _zsh_cache_eval tool tool init; print \$TOOL_LOADED"; }
 [[ $(run) == 1 ]] || fail "cached init must be sourced"
 [[ $(run) == 1 && $(wc -l <"$T/runs") -eq 1 ]] || fail "second shell must reuse the cache (no fork)"
+grep -q 'local tmp="$cache.$$.tmp"' "$P" || fail "cache writes must use a per-process temp (concurrent shells)"
+grep -q 'zcompile -R -- "$dump.$$.zwc" "$dump" && mv -f' "$P" || fail "zcompile must write a temp .zwc then rename"
 sleep 1; touch "$T/bin/tool"
 run >/dev/null
 [[ $(wc -l <"$T/runs") -eq 2 ]] || fail "a newer binary must regenerate the cache"

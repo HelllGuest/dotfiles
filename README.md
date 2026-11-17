@@ -401,7 +401,13 @@ KVM, and edk2 OVMF. Host mounts this repo read-only via 9p.
 ```bash
 bash scripts/vm-stageb-run.sh
 # overrides: DISK=… GUEST_USER=t14svm GUEST_PASS=… LUKS_PASS=… RAM=4096
+# two VMs at once: distinct WORK=… (logs, fifo) and SSH_PORT=… (host → guest :22)
 ```
+
+Stage B always installs the GNOME stack from `pacman.txt`, so a Stage A run
+without a desktop (`DESKTOP=N`) still ends with GNOME; there is no supported
+no-desktop Stage B. Use `T14S_VM_DESKTOP=Y` (t14s-arch-install `tests/vm-run.sh`)
+to rehearse the GNOME Stage A path as well.
 
 Guest (`vm-stageb-guest.sh`): `CONFIGURE_UI=plain` + empty checklist line →
 defaults (`SETUP_FIREWALLD` on), then `./install.sh` with
@@ -489,7 +495,8 @@ User Themes), Tela-blue-dark icons, Bibata-Modern-Ice cursor, blue accent; also
 for Flatpak apps (`flatpak override --user`) and the GDM login screen
 (`scripts/gdm-shell-theme.sh` rebuilds `gnome-shell-theme.gresource` from the
 stock copy after a headless GNOME Shell in GDM mode loads the stylesheet without
-CSS errors; a pacman hook re-applies it, with the same check, after gnome-shell
+CSS errors; greeter selectors the theme predates get stock layout rules (sizes,
+spacing, never colours); a pacman hook re-applies it, with the same check, after gnome-shell
 upgrades). `theme-sync.service` (user) refreshes the Flatpak theme copy after
 orchis-theme upgrades; `check.sh` fails when it is stale. Login
 screen broken? Ctrl+Alt+F3, then `sudo gdm-shell-theme revert && sudo systemctl
@@ -605,6 +612,7 @@ We take a "quiet by default" approach:
 | `proton-vpn@helllguest` missing from `gnome-extensions list` | Shell session cache stale / after uninstall | Log out → log in; never `gnome-extensions uninstall` a stowed UUID (deletes tree) |
 | Proton VPN app stuck on "Loading app" | Server list fetch hung | `bash scripts/proton-seed-serverlist.sh` (or `--kill`) |
 | `ghidra` CLI is the GUI / wrong Java | cargo bin shadows `/usr/bin/ghidra` | Use `ghidra-gui`; re-run `bash scripts/install-ghidra-cli.sh` |
+| ghidra-cli: every command fails, "GhidraCliBridge not found" / doctor: `DataType cannot be converted to List<DataType>` | Ghidra 12.2 removed `DataTypeManager.remove(DataType, TaskMonitor)`; ghidra-cli v0.2.2 (and upstream master) still calls it | `bash scripts/install-ghidra-cli.sh` builds v0.2.2 from the pinned commit with that call patched to `remove(DataType)`; `ghidra doctor` → "bridge script compiles... OK" |
 | ghidra-cli build: `openssl-sys` "only compatible with OpenSSL … 3" | Arch ships OpenSSL 4; ghidra-cli locks an older `openssl-sys` | `sudo pacman -S openssl-3`, then re-run `bash scripts/install-ghidra-cli.sh` (it builds against the compat package) |
 
 ---

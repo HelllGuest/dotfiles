@@ -21,9 +21,16 @@ ENV PATH="/home/lab/.npm-global/bin:${PATH}"
 WORKDIR /home/lab
 # Playwright browsers + MCP servers (Chrome DevTools / Playwright).
 # Pinned only: a failed install must fail the build, not fall back to latest.
+# The Chromium download is retried (CDN connection resets) and each attempt is
+# time-limited (it can also hang silently); all attempts failing fails the build.
 RUN mkdir -p /home/lab/.npm-global \
+ && npm config set fetch-retries 5 \
+ && npm config set fetch-retry-maxtimeout 120000 \
  && npm install -g @playwright/mcp@0.0.39 playwright@1.49.0 \
- && npx --yes playwright install chromium
+ && ok=0; for try in 1 2 3 4; do \
+      if timeout 900 npx --yes playwright install chromium; then ok=1; break; fi; \
+      echo "playwright chromium download failed (attempt $try); retrying" >&2; sleep 15; \
+    done; [ "$ok" = 1 ]
 
 COPY --chown=lab:lab mcp-playwright.sh /usr/local/bin/mcp-playwright
 COPY --chown=lab:lab mcp-devtools.sh /usr/local/bin/mcp-devtools

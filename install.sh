@@ -204,16 +204,28 @@ fi
 # 2.2 Import shell history into atuin
 # The rc files keep history under XDG_STATE_HOME; atuin only finds it via
 # HISTFILE (import auto would look for ~/.zsh_history and fail). No history yet
-# (fresh install) means nothing to import, not a failure.
+# (fresh install) means nothing to import, not a failure. Import once: atuin
+# re-imports duplicate entries (bash history has no timestamps), and after the
+# first import atuin records new commands itself.
 if need_cmd atuin "atuin history import"; then
     _hist_found=0
+    _stamp_dir="${XDG_DATA_HOME:-$HOME/.local/share}/atuin"
     for _sh in zsh bash; do
         _hf="${XDG_STATE_HOME:-$HOME/.local/state}/$_sh/history"
         if [ -s "$_hf" ]; then
             _hist_found=1
-            run_step "atuin import ($_sh)" env HISTFILE="$_hf" atuin import "$_sh"
+            if [ -e "$_stamp_dir/.dotfiles-imported-$_sh" ]; then
+                echo "✓ $_sh history already imported into atuin"
+            elif env HISTFILE="$_hf" atuin import "$_sh"; then
+                if ! { mkdir -p "$_stamp_dir" && : >"$_stamp_dir/.dotfiles-imported-$_sh"; }; then
+                    fail_step "atuin import ($_sh) done but not recorded ($_stamp_dir) — the next run would duplicate it"
+                fi
+            else
+                fail_step "atuin import ($_sh) failed — re-run: HISTFILE=$_hf atuin import $_sh"
+            fi
         fi
     done
+    unset _stamp_dir
     if [ "$_hist_found" = 0 ]; then
         echo "○ no shell history yet — nothing for atuin to import"
     fi

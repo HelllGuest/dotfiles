@@ -114,7 +114,7 @@ blk() { awk -v s="$1" -v e="$2" 'index($0,s)==1{f=1} f&&index($0,e)==1{exit} f' 
 shell_blk="$(blk '# 2.0 Login shell' '# 2.1 Bootstrap')"
 [[ -n $shell_blk ]] || fail "install.sh login-shell step not found"
 mkdir -p "$T/sh/bin" "$T/sh/etc"
-for c in cut readlink; do [[ -e $T/core/$c ]] || ln -s "$(command -v "$c")" "$T/core/$c"; done
+for c in cut readlink mkdir; do [[ -e $T/core/$c ]] || ln -s "$(command -v "$c")" "$T/core/$c"; done
 cat >"$T/sh/bin/getent" <<EOF
 #!/bin/sh
 echo "u:x:1000:1000::/home/u:\$LOGIN_SHELL"
@@ -148,11 +148,16 @@ echo FAILED=\$INSTALL_FAILED" 2>&1)"
 grep -qx FAILED=0 <<<"$out" && [[ ! -e $T/sh/atuin.log ]] && grep -q 'no shell history yet' <<<"$out" \
   || fail "fresh install without history must not fail or call atuin: $out"
 mkdir -p "$T/state/zsh"; echo ': 1:0;ls' >"$T/state/zsh/history"
-out="$(XDG_STATE_HOME="$T/state" PATH="$T/sh/bin:$T/core" bash -c "$helpers
+out="$(XDG_STATE_HOME="$T/state" XDG_DATA_HOME="$T/data" PATH="$T/sh/bin:$T/core" bash -c "$helpers
 $atuin_blk
 echo FAILED=\$INSTALL_FAILED" 2>&1)"
 grep -qx "HISTFILE=$T/state/zsh/history import zsh" "$T/sh/atuin.log" \
   || fail "atuin must import the XDG zsh history via HISTFILE: $(cat "$T/sh/atuin.log" 2>/dev/null)"
+out="$(XDG_STATE_HOME="$T/state" XDG_DATA_HOME="$T/data" PATH="$T/sh/bin:$T/core" bash -c "$helpers
+$atuin_blk
+echo FAILED=\$INSTALL_FAILED" 2>&1)"
+[[ $(grep -c 'import zsh' "$T/sh/atuin.log") -eq 1 ]] && grep -q 'already imported' <<<"$out" \
+  || fail "re-running install.sh must not re-import (atuin duplicates entries): $(cat "$T/sh/atuin.log")"
 grep -q '/usr/lib/modules/$(uname -r)' "$ROOT/install.sh" || fail "install.sh must detect a kernel upgraded mid-run"
 grep -q 'need_cmd npm "OpenCode/Kimi" "$NODE_SRC"' "$ROOT/install.sh" || fail "npm comes from fnm, not pacman.txt (need_cmd hint)"
 

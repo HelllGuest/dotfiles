@@ -73,6 +73,11 @@ echo "→ Copying $GTK_THEME_NAME to $DATA_HOME/themes (Flatpak apps)..."
 copy_user_theme
 unit_dir="$CONFIG_HOME/systemd/user"
 mkdir -p "$unit_dir/default.target.wants"
+# The unit runs a copy of this script (--sync needs nothing from the repo), so
+# moving or deleting the dotfiles checkout cannot break the login-time refresh.
+sync_bin="$DATA_HOME/dotfiles/theme-setup.sh"
+mkdir -p "${sync_bin%/*}"
+install -m 0755 "$0" "$sync_bin"
 cat >"$unit_dir/theme-sync.service" <<EOF
 # Installed by dotfiles scripts/theme-setup.sh: refresh the user copy of
 # $GTK_THEME_NAME after an orchis-theme upgrade (Flatpak + libadwaita apps).
@@ -81,7 +86,7 @@ Description=Refresh user copy of the $GTK_THEME_NAME theme
 
 [Service]
 Type=oneshot
-ExecStart=/usr/bin/bash $REPO_ROOT/scripts/theme-setup.sh --sync
+ExecStart=/usr/bin/bash $sync_bin --sync
 
 [Install]
 WantedBy=default.target

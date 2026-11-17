@@ -12,12 +12,15 @@ _zsh_cache_eval() {
     local bin=${commands[$1]} cache="$_zsh_cache_dir/init/$name.zsh"
     [[ -n $bin ]] || return 0
     if [[ ! -s $cache || $bin -nt $cache ]]; then
-        if ! "$@" >| "$cache.tmp" 2>/dev/null || [[ ! -s $cache.tmp ]]; then
-            rm -f -- "$cache.tmp"
+        # Per-process temp + rename: shells starting together after an
+        # upgrade never source a half-written cache.
+        local tmp="$cache.$$.tmp"
+        if ! "$@" >| "$tmp" 2>/dev/null || [[ ! -s $tmp ]]; then
+            rm -f -- "$tmp"
             eval "$("$@")"
             return
         fi
-        mv -f -- "$cache.tmp" "$cache"
+        mv -f -- "$tmp" "$cache"
     fi
     source "$cache"
 }
@@ -36,8 +39,11 @@ _dot_compinit() {
     else
         compinit -C -i -d "$dump"
     fi
-    # Compiled dump loads faster next time; built in the background.
-    { [[ $dump.zwc -nt $dump ]] || zcompile -R -- "$dump.zwc" "$dump"; } &!
+    # Compiled dump loads faster next time; built in the background into a
+    # per-process file, then renamed (another shell never reads it half-written).
+    if [[ ! $dump.zwc -nt $dump ]]; then
+        { zcompile -R -- "$dump.$$.zwc" "$dump" && mv -f -- "$dump.$$.zwc" "$dump.zwc"; } &!
+    fi
 }
 
 # ── Autosuggest: history + live completion engine (richer autocomplete) ──

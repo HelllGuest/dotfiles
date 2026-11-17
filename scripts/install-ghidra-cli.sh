@@ -96,7 +96,10 @@ WANT_STAMP="${GHIDRA_CLI_TAG} ${GHIDRA_CLI_COMMIT} patch${GHIDRA_CLI_PATCH}"
 
 echo "Installing ghidra-cli ${GHIDRA_CLI_TAG} (patched for system Ghidra) via cargo..."
 # Only probe the cargo binary — never Arch /usr/bin/ghidra (GUI launcher).
-if [[ -x "$CLI_BIN" && "$(cat "$STAMP" 2>/dev/null)" == "$WANT_STAMP" ]]; then
+# Stamp = what we built + the binary's hash: a ghidra-cli installed later by
+# hand (same path, other build) no longer matches and is rebuilt.
+bin_hash() { sha256sum "$CLI_BIN" 2>/dev/null | cut -d' ' -f1; }
+if [[ -x "$CLI_BIN" && "$(cat "$STAMP" 2>/dev/null)" == "$WANT_STAMP $(bin_hash)" ]]; then
     echo "ghidra-cli ${GHIDRA_CLI_TAG} (patch${GHIDRA_CLI_PATCH}) already at $CLI_BIN; skipping cargo build"
 else
     SRC_DIR="$(mktemp -d "${TMPDIR:-/tmp}/ghidra-cli-src.XXXXXX")"
@@ -107,7 +110,7 @@ else
     patch_ghidra_cli "$SRC_DIR/src"
     cargo install --path "$SRC_DIR/src" --locked --force \
         || cargo install --path "$SRC_DIR/src" --force
-    printf '%s\n' "$WANT_STAMP" >"$STAMP"
+    printf '%s %s\n' "$WANT_STAMP" "$(bin_hash)" >"$STAMP"
     rm -rf -- "$SRC_DIR"
     trap - EXIT
 fi

@@ -12,7 +12,9 @@ description: >
 
 * CLI: `~/.cargo/bin/ghidra` (first on PATH; shadows Arch `/usr/bin/ghidra`)
 * GUI: `ghidra-gui` alias → `/opt/ghidra/ghidraRun`
-* Install/reinstall: `bash ~/dotfiles/scripts/install-ghidra-cli.sh`
+* Install/reinstall: `bash ~/dotfiles/scripts/install-ghidra-cli.sh` (builds v0.2.2 from a pinned commit,
+  patched for Ghidra 12.2: `DataTypeManager.remove(DataType, TaskMonitor)` was removed upstream in Ghidra;
+  without the patch every command fails with "GhidraCliBridge not found")
 
 ## Env / config
 

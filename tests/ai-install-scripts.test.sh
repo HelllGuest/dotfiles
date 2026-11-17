@@ -527,6 +527,7 @@ _o="$(_prun)" && fail "2 matches must stop: $_o" || true
 grep -q 'GHIDRA_CLI_COMMIT="${GHIDRA_CLI_COMMIT:-[0-9a-f]\{40\}}"' "$_gc" || fail "ghidra-cli tag must be pinned to a commit"
 grep -q 'refusing a moved tag' "$_gc" || fail "a moved tag must be refused"
 grep -q 'STAMP' "$_gc" || fail "an unpatched v0.2.2 build must be replaced (build stamp)"
+grep -q '"$WANT_STAMP $(bin_hash)"' "$_gc" || fail "stamp must include the binary hash (hand-installed builds are replaced)"
 rm -rf "$_T"; unset -v _gc _pblk _br _o; unset -f _prun
 
 # sync-agent-skills + ai-rules/install.sh: prevent writing hub symlinks back into kit

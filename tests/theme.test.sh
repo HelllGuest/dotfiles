@@ -48,7 +48,7 @@ EOF
 printf '#!/bin/sh\nexit 0\n' >"$T/bin/systemctl"
 chmod +x "$T/bin/"*
 mkdir -p "$T/core"
-for c in bash sed grep cat cp mv rm mkdir ln readlink date dirname mktemp sha256sum cut; do ln -s "$(command -v "$c")" "$T/core/$c"; done
+for c in bash sed grep cat cp mv rm mkdir ln readlink date dirname mktemp sha256sum cut install; do ln -s "$(command -v "$c")" "$T/core/$c"; done
 run_ts() { HOME="$T/home" XDG_DATA_HOME="" XDG_CONFIG_HOME="" XDG_RUNTIME_DIR="$T/none" \
   DBUS_SESSION_BUS_ADDRESS="${TS_BUS-unix:path=/fake}" THEME_SYS_SHARE="$S" SKIP_GDM_SHELL_THEME=1 \
   PATH="$T/bin:$T/core" bash "$ROOT/scripts/theme-setup.sh" "$@"; }
@@ -70,7 +70,10 @@ grep -qx 'set org.gnome.desktop.interface cursor-theme Bibata-Modern-Ice' "$T/gs
 grep -qx 'set org.gnome.shell.extensions.user-theme name Orchis-Dark' "$T/gsettings.log" || fail "shell theme name must be set"
 # Login-time refresh of the user copy, enabled without a user bus.
 u="$T/home/.config/systemd/user"
-grep -q "ExecStart=/usr/bin/bash $ROOT/scripts/theme-setup.sh --sync" "$u/theme-sync.service" || fail "theme-sync.service must run --sync"
+sb="$T/home/.local/share/dotfiles/theme-setup.sh"
+grep -qx "ExecStart=/usr/bin/bash $sb --sync" "$u/theme-sync.service" \
+  || fail "theme-sync.service must run its own copy (not the checkout) with --sync"
+cmp -s "$sb" "$ROOT/scripts/theme-setup.sh" && [[ -x $sb ]] || fail "sync copy must match theme-setup.sh"
 [[ "$(readlink "$u/default.target.wants/theme-sync.service")" == ../theme-sync.service ]] || fail "theme-sync.service must be enabled"
 run_ts --check || fail "--check must pass right after setup"
 echo '/* orchis gtk4 v2 */' >"$S/themes/Orchis-Dark/gtk-4.0/gtk.css"     # package upgrade
@@ -155,12 +158,39 @@ pgrep -f "$T/fake-shell" >/dev/null && fail "trial must stop every process it st
 for d in "${TMPDIR:-/tmp}"/tmp.*; do   # trial homes are mktemp -d dirs with run/ + home/
   [[ -d $d/run && -d $d/home && $d -nt $T/trial-start ]] && fail "trial must remove its throwaway home ($d)"
 done
+# The trial's bus activates nothing (gvfs/portal FUSE mounts leaked in the VM)
+# and anything still mounted under its temp dir is detached before removal.
+grep -q 'dbus-run-session --config-file="$t/bus.conf"' "$ROOT/scripts/gdm-shell-theme.sh" \
+  || fail "trial must use a bus config without service activation"
+! grep -q '<servicedir' "$ROOT/scripts/gdm-shell-theme.sh" || fail "trial bus must not list service dirs"
+grep -q 'findmnt -rn -o TARGET' "$ROOT/scripts/gdm-shell-theme.sh" || fail "trial must unmount leftovers before rm"
+# compat_css: greeter selectors the theme lacks get stock *sizing* only
+# (GNOME 51 next/a11y icons rendered huge under Orchis); theme rules untouched.
+cblk="$(awk '/^compat_css\(\) \{$/{f=1} f; f&&/^}$/{exit}' "$ROOT/scripts/gdm-shell-theme.sh")"
+[[ -n $cblk ]] || fail "compat_css not found"
+printf '%s\n' '.login-dialog-button.a11y-button StIcon { icon-size: 1em; color: red; padding: 4px; border-radius: 99px; }' \
+  '.login-dialog .user-icon, .panel { icon-size: 160px; background: blue; }' \
+  '.login-dialog-button.next-button StIcon { icon-size: 1em; }' '.panel { height: 2em; }' >"$T/stock.css"
+printf '%s\n' '/* theme */' '.login-dialog-button.next-button StIcon { icon-size: 3em; color: green; }' >"$T/theme.css"
+out="$(bash -c "$cblk"'
+compat_css "$1" "$2"' _ "$T/stock.css" "$T/theme.css")"
+head -2 <<<"$out" | grep -q 'icon-size: 3em; color: green' || fail "theme CSS must come first, unchanged: $out"
+grep -q '\.login-dialog-button\.a11y-button StIcon' <<<"$out" || fail "missing greeter selector must get stock sizing: $out"
+grep -q 'color: red\|background: blue' <<<"$out" && fail "only sizing may be copied (theme colours win): $out"
+[[ $(grep -c 'next-button' <<<"$out") -eq 1 ]] || fail "selectors the theme styles must not be duplicated: $out"
+grep -q '^\.panel' <<<"$(sed -n '3,$p' <<<"$out")" && fail "only login/unlock/a11y selectors are filled in: $out"
+grep -q 'icon-size: 160px' <<<"$out" || fail "user-icon sizing must be copied: $out"
+grep -q 'padding: 4px' <<<"$out" && grep -q 'border-radius: 99px' <<<"$out" || fail "spacing/radius must be copied: $out"
+
 # A damaged stock file is never saved as the pristine copy.
 rm -rf "$R/usr/local/share/gdm-shell-theme"
 head -c 512 /dev/urandom >"$R/usr/share/gnome-shell/gnome-shell-theme.gresource"
 if gst apply >"$T/out" 2>&1; then fail "damaged stock gresource must be refused"; fi
 [[ ! -e $R/usr/local/share/gdm-shell-theme/gnome-shell-theme.gresource.orig ]] || fail "damaged file must not become the pristine copy"
 grep -q 'damaged or modified' "$T/out" || fail "must explain the damaged stock file: $(cat "$T/out")"
+# pacman reports altered non-backup files as warnings on stderr: both streams read.
+grep -qF 'pacman -Qkk gnome-shell 2>&1 | grep -qF' "$ROOT/scripts/gdm-shell-theme.sh" \
+  || fail "stock_ok must read pacman -Qkk stderr (warnings) too"
 mkstock v2
 # install: root-owned copy + pacman hook naming the theme's own package.
 mkdir -p "$T/ibin"
