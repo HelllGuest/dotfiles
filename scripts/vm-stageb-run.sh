@@ -3,6 +3,7 @@
 #
 #   bash scripts/vm-stageb-run.sh
 #   DISK=~/arch-vmtest/test-disk.qcow2 bash scripts/vm-stageb-run.sh
+#   Parallel runs: distinct WORK=… and SSH_PORT=… (host forward to guest :22).
 #
 # Credentials match t14s tests/vm-bootstrap.sh defaults unless overridden.
 # Do NOT use USERNAME= here — the host shell often exports USERNAME=jon.
@@ -54,14 +55,14 @@ qemu-system-x86_64 \
   -drive if=pflash,format=raw,readonly=on,file="$ovmf_code" \
   -drive if=pflash,format=raw,file="$WORK/OVMF_VARS.fd" \
   -drive file="$DISK",if=virtio,format=qcow2 \
-  -netdev user,id=n0,hostfwd=tcp:127.0.0.1:2222-:22 \
+  -netdev user,id=n0,hostfwd=tcp:127.0.0.1:${SSH_PORT:-2222}-:22 \
   -device virtio-net,netdev=n0 \
   -virtfs local,path="$REPO",mount_tag=dotfiles,security_model=none,readonly=on \
   -display none \
   -serial pipe:"$PIPE" \
   -monitor none \
   -no-reboot \
-  >/tmp/dotfiles-stageb-qemu.out 2>"$WORK/stageb-qemu.err" &
+  >"$WORK/stageb-qemu.out" 2>"$WORK/stageb-qemu.err" &
 QEMU_PID=$!
 
 wait_log() {
