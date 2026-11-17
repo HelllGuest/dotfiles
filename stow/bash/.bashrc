@@ -94,7 +94,9 @@ else
 fi
 
 _update_terminal_cwd() {
+    local ret=$?   # keep the command's status for starship_precmd
     printf '\033]7;file://%s%s\a' "$HOSTNAME" "$PWD"
+    return "$ret"
 }
 if [[ "$TERM" != "linux" && "$TERM" != "dumb" ]]; then
     PROMPT_COMMAND="_update_terminal_cwd${PROMPT_COMMAND:+; $PROMPT_COMMAND}"
@@ -113,6 +115,19 @@ if declare -F _cmd_notify_end >/dev/null 2>&1; then
         trap '_cmd_notify_start "$BASH_COMMAND"' DEBUG
         PROMPT_COMMAND="_cmd_notify_end${PROMPT_COMMAND:+; $PROMPT_COMMAND}"
     fi
+fi
+
+# VTE terminals (GNOME Console …): vte.sh reports command end + status, which
+# Console turns into unfocused-window notifications. Loaded last and its
+# precmd moved first, so it records the command's real $? (vte.sh appends it).
+if [[ -n "${VTE_VERSION:-}" && -r /etc/profile.d/vte.sh ]]; then
+    _pc=("${PROMPT_COMMAND[@]}")
+    # shellcheck source=/dev/null
+    . /etc/profile.d/vte.sh
+    if declare -F __vte_precmd >/dev/null; then
+        PROMPT_COMMAND=(__vte_precmd "${_pc[@]}" __vte_osc7)
+    fi
+    unset _pc
 fi
 
 # Owner-only before loading (same as zsh: .zsh-plugins chmods it).

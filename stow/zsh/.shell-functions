@@ -369,14 +369,39 @@ fi
 # ── Long-command desktop notification (terminal-agnostic) ──────────────
 # Fires notify-send when an interactive command runs longer than
 # CMD_NOTIFY_THRESHOLD seconds. Hooks the shell (not the emulator), so it
-# works identically in ghostty, kitty and GNOME Console. Skipped on plain
+# works in any emulator; where the terminal notifies natively it stands down
+# (see _cmd_notify_native). Skipped on plain
 # TTYs / SSH sessions with no display. Override the threshold by exporting
 # CMD_NOTIFY_THRESHOLD (seconds) before the shell starts.
 : "${CMD_NOTIFY_THRESHOLD:=15}"
 
+# VTE terminals (GNOME Console, Ptyxis, GNOME Terminal) only learn that a
+# command finished via vte.sh; Console uses that for its own unfocused-window
+# notifications. zsh never reads /etc/profile.d, so load it here (bash: .bashrc,
+# after its prompt setup, so the VTE hook sees the command's real $?).
+if [[ -n "${ZSH_VERSION:-}" && -n "${VTE_VERSION:-}" && -r /etc/profile.d/vte.sh ]]; then
+    # shellcheck source=/dev/null
+    . /etc/profile.d/vte.sh
+fi
+
+# Terminals that notify natively, focus-aware (kitty notify_on_cmd_finish,
+# Ghostty notify-on-command-finish, Console via vte.sh) when this shell is
+# their direct child. The parent process decides, not inherited env vars
+# (KITTY_WINDOW_ID leaks into an Alacritty started from kitty). Inside them
+# the notify-send hook stands down; it still covers Alacritty, Contour, tmux,
+# nested shells. Native thresholds (15 s) are set in the terminal configs.
+_cmd_notify_native() {
+    [[ -n "${TMUX:-}" ]] && return 1
+    case "$(ps -o comm= -p "$PPID" 2>/dev/null)" in
+        kitty|ghostty|kgx) return 0 ;;
+    esac
+    return 1
+}
+
 _cmd_notify_supported() {
     _has notify-send || return 1
     [[ -n "${WAYLAND_DISPLAY:-}${DISPLAY:-}" ]] || return 1
+    _cmd_notify_native && return 1
     return 0
 }
 
@@ -385,13 +410,15 @@ _cmd_notify_start() {
     _cmd_notify_t0=$SECONDS
 }
 
+# Every path returns the command's own status: later prompt hooks (starship,
+# VTE) read $? after this one.
 _cmd_notify_end() {
     local ret=$?
-    [[ -z "${_cmd_notify_t0:-}" ]] && return
+    [[ -z "${_cmd_notify_t0:-}" ]] && return "$ret"
     local elapsed=$(( SECONDS - _cmd_notify_t0 ))
     unset _cmd_notify_t0
-    (( elapsed < CMD_NOTIFY_THRESHOLD )) && return
-    _cmd_notify_supported || return
+    (( elapsed < CMD_NOTIFY_THRESHOLD )) && return "$ret"
+    _cmd_notify_supported || return "$ret"
     local cmd="${_cmd_notify_cmd:-command}" icon urgency title
     if (( ret == 0 )); then
         icon=dialog-information; urgency=normal;   title="✓ done (${elapsed}s)"
@@ -400,6 +427,7 @@ _cmd_notify_end() {
     fi
     notify-send --app-name=shell --urgency="$urgency" --icon="$icon" \
         "$title" "$cmd" 2>/dev/null
+    return "$ret"
 }
 
 # zsh: register via native hooks (order-independent, no DEBUG-trap conflicts)

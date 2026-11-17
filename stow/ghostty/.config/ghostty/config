@@ -33,6 +33,12 @@ bell-features = no-attention,no-title,no-system,no-border
 shell-integration = detect
 shell-integration-features = cursor,sudo,title
 
+# Desktop notification when a command >15s finishes while unfocused (the
+# shell's notify-send hook stands down inside Ghostty: no duplicate).
+notify-on-command-finish = unfocused
+notify-on-command-finish-action = no-bell,notify
+notify-on-command-finish-after = 15s
+
 confirm-close-surface = false
 focus-follows-mouse = false
 clipboard-trim-trailing-spaces = true
