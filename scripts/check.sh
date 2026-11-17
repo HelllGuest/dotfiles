@@ -673,6 +673,15 @@ if command -v gsettings >/dev/null 2>&1 && gsettings list-schemas 2>/dev/null | 
 fi
 unset _fp _m _a _f _p _kb _cmd _name _bin _u _app_dirs
 
+# Theme copy for Flatpaks shadows the system theme: it must match it
+# (theme-sync.service refreshes it at login).
+bash "$REPO_ROOT/scripts/theme-setup.sh" --check
+case $? in
+    0) echo "✓ user theme copy matches the system theme" ;;
+    1) check_fail "user theme copy is stale — bash scripts/theme-setup.sh --sync" ;;
+    *) echo "○ theme not set up yet — bash scripts/theme-setup.sh" ;;
+esac
+
 echo "--- AUR list ---"
 # Entries that reached the official repos belong in pacman.txt (they were
 # installed in the AUR batch, so one failing AUR build skipped them too).

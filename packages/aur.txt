@@ -5,3 +5,6 @@ vscodium-bin
 flutter-bin
 cursor-bin
 antigravity-ide
+# Theme icons + cursor (scripts/theme-setup.sh); both pin upstream sha256
+tela-icon-theme
+bibata-cursor-theme-bin

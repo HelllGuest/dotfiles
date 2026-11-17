@@ -46,6 +46,10 @@ gnome-characters
 # Pinned in the dock (favorite-apps); explicit so they are never missing
 nautilus
 gnome-text-editor
+# Theme: Orchis-Dark GTK3/GTK4/Shell (scripts/theme-setup.sh). Icons + cursor
+# (Tela, Bibata) are AUR. python-gobject: gdm-shell-theme.sh reads gresources.
+orchis-theme
+python-gobject
 # gnome-shell CalendarServer needs libecal/libedataserver
 evolution-data-server
 # Wi-Fi regulatory.db (dmesg -2 without this)
