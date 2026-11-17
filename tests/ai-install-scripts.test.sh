@@ -484,11 +484,50 @@ grep -qE '^HEADROOM_VERSION="\$\{HEADROOM_VERSION:-[0-9]+\.[0-9]+\.[0-9]+\}"' "$
 grep -q 'pipx install --force "\$HEADROOM_SPEC"' "$_hr" || fail "headroom must install the pinned spec"
 ! grep -qE 'headroom update|pipx upgrade|pipx install "headroom-ai\[all\]"$' "$_hr" || fail "headroom must not auto-upgrade or install unpinned"
 unset -v _hr
+# Arch OpenSSL 4 vs ghidra-cli's locked openssl-sys (≤3): build against openssl-3.
+grep -qx 'openssl-3' "$ROOT/packages/pacman.txt" || fail "pacman.txt must include openssl-3 (ghidra-cli build)"
+_gc="$ROOT/scripts/install-ghidra-cli.sh"
+_ssl_line="$(grep -n 'export OPENSSL_INCLUDE_DIR=' "$_gc" | cut -d: -f1)"
+_cargo_line="$(grep -n 'cargo install --path' "$_gc" | head -1 | cut -d: -f1)"
+[[ -n $_ssl_line && -n $_cargo_line ]] && (( _ssl_line < _cargo_line )) \
+  || fail "install-ghidra-cli must export OPENSSL_{INCLUDE,LIB}_DIR before cargo install"
+_sslblk="$(awk '/^OPENSSL3_INCLUDE_DIR=/{f=1} f; f&&/^fi$/{exit}' "$_gc")"
+_T="$(mktemp -d)"; mkdir -p "$_T/inc" "$_T/lib" "$_T/bin"
+printf '#!/bin/sh\necho "${FAKE_SSL_VER:-4.1.0}"\n' >"$_T/bin/pkg-config"; chmod +x "$_T/bin/pkg-config"
+_sslrun() { PATH="$_T/bin:$PATH" bash -c 'die() { echo "DIE: $*"; exit 7; }; '"$_sslblk"'
+  echo "INC=${OPENSSL_INCLUDE_DIR:-} LIB=${OPENSSL_LIB_DIR:-}"' 2>&1; }
+[[ $(OPENSSL3_INCLUDE_DIR="$_T/inc" OPENSSL3_LIB_DIR="$_T/lib" _sslrun) == "INC=$_T/inc LIB=$_T/lib" ]] \
+  || fail "compat openssl-3 present: must point the build at it"
+_o="$(OPENSSL3_INCLUDE_DIR="$_T/none" OPENSSL3_LIB_DIR="$_T/none" _sslrun)" && fail "OpenSSL 4 without compat must stop: $_o" || true
+grep -q 'sudo pacman -S openssl-3' <<<"$_o" || fail "missing compat must say how to fix: $_o"
+[[ $(FAKE_SSL_VER=3.5.9 OPENSSL3_INCLUDE_DIR="$_T/none" OPENSSL3_LIB_DIR="$_T/none" _sslrun) == "INC= LIB=" ]] \
+  || fail "OpenSSL 3 system without compat: build against system OpenSSL"
+rm -rf "$_T"; unset -v _gc _ssl_line _cargo_line _sslblk _o; unset -f _sslrun
 grep -q 'rustup default stable' "$ROOT/scripts/install-ghidra-cli.sh" \
   || fail "install-ghidra-cli must bootstrap rustup default stable when unconfigured"
-grep -q 'cargo install --git "\$GHIDRA_CLI_GIT" --tag "\$GHIDRA_CLI_TAG" --force' \
-  "$ROOT/scripts/install-ghidra-cli.sh" \
+grep -q 'cargo install --path "\$SRC_DIR/src" --force' "$ROOT/scripts/install-ghidra-cli.sh" \
   || fail "install-ghidra-cli must fall back to unlocked cargo install"
+# Ghidra 12.2 dropped DataTypeManager.remove(DataType, TaskMonitor): the bridge
+# is patched to remove(DataType); exactly one site, else the build stops.
+_gc="$ROOT/scripts/install-ghidra-cli.sh"
+_pblk="$(awk '/^patch_ghidra_cli\(\) \{$/{f=1} f; f&&/^}$/{exit}' "$_gc")"
+[[ -n $_pblk ]] || fail "patch_ghidra_cli not found"
+_T="$(mktemp -d)"; mkdir -p "$_T/s/src/ghidra/scripts"
+_br="$_T/s/src/ghidra/scripts/GhidraCliBridge.java"
+_prun() { bash -c 'die() { echo "DIE: $*"; exit 7; }; '"$_pblk"'
+patch_ghidra_cli "$1"' _ "$_T/s" 2>&1; }
+printf '%s\n' 'x' '                boolean removed = dtm.remove(dataType, monitor);' 'y' >"$_br"
+_prun >/dev/null || fail "patch must apply to the v0.2.2 bridge"
+grep -qF 'boolean removed = dtm.remove(dataType);' "$_br" && ! grep -q 'dataType, monitor' "$_br" \
+  || fail "patch must call remove(DataType): $(cat "$_br")"
+_o="$(_prun)" && fail "re-patching (0 matches) must stop: $_o" || true
+grep -q 'expected 1 match, found 0' <<<"$_o" || fail "0 matches must say so: $_o"
+printf '%s\n' 'dtm.remove(dataType, monitor);' 'dtm.remove(dataType, monitor);' >"$_br"
+_o="$(_prun)" && fail "2 matches must stop: $_o" || true
+grep -q 'GHIDRA_CLI_COMMIT="${GHIDRA_CLI_COMMIT:-[0-9a-f]\{40\}}"' "$_gc" || fail "ghidra-cli tag must be pinned to a commit"
+grep -q 'refusing a moved tag' "$_gc" || fail "a moved tag must be refused"
+grep -q 'STAMP' "$_gc" || fail "an unpatched v0.2.2 build must be replaced (build stamp)"
+rm -rf "$_T"; unset -v _gc _pblk _br _o; unset -f _prun
 
 # sync-agent-skills + ai-rules/install.sh: prevent writing hub symlinks back into kit
 grep -q 'if \[\[ -L "\$CLAUDE" \]\]; then' "$ROOT/scripts/sync-agent-skills.sh" \

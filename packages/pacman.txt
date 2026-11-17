@@ -52,6 +52,9 @@ inter-font
 jdk-openjdk
 jdk17-openjdk
 jq
+# OpenSSL 3 compat libs/headers: scripts/install-ghidra-cli.sh builds against
+# them (ghidra-cli's locked openssl-sys rejects Arch's OpenSSL 4)
+openssl-3
 kitty
 # Terminal=true launchers: GNOME execs xdg-terminal-exec (kitty via stow/kitty xdg-terminals.list)
 xdg-terminal-exec

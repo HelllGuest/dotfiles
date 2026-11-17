@@ -7,7 +7,10 @@ set -euo pipefail
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 GHIDRA_CLI_GIT="${GHIDRA_CLI_GIT:-https://github.com/akiselev/ghidra-cli}"
 GHIDRA_CLI_TAG="${GHIDRA_CLI_TAG:-v0.2.2}"
-GHIDRA_CLI_VER="${GHIDRA_CLI_TAG#v}"
+# Commit the tag must resolve to (a moved tag is refused).
+GHIDRA_CLI_COMMIT="${GHIDRA_CLI_COMMIT:-10019ba1f3b54c9edcca8ec644a30e16fb7b7c79}"
+# Local patch level: bump when patch_ghidra_cli changes, so an older build is replaced.
+GHIDRA_CLI_PATCH=1
 GHIDRA_INSTALL_DIR="${GHIDRA_INSTALL_DIR:-/opt/ghidra}"
 CLI_BIN="${HOME}/.cargo/bin/ghidra"
 CONFIG_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/ghidra-cli"
@@ -57,19 +60,56 @@ JAVA_HOME_JDK="$(pick_jdk)"
 
 export PATH="${HOME}/.cargo/bin:${PATH}"
 
-echo "Installing ghidra-cli ${GHIDRA_CLI_TAG} via cargo..."
-# Only probe the cargo binary — never Arch /usr/bin/ghidra (GUI launcher).
-if [[ -x "$CLI_BIN" ]]; then
-    installed_ver="$("$CLI_BIN" --version 2>/dev/null | awk '{print $NF}')"
-    if [[ "$installed_ver" == "$GHIDRA_CLI_VER" ]]; then
-        echo "ghidra-cli ${GHIDRA_CLI_TAG} already at $CLI_BIN; skipping cargo build"
-    else
-        cargo install --git "$GHIDRA_CLI_GIT" --tag "$GHIDRA_CLI_TAG" --locked --force \
-            || cargo install --git "$GHIDRA_CLI_GIT" --tag "$GHIDRA_CLI_TAG" --force
-    fi
+# ghidra-cli v0.2.2 locks openssl-sys 0.9.111 (OpenSSL 1.x/3 only; resolving
+# without --locked still lands on it), but Arch ships OpenSSL 4. Build against
+# the openssl-3 compat package instead; its runtime libssl.so.3/libcrypto.so.3
+# live in /usr/lib, so the binary needs no rpath.
+OPENSSL3_INCLUDE_DIR="${OPENSSL3_INCLUDE_DIR:-/usr/include/openssl-3}"
+OPENSSL3_LIB_DIR="${OPENSSL3_LIB_DIR:-/usr/lib/openssl-3}"
+if [[ -d "$OPENSSL3_INCLUDE_DIR" && -d "$OPENSSL3_LIB_DIR" ]]; then
+    export OPENSSL_INCLUDE_DIR="$OPENSSL3_INCLUDE_DIR" OPENSSL_LIB_DIR="$OPENSSL3_LIB_DIR"
 else
-    cargo install --git "$GHIDRA_CLI_GIT" --tag "$GHIDRA_CLI_TAG" --locked --force \
-        || cargo install --git "$GHIDRA_CLI_GIT" --tag "$GHIDRA_CLI_TAG" --force
+    sys_ssl="$(pkg-config --modversion openssl 2>/dev/null || echo 0)"
+    if [[ ${sys_ssl%%.*} =~ ^[0-9]+$ ]] && (( ${sys_ssl%%.*} >= 4 )); then
+        die "OpenSSL ${sys_ssl} is too new for ghidra-cli's openssl-sys; install the compat package: sudo pacman -S openssl-3"
+    fi
+fi
+
+# patch_ghidra_cli SRC: source fixes for the system Ghidra. Each must apply
+# exactly once, otherwise the build stops (upstream changed: re-check).
+#  1. Ghidra 12.2 removed DataTypeManager.remove(DataType, TaskMonitor), which
+#     only called remove(DataType); the bridge script (compiled by Ghidra at
+#     run time, embedded in the binary) failed to compile, so every command
+#     died with "GhidraCliBridge not found". remove(DataType) exists in 12.1+.
+patch_ghidra_cli() {
+    local bridge="$1/src/ghidra/scripts/GhidraCliBridge.java"
+    [[ -f $bridge ]] || die "ghidra-cli layout changed: $bridge missing"
+    local n
+    n="$(grep -c 'dtm\.remove(dataType, monitor)' "$bridge" || true)"
+    [[ $n == 1 ]] || die "ghidra-cli patch 1 expected 1 match, found ${n:-0} — re-check against Ghidra's API"
+    sed -i 's/dtm\.remove(dataType, monitor)/dtm.remove(dataType)/' "$bridge"
+}
+
+# Build stamp: version alone cannot tell an unpatched v0.2.2 from ours.
+STAMP="${HOME}/.cargo/.ghidra-cli-dotfiles-build"
+WANT_STAMP="${GHIDRA_CLI_TAG} ${GHIDRA_CLI_COMMIT} patch${GHIDRA_CLI_PATCH}"
+
+echo "Installing ghidra-cli ${GHIDRA_CLI_TAG} (patched for system Ghidra) via cargo..."
+# Only probe the cargo binary — never Arch /usr/bin/ghidra (GUI launcher).
+if [[ -x "$CLI_BIN" && "$(cat "$STAMP" 2>/dev/null)" == "$WANT_STAMP" ]]; then
+    echo "ghidra-cli ${GHIDRA_CLI_TAG} (patch${GHIDRA_CLI_PATCH}) already at $CLI_BIN; skipping cargo build"
+else
+    SRC_DIR="$(mktemp -d "${TMPDIR:-/tmp}/ghidra-cli-src.XXXXXX")"
+    trap 'rm -rf -- "$SRC_DIR"' EXIT   # build only; the smoke step sets its own trap
+    git clone --quiet --depth 1 --branch "$GHIDRA_CLI_TAG" "$GHIDRA_CLI_GIT" "$SRC_DIR/src"
+    got="$(git -C "$SRC_DIR/src" rev-parse HEAD)"
+    [[ $got == "$GHIDRA_CLI_COMMIT" ]] || die "tag $GHIDRA_CLI_TAG is $got, expected $GHIDRA_CLI_COMMIT — refusing a moved tag"
+    patch_ghidra_cli "$SRC_DIR/src"
+    cargo install --path "$SRC_DIR/src" --locked --force \
+        || cargo install --path "$SRC_DIR/src" --force
+    printf '%s\n' "$WANT_STAMP" >"$STAMP"
+    rm -rf -- "$SRC_DIR"
+    trap - EXIT
 fi
 
 [[ -x "$CLI_BIN" ]] || die "expected binary missing: $CLI_BIN"
