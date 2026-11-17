@@ -76,6 +76,30 @@ If Windows must stay, choose **MANUAL** partitioning in the Stage A installer, r
 the EFI system partition, and only wipe/recreate the Linux LUKS volume. AUTO
 mode wipes the whole disk.
 
+**Reinstall next to Windows (T14s: ESP `nvme0n1p1` shared, Arch on `nvme0n1p5`):**
+
+1. Back up what git does not hold (`~/.ssh`, `~/.gnupg`, secrets env, atuin
+   history, `~/.var/app`, unpushed work): `/home` lives on the Arch root and is erased.
+2. Save the Windows BitLocker recovery key (new Secure Boot keys usually make
+   Windows ask once); turn off Windows Fast Startup.
+3. BIOS: Secure Boot → Reset to Setup Mode, Secure Boot off; boot the ISO (F12).
+4. Installer → **MANUAL**: ROOT = `nvme0n1p5`, EFI = `nvme0n1p1` with **reuse**
+   (default when a FAT32 ESP exists); the review must say `EFI … (reuse)`.
+5. The installer keeps `EFI/Microsoft` and the Windows partitions, removes old
+   Arch boot files, and writes the firmware entry `Linux Boot Manager` first in
+   `BootOrder` (dropping stale ones that point at an older ESP). systemd-boot
+   lists Windows Boot Manager.
+6. After first boot: Stage A½ below, then `sudo -v && bash scripts/check.sh --all`
+   (the Stage A part fails if no firmware entry loads systemd-boot from this ESP).
+
+Rehearsed in a VM with t14s-arch-install
+`VM_BOOTSTRAP=tests/vm-dual-bootstrap.sh bash tests/vm-run.sh`.
+
+Existing install booting only through the `BOOTX64.EFI` fallback (stale
+`Linux Boot Manager` from an earlier ESP; `check.sh --stage-a` reports it):
+`efibootmgr` to find the stale `BootNNNN`, `sudo efibootmgr -b NNNN -B`, then
+`sudo efibootmgr --create --disk /dev/nvme0n1 --part 1 --label "Linux Boot Manager" --loader '\EFI\systemd\systemd-bootx64.efi'`.
+
 ### Stage 0 — BIOS (`F1`)
 
 * Secure Boot: **Disabled** (optional enroll with sbctl after first successful boot;
