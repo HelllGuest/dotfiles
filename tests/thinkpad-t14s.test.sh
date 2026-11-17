@@ -154,8 +154,8 @@ grep -q '0x1002' "$ROOT/stow/gdm/etc/udev/rules.d/61-gdm-wayland.rules" \
   || fail "61-gdm-wayland.rules must include AMD vendor 0x1002"
 grep -q '0x10de' "$ROOT/stow/gdm/etc/udev/rules.d/61-gdm-wayland.rules" \
   || fail "61-gdm-wayland.rules must include NVIDIA vendor 0x10de (P15 Optimus)"
-grep -qE 'egl-wayland' "$ROOT/install.sh" \
-  || fail "install.sh T14s filter must mention egl-wayland"
+grep -qE 'egl-wayland' "$ROOT/scripts/lib/pkg-lists.sh" \
+  || fail "pkg-lists.sh host filter must mention egl-wayland"
 grep -q 'yoga-tablet-mode.service' "$ROOT/scripts/gnome-session-setup.sh" \
   || fail "gnome-session-setup.sh must disable leftover yoga-tablet-mode.service"
 grep -qE 'is_thinkpad_x1|yoga-tablet-mode' "$ROOT/scripts/validate-configs.sh" \
@@ -472,7 +472,12 @@ grep -q 'phase-14--thinkpad-optimization' "$ROOT/docs/fresh-install-coding-re.md
 # dropped (same --noconfirm conflict abort). Run the real block with stubs.
 _pkgblk="$(awk '/^if \[ -f "packages\/pacman.txt" \]; then$/{f=1} f; f&&/^fi$/{exit}' "$ROOT/install.sh")"
 [[ -n $_pkgblk ]] || fail "install.sh pacman.txt block not found"
-mkdir -p "$TMP/pk/bin" "$TMP/pk/repo/packages"
+_helpers="$(awk '/^INSTALL_FAILED=0$/{f=1} f&&/^echo "Starting installation..."$/{exit} f' "$ROOT/install.sh")"
+[[ -n $_helpers ]] || fail "install.sh helper block not found"
+_pkgblk="$_helpers
+$_pkgblk"
+mkdir -p "$TMP/pk/bin" "$TMP/pk/repo/packages" "$TMP/pk/repo/scripts/lib" "$TMP/none"
+cp "$ROOT/scripts/lib/pkg-lists.sh" "$ROOT/scripts/lib/dmi.sh" "$TMP/pk/repo/scripts/lib/"
 printf '%s\n' '# comment' 'bash' '' '  # indented comment' 'power-profiles-daemon' \
   'rust' 'zsh   # trailing comment' >"$TMP/pk/repo/packages/pacman.txt"
 cat >"$TMP/pk/bin/sudo" <<'STUB'
@@ -486,16 +491,20 @@ if [[ $1 == -Q ]]; then
   [[ -n ${PK_RUSTUP:-} && $2 == rustup ]] && exit 0
   exit 1
 fi
-cat >"$PK_OUT"
+# Targets follow "--" (no stdin list): one per line, as pacman sees them.
+while [[ $# -gt 0 && $1 != -- ]]; do shift; done
+shift
+printf '%s\n' "$@" >"$PK_OUT"
 STUB
 chmod +x "$TMP/pk/bin/sudo" "$TMP/pk/bin/pacman"
 for _mode in ppd tuned; do
   _tuned=""; [[ $_mode == tuned ]] && _tuned=1
-  (cd "$TMP/pk/repo" && PK_TUNED="$_tuned" PK_RUSTUP="$_tuned" PK_OUT="$TMP/pk/$_mode.out" \
+  (cd "$TMP/pk/repo" && DMI_SYSFS_ROOT="$TMP/none" PCI_SYSFS_ROOT="$TMP/none" \
+    PK_TUNED="$_tuned" PK_RUSTUP="$_tuned" PK_OUT="$TMP/pk/$_mode.out" \
     PATH="$TMP/pk/bin:$PATH" bash -c "$_pkgblk" >/dev/null) \
     || fail "install.sh package block failed ($_mode)"
-  grep -q '#' "$TMP/pk/$_mode.out" && fail "pacman stdin must not contain comments ($_mode)"
-  grep -qx '' "$TMP/pk/$_mode.out" && fail "pacman stdin must not contain blank lines ($_mode)"
+  grep -q '#' "$TMP/pk/$_mode.out" && fail "pacman targets must not contain comments ($_mode)"
+  grep -qx '' "$TMP/pk/$_mode.out" && fail "pacman targets must not contain blank lines ($_mode)"
   grep -qx 'zsh' "$TMP/pk/$_mode.out" || fail "trailing comment must be stripped, keeping zsh ($_mode)"
 done
 grep -qx 'power-profiles-daemon' "$TMP/pk/ppd.out" || fail "PPD host must still get power-profiles-daemon"
@@ -506,8 +515,6 @@ grep -qx 'rust' "$TMP/pk/tuned.out" \
   && fail "rustup host must not request rust (conflict aborts --noconfirm)" || true
 # GPU packages: Intel stack dropped on AMD T14s; NVIDIA stack kept only when an
 # NVIDIA display-class PCI function exists (P15), dropped elsewhere (T14s, VMs).
-mkdir -p "$TMP/pk/repo/scripts/lib"
-cp "$ROOT/scripts/lib/dmi.sh" "$TMP/pk/repo/scripts/lib/dmi.sh"
 mock_pci() { # $1 root, then vendor:class pairs
   local root=$1 i=0 pair; shift
   mkdir -p "$root"
@@ -558,7 +565,7 @@ rm -f "$TMP/pk/allfilt.out"
 # Comment-only manifest: pacman must not be called with an empty target list.
 printf '%s\n' '# only comments' '' >"$TMP/pk/repo/packages/pacman.txt"
 rm -f "$TMP/pk/empty.out"
-(cd "$TMP/pk/repo" && PK_OUT="$TMP/pk/empty.out" PATH="$TMP/pk/bin:$PATH" \
+(cd "$TMP/pk/repo" && DMI_SYSFS_ROOT="$TMP/none" PCI_SYSFS_ROOT="$TMP/none" PK_OUT="$TMP/pk/empty.out" PATH="$TMP/pk/bin:$PATH" \
   bash -c "$_pkgblk" >/dev/null) || fail "install.sh package block failed (empty)"
 [[ ! -e "$TMP/pk/empty.out" ]] || fail "empty manifest must not invoke pacman -S"
 unset -v _pkgblk _mode _tuned

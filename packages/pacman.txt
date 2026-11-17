@@ -39,6 +39,13 @@ gnome-shell-extension-vitals
 curlie
 gnome-software
 gnome-tweaks
+# Manage/browse extensions (GUI; extensions.gnome.org)
+extension-manager
+# Super+period shortcut (gnome/dconf/user.conf custom2)
+gnome-characters
+# Pinned in the dock (favorite-apps); explicit so they are never missing
+nautilus
+gnome-text-editor
 # gnome-shell CalendarServer needs libecal/libedataserver
 evolution-data-server
 # Wi-Fi regulatory.db (dmesg -2 without this)

@@ -5,3 +5,5 @@ app.zen_browser.zen
 com.google.Chrome
 io.gitlab.librewolf-community
 com.protonvpn.www
+# Sticky notes (pinned in the dock: favorite-apps)
+com.vixalien.sticky

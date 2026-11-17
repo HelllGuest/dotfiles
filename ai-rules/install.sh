@@ -122,6 +122,10 @@ fi
 echo "==> VS Code family telemetry (Cursor / Antigravity / Kiro / VSCodium)"
 TELEMETRY_KIT="$TARGET/vscode-family-telemetry.json"
 # Shared merge (also used by scripts/lib/telemetry.sh via this kit file).
+# A step that could not do its job is reported and fails the run at the end.
+KIT_FAILED=()
+kit_fail() { echo "  ✗ $*" >&2; KIT_FAILED+=("$*"); }
+
 # shellcheck source=lib/vscode-settings-merge.sh
 source "$TARGET/lib/vscode-settings-merge.sh"
 merge_vscode_settings() {
@@ -135,7 +139,7 @@ merge_vscode_settings() {
     mkdir -p "$user_dir"
   fi
   if ! command -v jq >/dev/null 2>&1; then
-    echo "  ! jq missing; skip merge for $label"
+    kit_fail "jq missing: telemetry opt-outs not merged into $label (sudo pacman -S jq)"
     return
   fi
   if vscode_merge_settings_telemetry "$settings" "$TELEMETRY_KIT"; then
@@ -202,7 +206,7 @@ if [[ -d "$HERE/../.git" ]] || [[ -d "$HERE/.git" ]]; then
   ROOT="$(cd "$HERE/.." && pwd)"
   if [[ -d "$ROOT/.git" ]]; then
     echo "==> agentsync current checkout ($ROOT)"
-    "$TARGET/bin/agentsync" "$ROOT" || true
+    "$TARGET/bin/agentsync" "$ROOT" || kit_fail "agentsync failed for $ROOT"
   fi
 fi
 
@@ -216,3 +220,8 @@ cat <<EOF
 Edit rules only in: $TARGET
 (or edit the source tree and re-run install.sh)
 EOF
+if [[ ${#KIT_FAILED[@]} -gt 0 ]]; then
+  echo "==> Finished with ${#KIT_FAILED[@]} failure(s):" >&2
+  printf '  - %s\n' "${KIT_FAILED[@]}" >&2
+  exit 1
+fi

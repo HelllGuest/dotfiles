@@ -10,11 +10,15 @@ if [[ ! -f "$LIST" ]]; then
     exit 0
 fi
 
+# shellcheck source=lib/pkg-lists.sh
+source "$REPO_ROOT/scripts/lib/pkg-lists.sh"
+
 if [[ -f "$REPO_ROOT/scripts/bootstrap-aur.sh" ]]; then
-    bash "$REPO_ROOT/scripts/bootstrap-aur.sh" || true
+    bash "$REPO_ROOT/scripts/bootstrap-aur.sh" \
+        || echo "WARN: bootstrap-aur.sh failed; using an existing helper if present" >&2
 fi
 
-mapfile -t pkgs < <(grep -v '^#' "$LIST" | grep -v '^[[:space:]]*$' || true)
+mapfile -t pkgs < <(list_entries "$LIST")
 if [[ ${#pkgs[@]} -eq 0 ]]; then
     exit 0
 fi
@@ -25,22 +29,33 @@ if command -v paru >/dev/null 2>&1; then
 elif command -v yay >/dev/null 2>&1; then
     AUR_HELPER="yay"
 else
-    echo "No AUR helper (yay/paru) — install manually: yay -S --needed - < packages/aur.txt"
-    exit 0
+    echo "✗ No AUR helper (yay/paru): ${#pkgs[@]} AUR packages not installed — bash scripts/bootstrap-aur.sh" >&2
+    exit 1
 fi
 
-to_install=()
-for pkg in "${pkgs[@]}"; do
-    if pacman -Qi "$pkg" &>/dev/null 2>&1; then
-        echo "✓ $pkg already installed"
-    else
-        to_install+=("$pkg")
-    fi
-done
-
+mapfile -t to_install < <(printf '%s\n' "${pkgs[@]}" | missing_pkgs)
 if [[ ${#to_install[@]} -eq 0 ]]; then
+    echo "✓ all ${#pkgs[@]} AUR packages installed"
     exit 0
 fi
+
+# --sudoloop: builds can outlast the sudo timestamp; without it the final
+# install prompt times out unattended and every built package is dropped.
+aur() { "$AUR_HELPER" -S --needed --noconfirm --sudoloop "$@"; }
 
 echo "Installing AUR packages via $AUR_HELPER: ${to_install[*]}"
-"$AUR_HELPER" -S --needed --noconfirm "${to_install[@]}"
+if ! aur "${to_install[@]}"; then
+    # One failing build aborts the batch; retry each so the rest still install.
+    echo "Batch failed — retrying one package at a time..."
+    mapfile -t retry < <(printf '%s\n' "${to_install[@]}" | missing_pkgs)
+    for pkg in "${retry[@]}"; do
+        aur "$pkg" || echo "✗ AUR build/install failed: $pkg" >&2
+    done
+fi
+
+mapfile -t still < <(printf '%s\n' "${pkgs[@]}" | missing_pkgs)
+if [[ ${#still[@]} -gt 0 ]]; then
+    echo "✗ AUR packages not installed: ${still[*]} — $AUR_HELPER -S ${still[*]}" >&2
+    exit 1
+fi
+echo "✓ all ${#pkgs[@]} AUR packages installed"

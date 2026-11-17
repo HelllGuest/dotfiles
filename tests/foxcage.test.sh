@@ -23,8 +23,8 @@ grep -qx 'mount_program = "/usr/bin/fuse-overlayfs"' \
   || fail "storage.conf must set overlay mount_program (podman build on linux-hardened)"
 grep -q 'scripts/install-foxcage.sh' "$ROOT/install.sh" || fail "install.sh does not run install-foxcage.sh"
 grep -q 'SKIP_FOXCAGE:-0' "$ROOT/install.sh" || fail "install.sh must honor SKIP_FOXCAGE"
-grep -B3 'bash scripts/install-foxcage.sh' "$ROOT/install.sh" | grep -q 'command -v podman' \
-  || fail "install.sh must skip foxcage without podman"
+grep -B3 'bash scripts/install-foxcage.sh' "$ROOT/install.sh" | grep -q 'need_cmd podman' \
+  || fail "install.sh must record a failure (need_cmd) for foxcage without podman"
 grep -q 'command -v foxcage' "$ROOT/scripts/check.sh" || fail "check.sh must report foxcage"
 # Pins in this test must track the script (both are bumped together on update).
 grep -q '0df41fe24a1ebc1de3bc0a0714b24bfb19f75a49b05ebb719cd96ff9f4f3bf5d' "$SCRIPT" \

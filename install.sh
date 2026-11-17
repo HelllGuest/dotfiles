@@ -16,7 +16,8 @@ for _p in "$HOME/.opencode/bin" "$HOME/.npm-global/bin" "${PNPM_HOME:-$HOME/.loc
 done
 unset _p
 
-# Critical steps set this; optional tools stay soft-skip. Exit 1 at end if set.
+# Every failed step sets this (the run continues); exit 1 at the end if set.
+# Only explicit opt-outs (SKIP_*=1) skip a step.
 INSTALL_FAILED=0
 INSTALL_FAIL_REASONS=()
 fail_step() {
@@ -25,45 +26,81 @@ fail_step() {
     INSTALL_FAIL_REASONS+=("$1")
 }
 
+# run_step LABEL CMD...: a failing step is recorded (exit 1 at the end) and the
+# run continues, so one broken step never silently drops the others.
+run_step() {
+    local label="$1"; shift
+    "$@" || fail_step "$label failed — re-run: $*"
+}
+# need_cmd CMD LABEL [SOURCE]: a missing prerequisite is a failure, not a
+# reason to skip quietly. SOURCE names where CMD should have come from.
+need_cmd() {
+    command -v "$1" >/dev/null 2>&1 && return 0
+    fail_step "$2 not installed: '$1' missing (${3:-packages/pacman.txt} install failed?)"
+    return 1
+}
+NODE_SRC="Node 22 via fnm, step 2.1"
+
 echo "Starting installation..."
+
+# Authenticate once and keep sudo alive for the whole run: AUR builds take
+# long enough for a later sudo prompt to time out unattended, which used to
+# drop every built AUR package without installing it.
+sudo -v || { echo "sudo authentication failed — install.sh needs sudo." >&2; exit 1; }
+( while kill -0 "$$" 2>/dev/null; do sudo -n -v 2>/dev/null; sleep 50; done ) &
+SUDO_KEEPALIVE_PID=$!
+trap 'kill "$SUDO_KEEPALIVE_PID" 2>/dev/null' EXIT
 
 # Legacy touchpad udev/inhibit cleanup (if present from older dotfiles)
 if [ -f "scripts/cleanup-input-overrides.sh" ]; then
-    bash scripts/cleanup-input-overrides.sh || echo "Input override cleanup skipped."
+    run_step "Input override cleanup" bash scripts/cleanup-input-overrides.sh
 fi
 
 # 1. Install packages (before machine profile — NVIDIA/Optimus needs nvidia-* present)
 if [ -f "packages/pacman.txt" ]; then
     echo "Installing pacman packages..."
-    # pacman does not skip "#" lines on stdin ("target not found: # …" aborts
-    # the whole transaction), so strip comments/blank lines first.
-    # tuned-ppd provides+conflicts power-profiles-daemon; asking for PPD would make
-    # --noconfirm refuse the removal and abort the whole transaction.
-    pkg_list="$(sed -e 's/#.*//' -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//' -e '/^$/d' packages/pacman.txt)"
-    if pacman -Q tuned-ppd >/dev/null 2>&1; then
-        pkg_list="$(printf '%s\n' "$pkg_list" | grep -vx 'power-profiles-daemon' || true)"
-    fi
-    # Same for rust vs rustup (Stage A installs rustup; rustup provides cargo/rustc).
-    if pacman -Q rustup >/dev/null 2>&1; then
-        pkg_list="$(printf '%s\n' "$pkg_list" | grep -vx 'rust' || true)"
-    fi
-    if [ -f "scripts/lib/dmi.sh" ]; then
-        # shellcheck source=scripts/lib/dmi.sh
-        source scripts/lib/dmi.sh
-        if is_thinkpad_t14s; then
-            # AMD T14s: no Intel iGPU.
-            pkg_list="$(printf '%s\n' "$pkg_list" | grep -vxE 'intel-media-driver|vulkan-intel' || true)"
-        fi
-        if ! has_nvidia_gpu; then
-            # No NVIDIA card (T14s, VMs, other laptops): skip the Optimus stack + DKMS builds.
-            pkg_list="$(printf '%s\n' "$pkg_list" | grep -vxE 'nvidia-open-dkms|nvidia-prime|nvidia-utils|egl-wayland' || true)"
+    REPO_ROOT="$PWD"
+    # shellcheck source=scripts/lib/pkg-lists.sh
+    source scripts/lib/pkg-lists.sh
+    mapfile -t pkgs < <(pacman_targets)
+    # Older dotfiles built AUR bootvine-git: same files as official bootvine and
+    # no conflicts= metadata, so installing bootvine would abort the whole
+    # transaction ("conflicting files"). Swap it out first.
+    if pacman -Q bootvine-git >/dev/null 2>&1 && printf '%s\n' "${pkgs[@]}" | grep -qx 'bootvine'; then
+        echo "Replacing AUR bootvine-git with the official bootvine package..."
+        if ! sudo pacman -R --noconfirm bootvine-git; then
+            # Keep bootvine out of the batch so the conflict cannot abort it.
+            fail_step "could not remove bootvine-git, bootvine not installed (sudo pacman -R bootvine-git && sudo pacman -S bootvine)"
+            mapfile -t pkgs < <(printf '%s\n' "${pkgs[@]}" | grep -vx 'bootvine')
         fi
     fi
-    if [ -n "$pkg_list" ]; then
-        printf '%s\n' "$pkg_list" | sudo pacman -S --needed --noconfirm - \
-            || fail_step "Package install failed (sudo / network / conflict) — see pacman output above."
+    if [ "${#pkgs[@]}" -gt 0 ]; then
+        # -Syu: installing from a stale sync db is a partial upgrade on Arch and
+        # 404s on rotated mirrors (one bad target aborts the whole batch).
+        if ! sudo pacman -Syu --needed --noconfirm -- "${pkgs[@]}"; then
+            echo "Batch install failed — retrying one package at a time..."
+            mapfile -t missing < <(printf '%s\n' "${pkgs[@]}" | missing_pkgs)
+            for p in "${missing[@]}"; do
+                sudo pacman -S --needed --noconfirm -- "$p" \
+                    || fail_step "pacman: could not install $p — sudo pacman -S $p"
+            done
+        fi
     fi
-    unset pkg_list
+    unset pkgs missing p
+    # A kernel upgrade removes the running kernel's modules: later steps that
+    # load one (fuse-overlayfs for podman, zram, libvirt) fail until a reboot.
+    if [ ! -d "/usr/lib/modules/$(uname -r)" ]; then
+        fail_step "Kernel upgraded during this run (running $(uname -r) has no modules left): reboot, then re-run ./install.sh — module-loading steps below may fail until then"
+    fi
+fi
+
+# 1.04 Boot screen (bootvine): stage 2 + shutdown only. No sd-bootvine initrd
+# hook, so the LUKS unlock prompt stays the stock sd-encrypt flow.
+# bootvine-shutdown.service has its own [Install] (no Also=), enable both.
+if pacman -Q bootvine >/dev/null 2>&1; then
+    run_step "bootvine enable" sudo systemctl enable bootvine.service bootvine-shutdown.service
+else
+    fail_step "bootvine not installed (packages/pacman.txt) — boot screen not enabled"
 fi
 
 # 1.05 Machine profile (hostname override, else hardware detect)
@@ -91,18 +128,18 @@ fi
 # 1.1 Install Flatpaks
 if [ -f "scripts/install-flatpaks.sh" ]; then
     echo "Installing flatpak packages..."
-    bash scripts/install-flatpaks.sh || echo "Flatpak install failed."
+    run_step "Flatpak install" bash scripts/install-flatpaks.sh
 fi
 
 # 1.15 Install AUR packages (optional — requires yay/paru)
 if [ -f "scripts/install-aur.sh" ]; then
     echo "Installing AUR packages..."
-    bash scripts/install-aur.sh || echo "AUR install failed or skipped."
+    run_step "AUR install" bash scripts/install-aur.sh
 fi
 
 # 1.2 Install Fonts
 if [ -f "scripts/install-fonts.sh" ]; then
-    bash scripts/install-fonts.sh || echo "Font installation failed. Skipping."
+    run_step "Font install" bash scripts/install-fonts.sh
 fi
 
 # 2. Setup symlinks using Stow or Fallback
@@ -138,113 +175,136 @@ for dir in */; do
 done
 cd .. || exit 1
 
+# 2.0 Login shell: zsh (the dotfiles' primary shell; kitty, Ghostty, Console
+# and the rest start the login shell). Stage A sets it at useradd; other hosts
+# may still be on bash.
+if need_cmd zsh "zsh login shell"; then
+    zsh_path="$(command -v zsh)"
+    login_shell="$(getent passwd "$USER" | cut -d: -f7)"
+    if [ "$(readlink -f "$login_shell")" != "$(readlink -f "$zsh_path")" ]; then
+        if grep -qx "$zsh_path" /etc/shells; then
+            run_step "Login shell → zsh" sudo usermod -s "$zsh_path" "$USER"
+        else
+            fail_step "$zsh_path is not in /etc/shells — login shell left as $login_shell"
+        fi
+    fi
+    unset zsh_path login_shell
+fi
+
 # 2.1 Bootstrap Node.js LTS via fnm (avoids bleeding-edge system node breaking native addons)
-if command -v fnm >/dev/null 2>&1; then
+if need_cmd fnm "Node.js LTS via fnm"; then
     echo "Setting up Node.js LTS (22) via fnm..."
     eval "$(fnm env --shell bash)"
-    fnm install 22 || echo "fnm install 22 failed — skipping."
-    fnm default 22 || true
-    fnm use 22 || true
+    run_step "Node 22 (fnm install)" fnm install 22
+    run_step "Node 22 (fnm default)" fnm default 22
+    run_step "Node 22 (fnm use)" fnm use 22
     eval "$(fnm env --shell bash)"
 fi
 
 # 2.2 Import shell history into atuin
-if command -v atuin >/dev/null 2>&1; then
-    atuin import auto 2>/dev/null && echo "Atuin history imported." || true
+# The rc files keep history under XDG_STATE_HOME; atuin only finds it via
+# HISTFILE (import auto would look for ~/.zsh_history and fail). No history yet
+# (fresh install) means nothing to import, not a failure.
+if need_cmd atuin "atuin history import"; then
+    _hist_found=0
+    for _sh in zsh bash; do
+        _hf="${XDG_STATE_HOME:-$HOME/.local/state}/$_sh/history"
+        if [ -s "$_hf" ]; then
+            _hist_found=1
+            run_step "atuin import ($_sh)" env HISTFILE="$_hf" atuin import "$_sh"
+        fi
+    done
+    if [ "$_hist_found" = 0 ]; then
+        echo "○ no shell history yet — nothing for atuin to import"
+    fi
+    unset _hist_found _sh _hf
 fi
 
 # 2.3 Materialize zram config (early-boot safe; not a $HOME symlink)
 if [ -f "scripts/zram-setup.sh" ]; then
-    bash scripts/zram-setup.sh || echo "zram setup skipped."
+    run_step "zram setup" bash scripts/zram-setup.sh
 fi
 
 # 3. Restore GNOME session (dconf + extensions + tablet handler)
 if [ -f "scripts/gnome-session-setup.sh" ]; then
-    bash scripts/gnome-session-setup.sh || echo "GNOME session setup skipped."
+    run_step "GNOME session setup" bash scripts/gnome-session-setup.sh
 fi
 
 if [ -f "scripts/location-setup.sh" ]; then
-    bash scripts/location-setup.sh || echo "Location setup skipped."
+    run_step "Location setup" bash scripts/location-setup.sh
 fi
 
 # 3.0 GNOME Console (kgx app settings only — shortcuts in gnome/dconf/user.conf)
 if [ -f "scripts/gnome-console-setup.sh" ]; then
-    SKIP_GNOME_MEDIA_KEYS=1 bash scripts/gnome-console-setup.sh || echo "GNOME Console setup skipped."
+    run_step "GNOME Console setup" env SKIP_GNOME_MEDIA_KEYS=1 bash scripts/gnome-console-setup.sh
 fi
 
 # 3.2 GDM login screen (Wayland, greeter dconf, udev)
 if [ -f "scripts/gdm-setup.sh" ]; then
-    bash scripts/gdm-setup.sh || echo "GDM setup skipped."
+    run_step "GDM setup" bash scripts/gdm-setup.sh
+fi
+
+# 3.2a Theme: Orchis-Dark + Tela-blue-dark + Bibata-Modern-Ice for the session,
+# libadwaita apps (~/.config/gtk-4.0), Flatpaks and the GDM login screen.
+if [ -f "scripts/theme-setup.sh" ]; then
+    run_step "Theme setup" bash scripts/theme-setup.sh
 fi
 
 # 3.3 Git global config (identity, hooks, signing). Noninteractive when
 # stdin is not a TTY or GIT_SETUP_NONINTERACTIVE=1 (applies defaults).
 if [ -f "scripts/git-setup.sh" ]; then
-    bash scripts/git-setup.sh || echo "Git setup skipped."
+    run_step "Git setup" bash scripts/git-setup.sh
 fi
 
 # 3.4 Neovim (lazy.nvim, treesitter parsers)
 if [ -f "scripts/nvim-setup.sh" ]; then
-    bash scripts/nvim-setup.sh || echo "Neovim setup skipped."
+    run_step "Neovim setup" bash scripts/nvim-setup.sh
 fi
 
 # 3.5 Headroom (Claude / Cursor context proxy — optional, pipx user-local)
 if [ -f "scripts/headroom-setup.sh" ]; then
-    bash scripts/headroom-setup.sh || echo "Headroom setup skipped."
+    run_step "Headroom setup" bash scripts/headroom-setup.sh
 fi
 
 # 3.5a Kit skills first (fallback if post-AI sync fails later)
 if [ -f "scripts/sync-agent-skills.sh" ]; then
-    bash scripts/sync-agent-skills.sh || echo "Agent skills pre-sync skipped."
+    run_step "Agent skills pre-sync" bash scripts/sync-agent-skills.sh
 fi
 
 # 3.5b OpenCode + Kimi CLIs + MCP configs (before caveman so opencode is detected)
 if [ -f "scripts/install-coding-agents.sh" ]; then
-    if command -v npm >/dev/null 2>&1; then
-        SKIP_CAVEMAN_OPENCODE=1 bash scripts/install-coding-agents.sh || \
-            echo "Coding agents failed — re-run: bash scripts/install-coding-agents.sh"
-    else
-        echo "Skipping OpenCode/Kimi (npm not on PATH)."
+    if need_cmd npm "OpenCode/Kimi" "$NODE_SRC"; then
+        run_step "Coding agents" env SKIP_CAVEMAN_OPENCODE=1 bash scripts/install-coding-agents.sh
     fi
 fi
 
 # 3.5c Caveman (terse voice + ultracave/megacave; pinned installer + SHA-256)
 if [ -f "scripts/install-caveman.sh" ]; then
-    if command -v npm >/dev/null 2>&1; then
-        SKIP_SKILL_SYNC=1 bash scripts/install-caveman.sh || \
-            echo "Caveman install failed — re-run: bash scripts/install-caveman.sh"
-    else
-        echo "Skipping caveman (npm not on PATH)."
+    if need_cmd npm "Caveman" "$NODE_SRC"; then
+        run_step "Caveman install" env SKIP_SKILL_SYNC=1 bash scripts/install-caveman.sh
     fi
 fi
 
 # 3.5c1 Ponytail (lazy senior dev mode; pinned tag + skills/hooks/plugins)
 if [ -f "scripts/install-ponytail.sh" ]; then
-    if command -v node >/dev/null 2>&1; then
-        SKIP_SKILL_SYNC=1 bash scripts/install-ponytail.sh || \
-            echo "Ponytail install failed — re-run: bash scripts/install-ponytail.sh"
-    else
-        echo "Skipping ponytail (node not on PATH)."
+    if need_cmd node "Ponytail" "$NODE_SRC"; then
+        run_step "Ponytail install" env SKIP_SKILL_SYNC=1 bash scripts/install-ponytail.sh
     fi
 fi
 
 # 3.5d Android UI skills (Compose anti-slop + Material 3; pinned refs)
 if [ -f "scripts/install-android-ui-skills.sh" ]; then
-    if command -v npx >/dev/null 2>&1; then
-        SKIP_SKILL_SYNC=1 bash scripts/install-android-ui-skills.sh || \
-            echo "Android UI skills failed — re-run: bash scripts/install-android-ui-skills.sh"
-    else
-        echo "Skipping Android UI skills (npx not on PATH)."
+    if need_cmd npx "Android UI skills" "$NODE_SRC"; then
+        run_step "Android UI skills" env SKIP_SKILL_SYNC=1 bash scripts/install-android-ui-skills.sh
     fi
 fi
 
 # 3.5e ghidra-cli (optional Rust bridge; needs pacman ghidra + rust/cargo)
 if [ -f "scripts/install-ghidra-cli.sh" ]; then
     if pacman -Q ghidra >/dev/null 2>&1; then
-        bash scripts/install-ghidra-cli.sh || \
-            echo "ghidra-cli install failed — re-run: bash scripts/install-ghidra-cli.sh"
+        run_step "ghidra-cli install" bash scripts/install-ghidra-cli.sh
     else
-        echo "Skipping ghidra-cli (pacman package ghidra not installed)."
+        fail_step "ghidra-cli not installed: pacman package ghidra missing (packages/pacman.txt)"
     fi
 fi
 
@@ -253,78 +313,69 @@ fi
 
 # 3.5f1 Obscura headless browser + MCP (OpenCode/Cursor/Claude)
 if [ -f "scripts/install-obscura.sh" ]; then
-    bash scripts/install-obscura.sh || echo "Obscura install failed — re-run: bash scripts/install-obscura.sh"
+    run_step "Obscura install" bash scripts/install-obscura.sh
 fi
 
 # 3.5f2 RE agent skills (leanrea, reverse-engineering, android-RE, ghidra-iterative-re)
 if [ -f "scripts/install-re-skills.sh" ]; then
-    if command -v npx >/dev/null 2>&1; then
-        SKIP_SKILL_SYNC=1 bash scripts/install-re-skills.sh || \
-            echo "RE skills failed — re-run: bash scripts/install-re-skills.sh"
-    else
-        echo "Skipping RE skills (npx not on PATH)."
+    if need_cmd npx "RE skills" "$NODE_SRC"; then
+        run_step "RE skills" env SKIP_SKILL_SYNC=1 bash scripts/install-re-skills.sh
     fi
 fi
 
 # 3.5g Third-party skill packs (cloudflare, emil, vercel, … — packages/agent-skills.txt)
 if [ -f "scripts/install-ecosystem-skills.sh" ]; then
-    if command -v npx >/dev/null 2>&1; then
-        SKIP_SKILL_SYNC=1 bash scripts/install-ecosystem-skills.sh || \
-            echo "Ecosystem skills failed — re-run: bash scripts/install-ecosystem-skills.sh"
-    else
-        echo "Skipping ecosystem skills (npx not on PATH)."
+    if need_cmd npx "Ecosystem skills" "$NODE_SRC"; then
+        run_step "Ecosystem skills" env SKIP_SKILL_SYNC=1 bash scripts/install-ecosystem-skills.sh
     fi
 fi
 
 # 3.5h Hub mirror after AI installers (→ Claude/Cursor/OpenCode/Kimi)
 if [ -f "scripts/sync-agent-skills.sh" ]; then
-    bash scripts/sync-agent-skills.sh || echo "Agent skills post-sync skipped."
+    run_step "Agent skills post-sync" bash scripts/sync-agent-skills.sh
 fi
 
 # 3.5i Caveman OpenCode plugin (after hub sync; coding-agents skipped this in 3.5b)
 if [ -f "scripts/install-coding-agents.sh" ] && command -v npm >/dev/null 2>&1; then
     if [ -d "${XDG_CONFIG_HOME:-$HOME/.config}/opencode" ]; then
-        ONLY_CAVEMAN_OPENCODE=1 bash scripts/install-coding-agents.sh || \
-            echo "Caveman OpenCode plugin refresh skipped."
+        run_step "Caveman OpenCode plugin" env ONLY_CAVEMAN_OPENCODE=1 bash scripts/install-coding-agents.sh
     fi
 fi
 
 # 3.5j AI stack extras (Continue FIM config, P15 OpenCode↔ollama, hr-proxy unit).
 # Cores (Headroom / coding-agents / Caveman / Ponytail) already ran above.
 if [ -f "scripts/ai-stack-setup.sh" ]; then
-    AI_STACK_EXTRAS_ONLY=1 bash scripts/ai-stack-setup.sh \
-        || echo "AI stack extras skipped — re-run: AI_STACK_EXTRAS_ONLY=1 bash scripts/ai-stack-setup.sh"
+    run_step "AI stack extras" env AI_STACK_EXTRAS_ONLY=1 bash scripts/ai-stack-setup.sh
 fi
 
 # 3.5k Local LLM on P15 (ollama-cuda + qwen pulls; no-op on other hosts).
 # Opt out: SKIP_OLLAMA=1 ./install.sh
 if [ "${SKIP_OLLAMA:-0}" != 1 ] && [ -f "scripts/ollama-setup.sh" ]; then
-    bash scripts/ollama-setup.sh \
-        || echo "ollama setup skipped — re-run: bash scripts/ollama-setup.sh"
+    run_step "ollama setup" bash scripts/ollama-setup.sh
 fi
 
 # 3.6 PhotoGIMP (Photoshop-like GIMP layout — optional)
 if [ -f "scripts/install-photogimp.sh" ]; then
-    bash scripts/install-photogimp.sh || echo "PhotoGIMP setup skipped."
+    run_step "PhotoGIMP setup" bash scripts/install-photogimp.sh
 fi
 
 # 3.6a foxcage: Firefox in a rootless Podman container (pinned commit + SHA-256)
 if [ "${SKIP_FOXCAGE:-0}" = 1 ]; then
     echo "Skipping foxcage (SKIP_FOXCAGE=1)."
-elif ! command -v podman >/dev/null 2>&1; then
-    echo "Skipping foxcage (podman not installed)."
+elif ! need_cmd podman "foxcage"; then
+    :
 elif [ -f "scripts/install-foxcage.sh" ]; then
-    bash scripts/install-foxcage.sh || echo "foxcage install failed — re-run: bash scripts/install-foxcage.sh"
+    run_step "foxcage install" bash scripts/install-foxcage.sh
 fi
 
 # 3.7 Dash2Dock Animated (EGO — before extension enable)
 if [ -f "scripts/install-dash2dock.sh" ]; then
-    bash scripts/install-dash2dock.sh || echo "Dash2Dock setup skipped."
+    run_step "Dash2Dock setup" bash scripts/install-dash2dock.sh
 fi
 
 # 3.8 Enable GNOME Extensions (list in gnome/extensions.txt)
 if [ -f "scripts/install-extensions.sh" ]; then
-    bash scripts/install-extensions.sh || echo "Extension enable skipped."
+    run_step "GNOME extensions" bash scripts/install-extensions.sh
 fi
 
 # 4. Privacy Hardening (before health check so telemetry probes reflect final state)
@@ -336,12 +387,12 @@ fi
 # Full prune: default. Skip with SKIP_OPS_HYGIENE=1. usbguard/dnscrypt stay opt-in
 # (bash scripts/usbguard-setup.sh / bash scripts/dnscrypt-setup.sh).
 if [ "${SKIP_OPS_HYGIENE:-0}" != 1 ] && [ -f "scripts/ops-hygiene.sh" ]; then
-    bash scripts/ops-hygiene.sh || echo "Ops hygiene skipped."
+    run_step "Ops hygiene" bash scripts/ops-hygiene.sh
 fi
 
 # 4.5 Tailscale + firewalld (optional; no-op if firewalld inactive / tailscale absent)
-if [ -f "scripts/firewalld-tailscale.sh" ] && command -v tailscale >/dev/null 2>&1; then
-    bash scripts/firewalld-tailscale.sh || echo "Tailscale firewalld rules skipped."
+if [ -f "scripts/firewalld-tailscale.sh" ] && need_cmd tailscale "Tailscale firewalld rules"; then
+    run_step "Tailscale firewalld rules" bash scripts/firewalld-tailscale.sh
 fi
 
 # 5. Final Health Check
@@ -351,7 +402,7 @@ if [ -f "scripts/check.sh" ]; then
 fi
 
 if [ -f "scripts/validate-configs.sh" ]; then
-    bash scripts/validate-configs.sh || echo "Config validation reported issues."
+    run_step "Config validation" bash scripts/validate-configs.sh
 fi
 
 if [ "$INSTALL_FAILED" -ne 0 ]; then
