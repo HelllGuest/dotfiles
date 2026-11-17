@@ -544,6 +544,13 @@ fi
 echo "--- Tailscale / firewalld ---"
 if command -v tailscale >/dev/null 2>&1; then
     echo "✓ tailscale installed"
+    # Nothing in the repo enables it (network service, opt-in). Without the
+    # daemon there is no tailscale0, so firewalld-tailscale.sh cannot bind it.
+    if systemctl is-enabled --quiet tailscaled 2>/dev/null; then
+        echo "✓ tailscaled enabled"
+    else
+        echo "○ tailscaled not enabled — sudo systemctl enable --now tailscaled && sudo tailscale up, then bash scripts/firewalld-tailscale.sh"
+    fi
     if systemctl is-active --quiet firewalld 2>/dev/null; then
         if firewall-cmd --zone=trusted --list-interfaces 2>/dev/null | grep -qw tailscale0 \
           || firewall-cmd --get-active-zones 2>/dev/null | grep -A1 '^trusted' | grep -qw tailscale0; then
@@ -594,6 +601,41 @@ if command -v podman >/dev/null 2>&1; then
     unset _podman_err
 else
     echo "○ podman not installed"
+fi
+
+echo "--- AUR list ---"
+# Entries that reached the official repos belong in pacman.txt (they were
+# installed in the AUR batch, so one failing AUR build skipped them too).
+_moved=0
+while IFS= read -r _p; do
+    _p=${_p%%#*}; _p=${_p//[[:space:]]/}
+    [ -n "$_p" ] || continue
+    if pacman -Si "$_p" >/dev/null 2>&1; then
+        echo "○ $_p (aur.txt) is in the official repos — move it to packages/pacman.txt"
+        _moved=1
+    fi
+done < "$REPO_ROOT/packages/aur.txt"
+[ "$_moved" = 1 ] || echo "✓ no aur.txt entry is in the official repos"
+unset _p _moved
+
+echo "--- Boot screen (bootvine) ---"
+if pacman -Q bootvine-git >/dev/null 2>&1; then
+    echo "○ bootvine-git (AUR) installed — replace with official: sudo pacman -Rns bootvine-git && sudo pacman -S bootvine"
+fi
+if pacman -Q bootvine >/dev/null 2>&1; then
+    for _u in bootvine.service bootvine-shutdown.service; do
+        if systemctl is-enabled --quiet "$_u" 2>/dev/null; then
+            echo "✓ $_u enabled"
+        else
+            echo "○ $_u not enabled — sudo systemctl enable $_u"
+        fi
+    done
+    unset _u
+else
+    echo "○ bootvine not installed — sudo pacman -S bootvine (packages/pacman.txt)"
+fi
+if grep -Eq '^HOOKS=.*sd-bootvine' /etc/mkinitcpio.conf 2>/dev/null; then
+    echo "○ sd-bootvine in mkinitcpio HOOKS — the repo keeps bootvine out of the initrd (LUKS prompt)"
 fi
 
 echo "--- Ops / privacy tools ---"

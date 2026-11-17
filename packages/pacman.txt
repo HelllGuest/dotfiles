@@ -33,6 +33,10 @@ gdm
 gnome-console
 gnome-shell
 gnome-shell-extensions
+# Moved from aur.txt: now in extra (no longer in the AUR)
+gnome-shell-extension-appindicator
+gnome-shell-extension-vitals
+curlie
 gnome-software
 gnome-tweaks
 # gnome-shell CalendarServer needs libecal/libedataserver
@@ -85,6 +89,9 @@ xdg-dbus-proxy
 libnotify
 btop
 
+# Boot screen: live systemd job tree on the console (official extra; enabled
+# by install.sh for stage 2 + shutdown only, no sd-bootvine initrd hook)
+bootvine
 power-profiles-daemon
 python-pipx
 procs
@@ -99,7 +106,8 @@ starship
 stow
 swappy
 awww
-# Mesh VPN; pair with scripts/firewalld-tailscale.sh after install
+# Mesh VPN (opt-in: nothing enables tailscaled). Setup: sudo systemctl enable
+# --now tailscaled && sudo tailscale up, then scripts/firewalld-tailscale.sh
 tailscale
 tmux
 wl-clipboard
