@@ -122,6 +122,14 @@ Then remove the ISO, reboot, and log into GNOME.
 3. BIOS → Secure Boot → Enabled.
 4. `sbctl status && sbctl verify`.
 
+Verify Stage A (read-only; runs t14s-arch-install `tests/host-check.sh`, ~80
+checks; root-only ones too after `sudo -v`):
+
+```bash
+git clone https://github.com/HelllGuest/t14s-arch-install ~/t14s-arch-install  # if not present
+sudo -v && bash ~/dotfiles/scripts/check.sh --stage-a
+```
+
 ### Stage B — Dotfiles (requires an active GNOME session)
 
 Two paths: modular TUI (`configure.sh`) or full bootstrap (`./install.sh`).
@@ -269,7 +277,8 @@ sudo pacman -S --needed go
 Sanity checks:
 
 ```bash
-~/dotfiles/scripts/check.sh
+~/dotfiles/scripts/check.sh         # post-install: Stage A follow-ups + Stage B
+~/dotfiles/scripts/check.sh --all   # plus the Stage A host-check
 fnm current
 podman info   # Rootless: true
 go version    # if installed

@@ -42,7 +42,9 @@ This guide prioritizes:
 > # or: …/dotfiles/main/scripts/arch-install-p15.sh   # HW_PROFILE=p15
 > ```
 > After first boot: `./install.sh` → `profiles/thinkpad-t14s.sh` or
-> `thinkpad-p15.sh`. Rehearse with
+> `thinkpad-p15.sh`. Verify: `scripts/check.sh --stage-a` (Stage A, via the
+> installer's `tests/host-check.sh`), `scripts/check.sh` (post-install), `--all`
+> (both). Rehearse with
 > [`arch-install-vmtest.sh`](../scripts/arch-install-vmtest.sh). Manual phases
 > below remain the reference for what Stage A does.
 

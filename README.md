@@ -490,6 +490,21 @@ the end and `./install.sh` exits 1. Only explicit `SKIP_*=1` opt-outs skip.
 package, dock icon without an app, shortcut whose command is missing, or
 listed extension that is not installed.
 
+`check.sh` modes (all read-only):
+
+```bash
+bash scripts/check.sh            # --post (default, what ./install.sh runs): Stage A
+                                 # follow-ups (Secure Boot, sbctl signatures, first-boot
+                                 # Flatpaks, t14s-selftest) + everything Stage B sets up
+bash scripts/check.sh --stage-a  # Arch ISO install: runs t14s-arch-install
+                                 # tests/host-check.sh (~80 checks), as root too if sudo is cached
+bash scripts/check.sh --all      # both
+```
+
+`--stage-a` looks for the installer checkout in `T14S_INSTALLER_DIR`, `~/t14s-arch-install`
+or next to this repo. Its FAILs count only on the T14s Gen 3 AMD (21CQ/21CR), the
+hardware `host-check.sh` targets; on other hosts they are shown as informational.
+
 **Theme:** Orchis-Dark (GTK3, GTK4/libadwaita via `~/.config/gtk-4.0`, Shell via
 User Themes), Tela-blue-dark icons, Bibata-Modern-Ice cursor, blue accent; also
 for Flatpak apps (`flatpak override --user`) and the GDM login screen

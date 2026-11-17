@@ -8,7 +8,7 @@ Thank you for helping improve this setup. Follow these guidelines to keep the re
 
 1. Fork the repo and create a feature branch.
 2. Make focused changes — one concern per commit when possible.
-3. Run `./scripts/check.sh` before committing.
+3. Run `./scripts/check.sh` before committing (`--stage-a` / `--all` also verify the Arch ISO install).
 4. Update relevant documentation (see below).
 5. Add a `CHANGELOG.md` entry under `[Unreleased]` or a new version section.
 
