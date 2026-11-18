@@ -154,6 +154,7 @@ echo "Applying dotfiles..."
 # shellcheck source=scripts/lib/skel.sh
 source scripts/lib/skel.sh
 remove_unmodified_skel "$PWD/stow"
+remove_stage_a_seeds "$PWD/stow" || fail_step "Stage A ~/.zshrc not cleared — stow will refuse the zsh package"
 cd stow || exit 1
 for dir in */; do
     dir=${dir%/}
