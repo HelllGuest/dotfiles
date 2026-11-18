@@ -86,6 +86,10 @@ picture-uri='file:///usr/share/backgrounds/a.png'
 [org/gnome/desktop/privacy]
 remember-recent-files=true
 
+[org/gnome/settings-daemon/plugins/color]
+night-light-enabled=true
+night-light-last-coordinates=(48.85, 2.35)
+
 [org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/custom0]
 binding='<Super>Return'
 command='kitty -e sh -c "a:b; c=d"'
@@ -102,6 +106,9 @@ grep -qxF "picture-uri='file:///usr/share/backgrounds/a.png'" "$_T/user.conf" \
   && grep -qxF "command='kitty -e sh -c \"a:b; c=d\"'" "$_T/user.conf" \
   && grep -qxF "binding='<Super>Return'" "$_T/user.conf" \
   || fail "backup-gsettings must preserve other keys verbatim: $(cat "$_T/user.conf")"
+grep -q 'night-light-last-coordinates' "$_T/user.conf" && fail "backup-gsettings must not export the night-light geolocation"
+grep -qx 'night-light-enabled=true' "$_T/user.conf" || fail "backup-gsettings dropped other night-light keys"
+grep -rq 'night-light-last-coordinates' "$ROOT/gnome/dconf/" && fail "tracked dconf must not contain night-light-last-coordinates"
 rm -rf -- "$_T"; unset -v _T _kv
 
 echo "PASS: privacy-ops.test.sh"

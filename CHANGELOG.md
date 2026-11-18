@@ -1,6 +1,7 @@
 # Changelog
 
 ## [Unreleased]
+- fix(install): `stow/tmp-cleanup` linked `tmp-semgrep-cleanup.timer` but nothing enabled it. `./install.sh` and `stow-only.sh` enable it after stowing; `check.sh` fails when it is off.
 - fix(terminals): GNOME Console was told every command succeeded. `vte.sh` (vte-common 0.84.1) reports `"$?"` after `local errsv="$?"`, which is always 0, in bash and zsh. `_vte_fix_postexec` (`.shell-functions`) redefines `__vte_precmd` with the saved status right after `vte.sh` loads (zsh there, bash in `.bashrc`). `tests/terminal-notify.test.sh` checks the reported status in both shells and accepts the bash-preexec hook layout (atuin's bash init), where it used to fail.
 - fix(git): ignore runtime state in the folded `~/.config/Code`, `~/.config/Cursor`, `~/.config/Antigravity IDE` and `~/.continue` (stow links the whole dir into the repo), like VSCodium already was: caches, `globalStorage/state.vscdb` (logins), Continue `sessions/` (chat history) and installer skill links showed up as untracked files one `git add -A` away from a commit. Only the tracked `User/` configs and `config.yaml` stay visible.
 - fix(check): `check.sh` dry-runs `stow` for every package and fails when one is blocked. It only checked a fixed symlink list, so a package refused by stow went unnoticed: `htop` (htop's first run, before Stage B, wrote a default `~/.config/htop/htoprc`) and the `zsh`/`starship` seeds above.

@@ -25,6 +25,11 @@ ENFORCED = {
         "remember-recent-files": "false",
     },
 }
+# Runtime state that reveals where the machine is (GNOME stores the last
+# geolocation for night light); never written to the tracked file.
+DROPPED = {
+    "org/gnome/settings-daemon/plugins/color": ["night-light-last-coordinates"],
+}
 path = sys.argv[1]
 conf = configparser.ConfigParser(interpolation=None, strict=False, delimiters=("=",))
 conf.optionxform = str  # dconf keys and paths are case-sensitive
@@ -34,6 +39,10 @@ for section, keys in ENFORCED.items():
         conf.add_section(section)
     for key, value in keys.items():
         conf.set(section, key, value)
+for section, keys in DROPPED.items():
+    for key in keys:
+        if conf.has_section(section):
+            conf.remove_option(section, key)
 with open(path, "w", encoding="utf-8") as fh:
     conf.write(fh, space_around_delimiters=False)
 PY
