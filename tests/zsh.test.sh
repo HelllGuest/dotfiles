@@ -18,6 +18,8 @@ for t in starship fzf atuin zoxide direnv uv; do
 done
 grep -qE 'eval "\$\((starship|atuin|zoxide|direnv|uv) ' <<<"$code" && fail "uncached tool init left"
 grep -F 'mkdir -p "$(dirname' <<<"$code" | grep -qv ZINIT_HOME && fail "per-start mkdir/dirname forks left (only the one-time zinit clone may)"
+grep -qF '|| compdef() { ZINIT_COMPDEF_REPLAY+=' "$P" \
+  || fail "deferred compinit needs a queueing compdef stub (uv/zoxide call compdef at load)"
 grep -q 'zsh login shell' "$ROOT/install.sh" || fail "install.sh must make zsh the login shell"
 grep -q -- '--- Login shell ---' "$ROOT/scripts/check.sh" || fail "check.sh must verify the login shell"
 

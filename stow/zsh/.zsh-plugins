@@ -61,6 +61,10 @@ if [[ ! -d "$ZINIT_HOME" ]]; then
 fi
 # shellcheck disable=SC1091
 source "${ZINIT_HOME}/zinit.zsh"
+# compinit is deferred, so top-level `compdef` calls (uv completion, zoxide's
+# cd) would fail or be skipped. Queue them for zicdreplay, which replays the
+# queue right after _dot_compinit; compinit then replaces this stub.
+(( ${+functions[compdef]} )) || compdef() { ZINIT_COMPDEF_REPLAY+=( "${(j: :)${(q)@}}" ); }
 
 zinit wait lucid light-mode for \
   atload"_zsh_autosuggest_start" \
