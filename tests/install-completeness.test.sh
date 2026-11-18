@@ -222,4 +222,7 @@ grep -q "✗ jq missing: telemetry opt-outs not merged into $K/home/.config/Code
   || fail "ai-rules must name the unmerged settings file: $(tail -5 "$K/out")"
 grep -q 'Finished with .* failure' "$K/out" || fail "ai-rules must summarise failures"
 
+# Every stow package is probed, not just a fixed symlink list (htoprc/.zshrc slipped past).
+grep -q 'stow -d "$REPO_ROOT/stow" -n -R -t "$HOME"' "$ROOT/scripts/check.sh" \
+  || fail "check.sh must dry-run stow for every package"
 echo "PASS: install-completeness.test.sh"

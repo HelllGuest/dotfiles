@@ -312,6 +312,23 @@ CHECK_LINKS=("$HOME/.zshrc" "$HOME/.bashrc" "$HOME/.inputrc" "$HOME/.shell-expor
 for link in "${CHECK_LINKS[@]}"; do
     check_link "$link"
 done
+# Every package must stow cleanly: a regular file in the way (an app's
+# first-run config like htoprc, an installer seed like ~/.zshrc) makes stow
+# skip the whole package, which the fixed list above cannot see.
+if command -v stow >/dev/null 2>&1; then
+    _blocked=""
+    for _d in "$REPO_ROOT"/stow/*/; do
+        _d=$(basename "$_d")
+        case $_d in zram | system | gdm) continue ;; esac  # not stowed (install.sh)
+        stow -d "$REPO_ROOT/stow" -n -R -t "$HOME" "$_d" >/dev/null 2>&1 || _blocked+="$_d "
+    done
+    if [[ -z $_blocked ]]; then
+        echo "✓ every stow package links cleanly"
+    else
+        check_fail "stow packages blocked by existing files: $_blocked— cd stow && stow -n -R -t ~ <pkg> shows the file; move it aside, then stow -R -t ~ <pkg>"
+    fi
+    unset _blocked _d
+fi
 
 # 3. Check for fonts
 NERD_FONT_COUNT=$(fc-list : family | grep -ci 'Nerd Font' || true)
