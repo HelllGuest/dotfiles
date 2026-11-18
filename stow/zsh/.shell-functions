@@ -379,9 +379,22 @@ fi
 # command finished via vte.sh; Console uses that for its own unfocused-window
 # notifications. zsh never reads /etc/profile.d, so load it here (bash: .bashrc,
 # after its prompt setup, so the VTE hook sees the command's real $?).
+# vte.sh (vte-common 0.84) reports "$?" after `local errsv="$?"`, i.e. always 0,
+# so Console saw every command as successful. Redefine it with the saved
+# status; called right after sourcing vte.sh (here for zsh, in .bashrc for bash).
+_vte_fix_postexec() {
+    command -v __vte_termprop_set >/dev/null 2>&1 || return 0
+    __vte_precmd() {
+        local errsv=$?
+        __vte_termprop_set "vte.shell.postexec" "$errsv"
+        __vte_termprop_signal "vte.shell.precmd"
+        return $errsv
+    }
+}
 if [[ -n "${ZSH_VERSION:-}" && -n "${VTE_VERSION:-}" && -r /etc/profile.d/vte.sh ]]; then
     # shellcheck source=/dev/null
     . /etc/profile.d/vte.sh
+    _vte_fix_postexec
 fi
 
 # Terminals that notify natively, focus-aware (kitty notify_on_cmd_finish,

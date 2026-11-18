@@ -56,7 +56,23 @@ r="$(env -i HOME="$HOME" PATH="$PATH" TERM=xterm-256color bash --rcfile "$ROOT/s
 # bash in a VTE terminal: VTE's precmd runs first (sees the real $?), rest kept.
 r="$(env -i HOME="$HOME" PATH="$PATH" VTE_VERSION=8401 TERM=xterm-256color bash --rcfile "$ROOT/stow/bash/.bashrc" -i -c \
   'printf "%s|" "${PROMPT_COMMAND[@]}"' 2>/dev/null | tail -1)"
-[[ $r == __vte_precmd\|*_cmd_notify_end*\|__vte_osc7\| ]] || [[ ! -r /etc/profile.d/vte.sh ]] \
-  || fail "bash VTE hook order wrong: $r"
+# With bash-preexec (atuin's bash init) the notify hook sits in precmd_functions.
+if [[ $r == *__bp_install* ]]; then
+  [[ $r == __vte_precmd\|* && $r == *__vte_osc7\| ]] || fail "bash VTE hook order wrong (bash-preexec): $r"
+else
+  [[ $r == __vte_precmd\|*_cmd_notify_end*\|__vte_osc7\| ]] || [[ ! -r /etc/profile.d/vte.sh ]] \
+    || fail "bash VTE hook order wrong: $r"
+fi
+# vte.sh 0.84 reports "$?" after `local errsv=$?` (always 0); both shells must
+# report the command's real status to VTE.
+if [[ -r /etc/profile.d/vte.sh ]]; then
+  r="$(env -i HOME="$HOME" PATH="$PATH" VTE_VERSION=8401 TERM=xterm-256color bash --rcfile "$ROOT/stow/bash/.bashrc" -i -c \
+    '(exit 3); __vte_precmd' 2>/dev/null || true)"
+  [[ $r == *'vte.shell.postexec=3'* ]] || fail "bash: VTE must get the real exit status: ${r//$'\e'/^[}"
+  if command -v zsh >/dev/null; then
+    r="$(VTE_VERSION=8401 TERM=xterm-256color zsh -f -i -c 'autoload -Uz add-zsh-hook; source "$1"; (exit 3); __vte_precmd' _ "$ROOT/stow/zsh/.shell-functions" 2>/dev/null || true)"
+    [[ $r == *'vte.shell.postexec=3'* ]] || fail "zsh: VTE must get the real exit status: ${r//$'\e'/^[}"
+  fi
+fi
 
 echo "PASS: terminal-notify.test.sh"

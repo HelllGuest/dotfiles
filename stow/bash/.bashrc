@@ -124,6 +124,7 @@ if [[ -n "${VTE_VERSION:-}" && -r /etc/profile.d/vte.sh ]]; then
     _pc=("${PROMPT_COMMAND[@]}")
     # shellcheck source=/dev/null
     . /etc/profile.d/vte.sh
+    declare -F _vte_fix_postexec >/dev/null && _vte_fix_postexec
     if declare -F __vte_precmd >/dev/null; then
         PROMPT_COMMAND=(__vte_precmd "${_pc[@]}" __vte_osc7)
     fi
