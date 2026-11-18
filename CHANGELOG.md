@@ -1,6 +1,7 @@
 # Changelog
 
 ## [Unreleased]
+- refactor(check): `scripts/check.sh` (989 lines) split into `scripts/check.d/NN-area.sh` (19 files: core tools, AI tooling, dotfile links, GDM, browsers, telemetry, network, install completeness, theme, …), sourced at top level in name order; `check.sh` keeps the modes, `check_fail`/`finish` and the Stage A helpers (148 lines). Pure move: section order and output are unchanged (verified line for line on this T14s). Tests read `check.sh` + `check.d/`; `check-modes` copies `check.d`; the bootvine hook scan excludes `check.d`. Tests that read the sibling t14s-arch-install checkout follow its split chroot code (`lib/80-chroot-setup.sh` + `lib/chroot/*.sh`). CONTRIBUTING: how to add a check.
 - fix(privacy): `gnome/dconf/user.conf` carried `night-light-last-coordinates` (the machine's last geolocation, written by GNOME at runtime), contradicting the location-is-not-published fix. Removed, and `backup-gsettings.sh` drops the key from every snapshot. Test: `tests/privacy-ops.test.sh`.
 - fix(check): `check.sh` pointed at `headroom-default.service`, which exists only after a manual `headroom install apply`. It now reports whichever persistent proxy is enabled (`headroom-default` or the repo's `hr-proxy`) and marks it optional (`hr-*` wrappers start their own); README troubleshooting rows name both.
 - fix(install): `stow/tmp-cleanup` linked `tmp-semgrep-cleanup.timer` but nothing enabled it. `./install.sh` and `stow-only.sh` enable it after stowing; `check.sh` fails when it is off.

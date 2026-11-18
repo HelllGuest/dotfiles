@@ -10,10 +10,13 @@ for f in install.sh stow-only.sh; do
   grep -q '^remove_stage_a_seeds "\$PWD/stow"' "$ROOT/$f" || fail "$f must call remove_stage_a_seeds"
 done
 # The seeds must match what the installer writes (checked when a checkout exists).
-INST="${T14S_INSTALLER_DIR:-$HOME/t14s-arch-install}/lib/80-chroot-setup.sh"
-if [[ -f $INST ]]; then
-  if ! grep -qxF '# t14s default — customize after first boot' "$INST" \
-    || ! grep -qF "'eval \"\$(starship init zsh)\"'" "$INST"; then
+# The chroot code is the entry script plus its stages (lib/chroot/, when split).
+INST_DIR="${T14S_INSTALLER_DIR:-$HOME/t14s-arch-install}"
+INST=("$INST_DIR/lib/80-chroot-setup.sh")
+[[ -d $INST_DIR/lib/chroot ]] && INST+=("$INST_DIR"/lib/chroot/*.sh)
+if [[ -f ${INST[0]} ]]; then
+  if ! grep -qxF '# t14s default — customize after first boot' "${INST[@]}" \
+    || ! grep -qF "'eval \"\$(starship init zsh)\"'" "${INST[@]}"; then
     fail "t14s-arch-install starship/.zshrc seed changed: update remove_stage_a_seeds"
   fi
 fi

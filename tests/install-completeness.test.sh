@@ -103,7 +103,7 @@ done
 list flatpak.txt | grep -qx com.vixalien.sticky || fail "flatpak.txt must include Sticky (dock favorite)"
 
 # check.sh section exists and uses check_fail (install.sh fails on it).
-block="$(awk '/^echo "--- Install completeness ---"$/{f=1} f&&/^echo "--- AUR list ---"$/{exit} f' "$ROOT/scripts/check.sh")"
+block="$(awk '/^echo "--- Install completeness ---"$/{f=1} f&&/^echo "--- AUR list ---"$/{exit} f' "$ROOT/scripts/check.sh" "$ROOT"/scripts/check.d/*.sh)"
 for want in 'pacman.txt packages' 'aur.txt packages' 'flatpaks not installed' 'dock favorites with no installed app' 'runs nothing' 'GNOME extensions not installed'; do
   grep -q "$want" <<<"$block" || fail "check.sh completeness must cover: $want"
 done
@@ -192,7 +192,7 @@ esac
 EOF
 printf '#!/bin/sh\n' >"$C/bin/present-cmd"; printf '#!/bin/sh\n' >"$C/bin/wl-copy"
 chmod +x "$C/bin/"*
-cblock="$(awk '/^echo "--- Install completeness ---"$/{f=1} f&&/^echo "--- AUR list ---"$/{exit} f' "$ROOT/scripts/check.sh")"
+cblock="$(awk '/^echo "--- Install completeness ---"$/{f=1} f&&/^echo "--- AUR list ---"$/{exit} f' "$ROOT/scripts/check.sh" "$ROOT"/scripts/check.d/*.sh)"
 out="$(HOME="$C/home" XDG_DATA_HOME="$C/home/.local/share" DMI_SYSFS_ROOT="$C/none" PCI_SYSFS_ROOT="$C/none" \
   REPO_ROOT="$C/repo" PATH="$C/bin:$T/core" bash -c 'CHECK_FAILED=0; check_fail() { printf "✗ %s\n" "$*"; CHECK_FAILED=$((CHECK_FAILED+1)); }
 '"$cblock"'
@@ -223,6 +223,6 @@ grep -q "✗ jq missing: telemetry opt-outs not merged into $K/home/.config/Code
 grep -q 'Finished with .* failure' "$K/out" || fail "ai-rules must summarise failures"
 
 # Every stow package is probed, not just a fixed symlink list (htoprc/.zshrc slipped past).
-grep -q 'stow -d "$REPO_ROOT/stow" -n -R -t "$HOME"' "$ROOT/scripts/check.sh" \
+grep -q 'stow -d "$REPO_ROOT/stow" -n -R -t "$HOME"' "$ROOT/scripts/check.sh" "$ROOT"/scripts/check.d/*.sh \
   || fail "check.sh must dry-run stow for every package"
 echo "PASS: install-completeness.test.sh"

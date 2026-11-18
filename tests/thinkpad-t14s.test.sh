@@ -41,7 +41,7 @@ grep -q '^glab$' "$ROOT/packages/pacman.txt" || fail "pacman.txt must include gl
 ! grep -qE '^ufw$' "$ROOT/packages/pacman.txt" || fail "pacman.txt must not include ufw"
 grep -q 'pacman -Rns --noconfirm ufw' "$ROOT/scripts/firewalld-lab-zones.sh" \
   || fail "firewalld-lab-zones must remove ufw package"
-grep -qE '"btop"|"htop"' "$ROOT/scripts/check.sh" \
+grep -qE '"btop"|"htop"' "$ROOT/scripts/check.sh" "$ROOT"/scripts/check.d/*.sh \
   || fail "check.sh must require btop and htop"
 grep -qE '(^|[[:space:]_/])20SU' "$ROOT/scripts/lib/dmi.sh" \
   || fail "is_thinkpad_p15 must match 20SU (Stage A parity)"

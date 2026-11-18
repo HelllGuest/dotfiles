@@ -17,7 +17,7 @@ remove_unmodified_skel() {
   done
 }
 
-# t14s-arch-install (lib/80-chroot-setup.sh, starship step) writes
+# t14s-arch-install (lib/chroot/10-optional-packages.sh, starship step) writes
 # ~/.config/starship.toml and a ~/.zshrc that starts with the starship init
 # line, both regular files, so stow refuses the starship and zsh packages.
 # Drop the starship.toml default only when unchanged. For ~/.zshrc, lines added

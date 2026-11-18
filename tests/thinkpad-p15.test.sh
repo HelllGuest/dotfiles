@@ -83,9 +83,12 @@ is_thinkpad_p15 && fail "T14s 21CR must NOT match is_thinkpad_p15" || true
 # Canonical sibling owns Optimus seeds when present
 CANON="$ROOT/../t14s-arch-install"
 if [[ -f $CANON/lib/80-chroot-setup.sh ]]; then
-  grep -q 'nvidia_drm.modeset=1' "$CANON/lib/80-chroot-setup.sh" \
+  # Chroot code = entry script + its stages (lib/chroot/, when split).
+  CANON_CHROOT=("$CANON/lib/80-chroot-setup.sh")
+  [[ -d $CANON/lib/chroot ]] && CANON_CHROOT+=("$CANON"/lib/chroot/*.sh)
+  grep -q 'nvidia_drm.modeset=1' "${CANON_CHROOT[@]}" \
     || fail "canonical Stage A missing nvidia modeset"
-  grep -q 'intel_iommu=on' "$CANON/lib/80-chroot-setup.sh" \
+  grep -q 'intel_iommu=on' "${CANON_CHROOT[@]}" \
     || fail "canonical Stage A missing intel_iommu"
 fi
 

@@ -11,6 +11,7 @@ trap 'rm -rf "$T"' EXIT
 # Isolated copy: no sibling ~/t14s-arch-install, fake DMI, no sudo.
 mkdir -p "$T/repo/scripts/lib" "$T/home" "$T/bin" "$T/inst/tests" "$T/dmi"
 cp "$ROOT/scripts/check.sh" "$T/repo/scripts/"
+cp -r "$ROOT/scripts/check.d" "$T/repo/scripts/"
 cp "$ROOT/scripts/lib/dmi.sh" "$T/repo/scripts/lib/"
 printf '#!/bin/sh\nexit 1\n' >"$T/bin/sudo"
 chmod +x "$T/bin/sudo"
@@ -45,7 +46,7 @@ rc=0; out="$(run T14S_INSTALLER_DIR="$T/nowhere")" || rc=$?
 
 # Default mode keeps install.sh's contract and includes the follow-ups.
 grep -q 'bash scripts/check.sh \\' "$ROOT/install.sh" || fail "install.sh must still call check.sh (default mode)"
-grep -qx 'stage_a_followups' "$ROOT/scripts/check.sh" || fail "default mode must run stage_a_followups"
-grep -q 'gdm-shell-theme.sh" status' "$ROOT/scripts/check.sh" || fail "check.sh must verify the GDM greeter theme"
+grep -qx 'stage_a_followups' "$ROOT/scripts/check.sh" "$ROOT"/scripts/check.d/*.sh || fail "default mode must run stage_a_followups"
+grep -q 'gdm-shell-theme.sh" status' "$ROOT/scripts/check.sh" "$ROOT"/scripts/check.d/*.sh || fail "check.sh must verify the GDM greeter theme"
 
 echo "PASS: check-modes.test.sh"

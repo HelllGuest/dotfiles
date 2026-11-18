@@ -119,6 +119,10 @@ Thank you for helping improve this setup. Follow these guidelines to keep the re
 - Prefer `set -e` for install scripts. In `install.sh` wrap steps in `run_step` and prerequisites in `need_cmd`; never `|| echo "…skipped"` / `|| true` a step (tests/install-completeness.test.sh enforces it).
 - Shared helpers and templates live in `scripts/lib/` (`dmi.sh`, `install-identity.sh`, `browsers.sh`, `telemetry.sh`, `agent-skills.sh`, `input.sh`, `lab-workdir.sh` (shared lab `/work` guard), `pkg-lists.sh` (package-list parsing shared by `install.sh`, installers and `check.sh`), `skel.sh`, `thinkpad-charge-thresholds.conf`, `apply-charge-thresholds.sh.tmpl`, `thinkpad-charge-thresholds.service.tmpl`). VS Code settings telemetry merge lives once in `ai-rules/lib/vscode-settings-merge.sh` (sourced by `telemetry.sh` + `ai-rules/install.sh`).
   Prefer sourcing those over copying snippets.
+- Health checks: `scripts/check.sh` holds the modes (`--post` / `--stage-a` / `--all`), `check_fail`
+  and the Stage A helpers; each area lives in `scripts/check.d/NN-area.sh`, sourced at top level in
+  name order (shared `check_fail` / `CHECK_FAILED` / `REPO_ROOT`). A new check is a new file there;
+  its number sets where it prints. Use `✓` for pass, `check_fail` for `✗`, `○` for hints.
 
 ### Script map (keep flat; group by role)
 

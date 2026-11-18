@@ -109,9 +109,9 @@ _parse_entry() {
 [[ "$(_parse_entry 'owner/repo@v1:a')" == $'owner/repo@v1\ta' ]] \
   || fail "ecosystem parse: owner/repo@ref:skill"
 unset -f _parse_entry
-grep -q 'malware-analysis' "$ROOT/scripts/check.sh" \
+grep -q 'malware-analysis' "$ROOT/scripts/check.sh" "$ROOT"/scripts/check.d/*.sh \
   || fail "check.sh must probe malware-analysis"
-grep -q 'memory-forensics' "$ROOT/scripts/check.sh" \
+grep -q 'memory-forensics' "$ROOT/scripts/check.sh" "$ROOT"/scripts/check.d/*.sh \
   || fail "check.sh must probe memory-forensics"
 grep -q 'vscode-settings-merge.sh' "$ROOT/ai-rules/install.sh" \
   || fail "ai-rules/install.sh must source shared vscode-settings-merge.sh"
@@ -169,8 +169,8 @@ grep -q 'install-ecosystem-skills.sh' "$ROOT/install.sh" \
   || fail "install.sh must call install-ecosystem-skills.sh"
 grep -q 'opencode\|kimi' "$ROOT/scripts/sync-agent-skills.sh" \
   || fail "sync-agent-skills must mirror opencode/kimi"
-grep -q 'check_agent_skill' "$ROOT/scripts/check.sh" || fail "check.sh skill probes missing"
-grep -q 'Kimi Code skills' "$ROOT/scripts/check.sh" || fail "check.sh kimi probe missing"
+grep -q 'check_agent_skill' "$ROOT/scripts/check.sh" "$ROOT"/scripts/check.d/*.sh || fail "check.sh skill probes missing"
+grep -q 'Kimi Code skills' "$ROOT/scripts/check.sh" "$ROOT"/scripts/check.d/*.sh || fail "check.sh kimi probe missing"
 
 # Privacy / telemetry unification
 [[ -f "$ROOT/stow/privacy/.config/environment.d/90-telemetry-optout.conf" ]] \
@@ -207,7 +207,7 @@ grep -q 'telemetry_ensure_atuin' "$ROOT/scripts/lib/telemetry.sh" \
   || fail "telemetry.sh missing atuin helper"
 grep -q 'kit_real' "$ROOT/scripts/lib/telemetry.sh" \
   || fail "ensure_atuin must realpath-compare kit (no stow rewrite)"
-grep -q 'Shell (bash/zsh) privacy' "$ROOT/scripts/check.sh" \
+grep -q 'Shell (bash/zsh) privacy' "$ROOT/scripts/check.sh" "$ROOT"/scripts/check.d/*.sh \
   || fail "check.sh missing shell privacy section"
 # Behavioral: ensure_atuin must not rewrite stow-backed config
 (
@@ -295,7 +295,7 @@ _ck() { telemetry_keys_for_settings_path "$1" | grep -c 'cursor\.general' || tru
 unset -f _ck
 grep -q 'telemetry_is_cursor_settings_path' "$ROOT/scripts/lib/telemetry.sh" \
   || fail "telemetry.sh must define telemetry_is_cursor_settings_path"
-grep -q 'cursor\.general' "$ROOT/scripts/check.sh" \
+grep -q 'cursor\.general' "$ROOT/scripts/check.sh" "$ROOT"/scripts/check.d/*.sh \
   || fail "check.sh must flag cursor.general in non-Cursor settings"
 # Merge strips leftover cursor.general.* on non-Cursor settings
 _strip_dir="$(mktemp -d)"
@@ -332,7 +332,7 @@ grep -q 'telemetry_ensure_opencode' "$ROOT/scripts/lib/telemetry.sh" \
 grep -q '"share": "disabled"' "$ROOT/scripts/install-coding-agents.sh" \
   || grep -q 'data\["share"\] = "disabled"' "$ROOT/scripts/install-coding-agents.sh" \
   || fail "coding-agents must set OpenCode share=disabled"
-grep -q 'Telemetry / privacy' "$ROOT/scripts/check.sh" \
+grep -q 'Telemetry / privacy' "$ROOT/scripts/check.sh" "$ROOT"/scripts/check.d/*.sh \
   || fail "check.sh missing telemetry section"
 grep -q 'GOOGLE_API_USE_CLIENT_CERTIFICATE' "$ROOT/stow/zsh/.shell-exports" \
   && fail ".shell-exports must not set GOOGLE_API_USE_CLIENT_CERTIFICATE (not telemetry)"
@@ -396,13 +396,13 @@ grep -q 'User-writable first' "$ROOT/scripts/lib/browsers.sh" \
   || fail "browsers.sh must deploy user-writable layers before /etc sudo"
 grep -q 'flatpak_ext_arch' "$ROOT/scripts/lib/browsers.sh" \
   || fail "browsers.sh must define flatpak_ext_arch"
-grep -q 'zen_systemconfig_dir' "$ROOT/scripts/check.sh" \
+grep -q 'zen_systemconfig_dir' "$ROOT/scripts/check.sh" "$ROOT"/scripts/check.d/*.sh \
   || fail "check.sh must use zen_systemconfig_dir (arch parity)"
-grep -q 'policies stale vs repo' "$ROOT/scripts/check.sh" \
+grep -q 'policies stale vs repo' "$ROOT/scripts/check.sh" "$ROOT"/scripts/check.d/*.sh \
   || fail "check.sh must ✗ deployed Chromium policies that differ from the repo"
-grep -q 'check_fail()' "$ROOT/scripts/check.sh" \
+grep -q 'check_fail()' "$ROOT/scripts/check.sh" "$ROOT"/scripts/check.d/*.sh \
   || fail "check.sh must define check_fail for ✗ probes"
-grep -q 'CHECK_FAILED' "$ROOT/scripts/check.sh" \
+grep -q 'CHECK_FAILED' "$ROOT/scripts/check.sh" "$ROOT"/scripts/check.d/*.sh \
   || fail "check.sh must exit non-zero when ✗ probes fire"
 grep -qF 'fail_step "stow failed' "$ROOT/install.sh" \
   || fail "install.sh must fail_step on stow errors"

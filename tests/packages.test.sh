@@ -15,7 +15,7 @@ dup="$(comm -12 <(list pacman.txt | sort -u) <(list aur.txt | sort -u))"
 [[ -z $dup ]] || fail "packages in both pacman.txt and aur.txt: $dup"
 
 # check.sh flags aur.txt entries that reached the official repos (stub pacman).
-block="$(awk '/^echo "--- AUR list ---"$/{f=1} f&&/^echo "--- Boot screen/{exit} f' "$ROOT/scripts/check.sh")"
+block="$(awk '/^echo "--- AUR list ---"$/{f=1} f&&/^echo "--- Boot screen/{exit} f' "$ROOT/scripts/check.sh" "$ROOT"/scripts/check.d/*.sh)"
 [[ -n $block ]] || fail "could not find check.sh AUR list section"
 T="$(mktemp -d)"
 trap 'rm -rf "$T"' EXIT
@@ -36,6 +36,6 @@ grep -qx '✓ no aur.txt entry is in the official repos' <<<"$out" && ! grep -q 
 # Tailscale: nothing enables tailscaled (network service, opt-in) — check.sh
 # must say so and give the order: daemon, tailscale up, then firewall binding.
 grep -q 'tailscaled not enabled — sudo systemctl enable --now tailscaled && sudo tailscale up, then bash scripts/firewalld-tailscale.sh' \
-  "$ROOT/scripts/check.sh" || fail "check.sh must report tailscaled not enabled with the setup order"
+  "$ROOT/scripts/check.sh" "$ROOT"/scripts/check.d/*.sh || fail "check.sh must report tailscaled not enabled with the setup order"
 
 echo "PASS: packages.test.sh"

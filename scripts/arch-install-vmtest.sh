@@ -73,7 +73,7 @@ cp -f "$ovmf_vars_src" "$WORK/OVMF_VARS.fd"
 
 # 4. serve local trees (guest → 10.0.2.2)
 #    PORT     → scripts/  (wrappers + lib/stage-a-handoff.sh)
-#    T14S_PORT → t14s-arch-install/ (install.sh + lib/*.sh) when present
+#    T14S_PORT → t14s-arch-install/ (install.sh + lib/, whole tree) when present
 ( cd "$SCRIPTS_DIR" && exec python3 -m http.server "$PORT" --bind 127.0.0.1 ) &>/dev/null &
 HTTP_PID=$!
 T14S_HTTP_PID=""

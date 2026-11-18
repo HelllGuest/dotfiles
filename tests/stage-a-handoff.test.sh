@@ -104,11 +104,14 @@ grep -q "application/vnd.github.sha" "$ROOT/scripts/lib/stage-a-handoff.sh" \
 # Canonical repo still owns hardware seeds (when sibling present)
 CANON="$ROOT/../t14s-arch-install"
 if [[ -f $CANON/install.sh && -f $CANON/lib/80-chroot-setup.sh ]]; then
-  grep -q 'amd_iommu=on' "$CANON/lib/80-chroot-setup.sh" \
+  # Chroot code = entry script + its stages (lib/chroot/, when split).
+  CANON_CHROOT=("$CANON/lib/80-chroot-setup.sh")
+  [[ -d $CANON/lib/chroot ]] && CANON_CHROOT+=("$CANON"/lib/chroot/*.sh)
+  grep -q 'amd_iommu=on' "${CANON_CHROOT[@]}" \
     || fail "canonical Stage A missing amd_iommu"
-  grep -q 'nvidia_drm.modeset=1' "$CANON/lib/80-chroot-setup.sh" \
+  grep -q 'nvidia_drm.modeset=1' "${CANON_CHROOT[@]}" \
     || fail "canonical Stage A missing nvidia modeset"
-  grep -q 'thinkpad-charge-thresholds' "$CANON/lib/80-chroot-setup.sh" \
+  grep -q 'thinkpad-charge-thresholds' "${CANON_CHROOT[@]}" \
     || fail "canonical Stage A missing charge thresholds"
   grep -q 'github-cli glab' "$CANON/lib/50-packages.sh" \
     || fail "canonical base must include github-cli glab"
