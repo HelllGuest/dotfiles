@@ -7,6 +7,11 @@ REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$REPO_ROOT"
 # shellcheck source=lib/dmi.sh
 source "$REPO_ROOT/scripts/lib/dmi.sh"
+# shellcheck source=lib/progress.sh
+source "$REPO_ROOT/scripts/lib/progress.sh"
+
+APP_TITLE="Dotfiles configure · Stage B"
+DIALOG_RC_DIR=""
 
 # CONFIGURE_UI=plain|dialog|whiptail — force backend (VM / CI: plain).
 UI=${CONFIGURE_UI:-plain}
@@ -18,6 +23,62 @@ if [[ -z ${CONFIGURE_UI:-} ]]; then
   fi
 fi
 
+# Minimal Stage A–matching chrome (8-colour console safe). Cleanup on EXIT.
+write_configure_theme() {
+  if [[ $UI == dialog ]]; then
+    DIALOG_RC_DIR="$(mktemp -d /tmp/dotfiles-dialogrc.XXXXXX)"
+    cat >"$DIALOG_RC_DIR/dialogrc" <<'EOF'
+# Dotfiles configure theme (Stage A palette)
+use_shadow = ON
+use_colors = ON
+screen_color = (CYAN,BLUE,ON)
+shadow_color = (BLACK,BLACK,OFF)
+dialog_color = (WHITE,BLACK,OFF)
+title_color = (YELLOW,BLACK,ON)
+border_color = (CYAN,BLACK,ON)
+border2_color = (BLUE,BLACK,ON)
+button_active_color = (WHITE,BLUE,ON)
+button_inactive_color = (WHITE,BLACK,OFF)
+button_key_active_color = (YELLOW,BLUE,ON)
+button_key_inactive_color = (YELLOW,BLACK,ON)
+button_label_active_color = (WHITE,BLUE,ON)
+button_label_inactive_color = (WHITE,BLACK,OFF)
+item_color = (WHITE,BLACK,OFF)
+item_selected_color = (WHITE,BLUE,ON)
+tag_color = (YELLOW,BLACK,ON)
+tag_selected_color = (WHITE,BLUE,ON)
+check_color = (WHITE,BLACK,OFF)
+check_selected_color = (WHITE,BLUE,ON)
+gauge_color = (CYAN,BLUE,ON)
+EOF
+    export DIALOGRC="$DIALOG_RC_DIR/dialogrc"
+  elif [[ $UI == whiptail ]]; then
+    export NEWT_COLORS='
+root=white,blue
+roottext=brightcyan,blue
+border=brightcyan,black
+window=lightgray,black
+shadow=black,black
+title=yellow,black
+button=black,lightgray
+actbutton=white,blue
+checkbox=lightgray,black
+actcheckbox=white,blue
+listbox=lightgray,black
+actlistbox=white,blue
+emptyscale=,black
+fullscale=,cyan
+'
+  fi
+}
+
+cleanup_configure_theme() {
+  [[ -n ${DIALOG_RC_DIR:-} && -d $DIALOG_RC_DIR ]] && rm -rf -- "$DIALOG_RC_DIR"
+  DIALOG_RC_DIR=""
+}
+trap cleanup_configure_theme EXIT
+write_configure_theme
+
 is_p15=0
 is_thinkpad_p15 && is_p15=1
 
@@ -25,10 +86,12 @@ checklist() {
   local title=$1; shift
   case $UI in
     dialog)
-      dialog --stdout --separate-output --checklist "$title" 20 72 12 "$@" || return 1
+      dialog --colors --backtitle "$APP_TITLE" --stdout --separate-output \
+        --checklist "$title" 20 72 12 "$@" || return 1
       ;;
     whiptail)
-      whiptail --separate-output --checklist "$title" 20 72 12 "$@" || return 1
+      whiptail --backtitle "$APP_TITLE" --separate-output \
+        --checklist "$title" 20 72 12 "$@" || return 1
       ;;
     *)
       echo "$title" >&2
@@ -56,8 +119,8 @@ checklist() {
 
 msg() {
   case $UI in
-    dialog) dialog --msgbox "$1" 12 60 || true ;;
-    whiptail) whiptail --msgbox "$1" 12 60 || true ;;
+    dialog) dialog --colors --backtitle "$APP_TITLE" --msgbox "$1" 12 60 || true ;;
+    whiptail) whiptail --backtitle "$APP_TITLE" --msgbox "$1" 12 60 || true ;;
     *) printf '%s\n' "$1" ;;
   esac
 }
@@ -78,14 +141,28 @@ OPTS="$(checklist "Stage B modules" \
   SETUP_RICE "Gruvbox rice + notifications + launchers" off
 )" || { echo "configure: aborted"; exit 1; }
 
+selected() { echo "$OPTS" | grep -qx "$1"; }
+
+# Count only modules that will actually run (OLLAMA skipped on non-P15).
+CONFIGURE_STEP=0
+CONFIGURE_STEPS=0
+selected SETUP_FIREWALLD && CONFIGURE_STEPS=$((CONFIGURE_STEPS + 1))
+selected APPLY_PROFILE && CONFIGURE_STEPS=$((CONFIGURE_STEPS + 1))
+selected SETUP_OLLAMA && (( is_p15 )) && CONFIGURE_STEPS=$((CONFIGURE_STEPS + 1))
+selected SETUP_LABS && CONFIGURE_STEPS=$((CONFIGURE_STEPS + 1))
+selected SETUP_DETONATE && CONFIGURE_STEPS=$((CONFIGURE_STEPS + 1))
+selected SETUP_AI && CONFIGURE_STEPS=$((CONFIGURE_STEPS + 1))
+selected SETUP_RICE && CONFIGURE_STEPS=$((CONFIGURE_STEPS + 1))
+(( CONFIGURE_STEPS < 1 )) && CONFIGURE_STEPS=1
+
 run_mod() {
   local name=$1
-  echo "=== $name ==="
+  CONFIGURE_STEP=$((CONFIGURE_STEP + 1))
+  progress_line "$CONFIGURE_STEP" "$CONFIGURE_STEPS" "$name"
+  progress_banner "$name"
   shift
   "$@"
 }
-
-selected() { echo "$OPTS" | grep -qx "$1"; }
 
 # Fail-fast: module errors propagate (no || true swallow).
 if selected SETUP_FIREWALLD; then

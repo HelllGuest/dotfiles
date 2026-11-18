@@ -26,10 +26,34 @@ fail_step() {
     INSTALL_FAIL_REASONS+=("$1")
 }
 
+# Progress bars (scripts/lib/progress.sh). Stub when tests eval this helper
+# block without the lib on disk.
+# shellcheck source=scripts/lib/progress.sh
+if [[ -f scripts/lib/progress.sh ]]; then
+    source scripts/lib/progress.sh
+elif [[ -f "$(dirname "${BASH_SOURCE[0]:-$0}")/scripts/lib/progress.sh" ]]; then
+    source "$(dirname "${BASH_SOURCE[0]:-$0}")/scripts/lib/progress.sh"
+else
+    ui_bar() { printf '[----------]'; }
+    progress_line() { :; }
+    progress_banner() { :; }
+fi
+# Ceiling = run_step sites + advance_progress sites (conditionals leave headroom).
+INSTALL_STEP=0
+INSTALL_STEPS=44
+
+# Tick the Stage B bar without wrapping a command (pacman/stow/profile/…).
+advance_progress() {
+    local label="$1"
+    INSTALL_STEP=$((INSTALL_STEP + 1))
+    progress_line "$INSTALL_STEP" "$INSTALL_STEPS" "$label"
+}
+
 # run_step LABEL CMD...: a failing step is recorded (exit 1 at the end) and the
 # run continues, so one broken step never silently drops the others.
 run_step() {
     local label="$1"; shift
+    advance_progress "$label"
     "$@" || fail_step "$label failed — re-run: $*"
 }
 # need_cmd CMD LABEL [SOURCE]: a missing prerequisite is a failure, not a
@@ -42,6 +66,7 @@ need_cmd() {
 NODE_SRC="Node 22 via fnm, step 2.1"
 
 echo "Starting installation..."
+progress_banner "Stage B · $(ui_bar 0 20) 0/${INSTALL_STEPS}"
 
 # Authenticate once and keep sudo alive for the whole run: AUR builds take
 # long enough for a later sudo prompt to time out unattended, which used to
@@ -58,6 +83,7 @@ fi
 
 # 1. Install packages (before machine profile — NVIDIA/Optimus needs nvidia-* present)
 if [ -f "packages/pacman.txt" ]; then
+    advance_progress "pacman packages"
     echo "Installing pacman packages..."
     REPO_ROOT="$PWD"
     # shellcheck source=scripts/lib/pkg-lists.sh
@@ -106,6 +132,7 @@ fi
 # 1.05 Machine profile (hostname override, else hardware detect)
 # Runs after pacman so thinkpad-p15 can enable nvidia-*.service and rebuild UKIs.
 if [ -f "scripts/apply-profile.sh" ]; then
+    advance_progress "machine profile"
     bash scripts/apply-profile.sh \
         || fail_step "Profile application failed (sudo / hardware setup) — see output above."
 fi
@@ -150,6 +177,7 @@ if ! command -v stow >/dev/null 2>&1; then
     chmod +x scripts/minimal-stow.sh
 fi
 
+advance_progress "stow dotfiles"
 echo "Applying dotfiles..."
 # shellcheck source=scripts/lib/skel.sh
 source scripts/lib/skel.sh
@@ -396,6 +424,7 @@ fi
 
 # 4. Privacy Hardening (before health check so telemetry probes reflect final state)
 if [ -f "scripts/privacy-hardener.sh" ]; then
+    advance_progress "privacy hardener"
     bash scripts/privacy-hardener.sh || fail_step "Privacy hardener failed."
 fi
 
@@ -413,6 +442,7 @@ fi
 
 # 5. Final Health Check
 if [ -f "scripts/check.sh" ]; then
+    advance_progress "health check"
     bash scripts/check.sh \
         || fail_step "Health check reported failures (✗) — see output above."
 fi

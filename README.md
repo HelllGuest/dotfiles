@@ -304,8 +304,10 @@ scripts/thinkpad-charge-thresholds.sh  # tmpfiles + late-boot service; profile /
 UI backend (auto): **dialog** if present, else **whiptail**, else plain checklist
 on the TTY (Arch often has whiptail only — `pacman -S dialog` optional). Force
 with `CONFIGURE_UI=plain|dialog|whiptail` (use `plain` on serial / CI / no TTY).
-Abort/Cancel exits without running modules. Selected modules **fail-fast** (a
-failing module stops the script; no silent `|| true`).
+Theme matches Stage A (blue screen, cyan chrome, backtitle `Dotfiles configure · Stage B`).
+Module runs show a UTF-8/`#` progress bar (`scripts/lib/progress.sh`); `./install.sh`
+`run_step` uses the same bar. Abort/Cancel exits without running modules. Selected
+modules **fail-fast** (a failing module stops the script; no silent `|| true`).
 
 | Tag | Default | Runs |
 |-----|---------|------|
