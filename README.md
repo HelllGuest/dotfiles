@@ -619,7 +619,7 @@ We take a "quiet by default" approach:
 | Ghostty needs 2 clicks / fails from app grid | systemd `notify-reload` vs late SIGUSR2 ([#14394](https://github.com/ghostty-org/ghostty/discussions/14394)) | Stow `ghostty` drop-in sets `Type=notify`; `systemctl --user daemon-reload` |
 | `headroom not installed` / `hr-claude` fails | Headroom not set up yet | `bash scripts/headroom-setup.sh` |
 | `headroom doctor`: Base URL unset | Current shell never sourced rc | `source ~/.zshrc` or new terminal; Claude Code uses settings.json |
-| Headroom proxy down after reboot | User service not lingering | `systemctl --user enable --now headroom-default.service`; `loginctl enable-linger $USER` |
+| Headroom proxy down after reboot | No persistent user service, or not lingering | `systemctl --user enable --now hr-proxy.service` (repo unit, from `ai-stack-setup.sh`) or `headroom-default.service` (after `headroom install apply`); `loginctl enable-linger $USER` |
 | Cursor not using Headroom | Base URL not set in IDE | Run `hr-cursor`, paste URL in Settings → Models; keep proxy terminal open |
 | zstd/xz/lz4 back to extra/ after `-Syu` | Repo upgrade replaced v3 rebuilds | `bash scripts/rebuild-v3.sh` then `sudo pacman -U` if sudo -n fails |
 | PhotoGIMP layout missing after GIMP update | Config dir version bump / patch not reapplied | `bash scripts/install-photogimp.sh` |
@@ -672,7 +672,7 @@ We take a "quiet by default" approach:
 | Move /tmp to disk | `sudo ~/dotfiles/scripts/tmp-to-disk.sh` then reboot (off RAM-capped tmpfs → btrfs `@tmp`) |
 | Reload shell | `exec zsh` |
 | Install project Node (fnm) | `fnm install 22` or `fnm install` inside project |
-| Headroom (Claude / Cursor) | `bash scripts/headroom-setup.sh`; prefer `headroom-default.service`; then `hr-claude` / `hr-cursor` |
+| Headroom (Claude / Cursor) | `bash scripts/headroom-setup.sh`; optional persistent proxy: `hr-proxy.service` or `headroom-default.service`; then `hr-claude` / `hr-cursor` |
 | x86-64-v3 rebuilds | `bash scripts/rebuild-v3.sh` |
 | PhotoGIMP | `bash scripts/install-photogimp.sh` |
 | Dash2Dock | `bash scripts/install-dash2dock.sh` then log out/in (Wayland) |

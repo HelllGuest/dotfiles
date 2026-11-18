@@ -196,7 +196,18 @@ for bin in claude cursor headroom; do
 done
 if command -v headroom >/dev/null 2>&1; then
     echo "  shell: hr-claude | hr-cursor | hr-proxy"
-    echo "  service: systemctl --user status headroom-default.service"
+    # Optional: hr-* wrappers start their own proxy. A persistent one is either
+    # headroom's install preset (headroom-default) or the repo's hr-proxy unit.
+    _hr_unit=""
+    for _u in headroom-default.service hr-proxy.service; do
+        systemctl --user is-enabled --quiet "$_u" 2>/dev/null && { _hr_unit=$_u; break; }
+    done
+    if [[ -n $_hr_unit ]]; then
+        echo "✓ persistent Headroom proxy: $_hr_unit ($(systemctl --user is-active "$_hr_unit" 2>/dev/null))"
+    else
+        echo "○ no persistent Headroom proxy (optional; hr-* wrappers start one) — systemctl --user enable --now hr-proxy.service"
+    fi
+    unset _hr_unit _u
     echo "  doctor: headroom doctor"
 else
     echo "  install/upgrade: bash scripts/headroom-setup.sh"
