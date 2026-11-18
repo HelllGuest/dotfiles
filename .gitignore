@@ -14,6 +14,30 @@ stow/vscode/.config/VSCodium/User/*
 !stow/vscode/.config/VSCodium/User/keybindings.json
 !stow/vscode/.config/VSCodium/User/snippets/
 
+# Same for the other folded editor/agent dirs: their runtime state (caches,
+# globalStorage/state.vscdb with logins, Continue sessions = chat history,
+# skill links from installers) lands here. Only the tracked configs belong in git.
+stow/vscode/.config/Code/*
+!stow/vscode/.config/Code/User/
+stow/vscode/.config/Code/User/*
+!stow/vscode/.config/Code/User/settings.json
+!stow/vscode/.config/Code/User/keybindings.json
+!stow/vscode/.config/Code/User/snippets/
+stow/cursor/.config/Cursor/*
+!stow/cursor/.config/Cursor/User/
+stow/cursor/.config/Cursor/User/*
+!stow/cursor/.config/Cursor/User/settings.json
+!stow/cursor/.config/Cursor/User/keybindings.json
+!stow/cursor/.config/Cursor/User/snippets/
+stow/antigravity/.config/Antigravity IDE/*
+!stow/antigravity/.config/Antigravity IDE/User/
+stow/antigravity/.config/Antigravity IDE/User/*
+!stow/antigravity/.config/Antigravity IDE/User/settings.json
+!stow/antigravity/.config/Antigravity IDE/User/keybindings.json
+!stow/antigravity/.config/Antigravity IDE/User/snippets/
+stow/continue/.continue/*
+!stow/continue/.continue/config.yaml
+
 # GNOME extensions installed from extensions.gnome.org land in the stowed dir;
 # only the custom proton-vpn indicator is tracked
 stow/proton-vpn/.local/share/gnome-shell/extensions/*
