@@ -176,6 +176,9 @@ for dir in */; do
 done
 cd .. || exit 1
 
+# 2.0a User units shipped by stow packages (stow links them; nothing enabled them).
+run_step "tmp-semgrep-cleanup.timer" systemctl --user enable --now tmp-semgrep-cleanup.timer
+
 # 2.0 Login shell: zsh (the dotfiles' primary shell; kitty, Ghostty, Console
 # and the rest start the login shell). Stage A sets it at useradd; other hosts
 # may still be on bash.

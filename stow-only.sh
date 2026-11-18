@@ -37,6 +37,10 @@ for dir in */; do
 done
 cd .. || exit 1
 
+# User units shipped by stow packages are linked, not enabled.
+systemctl --user enable --now tmp-semgrep-cleanup.timer \
+    || echo "○ could not enable tmp-semgrep-cleanup.timer (no user session?)"
+
 echo "Symlinks applied successfully!"
 echo ""
 echo "GNOME session settings (workspaces, keybindings, etc.) are NOT in stow/."

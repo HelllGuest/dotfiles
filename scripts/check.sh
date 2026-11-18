@@ -919,6 +919,11 @@ if systemctl is-enabled --quiet paccache.timer 2>/dev/null; then
 else
     echo "○ paccache.timer off — bash scripts/ops-hygiene.sh"
 fi
+if systemctl --user is-enabled --quiet tmp-semgrep-cleanup.timer 2>/dev/null; then
+    echo "✓ tmp-semgrep-cleanup.timer enabled"
+else
+    check_fail "tmp-semgrep-cleanup.timer not enabled (stow links it; ./install.sh enables it) — systemctl --user enable --now tmp-semgrep-cleanup.timer"
+fi
 if systemctl is-active --quiet usbguard 2>/dev/null; then
     echo "✓ usbguard active"
 else
