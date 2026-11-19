@@ -62,6 +62,107 @@ grep -q 'Stage B main menu' "$ROOT/scripts/configure.sh" \
 grep -q 'CONFIGURE_ONCE=1' "$ROOT/install.sh" \
   || fail "install.sh must set CONFIGURE_ONCE=1 so the menu does not block"
 
+# ── configure.sh behaviour (dummy modules in a temp copy) ──────────────
+# cfg_run INPUT [ENV…]: run configure.sh with INPUT on a pty (the menu loop)
+# or, when INPUT is "-", with stdin closed (one-shot). Sets cfg_rc, cfg_out,
+# cfg_ran (modules that ran, one per line).
+CT="$(mktemp -d)"
+trap 'rm -rf "$CT"' EXIT
+mkdir -p "$CT/scripts/lib" "$CT/bin"
+cp "$ROOT/scripts/configure.sh" "$CT/scripts/"
+cp "$ROOT/scripts/lib/dmi.sh" "$ROOT/scripts/lib/progress.sh" "$CT/scripts/lib/"
+for _m in firewalld-lab-zones apply-profile ollama-setup labs-setup lab-detonate ai-stack-setup rice-setup; do
+  printf '#!/bin/sh\necho %s >>"%s/ran"\n' "$_m" "$CT" >"$CT/scripts/$_m.sh"
+done
+unset -v _m
+# The menu tests need script(1) that passes end of input on to the pty
+# (util-linux 2.35+); otherwise they would hang until the timeout.
+cfg_pty_ok() {
+  if [[ -z ${cfg_pty:-} ]]; then
+    cfg_pty=no
+    command -v script >/dev/null \
+      && [[ $(printf 'x\n' | timeout 5 script -qec 'read -r a; read -r b || echo EOF' /dev/null 2>&1) == *EOF* ]] \
+      && cfg_pty=yes
+    [[ $cfg_pty == yes ]] || echo "SKIPPED: configure menu tests (script(1) missing or does not pass EOF)"
+  fi
+  [[ $cfg_pty == yes ]]
+}
+cfg_run() {
+  local input=$1; shift
+  : >"$CT/ran"
+  if [[ $input == - ]]; then
+    cfg_out="$(env "$@" timeout 20 bash "$CT/scripts/configure.sh" </dev/null 2>&1)" && cfg_rc=0 || cfg_rc=$?
+  else
+    cfg_pty_ok || return 1
+    cfg_out="$(printf '%b' "$input" | env "$@" timeout 20 script -qec "bash $CT/scripts/configure.sh; echo RC=\$?" /dev/null 2>&1)" || true
+    cfg_rc=$(sed -n 's/.*RC=\([0-9]*\).*/\1/p' <<<"$cfg_out" | tail -1)
+  fi
+  cfg_ran="$(cat "$CT/ran")"
+}
+if cfg_run - CONFIGURE_UI=plain; then
+  [[ $cfg_rc == 0 && $cfg_ran == firewalld-lab-zones ]] \
+    || fail "no TTY: one-shot must run the defaults once (rc=$cfg_rc ran=[$cfg_ran])"
+fi
+if cfg_run '' CONFIGURE_UI=plain; then
+  [[ $cfg_rc == 0 && -z $cfg_ran ]] || fail "Ctrl-D at the menu must quit (rc=$cfg_rc ran=[$cfg_ran])"
+  # "2" then Ctrl-D (no newline): the typed text is the answer (profile).
+  cfg_run '2\004\004' CONFIGURE_UI=plain
+  [[ $cfg_rc == 0 && $cfg_ran == apply-profile ]] \
+    || fail "text typed before Ctrl-D must count as the answer (rc=$cfg_rc)"
+  cfg_run '2\n3\n' CONFIGURE_UI=plain
+  [[ $cfg_rc == 0 && $cfg_ran == apply-profile && $cfg_out == *'Profile finished.'* ]] \
+    || fail "menu: Apply machine profile (rc=$cfg_rc ran=[$cfg_ran])"
+  cfg_run '9\n1\n\n3\n' CONFIGURE_UI=plain
+  [[ $cfg_rc == 0 && $cfg_ran == firewalld-lab-zones ]] \
+    || fail "menu: bad number, modules, quit (rc=$cfg_rc ran=[$cfg_ran])"
+  [[ $cfg_out == *'not a choice: 9'* ]] || fail "menu must re-ask after a bad number"
+  [[ $cfg_out == *'Selected modules finished.'* ]] || fail "loop must report finished modules"
+  cfg_run '1\nNONE\n3\n' CONFIGURE_UI=plain
+  [[ $cfg_rc == 0 && -z $cfg_ran && $cfg_out == *'No modules ran.'* ]] \
+    || fail "empty selection must say so (rc=$cfg_rc ran=[$cfg_ran])"
+  cfg_run '1\nSETUP_OLLAMA\n3\n' CONFIGURE_UI=plain
+  if [[ $cfg_out == *'not a P15'* ]]; then
+    [[ $cfg_rc == 0 && -z $cfg_ran && $cfg_out == *'No modules ran.'* ]] \
+      || fail "OLLAMA skipped off a P15 must report that no module ran (rc=$cfg_rc)"
+  fi
+  cfg_run '\n' CONFIGURE_UI=plain CONFIGURE_ONCE=1
+  [[ $cfg_rc == 0 && $cfg_ran == firewalld-lab-zones && $cfg_out != *'Stage B main menu'* \
+     && $cfg_out != *'Selected modules finished.'* ]] \
+    || fail "CONFIGURE_ONCE=1: one checklist, no menu, no extra prompt (rc=$cfg_rc)"
+  printf '#!/bin/sh\nexit 3\n' >"$CT/scripts/firewalld-lab-zones.sh"
+  cfg_run '1\n\n3\n' CONFIGURE_UI=plain
+  [[ $cfg_rc == 1 && $cfg_out == *'Module failed: firewalld'* ]] \
+    || fail "a failing module must stop the menu loop with exit 1 (rc=$cfg_rc)"
+  printf '#!/bin/sh\necho firewalld-lab-zones >>"%s/ran"\n' "$CT" >"$CT/scripts/firewalld-lab-zones.sh"
+fi
+# whiptail draws on stdout and answers on stderr: the checklist must capture
+# the answer. A stand-in whiptail does exactly that (screen → stdout, the
+# "on" tags / first menu tag → stderr); the menu queue is $CT/menu.
+cat >"$CT/bin/whiptail" <<'WT'
+#!/usr/bin/env bash
+echo SCREEN
+while (($#)); do
+  case $1 in
+    --checklist) [[ -n ${WT_CANCEL:-} ]] && exit 1; shift 5; while (($# >= 3)); do [[ $3 == on ]] && echo "$1" >&2; shift 3; done ;;
+    --menu) q=$(head -1 "$WT_MENU"); sed -i 1d "$WT_MENU"; [[ $q == quit ]] && exit 1; echo "$q" >&2; exit 0 ;;
+    *) shift ;;
+  esac
+done
+WT
+chmod +x "$CT/bin/whiptail"
+cfg_run - CONFIGURE_UI=whiptail CONFIGURE_ONCE=1 PATH="$CT/bin:$PATH"
+[[ $cfg_rc == 0 && $cfg_ran == firewalld-lab-zones ]] \
+  || fail "whiptail checklist must return the selected tags (rc=$cfg_rc ran=[$cfg_ran])"
+printf 'modules\nquit\n' >"$CT/menu"
+cfg_run - CONFIGURE_UI=whiptail PATH="$CT/bin:$PATH" WT_MENU="$CT/menu"
+[[ $cfg_rc == 0 && $cfg_ran == firewalld-lab-zones && ! -s $CT/menu ]] \
+  || fail "whiptail menu loop: modules then Quit (rc=$cfg_rc ran=[$cfg_ran])"
+# Checklist Cancel returns to the menu (the queue's next item is reached).
+printf 'modules\nquit\n' >"$CT/menu"
+cfg_run - CONFIGURE_UI=whiptail PATH="$CT/bin:$PATH" WT_MENU="$CT/menu" WT_CANCEL=1
+[[ $cfg_rc == 0 && -z $cfg_ran && ! -s $CT/menu ]] \
+  || fail "checklist Cancel must return to the menu (rc=$cfg_rc ran=[$cfg_ran])"
+
 bash -n "$ROOT/scripts/lib/progress.sh" || fail "bash -n progress.sh"
 bash -n "$ROOT/scripts/configure.sh" || fail "bash -n configure.sh"
 bash -n "$ROOT/install.sh" || fail "bash -n install.sh"

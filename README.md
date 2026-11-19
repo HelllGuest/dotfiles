@@ -306,8 +306,8 @@ on the TTY (Arch often has whiptail only — `pacman -S dialog` optional). Force
 with `CONFIGURE_UI=plain|dialog|whiptail` (use `plain` on serial / CI / no TTY).
 Theme matches Stage A (blue screen, cyan chrome, backtitle `Dotfiles configure · Stage B`).
 Interactive runs open an archdi-style **main menu** (Modules / Profile / Quit) that
-loops until Quit; `CONFIGURE_ONCE=1` (what `./install.sh` sets) does one checklist
-pass then exits. Module runs show a UTF-8/`#` progress bar (`scripts/lib/progress.sh`);
+loops until Quit (plain menu: Ctrl-D quits, a bad number asks again).
+`CONFIGURE_ONCE=1` (what `./install.sh` sets) does one checklist pass then exits. Module runs show a UTF-8/`#` progress bar (`scripts/lib/progress.sh`);
 `./install.sh` `run_step` uses the same bar. Checklist Cancel returns to the menu
 (or aborts in one-shot mode). Selected modules **fail-fast** (a failing module
 stops the script; no silent `|| true`).
@@ -325,7 +325,8 @@ stops the script; no silent `|| true`).
 ```bash
 bash scripts/configure.sh                      # menu loop
 CONFIGURE_ONCE=1 bash scripts/configure.sh     # one checklist (install.sh)
-CONFIGURE_UI=plain bash scripts/configure.sh   # headless / serial → one-shot
+CONFIGURE_UI=plain bash scripts/configure.sh   # serial: plain menu loop
+CONFIGURE_UI=plain bash scripts/configure.sh </dev/null   # no TTY: one-shot, defaults
 # Re-run anytime; SETUP_FIREWALLD is safe to repeat.
 ```
 

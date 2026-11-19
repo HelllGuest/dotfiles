@@ -100,8 +100,10 @@ checklist() {
         --checklist "$title" 20 72 12 "$@" || return 1
       ;;
     whiptail)
+      # whiptail draws on stdout and answers on stderr: swap them so $(…)
+      # captures the tags, not the screen.
       whiptail --backtitle "$APP_TITLE" --separate-output \
-        --checklist "$title" 20 72 12 "$@" || return 1
+        --checklist "$title" 20 72 12 "$@" 3>&1 1>&2 2>&3 || return 1
       ;;
     *)
       echo "$title" >&2
@@ -151,14 +153,18 @@ menu() {
         tags+=("$t"); descs+=("$d"); i=$((i + 1))
         printf '  %d) %s [%s]\n' "$i" "$d" "$t" >&2
       done
+      # End of input (Ctrl-D) on an empty line quits; text typed before
+      # Ctrl-D still counts as the answer. Out of range asks again.
       local pick
-      read -r -p "choose 1-$i (empty=1): " pick || true
-      [[ -z $pick ]] && pick=1
-      if [[ $pick =~ ^[0-9]+$ ]] && (( pick >= 1 && pick <= i )); then
-        printf '%s' "${tags[pick - 1]}"
-      else
-        return 1
-      fi
+      while true; do
+        read -r -p "choose 1-$i (empty=1): " pick || [[ -n $pick ]] || return 1
+        [[ -z $pick ]] && pick=1
+        if [[ $pick =~ ^[0-9]+$ ]] && (( pick >= 1 && pick <= i )); then
+          printf '%s' "${tags[pick - 1]}"
+          return 0
+        fi
+        echo "not a choice: $pick" >&2
+      done
       ;;
   esac
 }
@@ -236,7 +242,6 @@ run_modules_batch() {
   if selected SETUP_RICE; then
     run_mod rice bash "$REPO_ROOT/scripts/rice-setup.sh"
   fi
-  msg "Selected modules finished."
   return 0
 }
 
@@ -272,7 +277,14 @@ while true; do
   case $choice in
     modules)
       # Checklist Cancel → back to menu. Module failure → exit 1 (run_mod).
-      run_modules_batch || true
+      # CONFIGURE_STEP is how many modules ran.
+      if run_modules_batch; then
+        if (( CONFIGURE_STEP > 0 )); then
+          msg "Selected modules finished."
+        else
+          msg "No modules ran."
+        fi
+      fi
       ;;
     profile)
       run_profile_only
