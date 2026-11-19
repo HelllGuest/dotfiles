@@ -305,9 +305,12 @@ UI backend (auto): **dialog** if present, else **whiptail**, else plain checklis
 on the TTY (Arch often has whiptail only — `pacman -S dialog` optional). Force
 with `CONFIGURE_UI=plain|dialog|whiptail` (use `plain` on serial / CI / no TTY).
 Theme matches Stage A (blue screen, cyan chrome, backtitle `Dotfiles configure · Stage B`).
-Module runs show a UTF-8/`#` progress bar (`scripts/lib/progress.sh`); `./install.sh`
-`run_step` uses the same bar. Abort/Cancel exits without running modules. Selected
-modules **fail-fast** (a failing module stops the script; no silent `|| true`).
+Interactive runs open an archdi-style **main menu** (Modules / Profile / Quit) that
+loops until Quit; `CONFIGURE_ONCE=1` (what `./install.sh` sets) does one checklist
+pass then exits. Module runs show a UTF-8/`#` progress bar (`scripts/lib/progress.sh`);
+`./install.sh` `run_step` uses the same bar. Checklist Cancel returns to the menu
+(or aborts in one-shot mode). Selected modules **fail-fast** (a failing module
+stops the script; no silent `|| true`).
 
 | Tag | Default | Runs |
 |-----|---------|------|
@@ -320,8 +323,9 @@ modules **fail-fast** (a failing module stops the script; no silent `|| true`).
 | `SETUP_RICE` | off | `rice-setup.sh` (Gruvbox + lock-screen notifications off) |
 
 ```bash
-bash scripts/configure.sh
-CONFIGURE_UI=plain bash scripts/configure.sh   # headless / serial
+bash scripts/configure.sh                      # menu loop
+CONFIGURE_ONCE=1 bash scripts/configure.sh     # one checklist (install.sh)
+CONFIGURE_UI=plain bash scripts/configure.sh   # headless / serial → one-shot
 # Re-run anytime; SETUP_FIREWALLD is safe to repeat.
 ```
 

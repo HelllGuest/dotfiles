@@ -55,6 +55,12 @@ grep -q 'progress_banner' "$ROOT/scripts/configure.sh" \
 # Runnable count must exclude OLLAMA on non-P15 (is_p15 gate before +=).
 grep -q 'selected SETUP_OLLAMA && (( is_p15 ))' "$ROOT/scripts/configure.sh" \
   || fail "CONFIGURE_STEPS must not count OLLAMA when not P15"
+grep -q 'configure_once' "$ROOT/scripts/configure.sh" \
+  || fail "configure.sh must support CONFIGURE_ONCE / one-shot mode"
+grep -q 'Stage B main menu' "$ROOT/scripts/configure.sh" \
+  || fail "configure.sh must offer an interactive main menu loop"
+grep -q 'CONFIGURE_ONCE=1' "$ROOT/install.sh" \
+  || fail "install.sh must set CONFIGURE_ONCE=1 so the menu does not block"
 
 bash -n "$ROOT/scripts/lib/progress.sh" || fail "bash -n progress.sh"
 bash -n "$ROOT/scripts/configure.sh" || fail "bash -n configure.sh"

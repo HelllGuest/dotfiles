@@ -145,7 +145,8 @@ if [ "${SKIP_CONFIGURE:-0}" != 1 ] && [ -f scripts/configure.sh ]; then
         if [ ! -t 0 ] && [ -z "${CONFIGURE_UI:-}" ]; then
             export CONFIGURE_UI=plain
         fi
-        bash scripts/configure.sh \
+        # One checklist pass then continue install (no interactive menu loop).
+        CONFIGURE_ONCE=1 bash scripts/configure.sh \
             || fail_step "configure.sh failed — see module output above."
     elif [ -t 0 ]; then
         echo "Stage B modules: run  bash scripts/configure.sh  (or CONFIGURE=1 ./install.sh)"

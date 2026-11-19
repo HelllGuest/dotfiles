@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 # configure.sh — Stage B post-boot configurator (dialog → whiptail → plain).
 # Live: firewalld, ollama (P15), profile, labs, AI stack, Gruvbox rice.
+#
+# Interactive (TTY): archdi-style main menu loop (Modules / Profile / Quit).
+# One-shot: CONFIGURE_ONCE=1 (./install.sh) or plain UI with no stdin TTY.
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
@@ -12,6 +15,7 @@ source "$REPO_ROOT/scripts/lib/progress.sh"
 
 APP_TITLE="Dotfiles configure · Stage B"
 DIALOG_RC_DIR=""
+DEFAULT_MENU_ITEM="modules"
 
 # CONFIGURE_UI=plain|dialog|whiptail — force backend (VM / CI: plain).
 UI=${CONFIGURE_UI:-plain}
@@ -82,6 +86,12 @@ write_configure_theme
 is_p15=0
 is_thinkpad_p15 && is_p15=1
 
+# Default SETUP_OLLAMA on for P15 (20SU); off elsewhere (T14s never wants host ollama).
+OLLAMA_STATE=off
+if [[ $is_p15 -eq 1 ]]; then
+  OLLAMA_STATE=on
+fi
+
 checklist() {
   local title=$1; shift
   case $UI in
@@ -117,6 +127,42 @@ checklist() {
   esac
 }
 
+# menu TITLE TAG DESC [TAG DESC ...] -> tag on stdout
+menu() {
+  local title=$1; shift
+  case $UI in
+    dialog)
+      dialog --colors --backtitle "$APP_TITLE" --stdout \
+        --default-item "${DEFAULT_MENU_ITEM:-}" \
+        --cancel-label Quit --ok-label Select \
+        --menu "$title" 16 72 8 "$@" || return 1
+      ;;
+    whiptail)
+      whiptail --backtitle "$APP_TITLE" \
+        --default-item "${DEFAULT_MENU_ITEM:-}" \
+        --cancel-button Quit --ok-button Select \
+        --menu "$title" 16 72 8 "$@" 3>&1 1>&2 2>&3 || return 1
+      ;;
+    *)
+      echo "$title" >&2
+      local tags=() descs=() t d i=0
+      while (($# >= 2)); do
+        t=$1; d=$2; shift 2
+        tags+=("$t"); descs+=("$d"); i=$((i + 1))
+        printf '  %d) %s [%s]\n' "$i" "$d" "$t" >&2
+      done
+      local pick
+      read -r -p "choose 1-$i (empty=1): " pick || true
+      [[ -z $pick ]] && pick=1
+      if [[ $pick =~ ^[0-9]+$ ]] && (( pick >= 1 && pick <= i )); then
+        printf '%s' "${tags[pick - 1]}"
+      else
+        return 1
+      fi
+      ;;
+  esac
+}
+
 msg() {
   case $UI in
     dialog) dialog --colors --backtitle "$APP_TITLE" --msgbox "$1" 12 60 || true ;;
@@ -125,35 +171,7 @@ msg() {
   esac
 }
 
-# Default SETUP_OLLAMA on for P15 (20SU); off elsewhere (T14s never wants host ollama).
-OLLAMA_STATE=off
-if [[ $is_p15 -eq 1 ]]; then
-  OLLAMA_STATE=on
-fi
-
-OPTS="$(checklist "Stage B modules" \
-  SETUP_FIREWALLD "firewalld lab zones (drop + libvirt + lab-malware)" on \
-  APPLY_PROFILE "Re-run machine profile (detect / hostname)" off \
-  SETUP_OLLAMA "P15: ollama-cuda + qwen models (localhost)" "$OLLAMA_STATE" \
-  SETUP_LABS "Labs lab-triage/re/android/web (+ capture image)" off \
-  SETUP_DETONATE "Detonation VMs + INetSim/PolarProxy on virbr-malware" off \
-  SETUP_AI "AI MCP / Headroom / Continue / Ponytail" off \
-  SETUP_RICE "Gruvbox rice + notifications + launchers" off
-)" || { echo "configure: aborted"; exit 1; }
-
-selected() { echo "$OPTS" | grep -qx "$1"; }
-
-# Count only modules that will actually run (OLLAMA skipped on non-P15).
-CONFIGURE_STEP=0
-CONFIGURE_STEPS=0
-selected SETUP_FIREWALLD && CONFIGURE_STEPS=$((CONFIGURE_STEPS + 1))
-selected APPLY_PROFILE && CONFIGURE_STEPS=$((CONFIGURE_STEPS + 1))
-selected SETUP_OLLAMA && (( is_p15 )) && CONFIGURE_STEPS=$((CONFIGURE_STEPS + 1))
-selected SETUP_LABS && CONFIGURE_STEPS=$((CONFIGURE_STEPS + 1))
-selected SETUP_DETONATE && CONFIGURE_STEPS=$((CONFIGURE_STEPS + 1))
-selected SETUP_AI && CONFIGURE_STEPS=$((CONFIGURE_STEPS + 1))
-selected SETUP_RICE && CONFIGURE_STEPS=$((CONFIGURE_STEPS + 1))
-(( CONFIGURE_STEPS < 1 )) && CONFIGURE_STEPS=1
+selected() { printf '%s\n' "$OPTS" | grep -qx "$1"; }
 
 run_mod() {
   local name=$1
@@ -161,40 +179,107 @@ run_mod() {
   progress_line "$CONFIGURE_STEP" "$CONFIGURE_STEPS" "$name"
   progress_banner "$name"
   shift
-  "$@"
+  # Explicit exit: menu uses `if run_modules_batch` / `||`, which would
+  # otherwise swallow a failing module under set -e.
+  if ! "$@"; then
+    msg "Module failed: $name"
+    exit 1
+  fi
 }
 
-# Fail-fast: module errors propagate (no || true swallow).
-if selected SETUP_FIREWALLD; then
-  run_mod firewalld bash "$REPO_ROOT/scripts/firewalld-lab-zones.sh"
-fi
+# Checklist → run selected modules (fail-fast). Returns 1 if checklist aborted.
+run_modules_batch() {
+  local OPTS
+  OPTS="$(checklist "Stage B modules" \
+    SETUP_FIREWALLD "firewalld lab zones (drop + libvirt + lab-malware)" on \
+    APPLY_PROFILE "Re-run machine profile (detect / hostname)" off \
+    SETUP_OLLAMA "P15: ollama-cuda + qwen models (localhost)" "$OLLAMA_STATE" \
+    SETUP_LABS "Labs lab-triage/re/android/web (+ capture image)" off \
+    SETUP_DETONATE "Detonation VMs + INetSim/PolarProxy on virbr-malware" off \
+    SETUP_AI "AI MCP / Headroom / Continue / Ponytail" off \
+    SETUP_RICE "Gruvbox rice + notifications + launchers" off
+  )" || return 1
 
-if selected APPLY_PROFILE; then
-  run_mod profile bash "$REPO_ROOT/scripts/apply-profile.sh"
-fi
+  CONFIGURE_STEP=0
+  CONFIGURE_STEPS=0
+  selected SETUP_FIREWALLD && CONFIGURE_STEPS=$((CONFIGURE_STEPS + 1))
+  selected APPLY_PROFILE && CONFIGURE_STEPS=$((CONFIGURE_STEPS + 1))
+  selected SETUP_OLLAMA && (( is_p15 )) && CONFIGURE_STEPS=$((CONFIGURE_STEPS + 1))
+  selected SETUP_LABS && CONFIGURE_STEPS=$((CONFIGURE_STEPS + 1))
+  selected SETUP_DETONATE && CONFIGURE_STEPS=$((CONFIGURE_STEPS + 1))
+  selected SETUP_AI && CONFIGURE_STEPS=$((CONFIGURE_STEPS + 1))
+  selected SETUP_RICE && CONFIGURE_STEPS=$((CONFIGURE_STEPS + 1))
+  (( CONFIGURE_STEPS < 1 )) && CONFIGURE_STEPS=1
 
-if selected SETUP_OLLAMA; then
-  if [[ $is_p15 -eq 1 ]]; then
-    run_mod ollama bash "$REPO_ROOT/scripts/ollama-setup.sh"
-  else
-    msg "SETUP_OLLAMA skipped: not a P15 (20SU) host."
+  if selected SETUP_FIREWALLD; then
+    run_mod firewalld bash "$REPO_ROOT/scripts/firewalld-lab-zones.sh"
   fi
+  if selected APPLY_PROFILE; then
+    run_mod profile bash "$REPO_ROOT/scripts/apply-profile.sh"
+  fi
+  if selected SETUP_OLLAMA; then
+    if [[ $is_p15 -eq 1 ]]; then
+      run_mod ollama bash "$REPO_ROOT/scripts/ollama-setup.sh"
+    else
+      msg "SETUP_OLLAMA skipped: not a P15 (20SU) host."
+    fi
+  fi
+  if selected SETUP_LABS; then
+    run_mod labs bash "$REPO_ROOT/scripts/labs-setup.sh"
+  fi
+  if selected SETUP_DETONATE; then
+    run_mod detonate bash "$REPO_ROOT/scripts/lab-detonate.sh" setup
+  fi
+  if selected SETUP_AI; then
+    run_mod ai bash "$REPO_ROOT/scripts/ai-stack-setup.sh"
+  fi
+  if selected SETUP_RICE; then
+    run_mod rice bash "$REPO_ROOT/scripts/rice-setup.sh"
+  fi
+  msg "Selected modules finished."
+  return 0
+}
+
+run_profile_only() {
+  CONFIGURE_STEP=0
+  CONFIGURE_STEPS=1
+  run_mod profile bash "$REPO_ROOT/scripts/apply-profile.sh"
+  msg "Profile finished."
+}
+
+configure_once() {
+  case ${CONFIGURE_ONCE:-0} in
+    1|Y|y|yes|on) return 0 ;;
+  esac
+  # Headless plain (CI / serial with no TTY): one checklist then exit.
+  [[ $UI == plain && ! -t 0 ]] && return 0
+  return 1
+}
+
+if configure_once; then
+  run_modules_batch || { echo "configure: aborted"; exit 1; }
+  echo "✓ configure.sh finished"
+  exit 0
 fi
 
-if selected SETUP_LABS; then
-  run_mod labs bash "$REPO_ROOT/scripts/labs-setup.sh"
-fi
-
-if selected SETUP_DETONATE; then
-  run_mod detonate bash "$REPO_ROOT/scripts/lab-detonate.sh" setup
-fi
-
-if selected SETUP_AI; then
-  run_mod ai bash "$REPO_ROOT/scripts/ai-stack-setup.sh"
-fi
-
-if selected SETUP_RICE; then
-  run_mod rice bash "$REPO_ROOT/scripts/rice-setup.sh"
-fi
-
-echo "✓ configure.sh finished"
+# Interactive loop (archdi-style): return here after each action until Quit.
+while true; do
+  choice="$(menu "Stage B main menu" \
+    modules "Run modules (checklist)" \
+    profile "Apply machine profile" \
+    quit "Quit")" || choice=quit
+  DEFAULT_MENU_ITEM=$choice
+  case $choice in
+    modules)
+      # Checklist Cancel → back to menu. Module failure → exit 1 (run_mod).
+      run_modules_batch || true
+      ;;
+    profile)
+      run_profile_only
+      ;;
+    quit|*)
+      echo "✓ configure.sh finished"
+      exit 0
+      ;;
+  esac
+done
