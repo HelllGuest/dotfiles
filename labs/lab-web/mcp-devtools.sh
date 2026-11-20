@@ -1,9 +1,24 @@
 #!/usr/bin/env bash
-# Chrome DevTools MCP via Playwright chromium (headless CDP).
+# Chrome DevTools MCP via Arch chromium (headless CDP).
 set -euo pipefail
-export PLAYWRIGHT_BROWSERS_PATH="${PLAYWRIGHT_BROWSERS_PATH:-/home/lab/.cache/ms-playwright}"
+chromium="${PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH:-/usr/bin/chromium}"
 # Prefer dedicated package when present; else Playwright MCP covers browser tooling.
-if npm ls -g chrome-devtools-mcp >/dev/null 2>&1; then
-  exec npx --yes chrome-devtools-mcp "$@"
+if command -v chrome-devtools-mcp >/dev/null 2>&1; then
+  exec chrome-devtools-mcp "$@"
 fi
-exec npx --yes @playwright/mcp "$@"
+extra=()
+case "${1:-}" in
+  -h|--help|-V|--version) ;;
+  *)
+    [[ -x "$chromium" ]] && extra+=(--executable-path "$chromium")
+    [[ -z "${DISPLAY:-}${WAYLAND_DISPLAY:-}" ]] && extra+=(--headless)
+    extra+=(--no-sandbox)
+    ;;
+esac
+if command -v mcp-server-playwright >/dev/null 2>&1; then
+  exec mcp-server-playwright "${extra[@]}" "$@"
+fi
+if command -v playwright-mcp >/dev/null 2>&1; then
+  exec playwright-mcp "${extra[@]}" "$@"
+fi
+exec npx --offline --no @playwright/mcp "${extra[@]}" "$@"

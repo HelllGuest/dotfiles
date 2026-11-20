@@ -27,8 +27,13 @@
 #   KALI_LAN_IFACE  physical ethernet for nat+lan (default: enp0s31f6, else first ether)
 #   KALI_IMAGE_URL / KALI_IMAGE_SHA256  pinned cloud image (override when bumping)
 #   KALI_PASSWORD   guest SSH password (isolated default: kali; nat/lan: random unless set)
+#   KALI_LAN_PROBE  LAN gateway IP for lan-check ping (default: 192.168.8.1)
 
 set -euo pipefail
+
+_KALI_TMP=()
+_kali_cleanup() { ((${#_KALI_TMP[@]})) && rm -rf -- "${_KALI_TMP[@]}" || true; }
+trap _kali_cleanup EXIT
 
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 VM_NAME="${KALI_VM_NAME:-kali-disposable}"
@@ -100,9 +105,11 @@ save_kali_password() {
   case "$NET_MODE" in
     nat|nat+lan)
       ensure_vm_dir
-      umask 077
-      printf '%s\n' "$KALI_PASS" >"$(kali_pass_path)"
-      chmod 600 "$(kali_pass_path)" 2>/dev/null || true
+      (
+        umask 077
+        printf '%s\n' "$KALI_PASS" >"$(kali_pass_path)"
+        chmod 600 "$(kali_pass_path)" 2>/dev/null || true
+      )
       ;;
   esac
 }
@@ -180,7 +187,10 @@ cmd_setup_host() {
 
 # Ensure default NAT is usable (firewalld libvirt zone + bridge up).
 ensure_nat_forward() {
-  [[ "$NET_MODE" == nat ]] || return 0
+  case "$NET_MODE" in
+    nat|nat+lan) ;;
+    *) return 0 ;;
+  esac
   virsh_u net-start default 2>/dev/null || true
   # Admin-up even with NO-CARRIER; carrier appears when a guest tap attaches.
   sudo_do ip link set virbr0 up >/dev/null 2>&1 || true
@@ -193,7 +203,7 @@ ensure_nat_forward() {
 # Best-effort guest IPv4 on default/kali-isolated (hostname lease or domifaddr).
 guest_ipv4() {
   local ip=""
-  ip="$(virsh_u domifaddr "$VM_NAME" source=lease 2>/dev/null \
+  ip="$(virsh_u domifaddr "$VM_NAME" --source lease 2>/dev/null \
     | awk '/ipv4/ {print $4}' | cut -d/ -f1 | head -1)" || true
   if [[ -z "$ip" ]]; then
     ip="$(virsh_u net-dhcp-leases default 2>/dev/null \
@@ -251,16 +261,17 @@ net_args() {
     isolated)
       # no DHCP/WAN: create once if missing
       if ! virsh_u net-info kali-isolated >/dev/null 2>&1; then
-        local xml
-        xml="$(mktemp)"
-        cat > "$xml" <<'EOF'
+        (
+          xml="$(mktemp)"
+          trap 'rm -f -- "$xml"' EXIT
+          cat > "$xml" <<'EOF'
 <network>
   <name>kali-isolated</name>
   <bridge name='virbr-kali' stp='on' delay='0'/>
 </network>
 EOF
-        virsh_u net-define "$xml"
-        rm -f "$xml"
+          virsh_u net-define "$xml"
+        )
         virsh_u net-start kali-isolated || true
         virsh_u net-autostart kali-isolated || true
       fi
@@ -456,7 +467,7 @@ attach_lan_iface() {
 
   local xml
   xml="$(mktemp)"
-  trap 'rm -f "$xml"' RETURN
+  _KALI_TMP+=("$xml")
   cat >"$xml" <<EOF
 <interface type='direct'>
   <source dev='$LAN_IFACE' mode='bridge'/>
@@ -469,7 +480,6 @@ EOF
     virsh_u attach-device "$VM_NAME" "$xml" --config
   fi
   rm -f "$xml"
-  trap - RETURN
   echo "✓ attached physical LAN $LAN_IFACE → guest (macvtap bridge mode)"
   echo "  note: NetworkManager left unmanaged on $LAN_IFACE until wipe"
   ensure_guest_lan_dhcp
@@ -533,6 +543,7 @@ cmd_start() {
     resolve_kali_password
     save_kali_password
     ci_dir="$(mktemp -d "${TMPDIR:-/tmp}/kali-ci.XXXXXX")"
+    _KALI_TMP+=("$ci_dir")
     ci_user="$ci_dir/user-data"
     ci_meta="$ci_dir/meta-data"
     # Unquoted EOF: only KALI_PASS is expanded (validated alphanumeric above).
@@ -605,27 +616,6 @@ write_files:
               use-dns: false
               use-domains: false
               use-routes: false
-network:
-  version: 2
-  ethernets:
-    id0:
-      match: {name: "eth0"}
-      dhcp4: true
-      nameservers:
-        addresses: [1.1.1.1, 8.8.8.8]
-    id1:
-      match: {name: "eth1"}
-      dhcp4: true
-      accept-ra: false
-      dhcp4-overrides:
-        use-dns: false
-        use-domains: false
-        use-routes: false
-    id2:
-      match: {name: "en*"}
-      dhcp4: true
-      nameservers:
-        addresses: [1.1.1.1, 8.8.8.8]
 packages:
   - openssh-server
 runcmd:
@@ -656,7 +646,7 @@ EOF
       --console pty,target_type=serial \
       --noautoconsole \
       --quiet
-    rm -rf "$ci_dir"
+    rm -rf -- "$ci_dir"
   fi
 
   # Carrier + lease can lag a few seconds after virt-install returns.
@@ -753,10 +743,12 @@ cmd_lan_check() {
       echo "PASS: guest eth1 present (${guest_lan:-?})"
       echo "$out" | grep -q GW_OK && echo "PASS: guest default gw reachable (NAT)" \
         || { echo "FAIL: guest default gw ping"; ok=0; }
-      if "${run[@]}" 'ping -c1 -W2 192.168.8.1 >/dev/null' 2>/dev/null; then
-        echo "PASS: guest → LAN gateway 192.168.8.1 via eth1"
+      local lan_probe="${KALI_LAN_PROBE:-192.168.8.1}"
+      [[ "$lan_probe" =~ ^([0-9]{1,3}\.){3}[0-9]{1,3}$ ]] || die "invalid KALI_LAN_PROBE: $lan_probe"
+      if "${run[@]}" "ping -c1 -W2 ${lan_probe} >/dev/null" 2>/dev/null; then
+        echo "PASS: guest → LAN gateway ${lan_probe} via eth1"
       else
-        echo "FAIL: guest cannot ping 192.168.8.1 on eth1"
+        echo "FAIL: guest cannot ping ${lan_probe} on eth1"
         ok=0
       fi
     else

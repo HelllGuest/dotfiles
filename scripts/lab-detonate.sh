@@ -3,7 +3,7 @@
 #
 # Network: virbr-malware (192.168.200.0/24, no NAT/forward) → firewalld zone lab-malware.
 # Capture: INetSim (fake DNS/HTTP/HTTPS) + optional PolarProxy on 192.168.200.1.
-# lab-malware: target DROP, masquerade off, no forward-ports — only 53/80/443/10443/10080.
+# lab-malware: target DROP, masquerade off, no forward-ports — only 21/25/53/80/443/10443/10080.
 
 #
 # Usage:
@@ -12,6 +12,10 @@
 #   bash scripts/lab-detonate.sh linux-define|linux-start|linux-stop|linux-wipe
 #   bash scripts/lab-detonate.sh windows-define   # needs DETONATE_WIN_DISK=path.qcow2
 set -euo pipefail
+
+_DET_TMP=()
+_det_cleanup() { ((${#_DET_TMP[@]})) && rm -rf -- "${_DET_TMP[@]}" || true; }
+trap _det_cleanup EXIT
 
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 # shellcheck source=lib/lab-malware-zone.sh
@@ -48,8 +52,8 @@ cmd_setup() {
   ensure_net
   sudo install -d -m 0755 -o "$USER" -g "$USER" "$DET_DIR" "$CAPTURE_LOG" \
     "$CAPTURE_LOG/inetsim" "$CAPTURE_LOG/polarproxy" "$LAB_ROOT/samples" "$LAB_ROOT/out"
-  say "Building lab-capture (INetSim) image..."
-  podman build -t localhost/lab-capture:latest "$REPO_ROOT/labs/lab-capture"
+  say "Building lab-capture (INetSim) image (rootful store for capture-up)..."
+  sudo podman build -t localhost/lab-capture:latest "$REPO_ROOT/labs/lab-capture"
   # Optional PolarProxy binary (host-side; not baked — Netresec URL varies).
   # It runs on the host, and Netresec publishes no checksum for "latest", so
   # install only a download whose SHA-256 the operator supplied after checking
@@ -89,7 +93,7 @@ cmd_setup() {
 cmd_capture_up() {
   ensure_net
   need podman
-  podman image exists localhost/lab-capture:latest 2>/dev/null \
+  sudo podman image exists localhost/lab-capture:latest 2>/dev/null \
     || die "build capture image first: lab-detonate.sh setup"
 
   # Rootful host network so guests on 192.168.200.0/24 reach INetSim on BIND_IP.
@@ -194,18 +198,57 @@ cmd_linux_define() {
     say "domain $LINUX_NAME already defined"
     return 0
   fi
+  local pass="${DETONATE_LINUX_PASS:-detonate}" ci_dir ci_user ci_meta
+  [[ "$LINUX_NAME" =~ ^[A-Za-z0-9._-]+$ ]] \
+    || die "invalid DETONATE_LINUX_NAME: $LINUX_NAME"
+  [[ "$pass" =~ ^[A-Za-z0-9._@%-]+$ ]] \
+    || die "DETONATE_LINUX_PASS must be alphanumeric (plus . _ @ % -)"
   rm -f "$LINUX_OVERLAY"
   qemu-img create -f qcow2 -F qcow2 -b "$LINUX_BASE" "$LINUX_OVERLAY" 8G
+  ci_dir="$(mktemp -d "${TMPDIR:-/tmp}/detonate-ci.XXXXXX")"
+  _DET_TMP+=("$ci_dir")
+  ci_user="$ci_dir/user-data"
+  ci_meta="$ci_dir/meta-data"
+  # Host-only isolated network (virbr-malware): seed console login for Alpine nocloud,
+  # then power off so the clean snapshot captures the post-init disk without the
+  # transient virt-install cloud-init ISO attached.
+  cat >"$ci_user" <<EOF
+#cloud-config
+hostname: ${LINUX_NAME}
+disable_root: false
+chpasswd:
+  expire: false
+  users:
+    - {name: root, password: "${pass}", type: text}
+power_state:
+  mode: poweroff
+  timeout: 30
+EOF
+  printf 'instance-id: %s-%s\nlocal-hostname: %s\n' \
+    "$LINUX_NAME" "$(date +%s)" "$LINUX_NAME" >"$ci_meta"
   say "Defining $LINUX_NAME on virbr-malware..."
   sudo virt-install --import --name "$LINUX_NAME" \
     --memory 2048 --vcpus 2 \
     --disk "path=${LINUX_OVERLAY},format=qcow2,bus=virtio" \
     --network "network=virbr-malware,model=virtio" \
     --os-variant alpinelinux3.18 \
+    --cloud-init "user-data=${ci_user},meta-data=${ci_meta}" \
     --graphics none --console pty,target_type=serial \
     --noautoconsole --noreboot
+  rm -rf -- "$ci_dir"
+  # Wait for first-boot cloud-init poweroff so the clean snapshot is offline
+  # (post-boot XML has the transient cloud-init ISO detached).
+  local _i
+  for _i in $(seq 1 30); do
+    virsh_s domstate "$LINUX_NAME" 2>/dev/null | grep -qi 'shut off' && break
+    sleep 2
+  done
+  if ! virsh_s domstate "$LINUX_NAME" 2>/dev/null | grep -qi 'shut off'; then
+    echo "WARN: $LINUX_NAME did not power off after cloud-init; forcing stop before snapshot" >&2
+    virsh_s destroy "$LINUX_NAME" 2>/dev/null || true
+  fi
   virsh_s snapshot-create-as "$LINUX_NAME" clean "pre-detonation" --atomic || true
-  echo "✓ $LINUX_NAME defined (snapshot: clean). Start: lab-detonate.sh linux-start"
+  echo "✓ $LINUX_NAME defined (snapshot: clean; login: root / ${pass}). Start: lab-detonate.sh linux-start"
 }
 
 cmd_linux_start() {
@@ -256,7 +299,7 @@ cmd_status() {
   virsh_s net-info virbr-malware 2>/dev/null || echo "missing"
   ip -br addr show virbr-malware 2>/dev/null || true
   if command -v firewall-cmd >/dev/null; then
-    echo "lab-malware ifaces: $(firewall-cmd --permanent --zone=lab-malware --list-interfaces 2>/dev/null || true)"
+    echo "lab-malware ifaces: $(sudo firewall-cmd --permanent --zone=lab-malware --list-interfaces 2>/dev/null || true)"
   fi
   echo "=== capture ==="
   sudo podman ps -a --filter name=lab-inetsim --format '{{.Names}} {{.Status}}' 2>/dev/null || true

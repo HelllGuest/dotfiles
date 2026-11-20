@@ -58,6 +58,16 @@ for _cf in "$ROOT"/labs/*/Containerfile; do
 done
 ! grep -qE 'npm install -g @playwright/mcp playwright$|\|\| *npm install' "$ROOT/labs/lab-web/Containerfile" \
   || fail "lab-web must not fall back to unpinned npm installs"
+grep -qE '^\s+chromium \\$' "$ROOT/labs/lab-web/Containerfile" \
+  && grep -q 'PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/chromium' "$ROOT/labs/lab-web/Containerfile" \
+  && grep -q 'PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1' "$ROOT/labs/lab-web/Containerfile" \
+  || fail "lab-web must use signed Arch chromium (not Playwright Ubuntu-fallback CDN zip)"
+grep -q -- '--executable-path' "$ROOT/labs/lab-web/mcp-playwright.sh" \
+  && grep -q -- '--executable-path' "$ROOT/labs/lab-web/mcp-devtools.sh" \
+  || fail "lab-web MCP wrappers must pass --executable-path for Arch chromium"
+! grep -q 'npx --yes' "$ROOT/labs/lab-web/Containerfile" "$ROOT/labs/lab-web/mcp-playwright.sh" \
+  "$ROOT/labs/lab-web/mcp-devtools.sh" "$ROOT/labs/lab-android/mcp-flutter.sh" "$ROOT/labs/lab-android/mcp-adb.sh" \
+  || fail "lab MCP/Containerfile scripts must not run npx --yes (downloads unpinned latest)"
 grep -qE '^\s+mise \\$' "$ROOT/labs/lab-web/Containerfile" || fail "lab-web must install mise from pacman"
 unset -v _cf
 
@@ -77,11 +87,12 @@ _wd_fn="$(awk '/^_lab_work_dir\(\) \{/{f=1} f; f&&/^}$/{exit}' "$ROOT/scripts/li
 _wd="$(mktemp -d)"; _wd="$(cd "$_wd" && pwd -P)"
 # Samples live outside the fake home so each refusal rule is tested on its own.
 mkdir -p "$_wd/home/u/.config/x" "$_wd/home/u/dotfiles/stow" "$_wd/home/u/proj/a" \
-  "$_wd/srv/lab/samples" "$_wd/home/u/labs/out"
+  "$_wd/srv/lab/samples/case1" "$_wd/home/u/labs/out"
 for _sh in bash zsh; do
   command -v "$_sh" >/dev/null || continue
   for _case in "home/u:refuse" "home:refuse" ".:refuse" "home/u/.config:refuse" "home/u/.config/x:refuse" \
-      "home/u/dotfiles:refuse" "home/u/dotfiles/stow:refuse" "srv/lab:refuse" "srv/lab/samples:refuse" "srv:refuse" \
+      "home/u/dotfiles:refuse" "home/u/dotfiles/stow:refuse" "srv/lab:refuse" "srv/lab/samples:refuse" \
+      "srv/lab/samples/case1:refuse" "srv:refuse" \
       "home/u/proj:allow" "home/u/proj/a:allow"; do
     _dir="$_wd/${_case%%:*}"; _want=${_case##*:}
     _got="$(cd "$_dir" && HOME="$_wd/home/u" LAB_OUT="$_wd/home/u/labs/out" LAB_SAMPLES="$_wd/srv/lab/samples" \
@@ -99,12 +110,12 @@ rm -rf "$_wd"; unset -v _wd _wd_fn _sh _case _dir _want _got
 grep -q 'source "$(cd "$(dirname "$0")" && pwd)/lib/lab-workdir.sh"' "$ROOT/scripts/lab-mcp.sh" \
   || fail "lab-mcp.sh must use scripts/lib/lab-workdir.sh"
 ! grep -qE 'refusing|readlink -f -- "\$\{HOME' "$ROOT/scripts/lab-mcp.sh" || fail "lab-mcp.sh must not keep its own work-dir logic"
-# Behaviour: lab-mcp's work_dir refuses $HOME like the wrappers.
+# Behaviour: lab-mcp's work_dir refuses $HOME under set -u even when LAB_SAMPLES is unset.
 _wfn="$(grep -E '^work_dir\(\)' "$ROOT/scripts/lab-mcp.sh")"
 _h="$(mktemp -d)"; _h="$(cd "$_h" && pwd -P)"; mkdir -p "$_h/out"
-_got="$(cd "$_h" && HOME="$_h" LAB_OUT="$_h/out" LAB_SAMPLES=/nonexistent bash -c \
+_got="$(cd "$_h" && env -u LAB_SAMPLES HOME="$_h" LAB_OUT="$_h/out" bash -euo pipefail -c \
   'source "$1"; '"$_wfn"'; work_dir' _ "$ROOT/scripts/lib/lab-workdir.sh" 2>/dev/null)"
-[[ $_got == "$_h/out" ]] || fail "lab-mcp work_dir must refuse \$HOME (got $_got)"
+[[ $_got == "$_h/out" ]] || fail "lab-mcp work_dir must refuse \$HOME without LAB_SAMPLES set (got $_got)"
 rm -rf -- "$_h"; unset -v _wfn _h _got
 grep -q 'scripts/lib/lab-workdir.sh"' "$ROOT/stow/zsh/.shell-functions" || fail ".shell-functions must source the shared work-dir lib"
 [[ $(grep -cF 'work=$(_lab_work_dir) || return 1' "$ROOT/stow/zsh/.shell-functions") -eq 3 ]] \
@@ -365,5 +376,29 @@ PY
   _n="$(grep -c 'CMD_NOTIFY_THRESHOLD' "$_rt/home/.zshrc.local")"
   [[ "$_n" -eq 1 ]] || fail "rice-setup.sh duplicated CMD_NOTIFY_THRESHOLD in .zshrc.local (count=$_n)"
 )
+
+# Behavioral: agent-run.sh refuses home, ancestors, hidden dirs, dotfiles, samples; allows project dir.
+(
+  _ar="$(mktemp -d)"; _ar="$(cd "$_ar" && pwd -P)"
+  trap 'rm -rf "$_ar"' EXIT
+  mkdir -p "$_ar/bin" "$_ar/home/u/.ssh" "$_ar/home/u/dotfiles/sub" "$_ar/home/u/proj/a" "$_ar/srv/lab/samples/case1"
+  printf '#!/bin/sh\necho PODMAN_OK\n' >"$_ar/bin/podman"
+  chmod +x "$_ar/bin/podman"
+  for _bad in "$_ar/home/u" "$_ar/home" "$_ar/home/u/.ssh" "$_ar/home/u/dotfiles" "$_ar/home/u/dotfiles/sub" \
+      "$_ar/srv/lab/samples" "$_ar/srv/lab/samples/case1"; do
+    if PATH="$_ar/bin:$PATH" HOME="$_ar/home/u" LAB_SAMPLES="$_ar/srv/lab/samples" \
+        bash "$ROOT/scripts/agent-run.sh" "$_bad" alpine:3.20 >/dev/null 2>&1; then
+      fail "agent-run.sh must refuse $_bad"
+    fi
+  done
+  _ok="$(PATH="$_ar/bin:$PATH" HOME="$_ar/home/u" LAB_SAMPLES="$_ar/srv/lab/samples" \
+    bash "$ROOT/scripts/agent-run.sh" "$_ar/home/u/proj/a" alpine:3.20 2>&1)"
+  [[ "$_ok" == "PODMAN_OK" ]] || fail "agent-run.sh must allow normal project dir (got: $_ok)"
+)
+
+# Behavioral: lab-android entrypoint stays stdout-silent when piped (MCP stdio safety).
+_ae_out="$(bash "$ROOT/labs/lab-android/entrypoint.sh" printf '%s' '{"jsonrpc":"2.0"}' </dev/null)"
+[[ "$_ae_out" == '{"jsonrpc":"2.0"}' ]] || fail "lab-android entrypoint polluted non-tty stdout: $_ae_out"
+unset -v _ae_out
 
 echo "PASS: slice2-labs.test.sh"

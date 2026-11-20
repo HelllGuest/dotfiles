@@ -3,34 +3,28 @@ FROM docker.io/library/archlinux:latest
 RUN pacman -Syu --noconfirm --needed \
       bash curl git wget unzip python python-pip \
       nodejs npm \
-      nss atk at-spi2-core cups libdrm libxkbcommon libxcomposite \
-      libxdamage libxfixes libxrandr mesa alsa-lib pango cairo gtk3 \
+      chromium \
       mise \
     && pacman -Scc --noconfirm \
     && useradd -m -u 1000 lab
-# mise from the signed Arch repo (was: curl https://mise.run | sh, unverified).
+# mise and chromium from the signed Arch repo (no unverified curl|sh or Ubuntu-fallback CDN zips).
 
 USER lab
 ENV LAB_BADGE="[WEB]" \
     MISE_DATA_DIR=/home/lab/.local/share/mise \
     PATH="/home/lab/.local/share/mise/shims:/usr/local/bin:${PATH}" \
-    PLAYWRIGHT_BROWSERS_PATH=/home/lab/.cache/ms-playwright \
+    PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/chromium \
+    PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 \
     NPM_CONFIG_PREFIX=/home/lab/.npm-global
 ENV PATH="/home/lab/.npm-global/bin:${PATH}"
 
 WORKDIR /home/lab
-# Playwright browsers + MCP servers (Chrome DevTools / Playwright).
-# Pinned only: a failed install must fail the build, not fall back to latest.
-# The Chromium download is retried (CDN connection resets) and each attempt is
-# time-limited (it can also hang silently); all attempts failing fails the build.
+# Playwright + MCP server (pinned only: a failed install must fail the build).
+# Uses Arch's signed /usr/bin/chromium instead of Playwright's Ubuntu-20.04 CDN zip.
 RUN mkdir -p /home/lab/.npm-global \
  && npm config set fetch-retries 5 \
  && npm config set fetch-retry-maxtimeout 120000 \
- && npm install -g @playwright/mcp@0.0.39 playwright@1.49.0 \
- && ok=0; for try in 1 2 3 4; do \
-      if timeout 900 npx --yes playwright install chromium; then ok=1; break; fi; \
-      echo "playwright chromium download failed (attempt $try); retrying" >&2; sleep 15; \
-    done; [ "$ok" = 1 ]
+ && npm install -g @playwright/mcp@0.0.39 playwright@1.49.0
 
 COPY --chown=lab:lab mcp-playwright.sh /usr/local/bin/mcp-playwright
 COPY --chown=lab:lab mcp-devtools.sh /usr/local/bin/mcp-devtools

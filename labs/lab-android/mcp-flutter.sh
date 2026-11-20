@@ -6,7 +6,7 @@ if command -v flutter-mcp >/dev/null 2>&1; then
   exec flutter-mcp "$@"
 fi
 if npm ls -g @flutter/mcp-server >/dev/null 2>&1; then
-  exec npx --yes @flutter/mcp-server "$@"
+  exec npx --offline --no @flutter/mcp-server "$@"
 fi
 echo "flutter MCP package missing — run labs-setup / rebuild lab-android" >&2
 exit 1

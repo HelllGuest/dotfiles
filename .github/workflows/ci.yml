@@ -35,7 +35,7 @@ jobs:
           bash -n install.sh stow-only.sh
           while IFS= read -r -d '' f; do
             bash -n "$f"
-          done < <(find profiles -type f -name '*.sh' -print0 2>/dev/null || true)
+          done < <(find profiles labs -type f -name '*.sh' -print0 2>/dev/null || true)
 
       - name: Script tests
         shell: bash

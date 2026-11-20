@@ -429,7 +429,7 @@ session bus). `vm-stageb-run.sh` reuses Stage A's `OVMF_VARS.fd`. Temporary NOPA
 | RESULT | Meaning | Harness exit |
 |--------|---------|--------------|
 | `PASS` | configure + install both 0 | 0 |
-| `PASS_HEADLESS` | configure 0; install failed only on headless-expected checks (GNOME extensions, Zen `user.js`, zinit, Proton API) | 0 |
+| `PASS_HEADLESS` | configure 0; install failed only on headless-expected checks (GNOME extensions, Zen `user.js`, zinit, Proton API, `t14s-selftest` bluetooth/pipewire) | 0 |
 | `FAIL` | configure failed, any other install failure, or guest aborted | 1 |
 
 Wait budget: 150 min (nested pacman is slow).
@@ -467,7 +467,7 @@ Wayland needs log out → log in.
 ```text
 lab-triage | lab-re | lab-android | lab-web | lab-detonate | lab-mcp
 ```
-`lab-detonate.sh capture-up` keeps INetSim logs and captured SMTP/FTP/HTTP-POST data under `/srv/lab/capture` (`inetsim-data/`); the container runs read-only with minimal caps. PolarProxy starts only if its hash matches the one verified at setup. Images build with rootless Podman. On linux-hardened that needs `fuse-overlayfs` (in `pacman.txt`) and the stowed `containers` package (`storage.conf`); `bash scripts/check.sh` reports it under "Podman (rootless)".
+`lab-detonate.sh capture-up` keeps INetSim logs and captured SMTP/FTP/HTTP-POST data under `/srv/lab/capture` (`inetsim-data/`); the container runs read-only with minimal caps. PolarProxy starts only if its hash matches the one verified at setup. Interactive lab images build with rootless Podman (`lab-capture` builds in rootful Podman so `capture-up`'s `sudo podman run` sees it). On linux-hardened that needs `fuse-overlayfs` (in `pacman.txt`) and the stowed `containers` package (`storage.conf`); `bash scripts/check.sh` reports it under "Podman (rootless)".
 
 **What `./install.sh` runs, in order:**
 ```text

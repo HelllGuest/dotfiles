@@ -63,6 +63,24 @@ grep -q 'Brovi H155-381' "$ROOT/docs/fresh-install-coding-re.md" \
   || fail "fresh-install docs must mention Brovi H155-381 CPE path"
 grep -q 'guest_ipv4' "$ROOT/scripts/kali-disposable.sh" \
   || fail "kali start should resolve guest IPv4 (not stale leases)"
+grep -q 'domifaddr "\$VM_NAME" --source lease' "$ROOT/scripts/kali-disposable.sh" \
+  || fail "guest_ipv4 must pass --source lease (not source=lease) to virsh domifaddr"
+awk '/^ensure_nat_forward\(\)/,/^}/' "$ROOT/scripts/kali-disposable.sh" | grep -q 'nat+lan' \
+  || fail "ensure_nat_forward must also run for nat+lan"
+awk '/^net_args\(\)/,/^}/' "$ROOT/scripts/kali-disposable.sh" | grep -q "trap 'rm -f -- \"\$xml\"' EXIT" \
+  || fail "net_args must clean up temporary kali-isolated XML on exit"
+! awk '/^    cat >"\$ci_user" <<EOF$/,/^EOF$/' "$ROOT/scripts/kali-disposable.sh" | grep -q '^network:$' \
+  || fail "cloud-init user-data must not contain invalid top-level network: key"
+# save_kali_password must not leak umask 077 to caller shell
+(
+  _kf="$(awk '/^kali_pass_path\(\) \{/{f=1} f; f&&/^}$/{exit}' "$ROOT/scripts/kali-disposable.sh")"$'\n'
+  _kf+="$(awk '/^save_kali_password\(\) \{/{f=1} f; f&&/^}$/{exit}' "$ROOT/scripts/kali-disposable.sh")"
+  _kt="$(mktemp -d)"
+  trap 'rm -rf "$_kt"' EXIT
+  _um="$(bash -c 'umask 022; ensure_vm_dir(){ :; }; NET_MODE=nat; KALI_PASS=TestPass123456789012; KALI_PASS_FILE="$1/pw"; '"$_kf"'; save_kali_password; umask' _ "$_kt")"
+  [[ "$_um" == "0022" ]] || fail "save_kali_password mutated caller umask to $_um"
+  [[ "$(stat -c %a "$_kt/pw")" == "600" ]] || fail "kali-session.password mode must be 600"
+)
 grep -q 'PasswordAuthentication yes' "$ROOT/scripts/kali-disposable.sh" \
   || fail "cloud-init must force ssh password auth"
 grep -q 'kali-linux-2026.3-cloud-genericcloud-amd64.tar.xz' "$ROOT/scripts/kali-disposable.sh" \

@@ -4,8 +4,11 @@
 set -euo pipefail
 export PATH="${ANDROID_HOME:-/opt/android-sdk}/platform-tools:${PATH}"
 
+if command -v adb-mcp >/dev/null 2>&1; then
+  exec adb-mcp "$@"
+fi
 if npm ls -g adb-mcp >/dev/null 2>&1; then
-  exec npx --yes adb-mcp "$@"
+  exec npx --offline --no adb-mcp "$@"
 fi
 
 # Fallback: simple request/response over stdin (list|logcat|shell).

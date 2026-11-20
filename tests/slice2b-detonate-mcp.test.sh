@@ -74,8 +74,23 @@ grep -q 'lab-mcp()' "$ROOT/stow/zsh/.shell-functions" \
   || fail "shell-functions lab-mcp missing"
 grep -q 'SETUP_DETONATE' "$ROOT/scripts/configure.sh" \
   || fail "configure must expose SETUP_DETONATE"
-grep -q 'lab-capture' "$ROOT/scripts/labs-setup.sh" \
-  || fail "labs-setup must build lab-capture"
+grep -q 'sudo podman build -t localhost/lab-capture:latest' "$ROOT/scripts/labs-setup.sh" \
+  || fail "labs-setup must build lab-capture in rootful podman store"
+grep -q 'sudo podman build -t localhost/lab-capture:latest' "$ROOT/scripts/lab-detonate.sh" \
+  || fail "lab-detonate setup must build lab-capture in rootful podman store"
+grep -q 'sudo podman image exists localhost/lab-capture:latest' "$ROOT/scripts/lab-detonate.sh" \
+  || fail "lab-detonate capture-up must check rootful podman store"
+grep -q 'sudo firewall-cmd --permanent --zone=lab-malware --list-interfaces' "$ROOT/scripts/lab-detonate.sh" \
+  || fail "lab-detonate status must query permanent firewalld zone with sudo"
+grep -q '21/tcp' "$ZONE_LIB" && grep -q '25/tcp' "$ZONE_LIB" \
+  || fail "lab-malware zone must allow INetSim FTP (21/tcp) and SMTP (25/tcp)"
+grep -q 'LAB_CAPTURE_BIND' "$ROOT/labs/lab-capture/entrypoint.sh" \
+  || fail "lab-capture entrypoint must honor LAB_CAPTURE_BIND"
+grep -q -- '--cloud-init' "$ROOT/scripts/lab-detonate.sh" \
+  || fail "lab-detonate linux-define must seed cloud-init for Alpine nocloud login"
+grep -q 'lab-android-flutter:/opt/flutter:U' "$ROOT/stow/zsh/.shell-functions" \
+  && grep -q 'lab-android-flutter:/opt/flutter:U' "$ROOT/scripts/lab-mcp.sh" \
+  || fail "lab-android and lab-mcp must share persistent lab-android-flutter volume"
 
 # No host secret mounts in MCP launcher
 grep -E '(-v|--bind).*\.ssh|\.gnupg' "$ROOT/scripts/lab-mcp.sh" \

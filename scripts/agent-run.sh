@@ -26,10 +26,23 @@ IMAGE=$2
 shift 2
 [[ -d $PROJ ]] || die "not a directory: $PROJ"
 
-# Refuse obvious host escapes in the project path itself (still bind that dir only).
+# Refuse host escapes, home/hidden config dirs, dotfiles repo, and read-only samples.
+home=$(readlink -f -- "${HOME:-/}" 2>/dev/null || echo "${HOME:-/}")
+dotfiles=$(readlink -f -- "${DOTFILES_DIR:-$home/dotfiles}" 2>/dev/null || echo "$home/dotfiles")
+samples=$(readlink -f -- "${LAB_SAMPLES:-/srv/lab/samples}" 2>/dev/null || echo "${LAB_SAMPLES:-/srv/lab/samples}")
 case $PROJ in
-  /|/etc|/usr|/var|/boot|/root) die "refusing to mount system path: $PROJ" ;;
+  /|/etc|/etc/*|/usr|/usr/*|/var|/boot|/boot/*|/root|/root/*|/proc|/proc/*|/sys|/sys/*|/dev|/dev/*)
+    die "refusing to mount system path: $PROJ" ;;
 esac
+if [[ "$PROJ" == "$home" || "$home/" == "$PROJ"/* ]]; then
+  die "refusing to mount home/ancestor path: $PROJ"
+elif [[ "$PROJ/" == "$home"/.* ]]; then
+  die "refusing to mount hidden config dir under home: $PROJ"
+elif [[ "$PROJ" == "$dotfiles" || "$PROJ" == "$dotfiles"/* ]]; then
+  die "refusing to mount dotfiles repo: $PROJ"
+elif [[ -n $samples && ( "$PROJ" == "$samples" || "$PROJ" == "$samples"/* || "$samples" == "$PROJ"/* ) ]]; then
+  die "refusing to mount read-only samples path: $PROJ"
+fi
 
 NET=${AGENT_NET:-none}
 case $NET in

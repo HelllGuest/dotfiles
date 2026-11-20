@@ -12,8 +12,8 @@ _lab_work_dir() {
     local cwd home out samples dotfiles reason=""
     cwd=$(pwd -P 2>/dev/null || pwd)
     home=$(readlink -f -- "${HOME:-/}" 2>/dev/null || echo "$HOME")
-    out=$(readlink -f -- "$LAB_OUT" 2>/dev/null || echo "$LAB_OUT")
-    samples=$(readlink -f -- "$LAB_SAMPLES" 2>/dev/null || echo "$LAB_SAMPLES")
+    out=$(readlink -f -- "${LAB_OUT:-/srv/lab/out}" 2>/dev/null || echo "${LAB_OUT:-/srv/lab/out}")
+    samples=$(readlink -f -- "${LAB_SAMPLES:-/srv/lab/samples}" 2>/dev/null || echo "${LAB_SAMPLES:-/srv/lab/samples}")
     dotfiles=$(readlink -f -- "${DOTFILES_DIR:-$home/dotfiles}" 2>/dev/null || echo "$home/dotfiles")
     if [[ "$cwd" == "/" || "$cwd" == "$home" || "$home/" == "$cwd"/* ]]; then
         reason="home/root leak"
@@ -21,7 +21,7 @@ _lab_work_dir() {
         reason="hidden config dir under home"
     elif [[ "$cwd" == "$dotfiles" || "$cwd" == "$dotfiles"/* ]]; then
         reason="dotfiles repo"
-    elif [[ -n $samples && ( "$cwd" == "$samples" || "$samples" == "$cwd"/* ) ]]; then
+    elif [[ -n $samples && ( "$cwd" == "$samples" || "$cwd" == "$samples"/* || "$samples" == "$cwd"/* ) ]]; then
         reason="would make read-only samples writable"
     fi
     if [[ -n $reason ]]; then

@@ -57,10 +57,30 @@ if [[ "${#CONNECTIONS[@]}" -eq 0 ]] || [[ -z "${CONNECTIONS[0]:-}" ]]; then
     exit 1
 fi
 
+# On serial/SSH sessions polkit denies unprivileged nmcli writes; retry via sudo
+# only on authorization errors so bad arguments/profiles surface directly.
+nm_write() {
+    if [[ $EUID -eq 0 ]]; then
+        nmcli "$@"
+        return
+    fi
+    local err rc=0
+    err="$(nmcli "$@" 2>&1 >/dev/null)" || rc=$?
+    if [[ $rc -eq 0 ]]; then
+        return 0
+    fi
+    if grep -qiE 'Insufficient privileges|Not authorized' <<<"$err" && command -v sudo >/dev/null 2>&1; then
+        sudo nmcli "$@"
+        return
+    fi
+    [[ -n $err ]] && printf '%s\n' "$err" >&2
+    return "$rc"
+}
+
 for conn in "${CONNECTIONS[@]}"; do
     [[ -z "$conn" ]] && continue
     echo "→ $conn: DNS ${PRIMARY_DNS} ${SECONDARY_DNS} / ${PRIMARY_DNS6} ${SECONDARY_DNS6} (ignore auto-dns)"
-    nmcli connection modify "$conn" \
+    nm_write connection modify "$conn" \
         ipv4.dns "${PRIMARY_DNS} ${SECONDARY_DNS}" \
         ipv4.ignore-auto-dns yes \
         ipv6.dns "${PRIMARY_DNS6} ${SECONDARY_DNS6}" \
@@ -70,7 +90,7 @@ done
 ACTIVE="$(nmcli -t -f NAME connection show --active | rg -v '^lo$' | head -1 || true)"
 if [[ -n "$ACTIVE" ]]; then
     echo "→ Reapplying active connection: $ACTIVE"
-    nmcli connection up "$ACTIVE" >/dev/null
+    nm_write connection up "$ACTIVE" >/dev/null
 fi
 
 echo "✓ DNS updated. Verify: scripts/proton-connectivity-check.sh"

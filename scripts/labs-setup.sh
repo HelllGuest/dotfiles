@@ -17,7 +17,8 @@ podman build -t localhost/lab-triage:latest "$REPO_ROOT/labs/lab-triage"
 podman build -t localhost/lab-re:latest "$REPO_ROOT/labs/lab-re"
 podman build -t localhost/lab-android:latest "$REPO_ROOT/labs/lab-android"
 podman build -t localhost/lab-web:latest "$REPO_ROOT/labs/lab-web"
-podman build -t localhost/lab-capture:latest "$REPO_ROOT/labs/lab-capture"
+# Rootful build: lab-detonate runs lab-capture via sudo podman --network=host.
+sudo podman build -t localhost/lab-capture:latest "$REPO_ROOT/labs/lab-capture"
 
 echo "→ Detonation helpers (virbr-malware + INetSim/PolarProxy)..."
 bash "$REPO_ROOT/scripts/lab-detonate.sh" setup || echo "WARN: lab-detonate setup skipped"

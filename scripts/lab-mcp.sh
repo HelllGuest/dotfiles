@@ -14,7 +14,7 @@ die() { echo "ERR $*" >&2; exit 1; }
 # hidden config dirs, the dotfiles repo or the samples dir as /work.
 # shellcheck source=lib/lab-workdir.sh
 source "$(cd "$(dirname "$0")" && pwd)/lib/lab-workdir.sh"
-work_dir() { LAB_OUT="${LAB_OUT:-/srv/lab/out}" _lab_work_dir; }
+work_dir() { LAB_OUT="${LAB_OUT:-/srv/lab/out}" LAB_SAMPLES="${LAB_SAMPLES:-/srv/lab/samples}" _lab_work_dir; }
 
 run_web() {
   local cmd=$1
@@ -42,6 +42,8 @@ run_android() {
     --security-opt no-new-privileges --cap-drop ALL \
     --userns keep-id --user "$(id -u):$(id -g)" \
     "${extra[@]}" \
+    -v "lab-android-flutter:/opt/flutter:U" \
+    -v "lab-android-sdk:/opt/android-sdk:U" \
     -v "${work}:/work:Z" -w /work \
     -v "${LAB_SAMPLES:-/srv/lab/samples}:/srv/lab/samples:ro,Z" \
     -v "${LAB_OUT:-/srv/lab/out}:/srv/lab/out:Z" \

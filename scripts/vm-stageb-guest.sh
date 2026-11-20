@@ -94,9 +94,10 @@ trap - EXIT
 
 # PASS          = configure + install both OK.
 # PASS_HEADLESS = install.sh failed ONLY on health checks that cannot pass in a
-#                 headless VM (no GNOME session, no browser/zsh launch, no Proton
-#                 API from CI networks). Any other failure is FAIL.
-HEADLESS_OK='GNOME extensions enabled|Zen user\.js missing|zinit not bootstrapped|Proton API'
+#                 headless VM (no GNOME session, no browser/zsh launch, no BT
+#                 adapter or PipeWire audio session, no Proton API from CI nets).
+#                 Any other failure is FAIL.
+HEADLESS_OK='GNOME extensions enabled|Zen user\.js missing|zinit not bootstrapped|Proton API|^✗ t14s-selftest:( FAIL (bluetooth|pipewire))+ *$'
 if (( cfg_rc == 0 && inst_rc == 0 )); then
   echo DOTFILES_STAGEB_RESULT=PASS
   exit 0

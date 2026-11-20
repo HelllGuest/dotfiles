@@ -9,5 +9,8 @@ for d in /var/log/inetsim /var/lib/inetsim/smtp /var/lib/inetsim/ftp/upload /var
   chown root:inetsim "$d"
   chmod 0775 "$d"
 done
-echo "→ INetSim bound to 192.168.200.1 (virbr-malware)"
-exec inetsim --config=/etc/inetsim/inetsim.conf
+bind="${LAB_CAPTURE_BIND:-192.168.200.1}"
+[[ "$bind" =~ ^([0-9]{1,3}\.){3}[0-9]{1,3}$ ]] || { echo "lab-capture: invalid LAB_CAPTURE_BIND: $bind" >&2; exit 1; }
+sed "s/192\.168\.200\.1/${bind}/g" /etc/inetsim/inetsim.conf >/tmp/inetsim.conf
+echo "→ INetSim bound to ${bind} (virbr-malware)"
+exec inetsim --config=/tmp/inetsim.conf

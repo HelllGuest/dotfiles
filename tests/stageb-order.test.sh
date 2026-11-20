@@ -75,4 +75,55 @@ grep -q 'dbus-run-session -- bash ./install.sh' "$G" || fail "headless guest mus
 grep -q '\[\[ -f $WORK/OVMF_VARS.fd \]\] || cp' "$ROOT/scripts/vm-stageb-run.sh" \
   || fail "vm-stageb-run.sh must keep Stage A's OVMF vars (boot entry)"
 
+# HEADLESS_OK must allow only headless-expected t14s-selftest items (bluetooth/pipewire).
+_hok="$(sed -n "s/^HEADLESS_OK='\(.*\)'$/\1/p" "$G")"
+[[ -n $_hok ]] || fail "could not read HEADLESS_OK from vm-stageb-guest.sh"
+grep -qE "$_hok" <<<'✗ t14s-selftest: FAIL bluetooth FAIL pipewire ' \
+  || fail "HEADLESS_OK must accept bluetooth/pipewire selftest fails on headless QEMU"
+! grep -qE "$_hok" <<<'✗ t14s-selftest: FAIL bluetooth FAIL firewalld ' \
+  || fail "HEADLESS_OK must reject real selftest fails (firewalld)"
+
+# network-dns-setup.sh: retry via sudo on polkit denial; do not sudo on other errors.
+(
+  _nt="$(mktemp -d)"
+  trap 'rm -rf "$_nt"' EXIT
+  mkdir -p "$_nt/bin"
+  cat >"$_nt/bin/nmcli" <<'STUB'
+#!/bin/sh
+if [ "$1" = "-t" ]; then
+  printf 'Wired connection 1\nlo\n'
+  exit 0
+fi
+if [ "${VIA_SUDO:-0}" = 1 ]; then
+  printf 'sudo-nmcli %s\n' "$*" >>"$NM_LOG"
+  exit 0
+fi
+if [ "${NM_ERR:-auth}" = auth ]; then
+  echo "Error: Failed to modify connection 'Wired connection 1': Insufficient privileges" >&2
+  exit 10
+fi
+echo "Error: unknown connection 'bad'" >&2
+exit 10
+STUB
+  cat >"$_nt/bin/sudo" <<'STUB'
+#!/bin/sh
+printf 'sudo-called\n' >>"$NM_LOG"
+VIA_SUDO=1 exec "$@"
+STUB
+  chmod +x "$_nt/bin/nmcli" "$_nt/bin/sudo"
+  NM_LOG="$_nt/auth.log" PATH="$_nt/bin:$PATH" \
+    bash "$ROOT/scripts/network-dns-setup.sh" >/dev/null \
+    || fail "network-dns-setup.sh must retry with sudo on Insufficient privileges"
+  grep -q 'sudo-nmcli connection modify Wired connection 1' "$_nt/auth.log" \
+    || fail "network-dns-setup.sh did not run sudo nmcli modify"
+  grep -q 'sudo-nmcli connection up Wired connection 1' "$_nt/auth.log" \
+    || fail "network-dns-setup.sh did not run sudo nmcli up"
+  : >"$_nt/other.log"
+  if NM_ERR=other NM_LOG="$_nt/other.log" PATH="$_nt/bin:$PATH" \
+    bash "$ROOT/scripts/network-dns-setup.sh" bad >/dev/null 2>&1; then
+    fail "network-dns-setup.sh must fail on non-privilege nmcli error"
+  fi
+  [[ ! -s "$_nt/other.log" ]] || fail "network-dns-setup.sh must not invoke sudo on non-privilege error"
+)
+
 echo "PASS: stageb-order.test.sh"

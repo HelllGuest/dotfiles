@@ -962,8 +962,8 @@ over opening the host default zone. `scripts/firewalld-lab-zones.sh` and
 * permanent `--zone=libvirt --add-interface=virbr0` (inherits when bridge appears)
 * runtime `--change-interface=virbr0` when the iface exists
 * host-only `virbr-malware` → zone `lab-malware` (iface + source
-  `192.168.200.0/24`; DROP; no NAT/forward; ports 53, 67/udp DHCP, 80, 443,
-  10080, 10443; libvirt DNS disabled so only INetSim answers `:53`)
+  `192.168.200.0/24`; DROP; no NAT/forward; ports 21, 25, 53, 67/udp DHCP, 80,
+  443, 10080, 10443; libvirt DNS disabled so only INetSim answers `:53`)
 * Upgrade note: if `virbr-malware` still sits in `libvirt` or `block`, re-run
   `bash scripts/firewalld-lab-zones.sh` (or `ensure_lab_malware_zone`) so the
   bridge leaves those zones; confirm with

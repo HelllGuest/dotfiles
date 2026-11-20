@@ -327,14 +327,17 @@ lab-android() {
         extra+=(-v "${XDG_RUNTIME_DIR}/${WAYLAND_DISPLAY}:${XDG_RUNTIME_DIR}/${WAYLAND_DISPLAY}")
     fi
     local samples out work
-    samples=$(readlink -f -- "$LAB_SAMPLES")
-    out=$(readlink -f -- "$LAB_OUT")
+    samples=$(readlink -f -- "$LAB_SAMPLES" 2>/dev/null || echo "$LAB_SAMPLES")
+    out=$(readlink -f -- "$LAB_OUT" 2>/dev/null || echo "$LAB_OUT")
     work=$(_lab_work_dir) || return 1
     [[ -d $samples ]] || { echo "lab-android: $samples missing — labs-setup.sh" >&2; return 1; }
     [[ -d $out ]] || mkdir -p "$out"
+    _has podman || { echo "lab: podman missing" >&2; return 1; }
     podman run --rm -it --security-opt no-new-privileges --cap-drop ALL \
         --userns keep-id --user "$(id -u):$(id -g)" --network pasta \
         -e LAB_BADGE="[ANDROID]" \
+        -v "lab-android-flutter:/opt/flutter:U" \
+        -v "lab-android-sdk:/opt/android-sdk:U" \
         -v "${samples}:/srv/lab/samples:ro,Z" -v "${out}:/srv/lab/out:Z" \
         -v "${work}:/work:Z" -w /work \
         "${extra[@]}" \
@@ -349,11 +352,11 @@ lab-web() {
 
 # ── Detonation + MCP (Slice 2b) ─────────────────────────────────────
 lab-detonate() {
-    bash "${DOTFILES:-$HOME/dotfiles}/scripts/lab-detonate.sh" "$@"
+    bash "${DOTFILES_DIR:-${DOTFILES:-$HOME/dotfiles}}/scripts/lab-detonate.sh" "$@"
 }
 
 lab-mcp() {
-    bash "${DOTFILES:-$HOME/dotfiles}/scripts/lab-mcp.sh" "$@"
+    bash "${DOTFILES_DIR:-${DOTFILES:-$HOME/dotfiles}}/scripts/lab-mcp.sh" "$@"
 }
 
 # OSC 7: terminal CWD reporting (zsh only)

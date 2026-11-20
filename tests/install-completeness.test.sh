@@ -199,7 +199,7 @@ EOF
 printf '#!/bin/sh\n' >"$C/bin/present-cmd"; printf '#!/bin/sh\n' >"$C/bin/wl-copy"
 chmod +x "$C/bin/"*
 cblock="$(awk '/^echo "--- Install completeness ---"$/{f=1} f&&/^echo "--- AUR list ---"$/{exit} f' "$ROOT/scripts/check.sh" "$ROOT"/scripts/check.d/*.sh)"
-out="$(HOME="$C/home" XDG_DATA_HOME="$C/home/.local/share" DMI_SYSFS_ROOT="$C/none" PCI_SYSFS_ROOT="$C/none" \
+out="$(HOME="$C/home" XDG_CONFIG_HOME="$C/home/.config" XDG_CACHE_HOME="$C/home/.cache" XDG_DATA_HOME="$C/home/.local/share" DMI_SYSFS_ROOT="$C/none" PCI_SYSFS_ROOT="$C/none" \
   THEME_OLD_GDM_BIN="$C/none" THEME_OLD_GDM_HOOK="$C/none" \
   REPO_ROOT="$C/repo" PATH="$C/bin:$T/core" bash -c 'CHECK_FAILED=0; check_fail() { printf "✗ %s\n" "$*"; CHECK_FAILED=$((CHECK_FAILED+1)); }
 '"$cblock"'
