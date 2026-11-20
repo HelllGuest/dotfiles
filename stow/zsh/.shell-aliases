@@ -99,7 +99,8 @@ if _has wl-copy; then
 fi
 
 # ── zoxide ────────────────────────────────────────────────────
-_has zoxide && alias j='z'
+# zoxide is initialized with `--cmd cd`, so `cd` (not `z`) is the jump command.
+_has zoxide && alias j='cd'
 
 # ── Disposable Kali (libvirt overlay) ───────────────────────
 if [[ -f $HOME/dotfiles/scripts/kali-disposable.sh ]]; then

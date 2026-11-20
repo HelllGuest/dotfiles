@@ -14,7 +14,7 @@ ui_bar() {
     filled='#' empty='-'
   fi
   for (( i = 0; i < w; i++ )); do
-    if (( i < n )); then bar+=$filled; else bar+=$empty; fi
+    if (( i < n )); then bar+="$filled"; else bar+="$empty"; fi
   done
   printf '[%s]' "$bar"
 }

@@ -29,15 +29,7 @@ if [[ -n "$DEFAULT_PROFILE" ]]; then
     dconf write "${P}/cursor-blink-mode" "'on'"
 fi
 
-if [[ "${SKIP_GNOME_MEDIA_KEYS:-}" != "1" ]]; then
-    dconf write /org/gnome/settings-daemon/plugins/media-keys/terminal "'kgx'"
-    SHORTCUT_PATH="/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/custom0/"
-    dconf write /org/gnome/settings-daemon/plugins/media-keys/custom-keybindings \
-        "['/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/custom0/']"
-    dconf write "${SHORTCUT_PATH}name" "'Terminal'"
-    dconf write "${SHORTCUT_PATH}command" "'kitty'"
-    dconf write "${SHORTCUT_PATH}binding" "'<Super>Return'"
-fi
+# GNOME media-keys / custom-keybindings live in gnome/dconf/user.conf (do not overwrite here).
 
 if command -v xdg-mime >/dev/null 2>&1; then
     xdg-mime default org.gnome.Console.desktop x-scheme-handler/terminal 2>/dev/null || true

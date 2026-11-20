@@ -79,6 +79,7 @@ agent_skills_install_manifest() {
       AGENT_SKILLS_FAILED=$((AGENT_SKILLS_FAILED + 1))
     fi
   done
+  # shellcheck disable=SC2034 # read by callers after sourcing this helper
   AGENT_SKILLS_PACK_COUNT=${#packs[@]}
 }
 

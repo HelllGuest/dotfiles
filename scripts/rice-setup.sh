@@ -27,8 +27,8 @@ if command -v gsettings >/dev/null 2>&1; then
   gsettings set org.gnome.desktop.notifications show-in-lock-screen false 2>/dev/null || true
 fi
 
-# Long-command notify threshold (shell-functions default)
-if ! grep -q 'CMD_NOTIFY_THRESHOLD' "$HOME/.zshrc" 2>/dev/null; then
+# Long-command notify threshold (shell-functions default; avoid duplicate appends)
+if ! grep -qs 'CMD_NOTIFY_THRESHOLD' "$HOME/.zshrc" "$HOME/.zshrc.local" 2>/dev/null; then
   echo 'export CMD_NOTIFY_THRESHOLD="${CMD_NOTIFY_THRESHOLD:-15}"' >>"$HOME/.zshrc.local" 2>/dev/null || true
 fi
 

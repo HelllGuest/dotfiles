@@ -26,7 +26,6 @@ OBSCURA_VARIANT="${OBSCURA_VARIANT:-stealth}"
 # Pin by default; bump tag + digests together from GitHub release asset digests.
 OBSCURA_VERSION="${OBSCURA_VERSION:-v0.2.6}"
 OPENCODE_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/opencode"
-CURSOR_MCP="${HOME}/.cursor/mcp.json"
 
 die() { echo "error: $*" >&2; exit 1; }
 say() { printf '>> %s\n' "$*"; }
@@ -126,22 +125,21 @@ path.write_text(json.dumps(data, indent=2) + "\n")
 print(f"wrote {path}")
 PY
 
-  if [[ -f "$CURSOR_MCP" ]] || [[ -d "$(dirname "$CURSOR_MCP")" ]]; then
-    say "merge Cursor / Kimi / Gemini / Antigravity / Claude MCP"
-    python3 - "$obscura_bin" <<'PY'
+  say "merge Cursor / Kimi / Gemini / Antigravity / Claude MCP"
+  python3 - "$obscura_bin" <<'PY'
 import json, sys
 from pathlib import Path
 
 binpath = sys.argv[1]
 home = Path.home()
-for path in [
-    home / ".claude.json",
-    home / ".cursor/mcp.json",
-    home / ".kimi-code/mcp.json",
-    home / ".gemini/settings.json",
-    home / ".gemini/config/mcp_config.json",
+for path, marker_dir in [
+    (home / ".claude.json", home / ".claude"),
+    (home / ".cursor/mcp.json", home / ".cursor"),
+    (home / ".kimi-code/mcp.json", home / ".kimi-code"),
+    (home / ".gemini/settings.json", home / ".gemini"),
+    (home / ".gemini/config/mcp_config.json", home / ".gemini/config"),
 ]:
-    if not (path.is_file() or path.parent.is_dir()):
+    if not (path.is_file() or marker_dir.is_dir()):
         continue
     data = {"mcpServers": {}}
     if path.is_file():
@@ -171,7 +169,6 @@ for path in [
         path.write_text(json.dumps(data, indent=2) + "\n")
         print(f"wrote {path}")
 PY
-  fi
 
   if command -v claude >/dev/null 2>&1; then
     say "claude mcp add -s user obscura (best-effort)"

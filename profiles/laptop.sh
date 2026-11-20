@@ -7,10 +7,10 @@ REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 source "$REPO_ROOT/scripts/lib/dmi.sh"
 
 if is_thinkpad_t14s; then
-    if [ -f "profiles/thinkpad-t14s.sh" ]; then
-        # shellcheck source=/dev/null
-        source "profiles/thinkpad-t14s.sh"
-        exit 0
+    if [ -f "$REPO_ROOT/profiles/thinkpad-t14s.sh" ]; then
+        # shellcheck source=thinkpad-t14s.sh
+        source "$REPO_ROOT/profiles/thinkpad-t14s.sh"
+        return 0 2>/dev/null || exit 0
     fi
 fi
 

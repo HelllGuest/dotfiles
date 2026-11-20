@@ -281,7 +281,7 @@ fi
 
 # 3.0 GNOME Console (kgx app settings only — shortcuts in gnome/dconf/user.conf)
 if [ -f "scripts/gnome-console-setup.sh" ]; then
-    run_step "GNOME Console setup" env SKIP_GNOME_MEDIA_KEYS=1 bash scripts/gnome-console-setup.sh
+    run_step "GNOME Console setup" bash scripts/gnome-console-setup.sh
 fi
 
 # 3.2 GDM login screen (Wayland, greeter dconf, udev)

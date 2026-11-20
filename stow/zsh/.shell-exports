@@ -50,10 +50,22 @@ _prepend_path "$ANDROID_HOME/cmdline-tools/latest/bin"
 _prepend_path "$ANDROID_HOME/tools/bin"
 
 # Chrome (Flutter web target; Puppeteer/Playwright/AI browser tools for UI testing)
-export CHROME_EXECUTABLE="${CHROME_EXECUTABLE:-/usr/bin/google-chrome-stable}"
-export CHROME_PATH="${CHROME_PATH:-$CHROME_EXECUTABLE}"
-export PUPPETEER_EXECUTABLE_PATH="${PUPPETEER_EXECUTABLE_PATH:-$CHROME_EXECUTABLE}"
-export PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH="${PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH:-$CHROME_EXECUTABLE}"
+# Only default when a native binary exists; Flatpak-only hosts leave these unset
+# so Puppeteer/Playwright do not fail with ENOENT on a missing /usr/bin binary.
+if [[ -z "${CHROME_EXECUTABLE:-}" ]]; then
+  for _chr in /usr/bin/google-chrome-stable /usr/bin/google-chrome /usr/bin/chromium; do
+    if [[ -x "$_chr" ]]; then
+      export CHROME_EXECUTABLE="$_chr"
+      break
+    fi
+  done
+  unset _chr
+fi
+if [[ -n "${CHROME_EXECUTABLE:-}" ]]; then
+  export CHROME_PATH="${CHROME_PATH:-$CHROME_EXECUTABLE}"
+  export PUPPETEER_EXECUTABLE_PATH="${PUPPETEER_EXECUTABLE_PATH:-$CHROME_EXECUTABLE}"
+  export PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH="${PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH:-$CHROME_EXECUTABLE}"
+fi
 # Prefer JDK 17 for Android toolchain when present
 if [[ -d /usr/lib/jvm/java-17-openjdk ]]; then
   export JAVA_HOME="${JAVA_HOME:-/usr/lib/jvm/java-17-openjdk}"

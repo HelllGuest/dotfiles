@@ -119,7 +119,9 @@ profiles may append host-specific flags (P15: `nvidia_drm.modeset=1` +
 setups are removed; `scripts/check.sh` flags any that remain.
 
 The four location files (`/etc/geolocation`, GeoClue drop-in, NetworkManager
-dispatcher, polkit rule) are installed by `scripts/location-setup.sh` instead.
+dispatcher, `50-vpn-location-sync.rules`) are installed by
+`scripts/location-setup.sh`, and `50-kali-lan-host-prep.rules` is installed by
+`scripts/kali-disposable.sh setup`; `system-setup.sh` skips all of them.
 
 ---
 

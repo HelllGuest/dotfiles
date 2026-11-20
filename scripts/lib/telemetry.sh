@@ -33,6 +33,7 @@ source "$_TELEMETRY_MERGE_LIB"
 unset _TELEMETRY_MERGE_LIB
 
 # Stable aliases for callers / tests.
+# shellcheck disable=SC2034 # read by callers/tests after sourcing this helper
 TELEMETRY_CURSOR_KEYS=("${VSCODE_TELEMETRY_CURSOR_KEYS[@]}")
 telemetry_is_cursor_settings_path() { vscode_is_cursor_settings_path "$@"; }
 telemetry_keys_for_settings_path() { vscode_telemetry_keys_for_path "$@"; }

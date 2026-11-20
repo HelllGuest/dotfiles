@@ -79,8 +79,7 @@ zinit wait lucid light-mode for \
 zinit wait lucid for \
   Aloxaf/fzf-tab \
   MichaelAquilina/zsh-you-should-use \
-  wfxr/forgit \
-  djui/alias-tips
+  wfxr/forgit
 
 # ── Completion (compinit: _dot_compinit, deferred above) ────
 zstyle ':completion:*' menu select

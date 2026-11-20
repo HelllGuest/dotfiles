@@ -5,8 +5,6 @@ set -euo pipefail
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 LAB_ROOT="${LAB_ROOT:-/srv/lab}"
 
-need() { command -v "$1" >/dev/null 2>&1 || { echo "missing $1" >&2; exit 1; }; }
-
 echo "→ Ensuring podman + bubblewrap..."
 sudo pacman -S --needed --noconfirm podman podman-compose bubblewrap buildah
 
@@ -26,22 +24,34 @@ bash "$REPO_ROOT/scripts/lab-detonate.sh" setup || echo "WARN: lab-detonate setu
 
 
 # adb udev (host) — Android devices for lab-android
-if [[ -f /usr/lib/udev/rules.d/51-android.rules ]] || [[ -f /etc/udev/rules.d/51-android.rules ]]; then
+ANDROID_UDEV_USR="${ANDROID_UDEV_USR:-/usr/lib/udev/rules.d/51-android.rules}"
+ANDROID_UDEV_ETC="${ANDROID_UDEV_ETC:-/etc/udev/rules.d/51-android.rules}"
+_legacy_udev=0
+if [[ -f "$ANDROID_UDEV_ETC" ]] && grep -qE '0666|plugdev' "$ANDROID_UDEV_ETC" 2>/dev/null; then
+  _legacy_udev=1
+fi
+if [[ $_legacy_udev -eq 0 ]] && { [[ -f "$ANDROID_UDEV_USR" ]] || [[ -f "$ANDROID_UDEV_ETC" ]]; }; then
   echo "○ Android udev rules already present"
 else
-  echo "→ Installing permissive Android USB udev rules (plugdev)..."
-  sudo tee /etc/udev/rules.d/51-android.rules >/dev/null <<'EOF'
+  if [[ $_legacy_udev -eq 1 ]]; then
+    echo "→ Replacing legacy Android USB udev rules (0666/plugdev → uaccess)..."
+  else
+    echo "→ Installing Android USB udev rules (uaccess)..."
+  fi
+  sudo install -d -m 0755 "$(dirname "$ANDROID_UDEV_ETC")"
+  sudo tee "$ANDROID_UDEV_ETC" >/dev/null <<'EOF'
 # Android USB (lab-android / adb) — reload: udevadm control --reload-rules
-SUBSYSTEM=="usb", ATTR{idVendor}=="18d1", MODE="0666", GROUP="plugdev"
-SUBSYSTEM=="usb", ATTR{idVendor}=="04e8", MODE="0666", GROUP="plugdev"
-SUBSYSTEM=="usb", ATTR{idVendor}=="22b8", MODE="0666", GROUP="plugdev"
-SUBSYSTEM=="usb", ATTR{idVendor}=="0bb4", MODE="0666", GROUP="plugdev"
-SUBSYSTEM=="usb", ATTR{idVendor}=="12d1", MODE="0666", GROUP="plugdev"
-SUBSYSTEM=="usb", ATTR{idVendor}=="24e3", MODE="0666", GROUP="plugdev"
-SUBSYSTEM=="usb", ATTR{idVendor}=="05c6", MODE="0666", GROUP="plugdev"
+SUBSYSTEM=="usb", ATTR{idVendor}=="18d1", MODE="0660", TAG+="uaccess"
+SUBSYSTEM=="usb", ATTR{idVendor}=="04e8", MODE="0660", TAG+="uaccess"
+SUBSYSTEM=="usb", ATTR{idVendor}=="22b8", MODE="0660", TAG+="uaccess"
+SUBSYSTEM=="usb", ATTR{idVendor}=="0bb4", MODE="0660", TAG+="uaccess"
+SUBSYSTEM=="usb", ATTR{idVendor}=="12d1", MODE="0660", TAG+="uaccess"
+SUBSYSTEM=="usb", ATTR{idVendor}=="24e3", MODE="0660", TAG+="uaccess"
+SUBSYSTEM=="usb", ATTR{idVendor}=="05c6", MODE="0660", TAG+="uaccess"
 EOF
   sudo udevadm control --reload-rules 2>/dev/null || true
 fi
+unset _legacy_udev
 
 echo "✓ labs ready"
 echo "  samples: $LAB_ROOT/samples  out: $LAB_ROOT/out"

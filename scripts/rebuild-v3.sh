@@ -61,7 +61,8 @@ work="$(mktemp -d /tmp/rebuild-v3.XXXXXX)"
 trap 'rm -rf "$work"' EXIT
 
 if [[ -z ${MAKEFLAGS:-} ]]; then
-    export MAKEFLAGS="-j$(nproc)"
+    MAKEFLAGS="-j$(nproc)"
+    export MAKEFLAGS
 fi
 
 # Isolated, passphrase-less key so local packages can be pacman-verified.

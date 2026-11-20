@@ -12,7 +12,6 @@ source "$REPO_ROOT/scripts/lib/dmi.sh"
 
 if [[ ${AI_STACK_EXTRAS_ONLY:-0} != 1 ]]; then
   echo "→ Headroom install + MCP..."
-  bash "$REPO_ROOT/scripts/install-headroom.sh"
   bash "$REPO_ROOT/scripts/headroom-setup.sh"
 
   # Caveman (install.sh) and Ponytail are complementary: separate Claude plugins,
@@ -39,33 +38,41 @@ if [[ -f "$REPO_ROOT/stow/continue/.continue/config.yaml" ]]; then
   fi
 fi
 
-# OpenCode local ollama models on P15
+# OpenCode local ollama models on P15 (merge so prior MCP/plugin config is kept)
 if is_thinkpad_p15; then
-  OC_DIR="${HOME}/.config/opencode"
+  OC_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/opencode"
   mkdir -p "$OC_DIR"
   OC_JSON="$OC_DIR/opencode.json"
-  if [[ ! -f $OC_JSON ]]; then
-    cat >"$OC_JSON" <<'EOF'
-{
-  "model": "ollama/qwen3.5:4b",
-  "provider": {
-    "ollama": {
-      "npm": "@ai-sdk/openai-compatible",
-      "options": {
-        "baseURL": "http://127.0.0.1:11434/v1"
-      },
-      "models": {
-        "qwen2.5-coder:3b": { "name": "qwen2.5-coder:3b" },
-        "qwen3.5:4b": { "name": "qwen3.5:4b" }
-      }
-    }
-  }
-}
-EOF
-    echo "→ Wrote $OC_JSON (local ollama)"
-  else
-    echo "○ $OC_JSON exists — leave in place"
-  fi
+  python3 - "$OC_JSON" <<'PY'
+import json, sys
+from pathlib import Path
+
+path = Path(sys.argv[1])
+data = {}
+if path.is_file():
+    try:
+        loaded = json.loads(path.read_text())
+    except json.JSONDecodeError as e:
+        raise SystemExit(f"bad json {path}: {e}") from e
+    if isinstance(loaded, dict):
+        data = loaded
+
+data.setdefault("model", "ollama/qwen3.5:4b")
+provider = data.setdefault("provider", {})
+if not isinstance(provider, dict):
+    provider = {}
+    data["provider"] = provider
+provider.setdefault("ollama", {
+    "npm": "@ai-sdk/openai-compatible",
+    "options": {"baseURL": "http://127.0.0.1:11434/v1"},
+    "models": {
+        "qwen2.5-coder:3b": {"name": "qwen2.5-coder:3b"},
+        "qwen3.5:4b": {"name": "qwen3.5:4b"},
+    },
+})
+path.write_text(json.dumps(data, indent=2) + "\n")
+print(f"→ Merged local ollama provider into {path}")
+PY
 fi
 
 # Hardened Headroom user unit bind 127.0.0.1:8787 (optional enable)

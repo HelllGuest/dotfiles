@@ -328,9 +328,12 @@ Manifest: [`packages/re-extra.txt`](../packages/re-extra.txt). Installer:
 
 ```bash
 bash scripts/install-re-extras.sh
-# same as:
-# sudo pacman -S --needed jadx gdb binwalk android-tools rizin rz-cutter \
-#   rz-ghidra hexyl yara strace ltrace smali radare2
+# Installs packages/re-extra.txt (RE tools: jdk11-openjdk, jadx, gdb, binwalk,
+# android-tools, rizin, rz-cutter, rz-ghidra, hexyl, yara, strace, ltrace,
+# smali, radare2; firmware tools: squashfs-tools, mtd-utils, flashrom,
+# uboot-tools, lzop, qemu-user-static, qemu-user-static-binfmt,
+# arm-none-eabi-binutils), plus pipx unblob, clamav-freshclam (if clamav is
+# installed), and ThinkPad charge thresholds.
 ```
 
 QEMU/libvirt: see [Host virtualization](#host-virtualization) / [Disposable Kali](#disposable-kali).

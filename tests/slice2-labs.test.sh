@@ -236,4 +236,134 @@ else
   echo "NOTE: skip kitty re-exec check (no script(1) for a pty)"
 fi
 
+# Regression checks for Slice 2 / shell / desktop hardening fixes
+grep -qE '^[^#]*dconf write.*/media-keys/' "$ROOT/scripts/gnome-console-setup.sh" \
+  && fail "gnome-console-setup.sh must not overwrite GNOME media-keys / custom-keybindings" || true
+
+# Behavioral: .shell-aliases j='cd' (stub zoxide so CI without zoxide runs it)
+# and .shell-exports CHROME_EXECUTABLE handling.
+(
+  _st="$(mktemp -d)"
+  trap 'rm -rf "$_st"' EXIT
+  mkdir -p "$_st/bin"
+  printf '#!/bin/sh\nexit 0\n' >"$_st/bin/zoxide"
+  chmod +x "$_st/bin/zoxide"
+  _j_alias="$(PATH="$_st/bin:$PATH" bash -c "source '$ROOT/stow/zsh/.shell-aliases'; alias j 2>/dev/null || true")"
+  [[ "$_j_alias" == *"='cd'"* ]] || fail ".shell-aliases j must target cd (got: $_j_alias)"
+)
+(
+  _ce_out="$(env -i PATH="/usr/bin:/bin" HOME=/nonexistent bash -c \
+    "source '$ROOT/stow/zsh/.shell-exports'; printf '%s|%s' \"\${CHROME_EXECUTABLE:-}\" \"\${PUPPETEER_EXECUTABLE_PATH:-}\"")"
+  if [[ ! -x /usr/bin/google-chrome-stable && ! -x /usr/bin/google-chrome && ! -x /usr/bin/chromium ]]; then
+    [[ "$_ce_out" == "|" ]] || fail ".shell-exports must leave CHROME_EXECUTABLE unset when no native Chrome exists (got: $_ce_out)"
+  fi
+  _ce_ov="$(env -i PATH="/usr/bin:/bin" HOME=/nonexistent CHROME_EXECUTABLE=/custom/chrome bash -c \
+    "source '$ROOT/stow/zsh/.shell-exports'; printf '%s|%s' \"\${CHROME_PATH:-}\" \"\${PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH:-}\"")"
+  [[ "$_ce_ov" == "/custom/chrome|/custom/chrome" ]] || fail ".shell-exports must propagate CHROME_EXECUTABLE override (got: $_ce_ov)"
+)
+
+# Behavioral: ai-stack-setup.sh (P15) merges ollama into an existing opencode.json
+# without touching the real systemd user session (stub systemctl on PATH), and
+# preserves an existing user model and custom provider.ollama config.
+(
+  _p15_t="$(mktemp -d)"
+  trap 'rm -rf "$_p15_t"' EXIT
+  mkdir -p "$_p15_t/bin" "$_p15_t/dmi" "$_p15_t/home/.config/opencode"
+  printf '#!/bin/sh\nexit 0\n' >"$_p15_t/bin/systemctl"
+  chmod +x "$_p15_t/bin/systemctl"
+  printf 'ThinkPad P15 Gen 1\n' >"$_p15_t/dmi/product_family"
+  printf '20SUS2FJ00\n' >"$_p15_t/dmi/product_name"
+  printf 'LENOVO_MT_20SU\n' >"$_p15_t/dmi/product_sku"
+  # Case 1: existing MCP/share without ollama/model → adds defaults, keeps existing keys
+  printf '{"mcp":{"obscura":{"enabled":true}},"share":"disabled"}\n' \
+    >"$_p15_t/home/.config/opencode/opencode.json"
+  PATH="$_p15_t/bin:$PATH" HOME="$_p15_t/home" XDG_CONFIG_HOME="$_p15_t/home/.config" \
+    DMI_SYSFS_ROOT="$_p15_t/dmi" AI_STACK_EXTRAS_ONLY=1 \
+    bash "$ROOT/scripts/ai-stack-setup.sh" >/dev/null
+  python3 - "$_p15_t/home/.config/opencode/opencode.json" <<'PY' \
+    || fail "ai-stack-setup.sh failed to merge ollama into existing opencode.json"
+import json, sys
+d = json.load(open(sys.argv[1]))
+assert d["mcp"]["obscura"]["enabled"] is True, d
+assert d["share"] == "disabled", d
+assert d["provider"]["ollama"]["options"]["baseURL"] == "http://127.0.0.1:11434/v1", d
+assert d["model"] == "ollama/qwen3.5:4b", d
+PY
+  # Case 2: existing custom model + provider.ollama.models must not be overwritten
+  printf '{"model":"custom/model","provider":{"ollama":{"models":{"mine:1b":{"name":"mine:1b"}}}}}\n' \
+    >"$_p15_t/home/.config/opencode/opencode.json"
+  PATH="$_p15_t/bin:$PATH" HOME="$_p15_t/home" XDG_CONFIG_HOME="$_p15_t/home/.config" \
+    DMI_SYSFS_ROOT="$_p15_t/dmi" AI_STACK_EXTRAS_ONLY=1 \
+    bash "$ROOT/scripts/ai-stack-setup.sh" >/dev/null
+  python3 - "$_p15_t/home/.config/opencode/opencode.json" <<'PY' \
+    || fail "ai-stack-setup.sh overwrote existing model or provider.ollama"
+import json, sys
+d = json.load(open(sys.argv[1]))
+assert d["model"] == "custom/model", d
+assert d["provider"]["ollama"]["models"] == {"mine:1b": {"name": "mine:1b"}}, d
+PY
+)
+
+# Behavioral: labs-setup.sh Android udev rules — fresh install, legacy 0666/plugdev
+# rewrite (even if /usr/lib copy exists), and /usr/lib-only preservation.
+(
+  _ut="$(mktemp -d)"
+  trap 'rm -rf "$_ut"' EXIT
+  mkdir -p "$_ut/bin" "$_ut/usr" "$_ut/etc"
+  printf '#!/bin/sh\nexec "$@"\n' >"$_ut/bin/sudo"
+  printf '#!/bin/sh\nexit 0\n' >"$_ut/bin/udevadm"
+  chmod +x "$_ut/bin/sudo" "$_ut/bin/udevadm"
+  _udev_block="$(sed -n '/^# adb udev (host)/,/^unset _legacy_udev$/p' "$ROOT/scripts/labs-setup.sh")"
+  [[ -n "$_udev_block" ]] || fail "labs-setup.sh missing udev block"
+  # 1. Fresh install writes 0660 + TAG+="uaccess", no 0666/plugdev
+  PATH="$_ut/bin:$PATH" ANDROID_UDEV_USR="$_ut/usr/51-android.rules" \
+    ANDROID_UDEV_ETC="$_ut/etc/51-android.rules" bash -euo pipefail -c "$_udev_block" >/dev/null
+  grep -q 'TAG+="uaccess"' "$_ut/etc/51-android.rules" || fail "labs-setup udev fresh install missing uaccess"
+  grep -qE '0666|plugdev' "$_ut/etc/51-android.rules" && fail "labs-setup udev fresh install wrote 0666/plugdev" || true
+  # 2. Legacy /etc file with 0666/plugdev is rewritten even when /usr/lib exists; /usr/lib stays untouched
+  printf '# distro copy\n' >"$_ut/usr/51-android.rules"
+  printf 'SUBSYSTEM=="usb", ATTR{idVendor}=="18d1", MODE="0666", GROUP="plugdev"\n' >"$_ut/etc/51-android.rules"
+  PATH="$_ut/bin:$PATH" ANDROID_UDEV_USR="$_ut/usr/51-android.rules" \
+    ANDROID_UDEV_ETC="$_ut/etc/51-android.rules" bash -euo pipefail -c "$_udev_block" >/dev/null
+  grep -q 'TAG+="uaccess"' "$_ut/etc/51-android.rules" || fail "labs-setup failed to upgrade legacy 0666/plugdev rule"
+  grep -qE '0666|plugdev' "$_ut/etc/51-android.rules" && fail "labs-setup left 0666/plugdev in upgraded rule" || true
+  [[ "$(cat "$_ut/usr/51-android.rules")" == "# distro copy" ]] || fail "labs-setup modified /usr/lib udev copy"
+  # 3. Clean /usr/lib copy with no /etc file is left alone (no /etc file created)
+  rm -f "$_ut/etc/51-android.rules"
+  PATH="$_ut/bin:$PATH" ANDROID_UDEV_USR="$_ut/usr/51-android.rules" \
+    ANDROID_UDEV_ETC="$_ut/etc/51-android.rules" bash -euo pipefail -c "$_udev_block" >/dev/null
+  [[ ! -e "$_ut/etc/51-android.rules" ]] || fail "labs-setup created /etc rule when /usr/lib copy already existed"
+)
+
+# Behavioral: install-obscura.sh MCP merge writes Kimi without Cursor dir,
+# does NOT create ~/.claude.json without ~/.claude, and writes it when ~/.claude exists.
+(
+  _ot="$(mktemp -d)"
+  trap 'rm -rf "$_ot"' EXIT
+  mkdir -p "$_ot/home/.kimi-code"
+  _py_block="$(sed -n '/^  python3 - "\$obscura_bin" <<'\''PY'\''$/,/^PY$/p' "$ROOT/scripts/install-obscura.sh" | sed '1d;$d')"
+  [[ -n "$_py_block" ]] || fail "install-obscura.sh missing agent MCP merge block"
+  HOME="$_ot/home" python3 -c "$_py_block" "/usr/local/bin/obscura" >/dev/null
+  [[ -f "$_ot/home/.kimi-code/mcp.json" ]] || fail "install-obscura skipped Kimi MCP when ~/.cursor absent"
+  [[ ! -e "$_ot/home/.claude.json" ]] || fail "install-obscura created ~/.claude.json without ~/.claude dir"
+  mkdir -p "$_ot/home/.claude"
+  HOME="$_ot/home" python3 -c "$_py_block" "/usr/local/bin/obscura" >/dev/null
+  [[ -f "$_ot/home/.claude.json" ]] || fail "install-obscura skipped ~/.claude.json when ~/.claude exists"
+)
+
+# Behavioral: rice-setup.sh does not duplicate CMD_NOTIFY_THRESHOLD in ~/.zshrc.local
+(
+  _rt="$(mktemp -d)"
+  trap 'rm -rf "$_rt"' EXIT
+  mkdir -p "$_rt/bin" "$_rt/home"
+  for _c in sudo stow gsettings; do
+    printf '#!/bin/sh\nexit 0\n' >"$_rt/bin/$_c"
+    chmod +x "$_rt/bin/$_c"
+  done
+  PATH="$_rt/bin:$PATH" HOME="$_rt/home" bash "$ROOT/scripts/rice-setup.sh" >/dev/null
+  PATH="$_rt/bin:$PATH" HOME="$_rt/home" bash "$ROOT/scripts/rice-setup.sh" >/dev/null
+  _n="$(grep -c 'CMD_NOTIFY_THRESHOLD' "$_rt/home/.zshrc.local")"
+  [[ "$_n" -eq 1 ]] || fail "rice-setup.sh duplicated CMD_NOTIFY_THRESHOLD in .zshrc.local (count=$_n)"
+)
+
 echo "PASS: slice2-labs.test.sh"

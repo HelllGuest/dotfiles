@@ -42,6 +42,32 @@ grep -qE '(^|[[:space:]_/])20SU' "$ROOT/scripts/lib/dmi.sh" \
 # Profile + detect
 grep -q 'nvidia' "$ROOT/profiles/thinkpad-p15.sh" \
   || fail "thinkpad-p15 profile must mention nvidia"
+grep -q 'thinkpad-charge-thresholds.sh' "$ROOT/profiles/thinkpad-p15.sh" \
+  || fail "thinkpad-p15 profile must refresh charge thresholds"
+grep -q '61-thinkpad-charge-limit.rules' "$ROOT/profiles/thinkpad-p15.sh" \
+  || fail "thinkpad-p15 profile must install 61-thinkpad-charge-limit.rules"
+grep -q '/var/lib/sbctl/keys' "$ROOT/profiles/thinkpad-p15.sh" \
+  || fail "thinkpad-p15 profile must check /var/lib/sbctl/keys"
+grep -q '\$REPO_ROOT/profiles/thinkpad-t14s.sh' "$ROOT/profiles/laptop.sh" \
+  || fail "laptop.sh must delegate via \$REPO_ROOT/profiles/thinkpad-t14s.sh"
+grep -q 'return 0' "$ROOT/profiles/laptop.sh" \
+  || fail "laptop.sh must return cleanly when sourced by apply-profile.sh"
+
+# Behavioral: sourcing profiles/laptop.sh from outside repo root on T14s DMI delegates and returns
+(
+  _lt="$(mktemp -d)"
+  trap 'rm -rf "$_lt"' EXIT
+  mkdir -p "$_lt/repo/profiles" "$_lt/repo/scripts/lib" "$_lt/dmi"
+  cp "$ROOT/scripts/lib/dmi.sh" "$_lt/repo/scripts/lib/dmi.sh"
+  cp "$ROOT/profiles/laptop.sh" "$_lt/repo/profiles/laptop.sh"
+  printf 'echo DELEGATED_T14S\n' >"$_lt/repo/profiles/thinkpad-t14s.sh"
+  printf 'ThinkPad T14s Gen 3\n' >"$_lt/dmi/product_family"
+  printf '21CRS1PU00\n' >"$_lt/dmi/product_name"
+  printf 'LENOVO_MT_21CR\n' >"$_lt/dmi/product_sku"
+  _out="$(cd /tmp && DMI_SYSFS_ROOT="$_lt/dmi" bash -c "source '$_lt/repo/profiles/laptop.sh' && echo CALLER_SURVIVED")"
+  grep -q 'DELEGATED_T14S' <<<"$_out" && grep -q 'CALLER_SURVIVED' <<<"$_out" \
+    || fail "laptop.sh sourced delegation failed (got: $_out)"
+)
 # shellcheck source=../scripts/lib/dmi.sh
 source "$ROOT/scripts/lib/dmi.sh"
 mock_dmi() {
