@@ -110,7 +110,7 @@ Thank you for helping improve this setup. Follow these guidelines to keep the re
 ## Scripts
 
 - All scripts in `scripts/` and `tests/` must be executable (`chmod +x`). `bash -n`
-  on `scripts/**/*.sh`, `install.sh`, `stow-only.sh`, and `profiles/*.sh` runs in CI.
+  on `scripts/**/*.sh`, `install.sh`, `stow-only.sh`, `profiles/*.sh`, and `labs/**/*.sh` runs in CI.
 - Tests: `tests/*.test.sh`, run by CI. `bash tests/system-setup.test.sh` runs
   `system-setup.sh` against a fake root (`SYSTEM_ROOT`), no sudo.
 - Markdown: `bash scripts/lint-docs.sh` (header spacing + tables). CI runs it;

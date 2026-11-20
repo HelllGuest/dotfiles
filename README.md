@@ -168,7 +168,7 @@ UUID `dash2dock-lite@icedman.github.com` is in `gnome/extensions.txt` and `gnome
 
 Shell functions (`fe`, `rge`, `gai`, `fcd`, …), `Ctrl+R` / `Ctrl+T` / `Alt+C`, terminal and GNOME keys: [gnome/keybindings.md](gnome/keybindings.md). Modern aliases (when installed): `eza`, `bat`, `rg`, `fd`, `dust`, `duf`, `delta`, etc.
 
-Disposable Kali lab (libvirt overlay): `kali-up` (isolated) / `kali-up-nat` / `kali-up-lan` (NAT + physical RJ45) / `kali-lan` / `kali-wipe` / `kali-stop` / `kali-st` / `kali` — see [keybindings](gnome/keybindings.md#disposable-kali) and [fresh-install RE guide](docs/fresh-install-coding-re.md#disposable-kali). NAT needs `virbr0` in firewalld **libvirt** zone (`firewalld-lab-zones.sh`). Physical LAN uses macvtap on `KALI_LAN_IFACE` (default `enp0s31f6`, else the first wired NIC) → guest eth1. macvtap needs a wired NIC; Wi-Fi-only hosts (T14s without a USB Ethernet adapter) can use isolated or NAT only.
+Disposable Kali lab (libvirt overlay): `kali-up` (isolated) / `kali-up-nat` / `kali-up-lan` (NAT + physical RJ45) / `kali-lan` / `kali-lan-check` / `kali-wipe` / `kali-stop` / `kali-st` / `kali` — see [keybindings](gnome/keybindings.md#disposable-kali) and [fresh-install RE guide](docs/fresh-install-coding-re.md#disposable-kali). NAT needs `virbr0` in firewalld **libvirt** zone (`firewalld-lab-zones.sh`). Physical LAN uses macvtap on `KALI_LAN_IFACE` (default `enp0s31f6`, else the first wired NIC) → guest eth1 (`KALI_LAN_PROBE` overrides the `lan-check` ping target, default `192.168.8.1`). macvtap needs a wired NIC; Wi-Fi-only hosts (T14s without a USB Ethernet adapter) can use isolated or NAT only.
 
 ### Starship
 
@@ -400,7 +400,7 @@ sudo firewall-cmd --get-default-zone          # drop
 sudo firewall-cmd --get-active-zones          # virbr-malware under lab-malware only
 sudo firewall-cmd --permanent --zone=lab-malware --list-all
 # expect: interfaces: virbr-malware; sources: 192.168.200.0/24; target: DROP; masquerade: no
-#   ports include 53/udp 53/tcp 67/udp
+#   ports include 21/tcp 25/tcp 53/udp 53/tcp 67/udp 80/tcp 443/tcp 10080/tcp 10443/tcp
 ss -ulpn | grep '192.168.200.1:53'            # empty until INetSim runs (no libvirt DNS)
 ```
 
@@ -467,7 +467,7 @@ Wayland needs log out → log in.
 ```text
 lab-triage | lab-re | lab-android | lab-web | lab-detonate | lab-mcp
 ```
-`lab-detonate.sh capture-up` keeps INetSim logs and captured SMTP/FTP/HTTP-POST data under `/srv/lab/capture` (`inetsim-data/`); the container runs read-only with minimal caps. PolarProxy starts only if its hash matches the one verified at setup. Interactive lab images build with rootless Podman (`lab-capture` builds in rootful Podman so `capture-up`'s `sudo podman run` sees it). On linux-hardened that needs `fuse-overlayfs` (in `pacman.txt`) and the stowed `containers` package (`storage.conf`); `bash scripts/check.sh` reports it under "Podman (rootless)".
+`lab-detonate.sh capture-up` keeps INetSim logs and captured SMTP/FTP/HTTP-POST data under `/srv/lab/capture` (`inetsim-data/`); the container runs read-only with minimal caps (`LAB_CAPTURE_BIND` overrides `192.168.200.1`). `lab-detonate.sh linux-define` seeds Alpine `nocloud` cloud-init (`DETONATE_LINUX_PASS`, default `detonate`) and powers off cleanly before taking the `clean` snapshot. PolarProxy starts only if its hash matches the one verified at setup. Interactive lab images build with rootless Podman (`lab-capture` builds in rootful Podman so `capture-up`'s `sudo podman run` sees it; `lab-web` uses signed Arch `chromium`; `lab-android` shares persistent `:U` named volumes `lab-android-flutter` and `lab-android-sdk` with `lab-mcp.sh`). On linux-hardened that needs `fuse-overlayfs` (in `pacman.txt`) and the stowed `containers` package (`storage.conf`); `bash scripts/check.sh` reports it under "Podman (rootless)".
 
 **What `./install.sh` runs, in order:**
 ```text

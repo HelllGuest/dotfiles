@@ -13,8 +13,6 @@ Defined in `stow/zsh/.shell-aliases` (shared by Zsh and Bash):
 | `v` | `nvim` |
 | `as` | `flatpak run com.google.AndroidStudio` |
 | `ff` | `fastfetch` |
-| `ff-preset` | List/preview/set Fastfetch templates (`aura-glass`, `gruvbox`, `minimal`, `secops`) |
-| `rice-theme` | Switch theme (`aura-glass`, `gruvbox`, `secops`) across Fastfetch, btop, Starship, Ghostty, Alacritty |
 | `kali` / `kali-up` / `kali-up-nat` / `kali-up-lan` / `kali-lan` / `kali-lan-check` / `kali-wipe` / `kali-stop` / `kali-st` | Disposable Kali (see below) |
 
 Modern CLI aliases (when installed): `eza`, `bat`, `rg`, `fd`, etc.
@@ -27,7 +25,7 @@ Defined in `stow/zsh/.shell-aliases` when
 
 | Alias | Action |
 |-------|--------|
-| `kali <cmd>` | `scripts/kali-disposable.sh` (`setup` / `start` / `stop` / `wipe` / `status` / `attach-lan` / `fetch`) |
+| `kali <cmd>` | `scripts/kali-disposable.sh` (`setup` / `start` / `stop` / `wipe` / `status` / `attach-lan` / `lan-check` / `fetch`) |
 | `kali-up` | New ephemeral overlay + boot **isolated** (no guest WAN) |
 | `kali-up-nat` | Same with NAT (updates / cloud-init); prints Guest IP for SSH |
 | `kali-up-lan` | NAT + physical ethernet (macvtap → guest eth1) |
@@ -58,6 +56,8 @@ kali-wipe           # reset to clean base
 | `Ctrl+F` / `Ctrl+B` | fzf preview page down / up (in `FZF_DEFAULT_OPTS`) |
 | `fe` | Fuzzy open file in nvim |
 | `rge <pat>` | Ripgrep + open match in nvim |
+| `ff-preset [use] <name>` | List, preview, or set Fastfetch presets (`aura-glass`, `gruvbox`, `minimal`, `secops`) in `.shell-functions` |
+| `rice-theme [name]` | Switch theme (`aura-glass`, `gruvbox`, `secops`) across Fastfetch, btop, Starship, Ghostty, and Alacritty |
 | `gai` / `gshow` / `gco` | Interactive git add / log / branch checkout (`gco` fzf picker in Zsh and Bash) |
 | `fcd` | Fuzzy cd with tree preview |
 

@@ -439,6 +439,7 @@ and undefines the domain; base stays clean. Script:
 | `kali-up-nat` | `start --nat` — guest DHCP + internet (apt / cloud-init) |
 | `kali-up-lan` | `start --lan` — NAT + physical ethernet (`enp0s31f6` macvtap → guest eth1) |
 | `kali-lan` | `attach-lan` — add physical LAN NIC to a running guest |
+| `kali-lan-check` | `lan-check` — verify host RJ45 clean + guest eth1 → LAN gateway (`KALI_LAN_PROBE`) |
 | `kali-wipe` | Destroy domain + delete overlay |
 | `kali-stop` | Power off; keep overlay |
 | `kali-st` | Status |
@@ -460,7 +461,8 @@ kali-wipe                                # back to clean base
 macvtap bridge mode. Dual defaults break LAN: host RJ45 must have **no IP**
 (wifi keeps default — `scripts/kali-lan-host-prep.sh` / `pkexec kali-lan-host-prep`);
 guest eth1 gets DHCP on the LAN **without** gateway/DNS/routes (NAT eth0 is
-the only default). Verify with `kali lan-check`. Public DNS on eth0. Cable
+the only default). Verify with `kali lan-check` (`KALI_LAN_PROBE` overrides the
+default `192.168.8.1` gateway ping target). Public DNS on eth0. Cable
 required for eth1; NAT works without one.
 
 Also listed in [gnome/keybindings.md](../gnome/keybindings.md#disposable-kali).

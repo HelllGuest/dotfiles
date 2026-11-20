@@ -957,7 +957,7 @@ with `SKIP_NM_GLOBAL=1`. Howto:
 firewalld default zone `drop` rejects unsolicited inbound; libvirt guest NAT
 needs `virbr0` in the stock `libvirt` zone (forward + masquerade). Prefer that
 over opening the host default zone. `scripts/firewalld-lab-zones.sh` and
-`scripts/kali-disposable.sh setup` / `start --nat`:
+`scripts/kali-disposable.sh setup` / `start --nat` / `start --lan`:
 
 * permanent `--zone=libvirt --add-interface=virbr0` (inherits when bridge appears)
 * runtime `--change-interface=virbr0` when the iface exists
