@@ -56,7 +56,7 @@ kali-wipe           # reset to clean base
 | `Ctrl+F` / `Ctrl+B` | fzf preview page down / up (in `FZF_DEFAULT_OPTS`) |
 | `fe` | Fuzzy open file in nvim |
 | `rge <pat>` | Ripgrep + open match in nvim |
-| `gai` / `gshow` / `gco` | Interactive git add / log / branch checkout (`gco` fzf picker is Zsh; Bash keeps alias `git checkout`) |
+| `gai` / `gshow` / `gco` | Interactive git add / log / branch checkout (`gco` fzf picker in Zsh and Bash) |
 | `fcd` | Fuzzy cd with tree preview |
 
 fzf **0.72** does not support `copy-selection`. To copy the current line to the clipboard:
@@ -166,6 +166,11 @@ natively; other terminals get the shell's `notify-send`).
 | `Super+L` | Lock screen |
 | `Shift+Print` | Screenshot (region) — GNOME default; not remapped in this repo |
 | `Super+Return` | **kitty** (via custom binding) |
+| `Super+Shift+Return` | **Ghostty** (custom binding) |
+| `Super+.` | Characters (custom binding) |
+| `Super+C` | Clipboard passthrough: `wl-paste \| wl-copy` (custom binding) |
+| `Super+B` | Web browser (media-keys `www`) |
+| `Super+E` | Files (media-keys `home`) |
 
 ```bash
 ~/dotfiles/scripts/backup-gsettings.sh   # writes gnome/dconf/user.conf

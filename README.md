@@ -196,9 +196,10 @@ dotfiles/
 ├── packages/        # pacman.txt, flatpak.txt, aur.txt, re-extra.txt, thinkpad-t14s.txt, …
 ├── profiles/        # thinkpad-p15 | thinkpad-t14s | laptop | p15
 ├── scripts/         # Installers, setup, check (lib/ = dmi, charge conf, shared helpers)
+├── labs/            # lab-triage / lab-re / lab-android / lab-web / lab-capture Containerfiles + MCP example
 ├── tests/           # Smoke tests (`*.test.sh`, CI)
 ├── gnome/           # dconf, extensions.txt, keybindings.md
-├── docs/            # hardened-arch-gnome.md + fresh-install-coding-re.md
+├── docs/            # hardened-arch-gnome.md, fresh-install-coding-re.md, SECURITY-AUDIT.md
 ├── builds/          # Optional local PKGBUILDs (e.g. builds/st)
 ├── skills/          # Host skills (ghidra-cli-host, obscura-host)
 ├── ai-rules/        # Shared AGENTS.md kit + git hooks
@@ -220,6 +221,7 @@ Layout stays flat on purpose: GNU Stow package roots, curl-able installers, and
 | [CONTRIBUTING.md](CONTRIBUTING.md) | Contribution guidelines |
 | [docs/hardened-arch-gnome.md](docs/hardened-arch-gnome.md) | Full Arch + GNOME guide — dual-host Stage A + firewalld |
 | [docs/fresh-install-coding-re.md](docs/fresh-install-coding-re.md) | Purpose stacks (coding / RE / malware lab); lab-re + Stage B configure |
+| [docs/SECURITY-AUDIT.md](docs/SECURITY-AUDIT.md) | Security audit of this repository (2026-11-16) |
 | [t14s-arch-install](https://github.com/HelllGuest/t14s-arch-install) | Preferred Stage A ISO installer (T14s 21CQ/21CR + P15 20SU) |
 | [gnome/keybindings.md](gnome/keybindings.md) | Shell aliases and useful shortcuts |
 
@@ -469,9 +471,12 @@ lab-triage | lab-re | lab-android | lab-web | lab-detonate | lab-mcp
 cleanup-input-overrides.sh
 → sudo -v once + keep-alive (long AUR builds no longer time out the sudo prompt)
 → pacman -Syu packages/pacman.txt (one batch; on failure retried per package)
+→ bootvine enable (bootvine.service + bootvine-shutdown.service)
 → apply-profile.sh (hostname e.g. p15, or detect-profile.sh — after packages so NVIDIA DKMS exists)
+→ configure.sh one checklist pass (only with CONFIGURE=1; SKIP_CONFIGURE=1 skips the hint)
 → install-flatpaks.sh → install-aur.sh (bootstraps paru; --sudoloop; per-package retry)
 → install-fonts.sh → stow ($HOME; system/ via system-setup.sh; skips zram & gdm)
+→ tmp-semgrep-cleanup.timer enable (user unit) → login shell → zsh (usermod, if not already)
 → fnm install/default 22 → atuin import → zram-setup.sh
 → gnome-session-setup.sh → location-setup.sh → gnome-console-setup.sh
 → gdm-setup.sh → theme-setup.sh (Orchis/Tela/Bibata + GDM) → git-setup.sh → nvim-setup.sh → headroom-setup.sh
@@ -542,7 +547,7 @@ REA backends: use `lab-re` (JDK21/Ghidra/jadx/rizin + `rea-agents@6.9.0`). Optio
 > **existing** machine that still has tmpfs `/tmp`.
 
 ### 2. Config Only (No Root)
-Applies user-level symlinks only (removes unmodified `/etc/skel` copies such as `.bashrc` that would block stow). Skips `zram`, `system`, and `gdm` (require root — use `install.sh`).
+Applies user-level symlinks only (first removes unmodified `/etc/skel` copies such as `.bashrc`, and the t14s-arch-install `~/.zshrc` / `starship.toml` seeds, that would block stow; lines appended to the seeded `.zshrc` move to `~/.zshrc.local`), then enables `tmp-semgrep-cleanup.timer`. Skips `zram`, `system`, and `gdm` (require root — use `install.sh`).
 ```bash
 ./stow-only.sh
 ```
@@ -551,7 +556,7 @@ Applies user-level symlinks only (removes unmodified `/etc/skel` copies such as 
 Do **not** `stow -t / zram` (a symlink into `$HOME` breaks at early boot). `install.sh` runs `scripts/zram-setup.sh`, which copies a real file to `/etc/systemd/zram-generator.conf`. Re-run that script to refresh.
 
 ### 4. Dependencies
-Key runtime dependencies (`scripts/check.sh` asserts binaries, shell tools, symlinks, fonts, optional AI, and Zen `user.js` when present; it does **not** check `rclone`, `dart-sass`, or `zram-generator`):
+Key runtime dependencies (`scripts/check.sh` asserts binaries, shell tools, symlinks, fonts, optional AI, and Zen `user.js` when present; every `packages/pacman.txt` / `aur.txt` / `flatpak.txt` entry is checked under "Install completeness"):
 
 **Core:** `stow`, `zsh`, `starship`, `neovim`, `flatpak`, `rclone`, `jq`, `dart-sass`, `zram-generator`
 
@@ -567,9 +572,9 @@ Key runtime dependencies (`scripts/check.sh` asserts binaries, shell tools, syml
 
 **GNOME dock:** Dash2Dock Animated via `scripts/install-dash2dock.sh` (EGO; listed in `gnome/extensions.txt`)
 
-**AUR** (via `install-aur.sh`, bootstraps `paru` if needed): `blesh-git`, `forgit`, `gnome-shell-extension-just-perfection-desktop`, `vscodium-bin` (settings in `stow/vscode/`)
+**AUR** (via `install-aur.sh`, bootstraps `paru` if needed): `blesh-git`, `forgit`, `gnome-shell-extension-just-perfection-desktop`, `vscodium-bin` (settings in `stow/vscode/`), `flutter-bin`, `cursor-bin`, `antigravity-ide`, `tela-icon-theme`, `bibata-cursor-theme-bin`
 
-**Flatpaks** (via `install-flatpaks.sh`): Brave, Zen, Google Chrome, LibreWolf, Proton VPN, Android Studio. Chrome may be `--system` or `--user`; both satisfy `check.sh` / hardening presence checks. Browser telemetry debloat: `scripts/browser-hardening.sh` (Chrome = `chromium-base` + `chrome-extra`, which turns off Google AI features (AI Mode, Help Me Write, Gemini on pages, on-device model download); Brave = base + `brave-extra`; `check.sh` fails if the deployed Chrome/Brave policy differs from the repo; verify in `chrome://policy` / `brave://policy`; Zen `user.js` per real profile + Flatpak `systemconfig` + `/etc/firefox/policies` for native; LibreWolf upstream + `librewolf.overrides.cfg`). Launch Zen once before re-running hardening if profiles are new. `/etc` policy paths need sudo.
+**Flatpaks** (via `install-flatpaks.sh`): Brave, Zen, Google Chrome, LibreWolf, Proton VPN, Android Studio, Sticky Notes. Chrome may be `--system` or `--user`; both satisfy `check.sh` / hardening presence checks. Browser telemetry debloat: `scripts/browser-hardening.sh` (Chrome = `chromium-base` + `chrome-extra`, which turns off Google AI features (AI Mode, Help Me Write, Gemini on pages, on-device model download); Brave = base + `brave-extra`; `check.sh` fails if the deployed Chrome/Brave policy differs from the repo; verify in `chrome://policy` / `brave://policy`; Zen `user.js` per real profile + Flatpak `systemconfig` + `/etc/firefox/policies` for native; LibreWolf upstream + `librewolf.overrides.cfg`). Launch Zen once before re-running hardening if profiles are new. `/etc` policy paths need sudo.
 
 **Terminals:** `kitty` (primary; Super+Return; also opens `Terminal=true` launchers such as Lab RE / Kali via `xdg-terminal-exec` + `~/.config/xdg-terminals.list` from `stow/kitty`), `ghostty`, optional `alacritty` / `contour`, plus `gnome-console` (kgx). Rice: `bash scripts/rice-setup.sh` (Gruvbox accents; privacy: `show-in-lock-screen false`). Optional suckless `st`: `bash scripts/build-st.sh` (`builds/st/`).
 

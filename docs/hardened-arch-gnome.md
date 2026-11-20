@@ -986,7 +986,7 @@ Optional power diagnostics:
 pacman -S powertop
 ```
 
-**Power stack note:** this system uses **power-profiles-daemon (PPD)** only.
+**Power stack note:** this system uses **power-profiles-daemon (PPD)**, or on hosts from `t14s-arch-install` **tuned + `tuned-ppd`** (same GNOME power menu API; see the T14s notes below). Nothing else manages power.
 
 * **TLP is *not* used** — it conflicts with PPD (`PLATFORM_PROFILE.../CPU_ENERGY_PERF_POLICY... not set because power-profiles-daemon is running`). Do not install `tlp`/`tlp-rdw`.
 * **thermald is *not* used** — it self-exits on these ThinkPads (`[dytc_lapmode] present: Thermald can't run on this platform`); thermal is firmware-managed (Intel DPTF on P15 / AMD DYTC on T14s). Leave it uninstalled/disabled.
@@ -1105,7 +1105,7 @@ flatpak remote-add --if-not-exists flathub \
 https://flathub.org/repo/flathub.flatpakrepo
 ```
 
-Apps: `packages/flatpak.txt` (browsers, Proton VPN, Android Studio). `arch-install.sh`
+Apps: `packages/flatpak.txt` (browsers, Proton VPN, Android Studio, Sticky Notes). `arch-install.sh`
 installs the browsers + Proton VPN; `./install.sh` (`scripts/install-flatpaks.sh`)
 installs the full list, including any that failed in the installer chroot.
 
@@ -1199,7 +1199,7 @@ bash scripts/install-ghidra-cli.sh
 ```
 
 * Terminals: kitty (primary) + ghostty + gnome-console; rice via `scripts/rice-setup.sh` (Gruvbox). Ptyxis/rio/wezterm/foot pruned.
-* ghidra-cli: cargo CLI + host skill under `skills/ghidra-cli-host/`; GUI via `ghidra-gui` (cargo `ghidra` shadows `/usr/bin/ghidra`). Install failure is non-fatal in `./install.sh`
+* ghidra-cli: cargo CLI + host skill under `skills/ghidra-cli-host/`; GUI via `ghidra-gui` (cargo `ghidra` shadows `/usr/bin/ghidra`). An install failure is recorded by `./install.sh`, which exits 1 at the end
 * Host `install-rea.sh` is optional only (needs JDK≥21); Stage B AI stack skips it
 
 ---
@@ -1624,7 +1624,7 @@ cd ~/dotfiles
 * Apply the Orchis-Dark / Tela-blue-dark / Bibata-Modern-Ice theme to the session, libadwaita and Flatpak apps and the GDM login screen (`scripts/theme-setup.sh`, `scripts/gdm-shell-theme.sh`)
 * Record every failed step and exit 1 at the end (no silent skips; only `SKIP_*=1` opt-outs skip); `check.sh` fails on missing packages, empty dock icons and dead shortcuts
 * Apply **after** `pacman.txt` exactly one machine profile via `scripts/apply-profile.sh`: `profiles/$(hostname).sh` if present, otherwise `scripts/detect-profile.sh` (`thinkpad-p15`, `thinkpad-t14s`, or `laptop`). Optimus/NVIDIA setup is inside `thinkpad-p15.sh` (no `nvidia.sh`).
-* Install Flatpaks from `packages/flatpak.txt` (Brave, Zen, Chrome, LibreWolf, Proton VPN, Android Studio) and AUR packages from `packages/aur.txt` (bootstraps `paru` if no helper exists)
+* Install Flatpaks from `packages/flatpak.txt` (Brave, Zen, Chrome, LibreWolf, Proton VPN, Android Studio, Sticky Notes) and AUR packages from `packages/aur.txt` (bootstraps `paru` if no helper exists)
 * Stow configs to `$HOME` (skips `zram` and `gdm`); install `system/` into `/etc` as root-owned files via `scripts/system-setup.sh`; materialize `zram-generator.conf` via `scripts/zram-setup.sh`
 * Apply GNOME session dconf (`gnome/dconf/user.conf`), Console settings, Dash2Dock + extensions, location spoofing, and stock input defaults (`scripts/reset-input-defaults.sh` + `scripts/cleanup-input-overrides.sh`)
 * Configure GDM, Git, Neovim, Headroom proxy + MCP (`scripts/headroom-setup.sh`), AI coding/RE agents + plugins + skills (`sync-agent-skills.sh`, `install-coding-agents.sh`, `install-caveman.sh`, `install-ponytail.sh`, `install-android-ui-skills.sh`, `install-ghidra-cli.sh`, `install-obscura.sh`, `install-re-skills.sh`, `install-ecosystem-skills.sh`; REA via `lab-re`), PhotoGIMP, and foxcage (`install-foxcage.sh`, Firefox in rootless Podman when `podman` exists).
