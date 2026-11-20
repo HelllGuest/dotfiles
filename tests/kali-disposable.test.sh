@@ -69,6 +69,9 @@ awk '/^ensure_nat_forward\(\)/,/^}/' "$ROOT/scripts/kali-disposable.sh" | grep -
   || fail "ensure_nat_forward must also run for nat+lan"
 awk '/^net_args\(\)/,/^}/' "$ROOT/scripts/kali-disposable.sh" | grep -q "trap 'rm -f -- \"\$xml\"' EXIT" \
   || fail "net_args must clean up temporary kali-isolated XML on exit"
+awk '/^net_args\(\)/,/^}/' "$ROOT/scripts/kali-disposable.sh" | grep -q 'net-define "\$xml" >&2' \
+  && awk '/^net_args\(\)/,/^}/' "$ROOT/scripts/kali-disposable.sh" | grep -q 'net-start kali-isolated >&2' \
+  || fail "net_args must redirect virsh output to stderr so \$(net_args) stays clean"
 ! awk '/^    cat >"\$ci_user" <<EOF$/,/^EOF$/' "$ROOT/scripts/kali-disposable.sh" | grep -q '^network:$' \
   || fail "cloud-init user-data must not contain invalid top-level network: key"
 # save_kali_password must not leak umask 077 to caller shell

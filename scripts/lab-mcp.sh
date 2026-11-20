@@ -42,8 +42,8 @@ run_android() {
     --security-opt no-new-privileges --cap-drop ALL \
     --userns keep-id --user "$(id -u):$(id -g)" \
     "${extra[@]}" \
-    -v "lab-android-flutter:/opt/flutter:U" \
-    -v "lab-android-sdk:/opt/android-sdk:U" \
+    -v "lab-android-flutter:/opt/flutter" \
+    -v "lab-android-sdk:/opt/android-sdk" \
     -v "${work}:/work:Z" -w /work \
     -v "${LAB_SAMPLES:-/srv/lab/samples}:/srv/lab/samples:ro,Z" \
     -v "${LAB_OUT:-/srv/lab/out}:/srv/lab/out:Z" \

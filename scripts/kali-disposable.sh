@@ -270,10 +270,10 @@ net_args() {
   <bridge name='virbr-kali' stp='on' delay='0'/>
 </network>
 EOF
-          virsh_u net-define "$xml"
+          virsh_u net-define "$xml" >&2
         )
-        virsh_u net-start kali-isolated || true
-        virsh_u net-autostart kali-isolated || true
+        virsh_u net-start kali-isolated >&2 || true
+        virsh_u net-autostart kali-isolated >&2 || true
       fi
       echo "--network network=kali-isolated"
       ;;

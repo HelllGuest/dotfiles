@@ -17,11 +17,13 @@ podman build -t localhost/lab-triage:latest "$REPO_ROOT/labs/lab-triage"
 podman build -t localhost/lab-re:latest "$REPO_ROOT/labs/lab-re"
 podman build -t localhost/lab-android:latest "$REPO_ROOT/labs/lab-android"
 podman build -t localhost/lab-web:latest "$REPO_ROOT/labs/lab-web"
-# Rootful build: lab-detonate runs lab-capture via sudo podman --network=host.
-sudo podman build -t localhost/lab-capture:latest "$REPO_ROOT/labs/lab-capture"
 
-echo "→ Detonation helpers (virbr-malware + INetSim/PolarProxy)..."
+echo "→ Detonation helpers (virbr-malware + rootful lab-capture + INetSim/PolarProxy)..."
 bash "$REPO_ROOT/scripts/lab-detonate.sh" setup || echo "WARN: lab-detonate setup skipped"
+# setup builds lab-capture; capture-up cannot run without it, so stop here
+# instead of letting a failed build pass as the warning above.
+sudo podman image exists localhost/lab-capture:latest \
+  || { echo "✗ lab-capture image missing (rootful podman): fix the build, then bash scripts/lab-detonate.sh setup" >&2; exit 1; }
 
 
 # adb udev (host) — Android devices for lab-android

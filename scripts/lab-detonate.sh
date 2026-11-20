@@ -237,15 +237,18 @@ EOF
     --noautoconsole --noreboot
   rm -rf -- "$ci_dir"
   # Wait for first-boot cloud-init poweroff so the clean snapshot is offline
-  # (post-boot XML has the transient cloud-init ISO detached).
+  # (post-boot XML has the transient cloud-init ISO detached). Fail closed on
+  # timeout instead of snapshotting a half-configured VM without a login seed.
   local _i
-  for _i in $(seq 1 30); do
+  for _i in $(seq 1 60); do
     virsh_s domstate "$LINUX_NAME" 2>/dev/null | grep -qi 'shut off' && break
     sleep 2
   done
   if ! virsh_s domstate "$LINUX_NAME" 2>/dev/null | grep -qi 'shut off'; then
-    echo "WARN: $LINUX_NAME did not power off after cloud-init; forcing stop before snapshot" >&2
     virsh_s destroy "$LINUX_NAME" 2>/dev/null || true
+    virsh_s undefine "$LINUX_NAME" 2>/dev/null || true
+    rm -f "$LINUX_OVERLAY"
+    die "$LINUX_NAME did not power off after cloud-init (120s); aborted without creating a broken 'clean' snapshot"
   fi
   virsh_s snapshot-create-as "$LINUX_NAME" clean "pre-detonation" --atomic || true
   echo "✓ $LINUX_NAME defined (snapshot: clean; login: root / ${pass}). Start: lab-detonate.sh linux-start"

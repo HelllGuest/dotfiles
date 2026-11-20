@@ -279,7 +279,7 @@ After Stage B / `./install.sh`, finish Podman storage + socket (Phase 17):
 ```bash
 mkdir -p ~/.local/share/containers/storage && chattr +C ~/.local/share/containers/storage
 systemctl --user enable --now podman.socket
-bash ~/dotfiles/scripts/agent-run.sh /tmp alpine:3.20 echo ok   # optional smoke
+mkdir -p /tmp/agent-smoke && bash ~/dotfiles/scripts/agent-run.sh /tmp/agent-smoke alpine:3.20 echo ok   # optional smoke
 ```
 
 `DOCKER_HOST` prefers Podman when `podman.socket` is up. If `docker` package is

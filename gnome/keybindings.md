@@ -12,7 +12,6 @@ Defined in `stow/zsh/.shell-aliases` (shared by Zsh and Bash):
 |-------|---------|
 | `v` | `nvim` |
 | `as` | `flatpak run com.google.AndroidStudio` |
-| `ff` | `fastfetch` |
 | `kali` / `kali-up` / `kali-up-nat` / `kali-up-lan` / `kali-lan` / `kali-lan-check` / `kali-wipe` / `kali-stop` / `kali-st` | Disposable Kali (see below) |
 
 Modern CLI aliases (when installed): `eza`, `bat`, `rg`, `fd`, etc.
@@ -56,8 +55,9 @@ kali-wipe           # reset to clean base
 | `Ctrl+F` / `Ctrl+B` | fzf preview page down / up (in `FZF_DEFAULT_OPTS`) |
 | `fe` | Fuzzy open file in nvim |
 | `rge <pat>` | Ripgrep + open match in nvim |
-| `ff-preset [use] <name>` | List, preview, or set Fastfetch presets (`aura-glass`, `gruvbox`, `minimal`, `secops`) in `.shell-functions` |
-| `rice-theme [name]` | Switch theme (`aura-glass`, `gruvbox`, `secops`) across Fastfetch, btop, Starship, Ghostty, and Alacritty |
+| `ff` | Run `fastfetch` (no arguments: the preset saved by `ff-preset use`/`rice-theme`, under `XDG_STATE_HOME`) |
+| `ff-preset [use] <name>` / `ff-preset reset` | List, preview, set, or clear the local Fastfetch preset (`aura-glass`, `gruvbox`, `minimal`, `secops`) |
+| `rice-theme [name\|reset]` | Switch theme (`aura-glass`, `gruvbox`, `secops`) via untracked local overrides (repo updates still apply; `reset` = repo defaults) across Fastfetch, btop, Starship, Ghostty, and Alacritty (Kitty stays stock) |
 | `gai` / `gshow` / `gco` | Interactive git add / log / branch checkout (`gco` fzf picker in Zsh and Bash) |
 | `fcd` | Fuzzy cd with tree preview |
 

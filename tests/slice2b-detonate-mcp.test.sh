@@ -74,8 +74,16 @@ grep -q 'lab-mcp()' "$ROOT/stow/zsh/.shell-functions" \
   || fail "shell-functions lab-mcp missing"
 grep -q 'SETUP_DETONATE' "$ROOT/scripts/configure.sh" \
   || fail "configure must expose SETUP_DETONATE"
-grep -q 'sudo podman build -t localhost/lab-capture:latest' "$ROOT/scripts/labs-setup.sh" \
-  || fail "labs-setup must build lab-capture in rootful podman store"
+! grep -q 'podman build.*lab-capture' "$ROOT/scripts/labs-setup.sh" \
+  && grep -q 'lab-detonate.sh" setup' "$ROOT/scripts/labs-setup.sh" \
+  || fail "labs-setup must delegate lab-capture build to lab-detonate.sh setup (avoid double build)"
+# The build lives in a step labs-setup tolerates failing: the image must be checked after it.
+_ls_setup="$(grep -n -m1 'lab-detonate.sh" setup' "$ROOT/scripts/labs-setup.sh" | cut -d: -f1)"
+_ls_check="$(grep -n -m1 'sudo podman image exists localhost/lab-capture:latest' "$ROOT/scripts/labs-setup.sh" | cut -d: -f1)"
+[[ -n $_ls_setup && -n $_ls_check ]] && (( _ls_check > _ls_setup )) \
+  && sed -n "${_ls_check},$((_ls_check + 1))p" "$ROOT/scripts/labs-setup.sh" | grep -q 'exit 1' \
+  || fail "labs-setup must stop when lab-capture is missing after lab-detonate.sh setup"
+unset -v _ls_setup _ls_check
 grep -q 'sudo podman build -t localhost/lab-capture:latest' "$ROOT/scripts/lab-detonate.sh" \
   || fail "lab-detonate setup must build lab-capture in rootful podman store"
 grep -q 'sudo podman image exists localhost/lab-capture:latest' "$ROOT/scripts/lab-detonate.sh" \
@@ -87,10 +95,15 @@ grep -q '21/tcp' "$ZONE_LIB" && grep -q '25/tcp' "$ZONE_LIB" \
 grep -q 'LAB_CAPTURE_BIND' "$ROOT/labs/lab-capture/entrypoint.sh" \
   || fail "lab-capture entrypoint must honor LAB_CAPTURE_BIND"
 grep -q -- '--cloud-init' "$ROOT/scripts/lab-detonate.sh" \
-  || fail "lab-detonate linux-define must seed cloud-init for Alpine nocloud login"
-grep -q 'lab-android-flutter:/opt/flutter:U' "$ROOT/stow/zsh/.shell-functions" \
-  && grep -q 'lab-android-flutter:/opt/flutter:U' "$ROOT/scripts/lab-mcp.sh" \
-  || fail "lab-android and lab-mcp must share persistent lab-android-flutter volume"
+  && grep -q 'aborted without creating a broken' "$ROOT/scripts/lab-detonate.sh" \
+  || fail "lab-detonate linux-define must seed cloud-init and fail closed on poweroff timeout"
+grep -q 'lab-android-flutter:/opt/flutter"' "$ROOT/stow/zsh/.shell-functions" \
+  && grep -q 'lab-android-flutter:/opt/flutter"' "$ROOT/scripts/lab-mcp.sh" \
+  && ! grep -q 'lab-android-.*:U' "$ROOT/stow/zsh/.shell-functions" "$ROOT/scripts/lab-mcp.sh" \
+  || fail "lab-android and lab-mcp must share persistent lab-android-flutter volume without per-start :U re-chown"
+grep -q 'exec /usr/local/bin/mcp-playwright' "$ROOT/labs/lab-web/mcp-devtools.sh" \
+  && grep -q -- '--executablePath' "$ROOT/labs/lab-web/mcp-devtools.sh" \
+  || fail "mcp-devtools.sh must pass --executablePath to chrome-devtools-mcp and delegate fallback to mcp-playwright"
 
 # No host secret mounts in MCP launcher
 grep -E '(-v|--bind).*\.ssh|\.gnupg' "$ROOT/scripts/lab-mcp.sh" \

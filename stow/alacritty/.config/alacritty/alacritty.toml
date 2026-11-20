@@ -3,7 +3,7 @@
 
 [general]
 live_config_reload = true
-import = ["theme.toml"]
+import = ["theme.toml", "theme.local.toml"]
 
 [window]
 opacity = 0.95

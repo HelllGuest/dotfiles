@@ -75,3 +75,4 @@ keybind = ctrl+shift+i=inspector:toggle
 keybind = ctrl+backquote=toggle_quick_terminal
 
 config-file = ?theme.conf
+config-file = ?theme.local.conf

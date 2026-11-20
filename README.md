@@ -8,7 +8,7 @@ A clean, modular, and programmable dotfiles ecosystem optimized for **Arch Linux
 
 - **Privacy Hardened:** Telemetry, usage reporting, and "phoning home" are disabled system-wide (GNOME, VS Code, .NET, etc.).
 - **ThinkPad Optimized:** Hostname or hardware-detected profiles (`thinkpad-p15.sh`, `thinkpad-t14s.sh`, or `laptop.sh`) with power-profiles-daemon (or tuned + `tuned-ppd` on hosts from `t14s-arch-install`), UKIs signed for Secure Boot (sbctl), and a tracked **s2idle** sleep pin (`mem_sleep_default=s2idle`; pair BIOS Sleep State with **Windows and Linux**, not **Linux**/S3 — see `docs/hardened-arch-gnome.md`). Firewall: **firewalld** (`nftables`, default `drop`). Stage B modules: `bash scripts/configure.sh` (firewalld, labs, AI stack, terminal/CLI rice). Lab wrappers: `lab-triage` / `lab-re` / `lab-android` / `lab-web` / `lab-detonate` / `lab-mcp` (see `scripts/labs-setup.sh`, `lab-detonate.sh`, `lab-mcp.sh`). Thermal is firmware-managed. Charge window **70–80** via `scripts/thinkpad-charge-thresholds.sh`.
-- **Elite-Tier Terminal:** Kitty & Ghostty with shared Zsh/Bash configs, real-time autocomplete, switchable Aura Glass / Gruvbox / SecOps themes (`rice-theme`, `ff-preset`) across Starship, Fastfetch, btop, Ghostty, and Alacritty.
+- **Elite-Tier Terminal:** Kitty (stock host colors; Gruvbox accents for `lab-*`) & Ghostty with shared Zsh/Bash configs, real-time autocomplete, and switchable Aura Glass / Gruvbox / SecOps themes (`rice-theme`, `ff-preset`; stored as untracked local overrides) across Starship, Fastfetch, btop, Ghostty, and Alacritty.
 - **Neovim (Lazy.nvim):** A modular Lua configuration.
 
 ---
@@ -22,8 +22,8 @@ Zsh is the primary shell. Bash is fully supported for scripts and fallback sessi
 | File | Purpose |
 |------|---------|
 | `.shell-exports` | Environment variables (editor, pager, Android SDK, telemetry opt-outs, container CLI socket) |
-| `.shell-aliases` | Shared aliases (`v`, `as`, `ff`, etc.) |
-| `.shell-functions` | Shared functions (`mkcd`, `backup`); zsh-only OSC 7 CWD hook |
+| `.shell-aliases` | Shared aliases (`v`, `as`, etc.) |
+| `.shell-functions` | Shared functions (`mkcd`, `backup`, `ff`, `rice-theme`, lab wrappers); zsh-only OSC 7 CWD hook |
 | `.shell-git` | Git helpers and forgit settings |
 
 Both `~/.zshrc` and `~/.bashrc` source these files.
@@ -467,7 +467,7 @@ Wayland needs log out → log in.
 ```text
 lab-triage | lab-re | lab-android | lab-web | lab-detonate | lab-mcp
 ```
-`lab-detonate.sh capture-up` keeps INetSim logs and captured SMTP/FTP/HTTP-POST data under `/srv/lab/capture` (`inetsim-data/`); the container runs read-only with minimal caps (`LAB_CAPTURE_BIND` overrides `192.168.200.1`). `lab-detonate.sh linux-define` seeds Alpine `nocloud` cloud-init (`DETONATE_LINUX_PASS`, default `detonate`) and powers off cleanly before taking the `clean` snapshot. PolarProxy starts only if its hash matches the one verified at setup. Interactive lab images build with rootless Podman (`lab-capture` builds in rootful Podman so `capture-up`'s `sudo podman run` sees it; `lab-web` uses signed Arch `chromium`; `lab-android` shares persistent `:U` named volumes `lab-android-flutter` and `lab-android-sdk` with `lab-mcp.sh`). On linux-hardened that needs `fuse-overlayfs` (in `pacman.txt`) and the stowed `containers` package (`storage.conf`); `bash scripts/check.sh` reports it under "Podman (rootless)".
+`lab-detonate.sh capture-up` keeps INetSim logs and captured SMTP/FTP/HTTP-POST data under `/srv/lab/capture` (`inetsim-data/`); the container runs read-only with minimal caps (`LAB_CAPTURE_BIND` overrides `192.168.200.1`). `lab-detonate.sh linux-define` seeds Alpine `nocloud` cloud-init (`DETONATE_LINUX_PASS`, default `detonate`) and powers off cleanly before taking the `clean` snapshot. PolarProxy starts only if its hash matches the one verified at setup. Interactive lab images build with rootless Podman (`lab-capture` builds in rootful Podman via `lab-detonate.sh setup` so `capture-up`'s `sudo podman run` sees it; `lab-web` uses signed Arch `chromium`; `lab-android` shares persistent named volumes `lab-android-flutter` and `lab-android-sdk` with `lab-mcp.sh`). On linux-hardened that needs `fuse-overlayfs` (in `pacman.txt`) and the stowed `containers` package (`storage.conf`); `bash scripts/check.sh` reports it under "Podman (rootless)".
 
 **What `./install.sh` runs, in order:**
 ```text

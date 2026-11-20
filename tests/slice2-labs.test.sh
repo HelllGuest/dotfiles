@@ -63,8 +63,9 @@ grep -qE '^\s+chromium \\$' "$ROOT/labs/lab-web/Containerfile" \
   && grep -q 'PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1' "$ROOT/labs/lab-web/Containerfile" \
   || fail "lab-web must use signed Arch chromium (not Playwright Ubuntu-fallback CDN zip)"
 grep -q -- '--executable-path' "$ROOT/labs/lab-web/mcp-playwright.sh" \
-  && grep -q -- '--executable-path' "$ROOT/labs/lab-web/mcp-devtools.sh" \
-  || fail "lab-web MCP wrappers must pass --executable-path for Arch chromium"
+  && grep -q -- '--executablePath' "$ROOT/labs/lab-web/mcp-devtools.sh" \
+  && grep -q 'exec /usr/local/bin/mcp-playwright' "$ROOT/labs/lab-web/mcp-devtools.sh" \
+  || fail "lab-web MCP wrappers must wire Arch chromium path (mcp-devtools delegates to mcp-playwright)"
 ! grep -q 'npx --yes' "$ROOT/labs/lab-web/Containerfile" "$ROOT/labs/lab-web/mcp-playwright.sh" \
   "$ROOT/labs/lab-web/mcp-devtools.sh" "$ROOT/labs/lab-android/mcp-flutter.sh" "$ROOT/labs/lab-android/mcp-adb.sh" \
   || fail "lab MCP/Containerfile scripts must not run npx --yes (downloads unpinned latest)"
@@ -81,30 +82,39 @@ grep -q -- '--cap-add SYS_PTRACE' <<<"$_re" || fail "lab-re needs SYS_PTRACE for
 unset -v _fns _re
 
 # /work is mounted rw into the labs: run the real _lab_work_dir (bash + zsh)
-# against home, its ancestors, hidden config dirs, the dotfiles repo, samples.
-_wd_fn="$(awk '/^_lab_work_dir\(\) \{/{f=1} f; f&&/^}$/{exit}' "$ROOT/scripts/lib/lab-workdir.sh")"
-[[ -n $_wd_fn ]] || fail "could not extract _lab_work_dir"
+# against home, its ancestors, hidden config dirs, the dotfiles repo, samples,
+# and sensitive host/socket paths (/run/user, /var/lib, /opt, whole /tmp, /tmp
+# session socket dirs, any dir holding a socket).
 _wd="$(mktemp -d)"; _wd="$(cd "$_wd" && pwd -P)"
 # Samples live outside the fake home so each refusal rule is tested on its own.
 mkdir -p "$_wd/home/u/.config/x" "$_wd/home/u/dotfiles/stow" "$_wd/home/u/proj/a" \
   "$_wd/srv/lab/samples/case1" "$_wd/home/u/labs/out"
+# A project dir holding a live socket (agent/IDE/tmux style), two levels down.
+mkdir -p "$_wd/home/u/sockproj/run"
+python3 -c 'import socket,sys; socket.socket(socket.AF_UNIX).bind(sys.argv[1])' "$_wd/home/u/sockproj/run/agent.sock"
 for _sh in bash zsh; do
   command -v "$_sh" >/dev/null || continue
   for _case in "home/u:refuse" "home:refuse" ".:refuse" "home/u/.config:refuse" "home/u/.config/x:refuse" \
       "home/u/dotfiles:refuse" "home/u/dotfiles/stow:refuse" "srv/lab:refuse" "srv/lab/samples:refuse" \
-      "srv/lab/samples/case1:refuse" "srv:refuse" \
+      "srv/lab/samples/case1:refuse" "srv:refuse" "home/u/sockproj:refuse" "home/u/sockproj/run:refuse" \
       "home/u/proj:allow" "home/u/proj/a:allow"; do
     _dir="$_wd/${_case%%:*}"; _want=${_case##*:}
     _got="$(cd "$_dir" && HOME="$_wd/home/u" LAB_OUT="$_wd/home/u/labs/out" LAB_SAMPLES="$_wd/srv/lab/samples" \
-      "$_sh" -c "$_wd_fn"$'\n''_lab_work_dir' 2>/dev/null)"
+      "$_sh" -c 'source "$1"; _lab_work_dir' _ "$ROOT/scripts/lib/lab-workdir.sh" 2>/dev/null)"
     if [[ $_want == refuse ]]; then
       [[ $_got == "$_wd/home/u/labs/out" ]] || fail "$_sh: /work must refuse ${_case%%:*} (got $_got)"
     else
       [[ $_got == "$_dir" ]] || fail "$_sh: /work must allow ${_case%%:*} (got $_got)"
     fi
   done
+  for _sysp in /run /run/user/1000 /var/lib /opt /tmp /srv/lab \
+      /tmp/.X11-unix /tmp/.ICE-unix /tmp/tmux-1000 /tmp/tmux-1000/x /tmp/ssh-abc123 /tmp/systemd-private-x; do
+    _r="$(HOME="$_wd/home/u" LAB_SAMPLES="$_wd/srv/lab/samples" \
+      "$_sh" -c 'source "$1"; _lab_path_refusal_reason "$2"' _ "$ROOT/scripts/lib/lab-workdir.sh" "$_sysp")"
+    [[ -n $_r ]] || fail "$_sh: _lab_path_refusal_reason must refuse $_sysp"
+  done
 done
-rm -rf "$_wd"; unset -v _wd _wd_fn _sh _case _dir _want _got
+rm -rf "$_wd"; unset -v _wd _sh _case _dir _want _got _sysp _r
 # One implementation: lab-* wrappers and lab-mcp.sh both use the shared lib, and
 # the wrappers fail closed when it is missing.
 grep -q 'source "$(cd "$(dirname "$0")" && pwd)/lib/lab-workdir.sh"' "$ROOT/scripts/lab-mcp.sh" \
@@ -377,15 +387,23 @@ PY
   [[ "$_n" -eq 1 ]] || fail "rice-setup.sh duplicated CMD_NOTIFY_THRESHOLD in .zshrc.local (count=$_n)"
 )
 
-# Behavioral: agent-run.sh refuses home, ancestors, hidden dirs, dotfiles, samples; allows project dir.
+# Behavioral: agent-run.sh shares lib/lab-workdir.sh; refuses sensitive system/socket
+# paths (/run, /var/lib, /opt, whole /tmp, /tmp session socket dirs, dirs holding
+# a socket), home/hidden/dotfiles/samples; allows project dir.
+grep -q 'source "$(cd "$(dirname "$0")" && pwd)/lib/lab-workdir.sh"' "$ROOT/scripts/agent-run.sh" \
+  || fail "agent-run.sh must source shared scripts/lib/lab-workdir.sh"
 (
   _ar="$(mktemp -d)"; _ar="$(cd "$_ar" && pwd -P)"
   trap 'rm -rf "$_ar"' EXIT
   mkdir -p "$_ar/bin" "$_ar/home/u/.ssh" "$_ar/home/u/dotfiles/sub" "$_ar/home/u/proj/a" "$_ar/srv/lab/samples/case1"
+  mkdir -p "$_ar/home/u/sockproj"
+  python3 -c 'import socket,sys; socket.socket(socket.AF_UNIX).bind(sys.argv[1])' "$_ar/home/u/sockproj/tmux.sock"
   printf '#!/bin/sh\necho PODMAN_OK\n' >"$_ar/bin/podman"
   chmod +x "$_ar/bin/podman"
   for _bad in "$_ar/home/u" "$_ar/home" "$_ar/home/u/.ssh" "$_ar/home/u/dotfiles" "$_ar/home/u/dotfiles/sub" \
-      "$_ar/srv/lab/samples" "$_ar/srv/lab/samples/case1"; do
+      "$_ar/srv/lab/samples" "$_ar/srv/lab/samples/case1" "$_ar/home/u/sockproj" \
+      /run /var/lib /opt /tmp /tmp/.X11-unix "/tmp/tmux-$(id -u)"; do
+    [[ -d "$_bad" ]] || continue
     if PATH="$_ar/bin:$PATH" HOME="$_ar/home/u" LAB_SAMPLES="$_ar/srv/lab/samples" \
         bash "$ROOT/scripts/agent-run.sh" "$_bad" alpine:3.20 >/dev/null 2>&1; then
       fail "agent-run.sh must refuse $_bad"
@@ -458,47 +476,96 @@ _match_any "$ROOT/stow/alacritty/.config/alacritty/theme.toml" \
   "$ROOT"/stow/alacritty/.config/alacritty/themes/*.toml \
   || fail "alacritty/theme.toml drifted from shipped themes"
 unset -f _match_any
-grep -qx 'import = \["theme.toml"\]' "$ROOT/stow/alacritty/.config/alacritty/alacritty.toml" \
-  || fail "alacritty.toml must use relative theme.toml import"
+grep -qx 'import = \["theme.toml", "theme.local.toml"\]' "$ROOT/stow/alacritty/.config/alacritty/alacritty.toml" \
+  || fail "alacritty.toml must import theme.toml and optional theme.local.toml"
+grep -qx 'config-file = ?theme.local.conf' "$ROOT/stow/ghostty/.config/ghostty/config" \
+  || fail "ghostty config must load optional theme.local.conf"
 grep -qx 'save_config_on_exit = false' "$ROOT/stow/btop/.config/btop/btop.conf" \
   || fail "btop.conf must set save_config_on_exit = false (stowed file)"
 (
   _rt="$(mktemp -d)"
   trap 'rm -rf "$_rt"' EXIT
-  mkdir -p "$_rt/fastfetch" "$_rt/btop/themes" "$_rt/ghostty/themes" "$_rt/alacritty/themes" "$_rt/empty" "$_rt/bin"
-  printf '#!/bin/sh\nexit 0\n' >"$_rt/bin/fastfetch"; chmod +x "$_rt/bin/fastfetch"
-  cp "$ROOT"/stow/fastfetch/.config/fastfetch/*.jsonc "$_rt/fastfetch/"
-  cp "$ROOT/stow/btop/.config/btop/btop.conf" "$_rt/btop/"
-  cp "$ROOT"/stow/btop/.config/btop/themes/*.theme "$_rt/btop/themes/"
-  cp "$ROOT/stow/starship/.config/starship.toml" "$_rt/"
-  cp "$ROOT/stow/ghostty/.config/ghostty/theme.conf" "$_rt/ghostty/"
-  cp "$ROOT"/stow/ghostty/.config/ghostty/themes/*.conf "$_rt/ghostty/themes/"
-  cp "$ROOT/stow/alacritty/.config/alacritty/theme.toml" "$_rt/alacritty/"
-  cp "$ROOT"/stow/alacritty/.config/alacritty/themes/*.toml "$_rt/alacritty/themes/"
+  mkdir -p "$_rt/cfg/fastfetch" "$_rt/cfg/btop/themes" "$_rt/cfg/ghostty/themes" "$_rt/cfg/alacritty/themes" "$_rt/state" "$_rt/empty" "$_rt/bin"
+  # Stubs log their arguments: the wrappers must pick the override config.
+  for _c in fastfetch btop; do
+    printf '#!/bin/sh\necho "%s $*" >>"$RICE_LOG"\n' "$_c" >"$_rt/bin/$_c"; chmod +x "$_rt/bin/$_c"
+  done
+  cp "$ROOT"/stow/fastfetch/.config/fastfetch/*.jsonc "$_rt/cfg/fastfetch/"
+  cp "$ROOT/stow/btop/.config/btop/btop.conf" "$_rt/cfg/btop/"
+  cp "$ROOT"/stow/btop/.config/btop/themes/*.theme "$_rt/cfg/btop/themes/"
+  cp "$ROOT/stow/starship/.config/starship.toml" "$_rt/cfg/"
+  cp "$ROOT/stow/ghostty/.config/ghostty/theme.conf" "$_rt/cfg/ghostty/"
+  cp "$ROOT"/stow/ghostty/.config/ghostty/themes/*.conf "$_rt/cfg/ghostty/themes/"
+  cp "$ROOT/stow/alacritty/.config/alacritty/theme.toml" "$_rt/cfg/alacritty/"
+  cp "$ROOT"/stow/alacritty/.config/alacritty/themes/*.toml "$_rt/cfg/alacritty/themes/"
+  export RICE_LOG="$_rt/log"
+  _st="$_rt/state/dotfiles/theme"
+  # _rs <commands>: run in a fresh shell that sourced .shell-functions (like a new terminal).
+  _rs() {
+    env -u STARSHIP_CONFIG XDG_CONFIG_HOME="$_rt/cfg" XDG_STATE_HOME="$_rt/state" PATH="$_rt/bin:$PATH" \
+      "$_sh" -c 'source "$1"; '"$1" _ "$ROOT/stow/zsh/.shell-functions"
+  }
+  _tracked_unchanged() {
+    cmp -s "$ROOT/stow/fastfetch/.config/fastfetch/config.jsonc" "$_rt/cfg/fastfetch/config.jsonc" \
+      && cmp -s "$ROOT/stow/ghostty/.config/ghostty/theme.conf" "$_rt/cfg/ghostty/theme.conf" \
+      && cmp -s "$ROOT/stow/alacritty/.config/alacritty/theme.toml" "$_rt/cfg/alacritty/theme.toml" \
+      && cmp -s "$ROOT/stow/btop/.config/btop/btop.conf" "$_rt/cfg/btop/btop.conf" \
+      && cmp -s "$ROOT/stow/starship/.config/starship.toml" "$_rt/cfg/starship.toml"
+  }
   for _sh in bash zsh; do
     command -v "$_sh" >/dev/null || continue
-    # ff-preset: list, use, traversal rejection
-    _fl="$(XDG_CONFIG_HOME="$_rt" "$_sh" -c 'source "$1"; ff-preset' _ "$ROOT/stow/zsh/.shell-functions")"
+    rm -rf "$_rt/state"; rm -f "$_rt/cfg/ghostty/theme.local.conf" "$_rt/cfg/alacritty/theme.local.toml"
+    cp "$ROOT/stow/starship/.config/starship.toml" "$_rt/cfg/"
+    cp "$ROOT/stow/btop/.config/btop/btop.conf" "$_rt/cfg/btop/"
+    # ff-preset: list, use (saves a name, never touches config.jsonc), ff honours it, reset, traversal
+    _fl="$(_rs 'ff-preset')"
     grep -qx aura-glass <<<"$_fl" && grep -qx gruvbox <<<"$_fl" && grep -qx minimal <<<"$_fl" && grep -qx secops <<<"$_fl" \
       || fail "$_sh: ff-preset list missing presets: $_fl"
-    PATH="$_rt/bin:$PATH" XDG_CONFIG_HOME="$_rt" "$_sh" -c 'source "$1"; ff-preset use minimal >/dev/null' _ "$ROOT/stow/zsh/.shell-functions"
-    cmp -s "$_rt/fastfetch/minimal.jsonc" "$_rt/fastfetch/config.jsonc" || fail "$_sh: ff-preset use minimal failed"
-    ! XDG_CONFIG_HOME="$_rt" "$_sh" -c 'source "$1"; ff-preset ../bad >/dev/null 2>&1' _ "$ROOT/stow/zsh/.shell-functions" \
-      || fail "$_sh: ff-preset must reject traversal"
-    # rice-theme: switch all 5 tools + reject invalid + fail on empty config dir
-    XDG_CONFIG_HOME="$_rt" "$_sh" -c 'source "$1"; rice-theme gruvbox >/dev/null' _ "$ROOT/stow/zsh/.shell-functions"
-    grep -qx "palette = 'gruvbox_dark'" "$_rt/starship.toml" || fail "$_sh: rice-theme gruvbox missed starship"
-    grep -qx 'color_theme = "gruvbox_dark"' "$_rt/btop/btop.conf" || fail "$_sh: rice-theme gruvbox missed btop"
-    cmp -s "$_rt/fastfetch/gruvbox.jsonc" "$_rt/fastfetch/config.jsonc" || fail "$_sh: rice-theme gruvbox missed fastfetch"
-    cmp -s "$_rt/ghostty/themes/gruvbox.conf" "$_rt/ghostty/theme.conf" || fail "$_sh: rice-theme gruvbox missed ghostty"
-    cmp -s "$_rt/alacritty/themes/gruvbox.toml" "$_rt/alacritty/theme.toml" || fail "$_sh: rice-theme gruvbox missed alacritty"
-    XDG_CONFIG_HOME="$_rt" "$_sh" -c 'source "$1"; rice-theme secops >/dev/null' _ "$ROOT/stow/zsh/.shell-functions"
-    grep -qx "palette = 'secops'" "$_rt/starship.toml" || fail "$_sh: rice-theme secops missed starship"
-    XDG_CONFIG_HOME="$_rt" "$_sh" -c 'source "$1"; rice-theme aura-glass >/dev/null' _ "$ROOT/stow/zsh/.shell-functions"
-    grep -qx "palette = 'aura_glass'" "$_rt/starship.toml" || fail "$_sh: rice-theme aura-glass missed starship"
-    ! XDG_CONFIG_HOME="$_rt" "$_sh" -c 'source "$1"; rice-theme ../bad >/dev/null 2>&1' _ "$ROOT/stow/zsh/.shell-functions" \
-      || fail "$_sh: rice-theme must reject invalid theme names"
-    ! XDG_CONFIG_HOME="$_rt/empty" "$_sh" -c 'source "$1"; rice-theme gruvbox >/dev/null 2>&1' _ "$ROOT/stow/zsh/.shell-functions" \
+    _rs 'ff-preset use minimal >/dev/null'
+    [[ "$(cat "$_st/fastfetch")" == minimal ]] || fail "$_sh: ff-preset use must save the preset name"
+    : >"$RICE_LOG"; _rs 'ff'
+    grep -qx "fastfetch --config $_rt/cfg/fastfetch/minimal.jsonc" "$RICE_LOG" || fail "$_sh: ff must use the saved preset: $(cat "$RICE_LOG")"
+    : >"$RICE_LOG"; _rs 'ff -c gruvbox'
+    grep -qx 'fastfetch -c gruvbox' "$RICE_LOG" || fail "$_sh: ff with arguments must pass them through"
+    _rs 'ff-preset reset >/dev/null'
+    : >"$RICE_LOG"; _rs 'ff'
+    grep -qx 'fastfetch ' "$RICE_LOG" || fail "$_sh: ff after reset must run the repo config.jsonc"
+    ! _rs 'ff-preset ../bad >/dev/null 2>&1' || fail "$_sh: ff-preset must reject traversal"
+    # rice-theme: names in state, links for ghostty/alacritty, starship active in this shell
+    _sc="$(_rs 'rice-theme gruvbox >/dev/null; printf %s "${STARSHIP_CONFIG:-}"')"
+    [[ $_sc == "$_st/starship.toml" ]] || fail "$_sh: rice-theme must point STARSHIP_CONFIG at the override (got $_sc)"
+    grep -qx "palette = 'gruvbox_dark'" "$_st/starship.toml" || fail "$_sh: rice-theme gruvbox missed starship"
+    [[ "$(cat "$_st/fastfetch")" == gruvbox && "$(cat "$_st/btop")" == gruvbox_dark ]] \
+      || fail "$_sh: rice-theme gruvbox must save fastfetch/btop names"
+    [[ "$(readlink "$_rt/cfg/ghostty/theme.local.conf")" == themes/gruvbox.conf ]] || fail "$_sh: ghostty theme.local.conf must link to themes/gruvbox.conf"
+    [[ "$(readlink "$_rt/cfg/alacritty/theme.local.toml")" == themes/gruvbox.toml ]] || fail "$_sh: alacritty theme.local.toml must link to themes/gruvbox.toml"
+    : >"$RICE_LOG"; _rs 'btop'
+    grep -qx "btop -c $_st/btop.conf --themes-dir $_rt/cfg/btop/themes" "$RICE_LOG" || fail "$_sh: btop must use the override: $(cat "$RICE_LOG")"
+    grep -qx 'color_theme = "gruvbox_dark"' "$_st/btop.conf" || fail "$_sh: btop override missed color_theme"
+    _tracked_unchanged || fail "$_sh: rice-theme modified a tracked config"
+    # Not frozen: later edits to the stowed files reach the next shell / btop run.
+    echo '# repo-update-marker' >>"$_rt/cfg/starship.toml"
+    echo '# repo-update-marker' >>"$_rt/cfg/btop/btop.conf"
+    _rs 'btop'
+    grep -qx '# repo-update-marker' "$_st/starship.toml" || fail "$_sh: a new shell must rebuild the starship override from the repo file"
+    grep -qx '# repo-update-marker' "$_st/btop.conf" || fail "$_sh: btop must rebuild its override from the repo file"
+    cp "$ROOT/stow/starship/.config/starship.toml" "$_rt/cfg/"
+    cp "$ROOT/stow/btop/.config/btop/btop.conf" "$_rt/cfg/btop/"
+    # A tampered name is ignored (it would reach sed).
+    printf "x'/;e id;#\n" >"$_st/starship"
+    _sc="$(_rs 'printf %s "${STARSHIP_CONFIG:-}"')"
+    [[ -z $_sc ]] || fail "$_sh: an invalid saved palette must be ignored (got $_sc)"
+    _rs 'rice-theme secops >/dev/null'
+    grep -qx "palette = 'secops'" "$_st/starship.toml" || fail "$_sh: rice-theme secops missed starship"
+    # reset: every override gone, repo defaults back, STARSHIP_CONFIG cleared
+    _sc="$(_rs 'rice-theme reset >/dev/null; printf %s "${STARSHIP_CONFIG:-}"')"
+    [[ -z $_sc ]] || fail "$_sh: rice-theme reset must clear STARSHIP_CONFIG"
+    [[ -z "$(ls -A "$_st")" ]] || fail "$_sh: rice-theme reset left state: $(ls -A "$_st")"
+    [[ ! -e $_rt/cfg/ghostty/theme.local.conf && ! -L $_rt/cfg/ghostty/theme.local.conf && ! -L $_rt/cfg/alacritty/theme.local.toml ]] \
+      || fail "$_sh: rice-theme reset must remove the theme.local links"
+    _tracked_unchanged || fail "$_sh: rice-theme reset modified a tracked config"
+    ! _rs 'rice-theme ../bad >/dev/null 2>&1' || fail "$_sh: rice-theme must reject invalid theme names"
+    ! XDG_CONFIG_HOME="$_rt/empty" XDG_STATE_HOME="$_rt/state" "$_sh" -c 'source "$1"; rice-theme gruvbox >/dev/null 2>&1' _ "$ROOT/stow/zsh/.shell-functions" \
       || fail "$_sh: rice-theme must fail when no configs exist"
   done
 )

@@ -336,8 +336,8 @@ lab-android() {
     podman run --rm -it --security-opt no-new-privileges --cap-drop ALL \
         --userns keep-id --user "$(id -u):$(id -g)" --network pasta \
         -e LAB_BADGE="[ANDROID]" \
-        -v "lab-android-flutter:/opt/flutter:U" \
-        -v "lab-android-sdk:/opt/android-sdk:U" \
+        -v "lab-android-flutter:/opt/flutter" \
+        -v "lab-android-sdk:/opt/android-sdk" \
         -v "${samples}:/srv/lab/samples:ro,Z" -v "${out}:/srv/lab/out:Z" \
         -v "${work}:/work:Z" -w /work \
         "${extra[@]}" \
@@ -359,12 +359,65 @@ lab-mcp() {
     bash "${DOTFILES_DIR:-${DOTFILES:-$HOME/dotfiles}}/scripts/lab-mcp.sh" "$@"
 }
 
-# Fastfetch presets: ff-preset (list) | ff-preset <name> (preview) | ff-preset use <name>
+# Theme overrides (rice-theme / ff-preset) stay out of ~/dotfiles: only the
+# chosen names are saved under XDG_STATE_HOME, and the configs used are rebuilt
+# from the stowed files each time, so repo updates still apply. Ghostty and
+# Alacritty load a gitignored theme.local.* link to one of their themes/.
+_rice_state() { printf '%s' "${XDG_STATE_HOME:-$HOME/.local/state}/dotfiles/theme"; }
+# _rice_get <key>: the saved name, only if it is a plain name (it goes into sed).
+_rice_get() {
+    local v
+    v=$(cat -- "$(_rice_state)/$1" 2>/dev/null) || return 1
+    [[ $v =~ ^[a-z0-9_-]+$ ]] || return 1
+    printf '%s' "$v"
+}
+# Starship reads STARSHIP_CONFIG at every prompt; rebuilt at shell start.
+_rice_starship() {
+    local st pal src="${XDG_CONFIG_HOME:-$HOME/.config}/starship.toml"
+    st=$(_rice_state)
+    if pal=$(_rice_get starship) && [[ -f $src ]] && mkdir -p "$st" \
+        && sed "s/^palette = .*/palette = '${pal}'/" "$src" >"$st/starship.toml"; then
+        export STARSHIP_CONFIG="$st/starship.toml"
+    elif [[ ${STARSHIP_CONFIG:-} == "$st/starship.toml" ]]; then
+        unset STARSHIP_CONFIG
+    fi
+    return 0
+}
+_rice_starship
+
+unalias ff btop 2>/dev/null || true
+ff() {
+    local p dir="${XDG_CONFIG_HOME:-$HOME/.config}/fastfetch"
+    if [[ $# -eq 0 ]] && p=$(_rice_get fastfetch) && [[ -f $dir/$p.jsonc ]]; then
+        fastfetch --config "$dir/$p.jsonc"
+    else
+        fastfetch "$@"
+    fi
+}
+
+btop() {
+    local t st src="${XDG_CONFIG_HOME:-$HOME/.config}/btop"
+    st=$(_rice_state)
+    if [[ $# -eq 0 ]] && t=$(_rice_get btop) && [[ -f $src/btop.conf ]] && mkdir -p "$st" \
+        && sed "s/^color_theme = .*/color_theme = \"${t}\"/" "$src/btop.conf" >"$st/btop.conf"; then
+        command btop -c "$st/btop.conf" --themes-dir "$src/themes"
+    else
+        command btop "$@"
+    fi
+}
+
+# Fastfetch presets: ff-preset (list) | ff-preset <name> (preview) | ff-preset use <name> | ff-preset reset
 ff-preset() {
-    local dir="${XDG_CONFIG_HOME:-$HOME/.config}/fastfetch"
+    local dir="${XDG_CONFIG_HOME:-$HOME/.config}/fastfetch" st
+    st=$(_rice_state)
     if [[ $# -eq 0 ]]; then
         find "$dir/" -maxdepth 1 -name '*.jsonc' ! -name 'config.jsonc' -printf '%f\n' 2>/dev/null \
             | sed 's/\.jsonc$//' | sort
+        return 0
+    fi
+    if [[ $1 == reset ]]; then
+        rm -f -- "$st/fastfetch"
+        echo "✓ fastfetch default → repo config.jsonc"
         return 0
     fi
     local action=preview name=$1
@@ -377,8 +430,8 @@ ff-preset() {
     esac
     [[ -f "$dir/$name.jsonc" ]] || { echo "ff-preset: unknown preset '$name' (run 'ff-preset' to list)" >&2; return 1; }
     if [[ $action == use ]]; then
-        cp -f "$dir/$name.jsonc" "$dir/config.jsonc" || return 1
-        echo "✓ fastfetch default → $name"
+        mkdir -p "$st" && printf '%s\n' "$name" >"$st/fastfetch" || return 1
+        echo "✓ fastfetch default (local) → $name"
         _has fastfetch && fastfetch --config "$dir/$name.jsonc"
         return 0
     fi
@@ -387,45 +440,51 @@ ff-preset() {
 }
 
 # Unified theme switcher across fastfetch, btop, starship, ghostty, and alacritty.
-# Usage: rice-theme [aura-glass|gruvbox|secops]
+# Usage: rice-theme [aura-glass|gruvbox|secops|reset]
 rice-theme() {
-    local cfg="${XDG_CONFIG_HOME:-$HOME/.config}"
+    local cfg="${XDG_CONFIG_HOME:-$HOME/.config}" st
+    st=$(_rice_state)
     if [[ $# -eq 0 ]]; then
-        echo "themes: aura-glass | gruvbox | secops"
-        local sp bt
-        sp=$(awk -F"'" '/^palette = /{print $2; exit}' "$cfg/starship.toml" 2>/dev/null || echo "?")
-        bt=$(awk -F'"' '/^color_theme = /{print $2; exit}' "$cfg/btop/btop.conf" 2>/dev/null || echo "?")
-        echo "active: starship=$sp · btop=$bt"
+        echo "themes: aura-glass | gruvbox | secops | reset (back to the repo defaults)"
+        echo "active: starship=$(_rice_get starship || echo default) · btop=$(_rice_get btop || echo default) · fastfetch=$(_rice_get fastfetch || echo default)"
         return 0
     fi
     local name=$1 sp bt
     case "$name" in
+        reset)
+            rm -f -- "$st/fastfetch" "$st/starship" "$st/btop" "$st/starship.toml" "$st/btop.conf" \
+                "$cfg/ghostty/theme.local.conf" "$cfg/alacritty/theme.local.toml" || return 1
+            _rice_starship
+            echo "✓ theme overrides removed: repo defaults apply"
+            return 0
+            ;;
         aura-glass) sp=aura_glass;   bt=aura_glass ;;
         gruvbox)    sp=gruvbox_dark; bt=gruvbox_dark ;;
         secops)     sp=secops;       bt=secops ;;
-        *) echo "rice-theme: unknown theme '$name' (use: aura-glass | gruvbox | secops)" >&2; return 1 ;;
+        *) echo "rice-theme: unknown theme '$name' (use: aura-glass | gruvbox | secops | reset)" >&2; return 1 ;;
     esac
+    mkdir -p "$st" || return 1
     local updated=() rc=0
     if [[ -f "$cfg/fastfetch/$name.jsonc" ]]; then
-        cp -f "$cfg/fastfetch/$name.jsonc" "$cfg/fastfetch/config.jsonc" && updated+=(fastfetch) || rc=1
+        printf '%s\n' "$name" >"$st/fastfetch" && updated+=(fastfetch) || rc=1
     fi
     if [[ -f "$cfg/btop/btop.conf" && -f "$cfg/btop/themes/$bt.theme" ]]; then
-        sed -i --follow-symlinks "s/^color_theme = .*/color_theme = \"${bt}\"/" "$cfg/btop/btop.conf" && updated+=(btop) || rc=1
+        printf '%s\n' "$bt" >"$st/btop" && updated+=(btop) || rc=1
     fi
     if [[ -f "$cfg/starship.toml" ]]; then
-        sed -i --follow-symlinks "s/^palette = .*/palette = '${sp}'/" "$cfg/starship.toml" && updated+=(starship) || rc=1
+        printf '%s\n' "$sp" >"$st/starship" && _rice_starship && updated+=(starship) || rc=1
     fi
     if [[ -f "$cfg/ghostty/themes/$name.conf" ]]; then
-        cp -f "$cfg/ghostty/themes/$name.conf" "$cfg/ghostty/theme.conf" && updated+=(ghostty) || rc=1
+        ln -sfn "themes/$name.conf" "$cfg/ghostty/theme.local.conf" && updated+=(ghostty) || rc=1
     fi
     if [[ -f "$cfg/alacritty/themes/$name.toml" ]]; then
-        cp -f "$cfg/alacritty/themes/$name.toml" "$cfg/alacritty/theme.toml" && updated+=(alacritty) || rc=1
+        ln -sfn "themes/$name.toml" "$cfg/alacritty/theme.local.toml" && updated+=(alacritty) || rc=1
     fi
     if (( ${#updated[@]} == 0 )); then
         echo "rice-theme: no stowed configs found under $cfg" >&2
         return 1
     fi
-    echo "✓ theme → $name (${updated[*]})"
+    echo "✓ theme → $name (${updated[*]}) [local override; repo clean; 'rice-theme reset' undoes]"
     echo "  hint: Ghostty reload Ctrl+Shift+, · Alacritty/Starship reload automatically"
     return "$rc"
 }
