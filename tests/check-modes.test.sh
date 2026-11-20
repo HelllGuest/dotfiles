@@ -47,6 +47,6 @@ rc=0; out="$(run T14S_INSTALLER_DIR="$T/nowhere")" || rc=$?
 # Default mode keeps install.sh's contract and includes the follow-ups.
 grep -q 'bash scripts/check.sh \\' "$ROOT/install.sh" || fail "install.sh must still call check.sh (default mode)"
 grep -qx 'stage_a_followups' "$ROOT/scripts/check.sh" "$ROOT"/scripts/check.d/*.sh || fail "default mode must run stage_a_followups"
-grep -q 'gdm-shell-theme.sh" status' "$ROOT/scripts/check.sh" "$ROOT"/scripts/check.d/*.sh || fail "check.sh must verify the GDM greeter theme"
+grep -q 'theme-setup.sh" --check' "$ROOT/scripts/check.sh" "$ROOT"/scripts/check.d/*.sh || fail "check.sh must verify the theme (Aura Glass --verify, incl. the login screen)"
 
 echo "PASS: check-modes.test.sh"

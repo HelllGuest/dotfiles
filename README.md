@@ -162,7 +162,7 @@ Animated GNOME dock ([Dash2Dock Lite](https://github.com/icedman/dash2dock-lite)
 bash scripts/install-dash2dock.sh
 ```
 
-UUID `dash2dock-lite@icedman.github.com` is in `gnome/extensions.txt` and `gnome/dconf/user.conf`. EGO zip still declares Shell ≤50; the install script patches `metadata.json` for **Shell 51** (unofficial — may still break). Other non-AUR zips (blur, caffeine, clipboard) install via `scripts/fetch-gnome-extensions.sh` (`GNOME_EXT_FETCH=1 bash scripts/install-extensions.sh`). Clipboard builds from a pinned GitHub commit and needs `tsc` (prefers pacman `typescript`; else non-interactive `npx --yes`). **Wayland:** log out → log in (`Meta.restart` is disabled). Prefs: `gnome-extensions prefs dash2dock-lite@icedman.github.com`.
+UUID `dash2dock-lite@icedman.github.com` is in `gnome/extensions.txt` and `gnome/dconf/user.conf`. EGO zip still declares Shell ≤50; the install script patches `metadata.json` for **Shell 51** (unofficial — may still break). Caffeine installs from EGO via `scripts/fetch-gnome-extensions.sh` (`GNOME_EXT_FETCH=1 bash scripts/install-extensions.sh`); Blur My Shell and the clipboard / tray extensions come from Aura Glass (`scripts/theme-setup.sh`). **Wayland:** log out → log in (`Meta.restart` is disabled). Prefs: `gnome-extensions prefs dash2dock-lite@icedman.github.com`.
 
 ### Shortcuts
 
@@ -456,9 +456,9 @@ GNOME_EXT_FETCH=1 bash scripts/install-extensions.sh
 # or: bash scripts/fetch-gnome-extensions.sh
 ```
 
-Installs EGO blur/caffeine, builds pinned `gnome-clipboard` (needs `tsc`:
-pacman `typescript` preferred, else `npx --yes`), then Dash2Dock. Safe to
-re-run. Enable via `install-extensions.sh`; Wayland needs log out → log in.
+Installs EGO Caffeine, then Dash2Dock (Blur My Shell comes from Aura Glass,
+see **Theme** below). Safe to re-run. Enable via `install-extensions.sh`;
+Wayland needs log out → log in.
 
 **Lab commands (after `labs-setup.sh` / configure SETUP_LABS):**
 ```text
@@ -479,7 +479,7 @@ cleanup-input-overrides.sh
 → tmp-semgrep-cleanup.timer enable (user unit) → login shell → zsh (usermod, if not already)
 → fnm install/default 22 → atuin import → zram-setup.sh
 → gnome-session-setup.sh → location-setup.sh → gnome-console-setup.sh
-→ gdm-setup.sh → theme-setup.sh (Orchis/Tela/Bibata + GDM) → git-setup.sh → nvim-setup.sh → headroom-setup.sh
+→ gdm-setup.sh → theme-setup.sh (Aura Glass + GDM) → git-setup.sh → nvim-setup.sh → headroom-setup.sh
 → sync-agent-skills.sh → install-coding-agents.sh (OpenCode + Kimi + MCP; if npm)
 → install-caveman.sh (if npm) → install-ponytail.sh (if node) → install-android-ui-skills.sh (if npx)
 → install-ghidra-cli.sh (if ghidra)
@@ -517,18 +517,29 @@ bash scripts/check.sh --all      # both
 or next to this repo. Its FAILs count only on the T14s Gen 3 AMD (21CQ/21CR), the
 hardware `host-check.sh` targets; on other hosts they are shown as informational.
 
-**Theme:** Orchis-Dark (GTK3, GTK4/libadwaita via `~/.config/gtk-4.0`, Shell via
-User Themes), Tela-blue-dark icons, Bibata-Modern-Ice cursor, blue accent; also
-for Flatpak apps (`flatpak override --user`) and the GDM login screen
-(`scripts/gdm-shell-theme.sh` rebuilds `gnome-shell-theme.gresource` from the
-stock copy after a headless GNOME Shell in GDM mode loads the stylesheet without
-CSS errors; greeter selectors the theme predates get stock layout rules (sizes,
-spacing, never colours); a pacman hook re-applies it, with the same check, after gnome-shell
-upgrades). `theme-sync.service` (user) refreshes the Flatpak theme copy after
-orchis-theme upgrades; `check.sh` fails when it is stale. Login
-screen broken? Ctrl+Alt+F3, then `sudo gdm-shell-theme revert && sudo systemctl
-restart gdm`. Keep the stock greeter: `SKIP_GDM_SHELL_THEME=1`. GNOME Tweaks and
-Extension Manager are installed from `pacman.txt`.
+**Theme:** [Aura Glass](https://github.com/DevWebeloper/aura-glass) (MIT), a
+frosted-glass Shell + GTK4/libadwaita + GTK3 theme with real blur.
+`scripts/theme-setup.sh` fetches it at a pinned commit (`AURA_GLASS_COMMIT`,
+v0.4.4), refuses any other commit, and runs its installer non-interactively:
+`--full --accent blue --no-update-check -y --gdm` on the first install, then
+just `-y`, so choices made in the settings app survive `./install.sh` re-runs.
+That gives its patched Blur My Shell, Custom OSD and helper, the Full extension pack (Status Tray, Tiling
+Assistant, Hot Edge, Kiwi Menu, Copyous, Wiggly, Restart To), Colloid icons,
+the Adwaita pointer, Flatpak access, the **Aura Glass** settings app and a
+blurred GDM login screen (`sudo`). Aura Glass owns the theme, icon, pointer,
+User Themes and Blur My Shell keys, so `gnome/dconf/*.conf` leave them out and
+`backup-gsettings.sh` drops them from snapshots. The first run also removes the
+previous Orchis/Tela/Bibata setup (greeter gresource + pacman hook,
+`theme-sync.service`, the user theme copy and its `~/.config/gtk-4.0` links).
+`check.sh` runs Aura Glass's own `--verify`. Upgrade: bump
+`AURA_GLASS_VERSION` + `AURA_GLASS_COMMIT` together, not the settings app's
+Install button (it moves the checkout off the pin; `check.sh` fails and the
+next run moves it back). The pin covers Aura Glass and what it builds (Blur My
+Shell, Custom OSD, Colloid); the 7 Full-pack extensions come from
+extensions.gnome.org at their current Shell 51 release. Undo: `bash
+~/.cache/dotfiles/aura-glass/uninstall.sh`. Keep the stock greeter:
+`SKIP_AURA_GDM=1`. GNOME Tweaks and Extension Manager are installed from
+`pacman.txt`.
 
 **Command-finished notifications:** kitty (`notify_on_cmd_finish`), Ghostty
 (`notify-on-command-finish`) and GNOME Console (via `vte.sh`) notify natively when
@@ -572,7 +583,7 @@ Key runtime dependencies (`scripts/check.sh` asserts binaries, shell tools, syml
 
 **GNOME dock:** Dash2Dock Animated via `scripts/install-dash2dock.sh` (EGO; listed in `gnome/extensions.txt`)
 
-**AUR** (via `install-aur.sh`, bootstraps `paru` if needed): `blesh-git`, `forgit`, `gnome-shell-extension-just-perfection-desktop`, `vscodium-bin` (settings in `stow/vscode/`), `flutter-bin`, `cursor-bin`, `antigravity-ide`, `tela-icon-theme`, `bibata-cursor-theme-bin`
+**AUR** (via `install-aur.sh`, bootstraps `paru` if needed): `blesh-git`, `forgit`, `gnome-shell-extension-just-perfection-desktop`, `vscodium-bin` (settings in `stow/vscode/`), `flutter-bin`, `cursor-bin`, `antigravity-ide`
 
 **Flatpaks** (via `install-flatpaks.sh`): Brave, Zen, Google Chrome, LibreWolf, Proton VPN, Android Studio, Sticky Notes. Chrome may be `--system` or `--user`; both satisfy `check.sh` / hardening presence checks. Browser telemetry debloat: `scripts/browser-hardening.sh` (Chrome = `chromium-base` + `chrome-extra`, which turns off Google AI features (AI Mode, Help Me Write, Gemini on pages, on-device model download); Brave = base + `brave-extra`; `check.sh` fails if the deployed Chrome/Brave policy differs from the repo; verify in `chrome://policy` / `brave://policy`; Zen `user.js` per real profile + Flatpak `systemconfig` + `/etc/firefox/policies` for native; LibreWolf upstream + `librewolf.overrides.cfg`). Launch Zen once before re-running hardening if profiles are new. `/etc` policy paths need sudo.
 

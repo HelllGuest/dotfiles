@@ -35,88 +35,11 @@ install_ego_zip() {
     rm -rf "$tmp"
 }
 
-patch_shell_version() {
-    local meta="$1" ver="$2"
-    [[ -f "$meta" ]] || return 0
-    python3 - "$meta" "$ver" <<'PY'
-import json, sys
-path, ver = sys.argv[1], sys.argv[2]
-with open(path, encoding="utf-8") as f:
-    meta = json.load(f)
-sv = list(meta.get("shell-version") or [])
-if ver not in sv:
-    sv.append(ver)
-    meta["shell-version"] = sv
-    with open(path, "w", encoding="utf-8") as f:
-        json.dump(meta, f, indent=2)
-        f.write("\n")
-    print(f"patched {path} shell-version ← {ver}")
-PY
-}
-
-install_gnome_clipboard() {
-    local uuid="gnome-clipboard@b00f.github.io"
-    local tmp src zip dir got
-    # Pin commit + zip digest (bump together). Floating main is refused.
-    local ref="${GNOME_CLIPBOARD_REF:-6eca59f2efd9441df3bfbdfc27df0ce35d16b881}"
-    local sha="${GNOME_CLIPBOARD_SHA256:-d56f73e11e070035971b0d51ca5139296d4ac918e720b3724d8782668f9f6988}"
-    tmp="$(mktemp -d)"
-    info "GitHub build ${uuid} @ ${ref:0:12}"
-    "$CURL_BIN" -fsSL -o "$tmp/src.zip" \
-        "https://github.com/b00f/gnome-clipboard/archive/${ref}.zip"
-    command -v sha256sum >/dev/null 2>&1 || die "sha256sum required"
-    got="$(sha256sum "$tmp/src.zip" | awk '{print $1}')"
-    [[ "$got" == "$sha" ]] \
-        || die "gnome-clipboard SHA-256 mismatch (got $got want $sha). If you bumped GNOME_CLIPBOARD_REF, refresh GNOME_CLIPBOARD_SHA256."
-    unzip -qo "$tmp/src.zip" -d "$tmp"
-    src="$(find "$tmp" -maxdepth 1 -type d -name 'gnome-clipboard-*' | head -1)"
-    [[ -n "$src" ]] || die "gnome-clipboard source tree missing"
-    # Upstream transpile.sh falls back to bare `npx -p typescript tsc` (prompts;
-    # hangs headless CI/VM). Prefer pacman/system tsc; else shim with npx --yes.
-    export npm_config_yes=true NPM_CONFIG_YES=true
-    local tsc_shim_dir=""
-    if ! command -v tsc >/dev/null 2>&1; then
-        if command -v pacman >/dev/null 2>&1; then
-            sudo pacman -S --needed --noconfirm typescript 2>/dev/null || true
-        fi
-    fi
-    if ! command -v tsc >/dev/null 2>&1; then
-        command -v npx >/dev/null 2>&1 || die "tsc/npx missing — install typescript or node"
-        tsc_shim_dir="$(mktemp -d)"
-        cat >"$tsc_shim_dir/tsc" <<'EOF'
-#!/usr/bin/env bash
-exec npx --yes -p typescript tsc "$@"
-EOF
-        chmod +x "$tsc_shim_dir/tsc"
-        PATH="$tsc_shim_dir:$PATH"
-        export PATH
-    fi
-    make -C "$src" build
-    zip="$src/${uuid}.shell-extension.zip"
-    [[ -f "$zip" ]] || die "clipboard zip missing after build"
-
-    dir="$EXT_ROOT/$uuid"
-    rm -rf "$dir"
-    mkdir -p "$dir"
-    unzip -qo "$zip" -d "$dir"
-    patch_shell_version "$dir/metadata.json" "51"
-    if [[ -d "$dir/schemas" ]]; then
-        glib-compile-schemas "$dir/schemas"
-    fi
-    find "$dir" -type d -exec chmod 755 {} +
-    find "$dir" -type f -exec chmod 644 {} +
-    [[ -f "$dir/extension.js" ]] || die "clipboard extension.js missing after install"
-    rm -rf "$tmp" ${tsc_shim_dir:+"$tsc_shim_dir"}
-}
-
 mkdir -p "$EXT_ROOT"
 
-# Official Shell-51 EGO builds
-install_ego_zip "blur-my-shell@aunetx" "${BLUR_MY_SHELL_TAG:-75939}" "Blur my Shell"
+# Official Shell-51 EGO build. Blur My Shell is not fetched here: Aura Glass
+# (scripts/theme-setup.sh) builds its own patched copy into the same directory.
 install_ego_zip "caffeine@patapon.info" "${CAFFEINE_TAG:-76057}" "Caffeine"
-
-# Clipboard: EGO lags; build from GitHub main
-install_gnome_clipboard
 
 # Dash2Dock: EGO ≤50 metadata; install script patches 51 (unofficial)
 bash "$REPO_ROOT/scripts/install-dash2dock.sh"

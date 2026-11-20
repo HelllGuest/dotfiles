@@ -53,12 +53,8 @@ grep -q 'ac8057374ec1b5cabb78ea2d08b2ed890d21d156a42b1ac23357fd049edc08c5' \
   "$ROOT/scripts/install-obscura.sh" || fail "install-obscura.sh missing stealth x86_64 SHA-256 pin"
 grep -q 'sha256sum' "$ROOT/scripts/install-obscura.sh" \
   || fail "install-obscura.sh must verify SHA-256 before install"
-grep -q 'GNOME_CLIPBOARD_REF:-6eca59f2efd9441df3bfbdfc27df0ce35d16b881' \
-  "$ROOT/scripts/fetch-gnome-extensions.sh" || fail "gnome-clipboard commit pin missing"
-grep -q 'd56f73e11e070035971b0d51ca5139296d4ac918e720b3724d8782668f9f6988' \
-  "$ROOT/scripts/fetch-gnome-extensions.sh" || fail "gnome-clipboard SHA-256 pin missing"
-grep -q 'npx --yes' "$ROOT/scripts/fetch-gnome-extensions.sh" \
-  || fail "fetch-gnome-extensions must use non-interactive npx --yes for tsc shim"
+! grep -q '^install_ego_zip "blur-my-shell' "$ROOT/scripts/fetch-gnome-extensions.sh" \
+  || fail "fetch-gnome-extensions must not fetch Blur My Shell (Aura Glass builds its own)"
 grep -q 'GIT_SETUP_NONINTERACTIVE' "$ROOT/scripts/git-setup.sh" \
   || fail "git-setup must support GIT_SETUP_NONINTERACTIVE"
 grep -q 'CONFIGURE_UI' "$ROOT/scripts/configure.sh" \

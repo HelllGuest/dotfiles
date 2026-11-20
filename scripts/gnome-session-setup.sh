@@ -33,7 +33,8 @@ if [[ -f "$REPO_ROOT/scripts/cleanup-input-overrides.sh" ]]; then
   bash "$REPO_ROOT/scripts/cleanup-input-overrides.sh" || true
 fi
 
-# Fetch Dash2Dock / clipboard / blur / caffeine, then enable extensions.txt
+# Fetch Dash2Dock / Caffeine, then enable extensions.txt (Blur My Shell and the
+# Full-pack extensions come from Aura Glass: scripts/theme-setup.sh)
 if [[ -f "$REPO_ROOT/scripts/install-extensions.sh" ]]; then
   echo "→ Fetching/enabling GNOME extensions..."
   GNOME_EXT_FETCH=1 bash "$REPO_ROOT/scripts/install-extensions.sh" || true

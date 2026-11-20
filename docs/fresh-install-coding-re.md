@@ -209,8 +209,8 @@ bash scripts/usbguard-setup.sh           # opt-in USB allowlist
 bash scripts/dnscrypt-setup.sh           # opt-in encrypted DNS (NM global DNS; tailnet → MagicDNS)
 ```
 
-Desktop look: `./install.sh` applies Orchis-Dark + Tela-blue-dark + Bibata-Modern-Ice
-(session, libadwaita and Flatpak apps, GDM) via `scripts/theme-setup.sh`; see
+Desktop look: `./install.sh` applies Aura Glass (pinned; shell, libadwaita and
+Flatpak apps, GDM) via `scripts/theme-setup.sh`; see
 [README — install order](../README.md). zsh becomes the login shell.
 
 Packages: `pacman-contrib`, `mat2`, `perl-image-exiftool`, `bleachbit`,

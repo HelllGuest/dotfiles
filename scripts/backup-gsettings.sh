@@ -29,7 +29,21 @@ ENFORCED = {
 # geolocation for night light); never written to the tracked file.
 DROPPED = {
     "org/gnome/settings-daemon/plugins/color": ["night-light-last-coordinates"],
+    # Owned by Aura Glass (scripts/theme-setup.sh): a restored snapshot must not
+    # fight its installer over the theme, icons or pointer.
+    "org/gnome/desktop/interface": ["gtk-theme", "icon-theme", "cursor-theme", "cursor-size"],
 }
+# Whole trees Aura Glass writes (Blur My Shell pipelines, its OSD and extension
+# presets, the User Themes name); a stale copy would undo its settings.
+DROPPED_TREES = (
+    "org/gnome/shell/extensions/user-theme",
+    "org/gnome/shell/extensions/blur-my-shell",
+    "org/gnome/shell/extensions/custom-osd",
+    "org/gnome/shell/extensions/hotedge",
+    "org/gnome/shell/extensions/status-tray",
+    "org/gnome/shell/extensions/tiling-assistant",
+    "org/gnome/shell/extensions/wiggly",
+)
 path = sys.argv[1]
 conf = configparser.ConfigParser(interpolation=None, strict=False, delimiters=("=",))
 conf.optionxform = str  # dconf keys and paths are case-sensitive
@@ -43,6 +57,9 @@ for section, keys in DROPPED.items():
     for key in keys:
         if conf.has_section(section):
             conf.remove_option(section, key)
+for section in conf.sections():
+    if any(section == t or section.startswith(t + "/") for t in DROPPED_TREES):
+        conf.remove_section(section)
 with open(path, "w", encoding="utf-8") as fh:
     conf.write(fh, space_around_delimiters=False)
 PY

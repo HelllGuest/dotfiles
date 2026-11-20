@@ -289,8 +289,8 @@ if [ -f "scripts/gdm-setup.sh" ]; then
     run_step "GDM setup" bash scripts/gdm-setup.sh
 fi
 
-# 3.2a Theme: Orchis-Dark + Tela-blue-dark + Bibata-Modern-Ice for the session,
-# libadwaita apps (~/.config/gtk-4.0), Flatpaks and the GDM login screen.
+# 3.2a Theme: Aura Glass (pinned) for the shell, GTK4/libadwaita + GTK3 apps,
+# Flatpaks and the GDM login screen; removes the previous theme setup once.
 if [ -f "scripts/theme-setup.sh" ]; then
     run_step "Theme setup" bash scripts/theme-setup.sh
 fi

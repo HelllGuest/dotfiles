@@ -34,7 +34,6 @@ gnome-console
 gnome-shell
 gnome-shell-extensions
 # Moved from aur.txt: now in extra (no longer in the AUR)
-gnome-shell-extension-appindicator
 gnome-shell-extension-vitals
 curlie
 gnome-software
@@ -46,10 +45,20 @@ gnome-characters
 # Pinned in the dock (favorite-apps); explicit so they are never missing
 nautilus
 gnome-text-editor
-# Theme: Orchis-Dark GTK3/GTK4/Shell (scripts/theme-setup.sh). Icons + cursor
-# (Tela, Bibata) are AUR. python-gobject: gdm-shell-theme.sh reads gresources.
-orchis-theme
+# Theme: Aura Glass (scripts/theme-setup.sh runs its pinned installer). Its
+# build + runtime needs: sassc (theme CSS), gettext/libxml2/unzip (Blur My Shell
+# and extension builds), python-gobject/python-cairo/libadwaita (settings app
+# + setup window), libgda6 (Copyous), imagemagick/python-pillow (GDM blur).
 python-gobject
+python-cairo
+libadwaita
+sassc
+gettext
+libxml2
+unzip
+libgda6
+imagemagick
+python-pillow
 # gnome-shell CalendarServer needs libecal/libedataserver
 evolution-data-server
 # Wi-Fi regulatory.db (dmesg -2 without this)

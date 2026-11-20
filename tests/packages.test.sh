@@ -7,7 +7,7 @@ fail() { echo "FAIL: $*" >&2; exit 1; }
 list() { sed -e 's/#.*//' -e 's/[[:space:]]//g' -e '/^$/d' "$ROOT/packages/$1"; }
 
 # Moved to extra (gone from the AUR): must be repo installs, not AUR builds.
-for p in curlie gnome-shell-extension-appindicator gnome-shell-extension-vitals; do
+for p in curlie gnome-shell-extension-vitals; do
   list pacman.txt | grep -qx "$p" || fail "pacman.txt must include $p (official extra)"
   ! list aur.txt | grep -qx "$p" || fail "aur.txt must not list $p (official extra)"
 done
