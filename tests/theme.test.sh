@@ -118,6 +118,8 @@ ln -s ../theme-sync.service "$H/.config/systemd/user/default.target.wants/theme-
 : >"$H/.local/share/dotfiles/theme-setup.sh"
 for f in gtk.css assets; do ln -s "$H/.local/share/themes/Orchis-Dark/gtk-4.0/$f" "$H/.config/gtk-4.0/$f"; done
 echo 'mine' >"$H/.config/gtk-4.0/gtk-dark.css"
+mkdir -p "$H/.local/share/gnome-shell/extensions/gnome-clipboard@b00f.github.io" \
+  "$H/.local/share/gnome-shell/extensions/caffeine@patapon.info"
 run_ts() { HOME="$H" XDG_CACHE_HOME="" XDG_DATA_HOME="" XDG_CONFIG_HOME="" XDG_RUNTIME_DIR="$T/none" \
   DBUS_SESSION_BUS_ADDRESS="${TS_BUS-unix:path=/fake}" THEME_OLD_GDM_BIN="$T/old-gdm" THEME_OLD_GDM_HOOK="$T/old-hook" \
   PATH="$B:$PATH" bash "$TS" "$@"; }
@@ -144,6 +146,9 @@ grep -qx "sudo $T/old-gdm revert" "$T/sudo.log" || fail "must revert the old Orc
 [[ ! -e $H/.local/share/themes/Orchis-Dark ]] || fail "the Orchis user copy must be removed"
 [[ ! -L $H/.config/gtk-4.0/gtk.css && ! -L $H/.config/gtk-4.0/assets ]] || fail "links into Orchis must be removed"
 [[ $(cat "$H/.config/gtk-4.0/gtk-dark.css") == mine ]] || fail "a real user gtk-dark.css must be kept"
+[[ ! -e $H/.local/share/gnome-shell/extensions/gnome-clipboard@b00f.github.io ]] \
+  || fail "the old dotfiles-built gnome-clipboard extension must be removed"
+[[ -d $H/.local/share/gnome-shell/extensions/caffeine@patapon.info ]] || fail "other extensions must be left alone"
 run_ts --check >/dev/null || fail "--check must pass right after setup"
 
 # Re-run: nothing old left, so no second revert; installer runs again.
@@ -164,7 +169,12 @@ rc=0; out="$(GIT_HEAD=deadbeef run_ts --check)" || rc=$?
 : >"$T/old-hook"
 rc=0; out="$(run_ts --check)" || rc=$?
 [[ $rc -eq 1 && $out == *'old Orchis GDM hook'* ]] || fail "--check must flag the old hook (rc=$rc): $out"
-rm -f "$T/old-hook"
+# Hook left without its root-owned copy: the next run removes it, so --check can pass again.
+: >"$T/old-hook"; : >"$T/sudo.log"
+run_ts >/dev/null 2>&1 || fail "run with an orphaned old hook failed"
+grep -qx "sudo rm -f $T/old-hook" "$T/sudo.log" && [[ ! -e $T/old-hook ]] \
+  || fail "an orphaned old GDM hook must be removed as root: $(cat "$T/sudo.log")"
+run_ts --check >/dev/null || fail "--check must pass once the orphaned hook is gone"
 
 # First install with SKIP_AURA_GDM=1: --no-gdm only (not --gdm as well).
 mv "$H/.config/aura-glass" "$T/aura-conf"; : >"$T/aura.log"

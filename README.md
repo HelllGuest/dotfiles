@@ -634,7 +634,7 @@ We take a "quiet by default" approach:
 | No inbound / wrong default zone | firewalld zones not applied or default ≠ `drop` | `bash scripts/firewalld-lab-zones.sh`; `sudo firewall-cmd --get-default-zone` |
 | `virbr-malware` listed under `libvirt` / `block` | Pre-`lab-malware` bind left over | [firewalld howto](#how-to-firewalld-lab-zones--lab-malware); confirm iface + `192.168.200.0/24` |
 | `INVALID_ZONE: lab-malware` | Zone never created on this host | Same as above (`lib/lab-malware-zone.sh`) |
-| Stage B VM hangs on Name/Email or `npx` prompt | Interactive git / clipboard build on serial | Pull fixes; harness sets `GIT_SETUP_NONINTERACTIVE` + non-interactive `tsc` |
+| Stage B VM hangs on Name/Email prompt | Interactive git setup on serial | Pull fixes; harness sets `GIT_SETUP_NONINTERACTIVE` |
 | `DOTFILES_STAGEB_RESULT=PASS_HEADLESS` | Install failed only on checks that need a desktop session / launched apps | Expected on a headless VM; the guest log lists each ✗ |
 | SSH blocked after lab-zones | drop zone has no 22/tcp | `sudo firewall-cmd --permanent --add-service=ssh && sudo firewall-cmd --reload` (only if you need SSH) |
 | Spoof location sync does nothing | `vpn-location-sync` failed under `pkexec` | `bash scripts/location-setup.sh`; panel → Sync spoofed location |

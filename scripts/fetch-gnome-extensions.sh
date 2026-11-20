@@ -10,7 +10,6 @@ EXT_ROOT="${XDG_DATA_HOME:-$HOME/.local/share}/gnome-shell/extensions"
 CURL_BIN="${GNOME_EXT_CURL:-/usr/bin/curl}"
 EGO_BASE="https://extensions.gnome.org/download-extension"
 
-die() { echo "error: $*" >&2; exit 1; }
 info() { echo "→ $*"; }
 
 install_ego_zip() {

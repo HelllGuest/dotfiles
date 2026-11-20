@@ -234,7 +234,7 @@ lspci -nnk -d 10de: | grep -A2 'Kernel driver'   # expect: nvidia (not nouveau)
 prime-run nvidia-smi -L
 ```
 
-`git-setup.sh` / clipboard fetch stay noninteractive when stdin is not a TTY
+`git-setup.sh` and the extension fetch stay noninteractive when stdin is not a TTY
 (see README [git-setup](../README.md#how-to-git-setupsh-identity--hooks) and
 [extensions](../README.md#how-to-gnome-extension-zips-fetch-gnome-extensionssh) howtos).
 

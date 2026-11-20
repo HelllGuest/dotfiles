@@ -92,6 +92,10 @@ at_pin || die "aura-glass checkout is not at $AURA_GLASS_COMMIT — refusing to 
 if [[ -e $OLD_GDM_BIN ]]; then
     echo "→ Restoring the stock GDM stylesheet (old Orchis greeter + pacman hook)..."
     sudo "$OLD_GDM_BIN" revert
+elif [[ -e $OLD_GDM_HOOK ]]; then
+    # Hook without its root-owned copy: it can only fail on the next upgrade.
+    echo "→ Removing the orphaned old GDM theme pacman hook..."
+    sudo rm -f "$OLD_GDM_HOOK"
 fi
 unit_dir="$CONFIG_HOME/systemd/user"
 if [[ -e $unit_dir/theme-sync.service || -L $unit_dir/default.target.wants/theme-sync.service ]]; then
@@ -110,9 +114,12 @@ for f in gtk.css gtk-dark.css assets; do
         rm -f "$dst"
     fi
 done
-for p in orchis-theme tela-icon-theme bibata-cursor-theme-bin; do
+# The dotfiles-built clipboard extension (replaced by Copyous in the Full pack).
+rm -rf "$DATA_HOME/gnome-shell/extensions/gnome-clipboard@b00f.github.io"
+# Packages are pacman's to remove: AppIndicator is replaced by Status Tray.
+for p in orchis-theme tela-icon-theme bibata-cursor-theme-bin gnome-shell-extension-appindicator; do
     if pacman -Q "$p" >/dev/null 2>&1; then
-        echo "○ old theme package still installed: $p (sudo pacman -Rns $p)"
+        echo "○ replaced package still installed: $p (sudo pacman -Rns $p)"
     fi
 done
 
