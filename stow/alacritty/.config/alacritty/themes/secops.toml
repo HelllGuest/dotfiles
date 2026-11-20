@@ -1,0 +1,32 @@
+# SecOps Frost — Alacritty
+[colors.primary]
+background = "#090d16"
+foreground = "#ecfeff"
+
+[colors.cursor]
+text = "#090d16"
+cursor = "#34d399"
+
+[colors.selection]
+text = "#f0fdfa"
+background = "#1e293b"
+
+[colors.normal]
+black = "#090d16"
+red = "#fb7185"
+green = "#34d399"
+yellow = "#fbbf24"
+blue = "#38bdf8"
+magenta = "#818cf8"
+cyan = "#5eead4"
+white = "#cbd5e1"
+
+[colors.bright]
+black = "#475569"
+red = "#fda4af"
+green = "#6ee7b7"
+yellow = "#fde68a"
+blue = "#7dd3fc"
+magenta = "#a5b4fc"
+cyan = "#99f6e4"
+white = "#f8fafc"

@@ -1,0 +1,162 @@
+{
+    "$schema": "https://github.com/fastfetch-cli/fastfetch/raw/dev/doc/json_schema.json",
+    "logo": {
+        "type": "small",
+        "source": "arch_small",
+        "padding": {
+            "top": 2,
+            "left": 1,
+            "right": 3
+        },
+        "color": {
+            "1": "38;2;94;234;212",
+            "2": "38;2;56;189;248"
+        }
+    },
+    "display": {
+        "separator": "  ",
+        "color": {
+            "keys": "38;2;94;234;212",
+            "title": "38;2;226;232;240",
+            "separator": "38;2;71;85;105"
+        },
+        "key": {
+            "width": 17
+        },
+        "bar": {
+            "char": {
+                "elapsed": "━",
+                "total": "─"
+            },
+            "border": {
+                "left": "",
+                "right": ""
+            },
+            "color": {
+                "elapsed": "auto",
+                "total": "38;2;51;65;85"
+            },
+            "width": 12
+        },
+        "percent": {
+            "type": 3,
+            "ndigits": 0,
+            "color": {
+                "green": "38;2;94;234;212",
+                "yellow": "38;2;252;211;77",
+                "red": "38;2;248;113;113"
+            }
+        }
+    },
+    "modules": [
+        {
+            "type": "title",
+            "color": {
+                "user": "38;2;226;232;240",
+                "at": "38;2;94;234;212",
+                "host": "38;2;125;211;252"
+            }
+        },
+        {
+            "type": "custom",
+            "format": "{#38;2;56;189;248}╭── 󰌢 Host & Resources ────────────────────────────"
+        },
+        {
+            "type": "host",
+            "key": "│ 󰌢 Host",
+            "keyColor": "38;2;125;211;252"
+        },
+        {
+            "type": "kernel",
+            "key": "│  Kernel",
+            "keyColor": "38;2;125;211;252",
+            "format": "{sysname} {release}"
+        },
+        {
+            "type": "cpu",
+            "key": "│ 󰻠 CPU",
+            "keyColor": "38;2;125;211;252",
+            "temp": true
+        },
+        {
+            "type": "memory",
+            "key": "│ 󰍛 Memory",
+            "keyColor": "38;2;125;211;252",
+            "format": "{percentage-bar} {used} / {total} ({percentage})"
+        },
+        {
+            "type": "disk",
+            "key": "│ 󰋊 Disk /",
+            "keyColor": "38;2;125;211;252",
+            "folders": "/",
+            "format": "{size-percentage-bar} {size-used} / {size-total} ({size-percentage}) [{filesystem}]"
+        },
+        {
+            "type": "battery",
+            "key": "│ 󰁹 Battery",
+            "keyColor": "38;2;125;211;252",
+            "format": "{capacity-bar} {capacity} [{status}]"
+        },
+        {
+            "type": "custom",
+            "format": "{#38;2;94;234;212}├── 󰒃 Security & Hardening ────────────────────────"
+        },
+        {
+            "type": "command",
+            "key": "│ 󰌾 Kernel Sec",
+            "keyColor": "38;2;94;234;212",
+            "text": "ld=$(sed -n 's/.*\\[\\([^]]*\\)\\].*/\\1/p' /sys/kernel/security/lockdown 2>/dev/null); pt=$(cat /proc/sys/kernel/yama/ptrace_scope 2>/dev/null || echo ?); kp=$(cat /proc/sys/kernel/kptr_restrict 2>/dev/null || echo ?); printf 'lockdown:%s · ptrace:%s · kptr:%s' \"${ld:-n/a}\" \"$pt\" \"$kp\""
+        },
+        {
+            "type": "command",
+            "key": "│ 󰒃 Firewall",
+            "keyColor": "38;2;94;234;212",
+            "text": "z=$(firewall-cmd --get-default-zone 2>/dev/null || awk -F= '/^DefaultZone=/{gsub(/[[:space:]]/,\"\",$2); print $2; exit}' /etc/firewalld/firewalld.conf 2>/dev/null); st=$(systemctl is-active firewalld 2>/dev/null || echo inactive); [ -n \"$z\" ] && printf '%s (%s)' \"$z\" \"$st\" || printf '%s' \"$st\""
+        },
+        {
+            "type": "localip",
+            "key": "│ 󰩟 Local IP",
+            "keyColor": "38;2;94;234;212",
+            "compact": true,
+            "showIpv6": false
+        },
+        {
+            "type": "command",
+            "key": "│ 󰖂 VPN / Mesh",
+            "keyColor": "38;2;94;234;212",
+            "text": "out=''; for d in /sys/class/net/proton* /sys/class/net/wg* /sys/class/net/tun* /sys/class/net/tailscale*; do [ -e \"$d\" ] || continue; n=${d##*/}; ip4=$(ip -4 -br addr show \"$n\" 2>/dev/null | awk '{print $3}'); if [ -n \"$ip4\" ]; then st=\"$ip4\"; else st=$(cat \"$d/operstate\" 2>/dev/null || echo down); [ \"$st\" = unknown ] && st=idle; fi; out=\"${out:+$out · }${n} (${st})\"; done; printf '%s' \"${out:-off}\""
+        },
+        {
+            "type": "custom",
+            "format": "{#38;2;248;113;113}├── 󰆧 Labs & Detonation ───────────────────────────"
+        },
+        {
+            "type": "command",
+            "key": "│ 󰢩 Lab net",
+            "keyColor": "38;2;248;113;113",
+            "text": "out=$(ip -br link show 2>/dev/null | awk '/^(virbr-malware|virbr-kali|virbr0)[[:space:]]/{s=s (s?\" · \":\"\") $1 \" \" $2} END{print s}'); printf '%s' \"${out:-none}\""
+        },
+        {
+            "type": "command",
+            "key": "│ 󰡨 Podman",
+            "keyColor": "38;2;248;113;113",
+            "text": "if command -v podman >/dev/null 2>&1; then run=$(podman ps -q 2>/dev/null | wc -l); imgs=$(podman images --format '{{.Repository}}' 2>/dev/null | grep -c '^localhost/lab-' || true); printf '%s running · %s lab images' \"$run\" \"$imgs\"; else echo 'not installed'; fi"
+        },
+        {
+            "type": "command",
+            "key": "│ 󰉋 /srv/lab",
+            "keyColor": "38;2;248;113;113",
+            "text": "if [ -d /srv/lab ]; then s=$(find /srv/lab/samples -mindepth 1 -maxdepth 1 2>/dev/null | wc -l); o=$(find /srv/lab/out -mindepth 1 -maxdepth 1 2>/dev/null | wc -l); printf 'samples:%s · out:%s' \"$s\" \"$o\"; else echo 'not initialized'; fi"
+        },
+        {
+            "type": "custom",
+            "format": "{#38;2;71;85;105}╰──────────────────────────────────────────────────"
+        },
+        "break",
+        {
+            "type": "colors",
+            "paddingLeft": 2,
+            "symbol": "circle"
+        }
+    ]
+}

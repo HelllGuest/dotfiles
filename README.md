@@ -7,8 +7,8 @@ A clean, modular, and programmable dotfiles ecosystem optimized for **Arch Linux
 ## 🚀 Key Features
 
 - **Privacy Hardened:** Telemetry, usage reporting, and "phoning home" are disabled system-wide (GNOME, VS Code, .NET, etc.).
-- **ThinkPad Optimized:** Hostname or hardware-detected profiles (`thinkpad-p15.sh`, `thinkpad-t14s.sh`, or `laptop.sh`) with power-profiles-daemon (or tuned + `tuned-ppd` on hosts from `t14s-arch-install`), UKIs signed for Secure Boot (sbctl), and a tracked **s2idle** sleep pin (`mem_sleep_default=s2idle`; pair BIOS Sleep State with **Windows and Linux**, not **Linux**/S3 — see `docs/hardened-arch-gnome.md`). Firewall: **firewalld** (`nftables`, default `drop`). Stage B modules: `bash scripts/configure.sh` (firewalld, labs, AI stack, Gruvbox rice). Lab wrappers: `lab-triage` / `lab-re` / `lab-android` / `lab-web` / `lab-detonate` / `lab-mcp` (see `scripts/labs-setup.sh`, `lab-detonate.sh`, `lab-mcp.sh`). Thermal is firmware-managed. Charge window **70–80** via `scripts/thinkpad-charge-thresholds.sh`.
-- **Elite-Tier Terminal:** Kitty & Ghostty with shared Zsh/Bash configs, real-time autocomplete, [Gruvbox Rainbow](https://starship.rs/presets/gruvbox-rainbow) Starship prompt.
+- **ThinkPad Optimized:** Hostname or hardware-detected profiles (`thinkpad-p15.sh`, `thinkpad-t14s.sh`, or `laptop.sh`) with power-profiles-daemon (or tuned + `tuned-ppd` on hosts from `t14s-arch-install`), UKIs signed for Secure Boot (sbctl), and a tracked **s2idle** sleep pin (`mem_sleep_default=s2idle`; pair BIOS Sleep State with **Windows and Linux**, not **Linux**/S3 — see `docs/hardened-arch-gnome.md`). Firewall: **firewalld** (`nftables`, default `drop`). Stage B modules: `bash scripts/configure.sh` (firewalld, labs, AI stack, terminal/CLI rice). Lab wrappers: `lab-triage` / `lab-re` / `lab-android` / `lab-web` / `lab-detonate` / `lab-mcp` (see `scripts/labs-setup.sh`, `lab-detonate.sh`, `lab-mcp.sh`). Thermal is firmware-managed. Charge window **70–80** via `scripts/thinkpad-charge-thresholds.sh`.
+- **Elite-Tier Terminal:** Kitty & Ghostty with shared Zsh/Bash configs, real-time autocomplete, switchable Aura Glass / Gruvbox / SecOps themes (`rice-theme`, `ff-preset`) across Starship, Fastfetch, btop, Ghostty, and Alacritty.
 - **Neovim (Lazy.nvim):** A modular Lua configuration.
 
 ---
@@ -172,7 +172,7 @@ Disposable Kali lab (libvirt overlay): `kali-up` (isolated) / `kali-up-nat` / `k
 
 ### Starship
 
-Uses the **Gruvbox Rainbow** preset (official [starship preset](https://starship.rs/presets/gruvbox-rainbow)) with Nerd Font symbols. Config: `stow/starship/.config/starship.toml`.
+Based on the [Gruvbox Rainbow](https://starship.rs/presets/gruvbox-rainbow) layout with Nerd Font symbols and three built-in palettes: `aura_glass` (default), `gruvbox_dark`, and `secops`. Config: `stow/starship/.config/starship.toml`. Switch across Starship, Fastfetch, btop, Ghostty, and Alacritty with `rice-theme <aura-glass|gruvbox|secops>` (or Fastfetch-only presets via `ff-preset`).
 
 Optional older **Crampack** presets (not in this repo):  
 `bash <(curl -fsSL "https://git.new/crampack-sh")`
@@ -324,7 +324,7 @@ stops the script; no silent `|| true`).
 | `SETUP_LABS` | off | `labs-setup.sh` (triage/re/android/web images) |
 | `SETUP_DETONATE` | off | `lab-detonate.sh setup` (capture + VMs; PolarProxy only with `POLARPROXY_SHA256=<verified sha256>`) |
 | `SETUP_AI` | off | `ai-stack-setup.sh` (Headroom/`hr-*`, Ponytail, Continue FIM; **not** Caveman — full `./install.sh` already did cores + extras + P15 ollama) |
-| `SETUP_RICE` | off | `rice-setup.sh` (Gruvbox + lock-screen notifications off) |
+| `SETUP_RICE` | off | `rice-setup.sh` (Aura Glass / Gruvbox / SecOps rice + lock-screen notifications off) |
 
 ```bash
 bash scripts/configure.sh                      # menu loop
@@ -590,7 +590,7 @@ Key runtime dependencies (`scripts/check.sh` asserts binaries, shell tools, syml
 
 **Flatpaks** (via `install-flatpaks.sh`): Brave, Zen, Google Chrome, LibreWolf, Proton VPN, Android Studio, Sticky Notes. Chrome may be `--system` or `--user`; both satisfy `check.sh` / hardening presence checks. Browser telemetry debloat: `scripts/browser-hardening.sh` (Chrome = `chromium-base` + `chrome-extra`, which turns off Google AI features (AI Mode, Help Me Write, Gemini on pages, on-device model download); Brave = base + `brave-extra`; `check.sh` fails if the deployed Chrome/Brave policy differs from the repo; verify in `chrome://policy` / `brave://policy`; Zen `user.js` per real profile + Flatpak `systemconfig` + `/etc/firefox/policies` for native; LibreWolf upstream + `librewolf.overrides.cfg`). Launch Zen once before re-running hardening if profiles are new. `/etc` policy paths need sudo.
 
-**Terminals:** `kitty` (primary; Super+Return; also opens `Terminal=true` launchers such as Lab RE / Kali via `xdg-terminal-exec` + `~/.config/xdg-terminals.list` from `stow/kitty`), `ghostty`, optional `alacritty` / `contour`, plus `gnome-console` (kgx). Rice: `bash scripts/rice-setup.sh` (Gruvbox accents; privacy: `show-in-lock-screen false`). Optional suckless `st`: `bash scripts/build-st.sh` (`builds/st/`).
+**Terminals:** `kitty` (primary; Super+Return; also opens `Terminal=true` launchers such as Lab RE / Kali via `xdg-terminal-exec` + `~/.config/xdg-terminals.list` from `stow/kitty`), `ghostty`, optional `alacritty` / `contour`, plus `gnome-console` (kgx). Rice: `bash scripts/rice-setup.sh` (Aura Glass default; switch with `rice-theme aura-glass|gruvbox|secops`; privacy: `show-in-lock-screen false`). Optional suckless `st`: `bash scripts/build-st.sh` (`builds/st/`).
 
 Run `scripts/gnome-console-setup.sh` for Console dconf. **Super+Return → kitty** is in `gnome/dconf/user.conf`.
 
@@ -685,7 +685,7 @@ We take a "quiet by default" approach:
 | Labs / detonate / MCP | `bash scripts/labs-setup.sh`; `lab-detonate` / `lab-mcp` |
 | Stage B TUI | `bash scripts/configure.sh` ([howto](#how-to-configuresh-stage-b-tui)); `CONFIGURE_UI=plain` for serial/CI |
 | Stage B VM harness | `bash scripts/vm-stageb-run.sh` (needs Stage A `test-disk.qcow2`) |
-| Gruvbox rice | `bash scripts/rice-setup.sh` |
+| Terminal / CLI rice | `bash scripts/rice-setup.sh`; switch theme with `rice-theme` / `ff-preset` |
 | Live lab/firewall health | See checklist below |
 | Obscura (CDP/MCP) | `bash scripts/install-obscura.sh` ([docs](https://docs.obscura.sh/)) |
 | foxcage (Firefox in rootless Podman) | `bash scripts/install-foxcage.sh` ([upstream](https://gitlab.com/grepular/foxcage)); then `foxcage`, `foxcage @tmp <url>`; `install.sh` runs it when `podman` exists (`SKIP_FOXCAGE=1` skips) |

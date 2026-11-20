@@ -1,0 +1,108 @@
+{
+    "$schema": "https://github.com/fastfetch-cli/fastfetch/raw/dev/doc/json_schema.json",
+    "logo": {
+        "type": "small",
+        "source": "arch_small",
+        "padding": {
+            "top": 1,
+            "left": 1,
+            "right": 3
+        },
+        "color": {
+            "1": "38;2;125;211;252",
+            "2": "38;2;56;189;248"
+        }
+    },
+    "display": {
+        "separator": "  ",
+        "color": {
+            "keys": "38;2;125;211;252",
+            "title": "38;2;226;232;240"
+        },
+        "key": {
+            "width": 13
+        },
+        "bar": {
+            "char": {
+                "elapsed": "━",
+                "total": "─"
+            },
+            "border": {
+                "left": "",
+                "right": ""
+            },
+            "color": {
+                "elapsed": "auto",
+                "total": "38;2;51;65;85"
+            },
+            "width": 10
+        },
+        "percent": {
+            "type": 3,
+            "ndigits": 0,
+            "color": {
+                "green": "38;2;94;234;212",
+                "yellow": "38;2;252;211;77",
+                "red": "38;2;248;113;113"
+            }
+        }
+    },
+    "modules": [
+        {
+            "type": "title",
+            "color": {
+                "user": "38;2;226;232;240",
+                "at": "38;2;125;211;252",
+                "host": "38;2;165;180;252"
+            }
+        },
+        {
+            "type": "os",
+            "key": "󰣇 OS"
+        },
+        {
+            "type": "kernel",
+            "key": " Kernel",
+            "format": "{release}"
+        },
+        {
+            "type": "uptime",
+            "key": "󰅐 Uptime"
+        },
+        {
+            "type": "packages",
+            "key": "󰏖 Pkgs"
+        },
+        {
+            "type": "de",
+            "key": "󰇄 DE"
+        },
+        {
+            "type": "cpu",
+            "key": "󰻠 CPU",
+            "temp": true
+        },
+        {
+            "type": "memory",
+            "key": "󰍛 RAM",
+            "format": "{percentage-bar} {used} / {total} ({percentage})"
+        },
+        {
+            "type": "disk",
+            "key": "󰋊 Disk /",
+            "folders": "/",
+            "format": "{size-percentage-bar} {size-used} / {size-total} ({size-percentage})"
+        },
+        {
+            "type": "battery",
+            "key": "󰁹 Battery",
+            "format": "{capacity-bar} {capacity} [{status}]"
+        },
+        {
+            "type": "command",
+            "key": "󰒃 Net/Sec",
+            "keyColor": "38;2;94;234;212",
+            "text": "z=$(firewall-cmd --get-default-zone 2>/dev/null || awk -F= '/^DefaultZone=/{gsub(/[[:space:]]/,\"\",$2); print $2; exit}' /etc/firewalld/firewalld.conf 2>/dev/null); fw=\"fw:${z:-off}\"; vpn=''; for d in /sys/class/net/proton* /sys/class/net/wg* /sys/class/net/tun* /sys/class/net/tailscale*; do [ -e \"$d\" ] || continue; n=${d##*/}; ip4=$(ip -4 -br addr show \"$n\" 2>/dev/null | awk '{print $3}'); [ -n \"$ip4\" ] && vpn=\"${vpn:+$vpn,}$n\"; done; printf '%s · vpn:%s' \"$fw\" \"${vpn:-off}\""
+        }
+    ]
+}

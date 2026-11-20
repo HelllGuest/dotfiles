@@ -34,7 +34,31 @@ $time\
 [ ](fg:color_bg1)\
 $line_break$character"""
 
-palette = 'gruvbox_dark'
+palette = 'aura_glass'
+
+[palettes.aura_glass]
+color_fg0 = '#f1f5f9'
+color_bg1 = '#1e293b'
+color_bg3 = '#334155'
+color_blue = '#3730a3'
+color_aqua = '#0f766e'
+color_green = '#5eead4'
+color_orange = '#0369a1'
+color_purple = '#a5b4fc'
+color_red = '#f87171'
+color_yellow = '#0e7490'
+
+[palettes.secops]
+color_fg0 = '#ecfeff'
+color_bg1 = '#0f172a'
+color_bg3 = '#1e293b'
+color_blue = '#334155'
+color_aqua = '#1d4ed8'
+color_green = '#34d399'
+color_orange = '#065f46'
+color_purple = '#38bdf8'
+color_red = '#fb7185'
+color_yellow = '#0f766e'
 
 [palettes.gruvbox_dark]
 color_fg0 = '#fbf1c7'
@@ -162,11 +186,11 @@ format = '[[ $symbol( $version) ](fg:color_fg0 bg:color_blue)]($style)'
 [docker_context]
 symbol = ""
 style = "bg:color_bg3"
-format = '[[ $symbol( $context) ](fg:#83a598 bg:color_bg3)]($style)'
+format = '[[ $symbol( $context) ](fg:color_fg0 bg:color_bg3)]($style)'
 
 [conda]
 style = "bg:color_bg3"
-format = '[[ $symbol( $environment) ](fg:#83a598 bg:color_bg3)]($style)'
+format = '[[ $symbol( $environment) ](fg:color_fg0 bg:color_bg3)]($style)'
 
 [pixi]
 style = "bg:color_bg3"

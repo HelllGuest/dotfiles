@@ -1200,7 +1200,7 @@ lab-re --check && lab-re
 bash scripts/install-ghidra-cli.sh
 ```
 
-* Terminals: kitty (primary) + ghostty + gnome-console; rice via `scripts/rice-setup.sh` (Gruvbox). Ptyxis/rio/wezterm/foot pruned.
+* Terminals: kitty (primary) + ghostty + gnome-console; rice via `scripts/rice-setup.sh` (Aura Glass default; switch via `rice-theme aura-glass|gruvbox|secops`). Ptyxis/rio/wezterm/foot pruned.
 * ghidra-cli: cargo CLI + host skill under `skills/ghidra-cli-host/`; GUI via `ghidra-gui` (cargo `ghidra` shadows `/usr/bin/ghidra`). An install failure is recorded by `./install.sh`, which exits 1 at the end
 * Host `install-rea.sh` is optional only (needs JDK≥21); Stage B AI stack skips it
 

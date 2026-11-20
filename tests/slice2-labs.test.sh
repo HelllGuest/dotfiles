@@ -401,4 +401,107 @@ _ae_out="$(bash "$ROOT/labs/lab-android/entrypoint.sh" printf '%s' '{"jsonrpc":"
 [[ "$_ae_out" == '{"jsonrpc":"2.0"}' ]] || fail "lab-android entrypoint polluted non-tty stdout: $_ae_out"
 unset -v _ae_out
 
+# Behavioral: fastfetch templates parse cleanly and render without color/schema errors.
+for _ff in "$ROOT"/stow/fastfetch/.config/fastfetch/*.jsonc; do
+  jq empty "$_ff" || fail "invalid fastfetch JSON: $_ff"
+  if command -v fastfetch >/dev/null 2>&1; then
+    _ff_out="$(fastfetch --config "$_ff" --pipe false 2>&1)" \
+      || fail "fastfetch failed on $_ff: $_ff_out"
+    ! grep -q '^Error:' <<<"$_ff_out" \
+      || fail "fastfetch reported error on $_ff: $(grep '^Error:' <<<"$_ff_out" | head -1)"
+  fi
+done
+unset -v _ff _ff_out
+
+# Behavioral: multi-theme configs (starship, btop, ghostty, alacritty) parse cleanly
+# and rice-theme switches all five tools in an isolated XDG_CONFIG_HOME.
+python3 - "$ROOT" <<'PY' || fail "TOML config parse failed"
+import pathlib, sys, tomllib
+root = pathlib.Path(sys.argv[1])
+toml_files = [
+    root / "stow/starship/.config/starship.toml",
+    root / "stow/alacritty/.config/alacritty/alacritty.toml",
+    root / "stow/alacritty/.config/alacritty/theme.toml",
+    *sorted((root / "stow/alacritty/.config/alacritty/themes").glob("*.toml")),
+]
+for p in toml_files:
+    data = tomllib.loads(p.read_text())
+    if p.name == "starship.toml":
+        for pal in ("aura_glass", "gruvbox_dark", "secops"):
+            assert pal in data["palettes"], f"starship missing palette {pal}"
+PY
+for _bt in aura_glass gruvbox_dark secops; do
+  _bf="$ROOT/stow/btop/.config/btop/themes/${_bt}.theme"
+  [[ -f "$_bf" ]] || fail "missing btop theme $_bt"
+  grep -qE '^theme\[main_bg\]="#[0-9a-fA-F]{6}"$' "$_bf" \
+    && grep -qE '^theme\[cpu_box\]="#[0-9a-fA-F]{6}"$' "$_bf" \
+    || fail "btop theme $_bt missing required theme[main_bg/cpu_box] hex keys"
+  ! grep -vE '^[[:space:]]*(#|$|theme\[[a-z0-9_]+\]="#[0-9a-fA-F]{6}")' "$_bf" | grep -q . \
+    || fail "btop theme $_bt has malformed line"
+done
+for _gt in aura-glass gruvbox secops; do
+  [[ -f "$ROOT/stow/ghostty/.config/ghostty/themes/${_gt}.conf" ]] || fail "missing ghostty theme $_gt"
+done
+# Active defaults must match one of their shipped templates (no silent drift).
+_match_any() {
+  local def=$1 f; shift
+  for f in "$@"; do cmp -s "$def" "$f" && return 0; done
+  return 1
+}
+_match_any "$ROOT/stow/fastfetch/.config/fastfetch/config.jsonc" \
+  "$ROOT"/stow/fastfetch/.config/fastfetch/{aura-glass,gruvbox,minimal,secops}.jsonc \
+  || fail "fastfetch/config.jsonc drifted from shipped presets"
+_match_any "$ROOT/stow/ghostty/.config/ghostty/theme.conf" \
+  "$ROOT"/stow/ghostty/.config/ghostty/themes/*.conf \
+  || fail "ghostty/theme.conf drifted from shipped themes"
+_match_any "$ROOT/stow/alacritty/.config/alacritty/theme.toml" \
+  "$ROOT"/stow/alacritty/.config/alacritty/themes/*.toml \
+  || fail "alacritty/theme.toml drifted from shipped themes"
+unset -f _match_any
+grep -qx 'import = \["theme.toml"\]' "$ROOT/stow/alacritty/.config/alacritty/alacritty.toml" \
+  || fail "alacritty.toml must use relative theme.toml import"
+grep -qx 'save_config_on_exit = false' "$ROOT/stow/btop/.config/btop/btop.conf" \
+  || fail "btop.conf must set save_config_on_exit = false (stowed file)"
+(
+  _rt="$(mktemp -d)"
+  trap 'rm -rf "$_rt"' EXIT
+  mkdir -p "$_rt/fastfetch" "$_rt/btop/themes" "$_rt/ghostty/themes" "$_rt/alacritty/themes" "$_rt/empty" "$_rt/bin"
+  printf '#!/bin/sh\nexit 0\n' >"$_rt/bin/fastfetch"; chmod +x "$_rt/bin/fastfetch"
+  cp "$ROOT"/stow/fastfetch/.config/fastfetch/*.jsonc "$_rt/fastfetch/"
+  cp "$ROOT/stow/btop/.config/btop/btop.conf" "$_rt/btop/"
+  cp "$ROOT"/stow/btop/.config/btop/themes/*.theme "$_rt/btop/themes/"
+  cp "$ROOT/stow/starship/.config/starship.toml" "$_rt/"
+  cp "$ROOT/stow/ghostty/.config/ghostty/theme.conf" "$_rt/ghostty/"
+  cp "$ROOT"/stow/ghostty/.config/ghostty/themes/*.conf "$_rt/ghostty/themes/"
+  cp "$ROOT/stow/alacritty/.config/alacritty/theme.toml" "$_rt/alacritty/"
+  cp "$ROOT"/stow/alacritty/.config/alacritty/themes/*.toml "$_rt/alacritty/themes/"
+  for _sh in bash zsh; do
+    command -v "$_sh" >/dev/null || continue
+    # ff-preset: list, use, traversal rejection
+    _fl="$(XDG_CONFIG_HOME="$_rt" "$_sh" -c 'source "$1"; ff-preset' _ "$ROOT/stow/zsh/.shell-functions")"
+    grep -qx aura-glass <<<"$_fl" && grep -qx gruvbox <<<"$_fl" && grep -qx minimal <<<"$_fl" && grep -qx secops <<<"$_fl" \
+      || fail "$_sh: ff-preset list missing presets: $_fl"
+    PATH="$_rt/bin:$PATH" XDG_CONFIG_HOME="$_rt" "$_sh" -c 'source "$1"; ff-preset use minimal >/dev/null' _ "$ROOT/stow/zsh/.shell-functions"
+    cmp -s "$_rt/fastfetch/minimal.jsonc" "$_rt/fastfetch/config.jsonc" || fail "$_sh: ff-preset use minimal failed"
+    ! XDG_CONFIG_HOME="$_rt" "$_sh" -c 'source "$1"; ff-preset ../bad >/dev/null 2>&1' _ "$ROOT/stow/zsh/.shell-functions" \
+      || fail "$_sh: ff-preset must reject traversal"
+    # rice-theme: switch all 5 tools + reject invalid + fail on empty config dir
+    XDG_CONFIG_HOME="$_rt" "$_sh" -c 'source "$1"; rice-theme gruvbox >/dev/null' _ "$ROOT/stow/zsh/.shell-functions"
+    grep -qx "palette = 'gruvbox_dark'" "$_rt/starship.toml" || fail "$_sh: rice-theme gruvbox missed starship"
+    grep -qx 'color_theme = "gruvbox_dark"' "$_rt/btop/btop.conf" || fail "$_sh: rice-theme gruvbox missed btop"
+    cmp -s "$_rt/fastfetch/gruvbox.jsonc" "$_rt/fastfetch/config.jsonc" || fail "$_sh: rice-theme gruvbox missed fastfetch"
+    cmp -s "$_rt/ghostty/themes/gruvbox.conf" "$_rt/ghostty/theme.conf" || fail "$_sh: rice-theme gruvbox missed ghostty"
+    cmp -s "$_rt/alacritty/themes/gruvbox.toml" "$_rt/alacritty/theme.toml" || fail "$_sh: rice-theme gruvbox missed alacritty"
+    XDG_CONFIG_HOME="$_rt" "$_sh" -c 'source "$1"; rice-theme secops >/dev/null' _ "$ROOT/stow/zsh/.shell-functions"
+    grep -qx "palette = 'secops'" "$_rt/starship.toml" || fail "$_sh: rice-theme secops missed starship"
+    XDG_CONFIG_HOME="$_rt" "$_sh" -c 'source "$1"; rice-theme aura-glass >/dev/null' _ "$ROOT/stow/zsh/.shell-functions"
+    grep -qx "palette = 'aura_glass'" "$_rt/starship.toml" || fail "$_sh: rice-theme aura-glass missed starship"
+    ! XDG_CONFIG_HOME="$_rt" "$_sh" -c 'source "$1"; rice-theme ../bad >/dev/null 2>&1' _ "$ROOT/stow/zsh/.shell-functions" \
+      || fail "$_sh: rice-theme must reject invalid theme names"
+    ! XDG_CONFIG_HOME="$_rt/empty" "$_sh" -c 'source "$1"; rice-theme gruvbox >/dev/null 2>&1' _ "$ROOT/stow/zsh/.shell-functions" \
+      || fail "$_sh: rice-theme must fail when no configs exist"
+  done
+)
+unset -v _bt _bf _gt
+
 echo "PASS: slice2-labs.test.sh"

@@ -181,7 +181,7 @@ Checklist tags (fail-fast on module error):
 | `SETUP_LABS` | off | build/pull lab images; shell wrappers |
 | `SETUP_DETONATE` | off | `lab-detonate.sh setup` |
 | `SETUP_AI` | off | Headroom/`hr-*`, Ponytail, Continue FIM (not Caveman) |
-| `SETUP_RICE` | off | Gruvbox + `show-in-lock-screen false` |
+| `SETUP_RICE` | off | Aura Glass / Gruvbox / SecOps rice + `show-in-lock-screen false` |
 
 Full howto: [README — configure.sh](../README.md#how-to-configuresh-stage-b-tui).
 

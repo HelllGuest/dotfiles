@@ -13,6 +13,8 @@ Defined in `stow/zsh/.shell-aliases` (shared by Zsh and Bash):
 | `v` | `nvim` |
 | `as` | `flatpak run com.google.AndroidStudio` |
 | `ff` | `fastfetch` |
+| `ff-preset` | List/preview/set Fastfetch templates (`aura-glass`, `gruvbox`, `minimal`, `secops`) |
+| `rice-theme` | Switch theme (`aura-glass`, `gruvbox`, `secops`) across Fastfetch, btop, Starship, Ghostty, Alacritty |
 | `kali` / `kali-up` / `kali-up-nat` / `kali-up-lan` / `kali-lan` / `kali-lan-check` / `kali-wipe` / `kali-stop` / `kali-st` | Disposable Kali (see below) |
 
 Modern CLI aliases (when installed): `eza`, `bat`, `rg`, `fd`, etc.

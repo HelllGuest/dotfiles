@@ -359,6 +359,77 @@ lab-mcp() {
     bash "${DOTFILES_DIR:-${DOTFILES:-$HOME/dotfiles}}/scripts/lab-mcp.sh" "$@"
 }
 
+# Fastfetch presets: ff-preset (list) | ff-preset <name> (preview) | ff-preset use <name>
+ff-preset() {
+    local dir="${XDG_CONFIG_HOME:-$HOME/.config}/fastfetch"
+    if [[ $# -eq 0 ]]; then
+        find "$dir/" -maxdepth 1 -name '*.jsonc' ! -name 'config.jsonc' -printf '%f\n' 2>/dev/null \
+            | sed 's/\.jsonc$//' | sort
+        return 0
+    fi
+    local action=preview name=$1
+    if [[ $1 == use ]]; then
+        action=use
+        name=${2:-}
+    fi
+    case "$name" in
+        ""|*[^a-z0-9-]*) echo "ff-preset: invalid preset '$name'" >&2; return 1 ;;
+    esac
+    [[ -f "$dir/$name.jsonc" ]] || { echo "ff-preset: unknown preset '$name' (run 'ff-preset' to list)" >&2; return 1; }
+    if [[ $action == use ]]; then
+        cp -f "$dir/$name.jsonc" "$dir/config.jsonc" || return 1
+        echo "✓ fastfetch default → $name"
+        _has fastfetch && fastfetch --config "$dir/$name.jsonc"
+        return 0
+    fi
+    _has fastfetch || { echo "ff-preset: fastfetch not installed" >&2; return 1; }
+    fastfetch --config "$dir/$name.jsonc"
+}
+
+# Unified theme switcher across fastfetch, btop, starship, ghostty, and alacritty.
+# Usage: rice-theme [aura-glass|gruvbox|secops]
+rice-theme() {
+    local cfg="${XDG_CONFIG_HOME:-$HOME/.config}"
+    if [[ $# -eq 0 ]]; then
+        echo "themes: aura-glass | gruvbox | secops"
+        local sp bt
+        sp=$(awk -F"'" '/^palette = /{print $2; exit}' "$cfg/starship.toml" 2>/dev/null || echo "?")
+        bt=$(awk -F'"' '/^color_theme = /{print $2; exit}' "$cfg/btop/btop.conf" 2>/dev/null || echo "?")
+        echo "active: starship=$sp · btop=$bt"
+        return 0
+    fi
+    local name=$1 sp bt
+    case "$name" in
+        aura-glass) sp=aura_glass;   bt=aura_glass ;;
+        gruvbox)    sp=gruvbox_dark; bt=gruvbox_dark ;;
+        secops)     sp=secops;       bt=secops ;;
+        *) echo "rice-theme: unknown theme '$name' (use: aura-glass | gruvbox | secops)" >&2; return 1 ;;
+    esac
+    local updated=() rc=0
+    if [[ -f "$cfg/fastfetch/$name.jsonc" ]]; then
+        cp -f "$cfg/fastfetch/$name.jsonc" "$cfg/fastfetch/config.jsonc" && updated+=(fastfetch) || rc=1
+    fi
+    if [[ -f "$cfg/btop/btop.conf" && -f "$cfg/btop/themes/$bt.theme" ]]; then
+        sed -i --follow-symlinks "s/^color_theme = .*/color_theme = \"${bt}\"/" "$cfg/btop/btop.conf" && updated+=(btop) || rc=1
+    fi
+    if [[ -f "$cfg/starship.toml" ]]; then
+        sed -i --follow-symlinks "s/^palette = .*/palette = '${sp}'/" "$cfg/starship.toml" && updated+=(starship) || rc=1
+    fi
+    if [[ -f "$cfg/ghostty/themes/$name.conf" ]]; then
+        cp -f "$cfg/ghostty/themes/$name.conf" "$cfg/ghostty/theme.conf" && updated+=(ghostty) || rc=1
+    fi
+    if [[ -f "$cfg/alacritty/themes/$name.toml" ]]; then
+        cp -f "$cfg/alacritty/themes/$name.toml" "$cfg/alacritty/theme.toml" && updated+=(alacritty) || rc=1
+    fi
+    if (( ${#updated[@]} == 0 )); then
+        echo "rice-theme: no stowed configs found under $cfg" >&2
+        return 1
+    fi
+    echo "✓ theme → $name (${updated[*]})"
+    echo "  hint: Ghostty reload Ctrl+Shift+, · Alacritty/Starship reload automatically"
+    return "$rc"
+}
+
 # OSC 7: terminal CWD reporting (zsh only)
 if [[ -n "${ZSH_VERSION:-}" ]]; then
     _update_terminal_cwd() {
