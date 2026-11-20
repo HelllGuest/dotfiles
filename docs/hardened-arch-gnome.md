@@ -1642,7 +1642,7 @@ cd ~/dotfiles
   `usbguard-setup.sh` / `dnscrypt-setup.sh` —
   [howto](../README.md#how-to-ops--privacy-kits).
 
-Config-only (no package install; skips `zram`, `system`, and `gdm`; removes unmodified `/etc/skel` copies that block stow):
+Config-only (no package install; skips `zram`, `system`, and `gdm`; removes unmodified `/etc/skel` copies and the t14s-arch-install `~/.zshrc` / `starship.toml` seeds that block stow, then enables `tmp-semgrep-cleanup.timer`):
 
 ```bash
 ./stow-only.sh

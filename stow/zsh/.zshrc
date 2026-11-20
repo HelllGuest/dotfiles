@@ -32,7 +32,3 @@ if [[ -f "$HOME/.Garmin/ConnectIQ/current-sdk.cfg" ]]; then
     [[ -n "$CIQ_HOME" ]] && _prepend_path "$CIQ_HOME/bin"
 fi
 
-
-
-# Added by Antigravity CLI installer
-export PATH="/home/songoku/.local/bin:$PATH"
