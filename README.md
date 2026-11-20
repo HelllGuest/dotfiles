@@ -239,7 +239,9 @@ default zone `drop`); optional P15 `ollama-cuda` on `127.0.0.1:11434`.
 # Preferred (from Arch ISO, UEFI, root):
 bash <(curl -fsSL https://raw.githubusercontent.com/HelllGuest/t14s-arch-install/main/install.sh)
 
-# Thin URL-stable wrappers in this repo (hand off to the same installer):
+# Thin URL-stable wrappers in this repo (hand off to the same installer).
+# These raw URLs only work while this repo is public; when it is private they
+# 404 — use the t14s-arch-install URL above:
 bash <(curl -fsSL https://raw.githubusercontent.com/HelllGuest/dotfiles/main/scripts/arch-install-t14s.sh)  # HW_PROFILE=t14s
 bash <(curl -fsSL https://raw.githubusercontent.com/HelllGuest/dotfiles/main/scripts/arch-install-p15.sh)   # HW_PROFILE=p15
 bash <(curl -fsSL https://raw.githubusercontent.com/HelllGuest/dotfiles/main/scripts/arch-install.sh)       # DMI detect
@@ -420,8 +422,9 @@ to rehearse the GNOME Stage A path as well.
 
 Guest (`vm-stageb-guest.sh`): `CONFIGURE_UI=plain` + empty checklist line →
 defaults (`SETUP_FIREWALLD` on), then `./install.sh` with
-`SKIP_CONFIGURE=1`, `SKIP_FOXCAGE=1`, `SKIP_OLLAMA=1`,
-`GIT_SETUP_NONINTERACTIVE=1`. Temporary NOPASSWD is removed before RESULT.
+`SKIP_CONFIGURE=1`, `SKIP_FOXCAGE=1`, `SKIP_OLLAMA=1`, `SKIP_THEME=1`,
+`GIT_SETUP_NONINTERACTIVE=1`, under `dbus-run-session` (dconf writes need a
+session bus). `vm-stageb-run.sh` reuses Stage A's `OVMF_VARS.fd`. Temporary NOPASSWD is removed before RESULT.
 
 | RESULT | Meaning | Harness exit |
 |--------|---------|--------------|
@@ -473,13 +476,12 @@ cleanup-input-overrides.sh
 → pacman -Syu packages/pacman.txt (one batch; on failure retried per package)
 → bootvine enable (bootvine.service + bootvine-shutdown.service)
 → apply-profile.sh (hostname e.g. p15, or detect-profile.sh — after packages so NVIDIA DKMS exists)
-→ configure.sh one checklist pass (only with CONFIGURE=1; SKIP_CONFIGURE=1 skips the hint)
-→ install-flatpaks.sh → install-aur.sh (bootstraps paru; --sudoloop; per-package retry)
+→ install-flatpaks.sh → install-aur.sh (bootstraps paru, after `rustup default stable` on a rustup host; --sudoloop; per-package retry)
 → install-fonts.sh → stow ($HOME; system/ via system-setup.sh; skips zram & gdm)
 → tmp-semgrep-cleanup.timer enable (user unit) → login shell → zsh (usermod, if not already)
 → fnm install/default 22 → atuin import → zram-setup.sh
 → gnome-session-setup.sh → location-setup.sh → gnome-console-setup.sh
-→ gdm-setup.sh → theme-setup.sh (Aura Glass + GDM) → git-setup.sh → nvim-setup.sh → headroom-setup.sh
+→ gdm-setup.sh → theme-setup.sh (Aura Glass + GDM; SKIP_THEME=1 skips) → git-setup.sh → nvim-setup.sh → headroom-setup.sh
 → sync-agent-skills.sh → install-coding-agents.sh (OpenCode + Kimi + MCP; if npm)
 → install-caveman.sh (if npm) → install-ponytail.sh (if node) → install-android-ui-skills.sh (if npx)
 → install-ghidra-cli.sh (if ghidra)
@@ -490,7 +492,8 @@ cleanup-input-overrides.sh
 → ai-stack-setup.sh (AI_STACK_EXTRAS_ONLY=1: Continue FIM, P15 OpenCode↔ollama, hr-proxy)
 → ollama-setup.sh (P15 only; SKIP_OLLAMA=1 skips; no-op elsewhere)
 → install-photogimp.sh → install-foxcage.sh (if podman; SKIP_FOXCAGE=1 skips)
-→ install-dash2dock.sh → install-extensions.sh
+→ fetch-gnome-extensions.sh (Caffeine + Dash2Dock) → install-extensions.sh
+→ configure.sh one checklist pass (only with CONFIGURE=1; SKIP_CONFIGURE=1 skips the hint)
 → privacy-hardener.sh (incl. browser-hardening.sh)
 → ops-hygiene.sh (paccache + flatpak unused + paccache.timer; SKIP_OPS_HYGIENE=1 skips)
 → firewalld-tailscale.sh (if tailscale) → check.sh → validate-configs.sh

@@ -24,16 +24,23 @@ fi
 
 sudo flatpak remote-add --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
 
-# Always install system-wide to match arch-install.sh; --or-update makes reruns idempotent.
-if ! sudo flatpak install --system --or-update -y flathub "${refs[@]}"; then
+# System-wide to match arch-install.sh; --or-update makes reruns idempotent.
+# An app the user already installed --user counts (as in check.sh): no second
+# system copy of it.
+user_apps="$(flatpak list --user --app --columns=application 2>/dev/null || true)"
+sys_refs=()
+for ref in "${refs[@]}"; do
+    grep -qx "$ref" <<<"$user_apps" || sys_refs+=("$ref")
+done
+if [[ ${#sys_refs[@]} -gt 0 ]] && ! sudo flatpak install --system --or-update -y flathub "${sys_refs[@]}"; then
     echo "Batch failed — retrying one app at a time..."
-    for ref in "${refs[@]}"; do
+    for ref in "${sys_refs[@]}"; do
         sudo flatpak install --system --or-update -y flathub "$ref" \
             || echo "✗ flatpak install failed: $ref" >&2
     done
 fi
 
-installed="$(flatpak list --system --app --columns=application)"
+installed="$(flatpak list --app --columns=application)"
 missing=()
 for ref in "${refs[@]}"; do
     grep -qx "$ref" <<<"$installed" || missing+=("$ref")

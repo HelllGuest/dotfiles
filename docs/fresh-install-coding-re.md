@@ -128,7 +128,8 @@ On the machine, from the official Arch ISO as root:
 # Canonical (DMI / TUI picks HW_PROFILE):
 bash <(curl -fsSL https://raw.githubusercontent.com/HelllGuest/t14s-arch-install/main/install.sh)
 
-# Thin wrappers (same installer; pin profile):
+# Thin wrappers (same installer; pin profile). Raw URLs work only while this
+# repo is public (private: 404, use the t14s-arch-install URL above):
 bash <(curl -fsSL https://raw.githubusercontent.com/HelllGuest/dotfiles/main/scripts/arch-install-p15.sh)   # HW_PROFILE=p15
 bash <(curl -fsSL https://raw.githubusercontent.com/HelllGuest/dotfiles/main/scripts/arch-install-t14s.sh)  # HW_PROFILE=t14s
 ```

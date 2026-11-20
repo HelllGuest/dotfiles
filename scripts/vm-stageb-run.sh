@@ -32,7 +32,9 @@ for c in /usr/share/edk2/x64/OVMF_CODE.4m.fd /usr/share/edk2/x64/OVMF_CODE.fd; d
   [[ -f $c ]] && { ovmf_code="$c"; ovmf_vars_src="${c/CODE/VARS}"; break; }
 done
 [[ -n $ovmf_code && -f $ovmf_vars_src ]] || die "need edk2-ovmf"
-cp -f "$ovmf_vars_src" "$WORK/OVMF_VARS.fd"
+# Keep the vars Stage A (t14s tests/vm-run.sh, same $WORK) wrote: they hold
+# the Linux Boot Manager entry. A fresh copy only when there are none.
+[[ -f $WORK/OVMF_VARS.fd ]] || cp "$ovmf_vars_src" "$WORK/OVMF_VARS.fd"
 
 PIPE="$WORK/stageb-serial"
 rm -f "$PIPE.in" "$PIPE.out"

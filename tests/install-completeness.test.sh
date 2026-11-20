@@ -76,7 +76,8 @@ if PATH="$SP" bash "$T/repo/scripts/install-aur.sh" >"$T/out" 2>&1; then
 fi
 
 # --- install-flatpaks.sh --------------------------------------------------------
-printf '%s\n' '# c' 'org.a.App' 'org.b.Broken' >"$T/repo/packages/flatpak.txt"
+printf '%s\n' '# c' 'org.a.App' 'org.b.Broken' 'org.c.User' >"$T/repo/packages/flatpak.txt"
+echo org.c.User >"$T/fpuser"   # already installed --user by the user
 cat >"$T/bin/flatpak" <<EOF
 #!/bin/sh
 case "\$1" in
@@ -85,7 +86,11 @@ case "\$1" in
            [ "\$#" -eq 6 ] || exit 1
            [ "\$last" = org.b.Broken ] && exit 1
            echo "\$last" >>"$T/fp" ;;
-  list) cat "$T/fp" 2>/dev/null ;;
+  list) case " \$* " in
+          *" --user "*) cat "$T/fpuser" ;;
+          *" --system "*) cat "$T/fp" 2>/dev/null ;;
+          *) cat "$T/fp" "$T/fpuser" 2>/dev/null ;;
+        esac ;;
 esac
 EOF
 chmod +x "$T/bin/flatpak"
@@ -93,7 +98,8 @@ if PATH="$SP" bash "$T/repo/scripts/install-flatpaks.sh" >"$T/out" 2>&1; then
   fail "install-flatpaks.sh must exit 1 when an app stays missing"
 fi
 grep -qx org.a.App "$T/fp" || fail "per-app retry must install the good app"
-grep -q '✗ flatpaks not installed: org.b.Broken' "$T/out" || fail "must name the missing flatpak: $(cat "$T/out")"
+grep -q '✗ flatpaks not installed: org.b.Broken$' "$T/out" || fail "must name only the missing flatpak: $(cat "$T/out")"
+! grep -qx org.c.User "$T/fp" || fail "an app installed --user must not get a second --system copy"
 
 # --- dock / shortcut coverage in the lists --------------------------------------
 list() { sed -e 's/#.*//' -e 's/[[:space:]]//g' -e '/^$/d' "$ROOT/packages/$1"; }

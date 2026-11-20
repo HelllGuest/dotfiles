@@ -67,13 +67,21 @@ echo "=== install.sh (SKIP_CONFIGURE; soft GNOME) ==="
 export SKIP_CONFIGURE=1
 export SKIP_FOXCAGE=1
 export SKIP_OLLAMA=1
+# Aura Glass needs a running GNOME Shell (none on a headless guest).
+export SKIP_THEME=1
 # Headless: no TTY prompts (git identity/hooks/GPG).
 export GIT_SETUP_NONINTERACTIVE=1
 # Throwaway identity so the guest exercises the identity path (git-setup.sh has no defaults).
 export GIT_USER_NAME="${GIT_USER_NAME:-vmtest}" GIT_USER_EMAIL="${GIT_USER_EMAIL:-vmtest@example.com}"
 INSTALL_LOG=/tmp/dotfiles-stageb-install.log
 set +e
-bash ./install.sh 2>&1 | tee "$INSTALL_LOG"
+# No GNOME login: give install.sh a private session bus so dconf/gsettings
+# writes (session setup, GNOME Console, privacy keys) land in the user db.
+if [[ -z ${DBUS_SESSION_BUS_ADDRESS:-} ]] && command -v dbus-run-session >/dev/null 2>&1; then
+  dbus-run-session -- bash ./install.sh 2>&1 | tee "$INSTALL_LOG"
+else
+  bash ./install.sh 2>&1 | tee "$INSTALL_LOG"
+fi
 inst_rc=${PIPESTATUS[0]}
 set -e
 echo "install.sh exit=$inst_rc"

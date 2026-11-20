@@ -14,6 +14,14 @@ sudo pacman -S --needed --noconfirm base-devel git
 tmp="$(mktemp -d)"
 trap 'rm -rf "$tmp"' EXIT
 
+# paru is Rust. A rustup host (Stage A) needs a default toolchain first, or
+# makepkg accepts rustup as cargo and then fails in build().
+# shellcheck source=scripts/lib/rust-toolchain.sh
+source "$(dirname "$0")/lib/rust-toolchain.sh"
+if command -v rustup >/dev/null 2>&1; then
+    ensure_rust_toolchain || { echo "rustup has no working toolchain (rustup default stable)" >&2; exit 1; }
+fi
+
 git clone --depth 1 https://aur.archlinux.org/paru.git "$tmp/paru"
 # shellcheck disable=SC2164
 cd "$tmp/paru"

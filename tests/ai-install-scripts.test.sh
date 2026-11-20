@@ -499,8 +499,8 @@ grep -q 'sudo pacman -S openssl-3' <<<"$_o" || fail "missing compat must say how
 [[ $(FAKE_SSL_VER=3.5.9 OPENSSL3_INCLUDE_DIR="$_T/none" OPENSSL3_LIB_DIR="$_T/none" _sslrun) == "INC= LIB=" ]] \
   || fail "OpenSSL 3 system without compat: build against system OpenSSL"
 rm -rf "$_T"; unset -v _gc _ssl_line _cargo_line _sslblk _o; unset -f _sslrun
-grep -q 'rustup default stable' "$ROOT/scripts/install-ghidra-cli.sh" \
-  || fail "install-ghidra-cli must bootstrap rustup default stable when unconfigured"
+grep -q 'ensure_rust_toolchain' "$ROOT/scripts/install-ghidra-cli.sh" \
+  || fail "install-ghidra-cli must bootstrap rustup default stable when unconfigured (ensure_rust_toolchain)"
 grep -q 'cargo install --path "\$SRC_DIR/src" --force' "$ROOT/scripts/install-ghidra-cli.sh" \
   || fail "install-ghidra-cli must fall back to unlocked cargo install"
 # Ghidra 12.2 dropped DataTypeManager.remove(DataType, TaskMonitor): the bridge

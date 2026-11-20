@@ -37,7 +37,9 @@ for dir in */; do
 done
 cd .. || exit 1
 
-# User units shipped by stow packages are linked, not enabled.
+# User units shipped by stow packages are linked, not enabled. daemon-reload
+# first: the manager has not seen the freshly linked unit file.
+systemctl --user daemon-reload 2>/dev/null || true
 systemctl --user enable --now tmp-semgrep-cleanup.timer \
     || echo "○ could not enable tmp-semgrep-cleanup.timer (no user session?)"
 

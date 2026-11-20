@@ -137,22 +137,6 @@ if [ -f "scripts/apply-profile.sh" ]; then
         || fail_step "Profile application failed (sudo / hardware setup) — see output above."
 fi
 
-# 1.06 Stage B configurator (firewalld / ollama / labs / rice) — opt-in.
-# Default: print hint only (Stage A already seeds firewalld drop). Force with
-# CONFIGURE=1; skip with SKIP_CONFIGURE=1. Headless: CONFIGURE_UI=plain.
-if [ "${SKIP_CONFIGURE:-0}" != 1 ] && [ -f scripts/configure.sh ]; then
-    if [ "${CONFIGURE:-0}" = 1 ] || [ "${CONFIGURE:-}" = Y ]; then
-        if [ ! -t 0 ] && [ -z "${CONFIGURE_UI:-}" ]; then
-            export CONFIGURE_UI=plain
-        fi
-        # One checklist pass then continue install (no interactive menu loop).
-        CONFIGURE_ONCE=1 bash scripts/configure.sh \
-            || fail_step "configure.sh failed — see module output above."
-    elif [ -t 0 ]; then
-        echo "Stage B modules: run  bash scripts/configure.sh  (or CONFIGURE=1 ./install.sh)"
-    fi
-fi
-
 # 1.1 Install Flatpaks
 if [ -f "scripts/install-flatpaks.sh" ]; then
     echo "Installing flatpak packages..."
@@ -206,7 +190,9 @@ done
 cd .. || exit 1
 
 # 2.0a User units shipped by stow packages (stow links them; nothing enabled them).
-run_step "tmp-semgrep-cleanup.timer" systemctl --user enable --now tmp-semgrep-cleanup.timer
+# daemon-reload first: the manager has not seen the freshly linked unit file.
+run_step "tmp-semgrep-cleanup.timer" bash -c \
+    'systemctl --user daemon-reload && systemctl --user enable --now tmp-semgrep-cleanup.timer'
 
 # 2.0 Login shell: zsh (the dotfiles' primary shell; kitty, Ghostty, Console
 # and the rest start the login shell). Stage A sets it at useradd; other hosts
@@ -272,7 +258,8 @@ fi
 
 # 3. Restore GNOME session (dconf + extensions + tablet handler)
 if [ -f "scripts/gnome-session-setup.sh" ]; then
-    run_step "GNOME session setup" bash scripts/gnome-session-setup.sh
+    # Extensions are fetched + enabled once, at 3.7/3.8 (failures recorded there).
+    run_step "GNOME session setup" env SKIP_GNOME_EXTENSIONS=1 bash scripts/gnome-session-setup.sh
 fi
 
 if [ -f "scripts/location-setup.sh" ]; then
@@ -291,7 +278,10 @@ fi
 
 # 3.2a Theme: Aura Glass (pinned) for the shell, GTK4/libadwaita + GTK3 apps,
 # Flatpaks and the GDM login screen; removes the previous theme setup once.
-if [ -f "scripts/theme-setup.sh" ]; then
+# Needs a GNOME login session. Opt out: SKIP_THEME=1 (headless VM).
+if [ "${SKIP_THEME:-0}" = 1 ]; then
+    echo "Skipping theme setup (SKIP_THEME=1)."
+elif [ -f "scripts/theme-setup.sh" ]; then
     run_step "Theme setup" bash scripts/theme-setup.sh
 fi
 
@@ -413,14 +403,32 @@ elif [ -f "scripts/install-foxcage.sh" ]; then
     run_step "foxcage install" bash scripts/install-foxcage.sh
 fi
 
-# 3.7 Dash2Dock Animated (EGO — before extension enable)
-if [ -f "scripts/install-dash2dock.sh" ]; then
-    run_step "Dash2Dock setup" bash scripts/install-dash2dock.sh
+# 3.7 Extension downloads: Caffeine (EGO) + Dash2Dock Animated, before enable
+if [ -f "scripts/fetch-gnome-extensions.sh" ]; then
+    run_step "GNOME extension downloads" bash scripts/fetch-gnome-extensions.sh
 fi
 
 # 3.8 Enable GNOME Extensions (list in gnome/extensions.txt)
 if [ -f "scripts/install-extensions.sh" ]; then
     run_step "GNOME extensions" bash scripts/install-extensions.sh
+fi
+
+# 3.9 Stage B configurator (firewalld / ollama / labs / rice) — opt-in.
+# Default: print hint only (Stage A already seeds firewalld drop). Force with
+# CONFIGURE=1; skip with SKIP_CONFIGURE=1. Headless: CONFIGURE_UI=plain.
+# Runs after stow (containers storage.conf, continue, starship), fnm (node/npm
+# for SETUP_AI) and the extension pass, so its modules find what they build on.
+if [ "${SKIP_CONFIGURE:-0}" != 1 ] && [ -f scripts/configure.sh ]; then
+    if [ "${CONFIGURE:-0}" = 1 ] || [ "${CONFIGURE:-}" = Y ]; then
+        if [ ! -t 0 ] && [ -z "${CONFIGURE_UI:-}" ]; then
+            export CONFIGURE_UI=plain
+        fi
+        # One checklist pass then continue install (no interactive menu loop).
+        CONFIGURE_ONCE=1 bash scripts/configure.sh \
+            || fail_step "configure.sh failed — see module output above."
+    elif [ -t 0 ]; then
+        echo "Stage B modules: run  bash scripts/configure.sh  (or CONFIGURE=1 ./install.sh)"
+    fi
 fi
 
 # 4. Privacy Hardening (before health check so telemetry probes reflect final state)

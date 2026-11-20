@@ -34,8 +34,9 @@ if [[ -f "$REPO_ROOT/scripts/cleanup-input-overrides.sh" ]]; then
 fi
 
 # Fetch Dash2Dock / Caffeine, then enable extensions.txt (Blur My Shell and the
-# Full-pack extensions come from Aura Glass: scripts/theme-setup.sh)
-if [[ -f "$REPO_ROOT/scripts/install-extensions.sh" ]]; then
+# Full-pack extensions come from Aura Glass: scripts/theme-setup.sh).
+# SKIP_GNOME_EXTENSIONS=1: ./install.sh does this itself later, as recorded steps.
+if [[ ${SKIP_GNOME_EXTENSIONS:-0} != 1 && -f "$REPO_ROOT/scripts/install-extensions.sh" ]]; then
   echo "→ Fetching/enabling GNOME extensions..."
   GNOME_EXT_FETCH=1 bash "$REPO_ROOT/scripts/install-extensions.sh" || true
 fi

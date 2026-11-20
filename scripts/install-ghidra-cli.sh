@@ -20,17 +20,9 @@ AGENTS_SKILLS="${HOME}/.agents/skills"
 die() { echo "error: $*" >&2; exit 1; }
 warn() { echo "warning: $*" >&2; }
 
-if ! command -v cargo >/dev/null 2>&1; then
-    die "cargo not found; install rust (pacman: rust)"
-fi
-if ! cargo --version >/dev/null 2>&1; then
-    if command -v rustup >/dev/null 2>&1; then
-        echo "No default Rust toolchain configured; running 'rustup default stable'..."
-        rustup default stable
-    else
-        die "cargo is not functional; install rust toolchain"
-    fi
-fi
+# shellcheck source=scripts/lib/rust-toolchain.sh
+source "$(dirname "$0")/lib/rust-toolchain.sh"
+ensure_rust_toolchain || die "no working Rust toolchain; install rust (pacman) or rustup"
 
 if [[ ! -x "$GHIDRA_INSTALL_DIR/support/analyzeHeadless" ]]; then
     die "Ghidra not found at $GHIDRA_INSTALL_DIR (pacman: ghidra)"
