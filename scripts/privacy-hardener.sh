@@ -36,7 +36,6 @@ if command -v gsettings >/dev/null 2>&1; then
   say "GNOME privacy (gsettings)"
   gset org.gnome.desktop.privacy report-technical-problems false
   gset org.gnome.desktop.privacy send-software-usage-stats false
-  gset org.gnome.desktop.privacy connectivity-checking false
   gset org.gnome.desktop.privacy remember-recent-files false
   gset org.gnome.desktop.privacy remember-app-usage false
   gset org.gnome.desktop.privacy remove-old-trash-files true

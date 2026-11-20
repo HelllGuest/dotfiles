@@ -5,5 +5,5 @@ Comment=Reverse-engineering Podman sandbox
 Exec=bash -ic "lab-re"
 Icon=utilities-terminal
 Terminal=true
-Categories=Development;Security;
+Categories=System;Security;
 StartupWMClass=lab-re

@@ -150,7 +150,7 @@ Multiline paste protection enabled.
 
 ## GNOME Console (kgx)
 
-Quick throwaway terminal — `kgx`. Tuned by `scripts/gnome-console-setup.sh` (100k scrollback, night theme, 5% transparency).
+Quick throwaway terminal — `kgx`. Tuned by `scripts/gnome-console-setup.sh` (100k scrollback, night theme, transparency enabled).
 Commands over 15 s that finish while the window is unfocused raise a desktop
 notification (Console's own, via `vte.sh`; kitty and Ghostty do the same
 natively; other terminals get the shell's `notify-send`).

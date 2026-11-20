@@ -18,14 +18,47 @@ DIALOG_RC_DIR=""
 DEFAULT_MENU_ITEM="modules"
 
 # CONFIGURE_UI=plain|dialog|whiptail — force backend (VM / CI: plain).
-UI=${CONFIGURE_UI:-plain}
 if [[ -z ${CONFIGURE_UI:-} ]]; then
   if command -v dialog >/dev/null 2>&1; then
     UI=dialog
   elif command -v whiptail >/dev/null 2>&1; then
     UI=whiptail
+  else
+    UI=plain
   fi
+else
+  UI=$CONFIGURE_UI
+  case $UI in
+    dialog|whiptail)
+      if ! command -v "$UI" >/dev/null 2>&1; then
+        echo "configure.sh: CONFIGURE_UI=$UI requested, but '$UI' is not installed" >&2
+        exit 1
+      fi
+      ;;
+    plain) ;;
+    *)
+      echo "configure.sh: unknown CONFIGURE_UI='$UI' (use plain|dialog|whiptail)" >&2
+      exit 1
+      ;;
+  esac
 fi
+
+# Clamp dialog/whiptail dimensions to current terminal (defaults 24x80).
+ui_dims() {
+  local want_h=$1 want_w=$2 want_lh=${3:-0} rows cols
+  rows=$(tput lines 2>/dev/null || echo 24)
+  cols=$(tput cols 2>/dev/null || echo 80)
+  [[ $rows =~ ^[0-9]+$ ]] || rows=24
+  [[ $cols =~ ^[0-9]+$ ]] || cols=80
+  UI_H=$want_h; (( rows - 2 < UI_H )) && UI_H=$(( rows - 2 )); (( UI_H < 12 )) && UI_H=12
+  UI_W=$want_w; (( cols - 4 < UI_W )) && UI_W=$(( cols - 4 )); (( UI_W < 40 )) && UI_W=40
+  if (( want_lh > 0 )); then
+    UI_LH=$want_lh
+    (( UI_H - 8 < UI_LH )) && UI_LH=$(( UI_H - 8 ))
+    (( UI_LH < 4 )) && UI_LH=4
+  fi
+  return 0
+}
 
 # Minimal Stage A–matching chrome (8-colour console safe). Cleanup on EXIT.
 write_configure_theme() {
@@ -96,14 +129,16 @@ checklist() {
   local title=$1; shift
   case $UI in
     dialog)
+      ui_dims 20 76 12
       dialog --colors --backtitle "$APP_TITLE" --stdout --separate-output \
-        --checklist "$title" 20 72 12 "$@" || return 1
+        --checklist "$title" "$UI_H" "$UI_W" "$UI_LH" "$@" || return 1
       ;;
     whiptail)
       # whiptail draws on stdout and answers on stderr: swap them so $(…)
       # captures the tags, not the screen.
+      ui_dims 20 76 12
       whiptail --backtitle "$APP_TITLE" --separate-output \
-        --checklist "$title" 20 72 12 "$@" 3>&1 1>&2 2>&3 || return 1
+        --checklist "$title" "$UI_H" "$UI_W" "$UI_LH" "$@" 3>&1 1>&2 2>&3 || return 1
       ;;
     *)
       echo "$title" >&2
@@ -134,16 +169,18 @@ menu() {
   local title=$1; shift
   case $UI in
     dialog)
+      ui_dims 16 72 8
       dialog --colors --backtitle "$APP_TITLE" --stdout \
         --default-item "${DEFAULT_MENU_ITEM:-}" \
         --cancel-label Quit --ok-label Select \
-        --menu "$title" 16 72 8 "$@" || return 1
+        --menu "$title" "$UI_H" "$UI_W" "$UI_LH" "$@" || return 1
       ;;
     whiptail)
+      ui_dims 16 72 8
       whiptail --backtitle "$APP_TITLE" \
         --default-item "${DEFAULT_MENU_ITEM:-}" \
         --cancel-button Quit --ok-button Select \
-        --menu "$title" 16 72 8 "$@" 3>&1 1>&2 2>&3 || return 1
+        --menu "$title" "$UI_H" "$UI_W" "$UI_LH" "$@" 3>&1 1>&2 2>&3 || return 1
       ;;
     *)
       echo "$title" >&2
@@ -171,8 +208,8 @@ menu() {
 
 msg() {
   case $UI in
-    dialog) dialog --colors --backtitle "$APP_TITLE" --msgbox "$1" 12 60 || true ;;
-    whiptail) whiptail --backtitle "$APP_TITLE" --msgbox "$1" 12 60 || true ;;
+    dialog) ui_dims 12 60; dialog --colors --backtitle "$APP_TITLE" --msgbox "$1" "$UI_H" "$UI_W" || true ;;
+    whiptail) ui_dims 12 60; whiptail --backtitle "$APP_TITLE" --msgbox "$1" "$UI_H" "$UI_W" || true ;;
     *) printf '%s\n' "$1" ;;
   esac
 }
@@ -197,11 +234,11 @@ run_mod() {
 run_modules_batch() {
   local OPTS
   OPTS="$(checklist "Stage B modules" \
-    SETUP_FIREWALLD "firewalld lab zones (drop + libvirt + lab-malware)" on \
+    SETUP_FIREWALLD "firewalld drop + libvirt + lab-malware zones" on \
     APPLY_PROFILE "Re-run machine profile (detect / hostname)" off \
     SETUP_OLLAMA "P15: ollama-cuda + qwen models (localhost)" "$OLLAMA_STATE" \
-    SETUP_LABS "Labs lab-triage/re/android/web (+ capture image)" off \
-    SETUP_DETONATE "Detonation VMs + INetSim/PolarProxy on virbr-malware" off \
+    SETUP_LABS "Labs lab-triage/re/android/web (+ capture)" off \
+    SETUP_DETONATE "Detonation VMs + INetSim/PolarProxy" off \
     SETUP_AI "AI MCP / Headroom / Continue / Ponytail" off \
     SETUP_RICE "Gruvbox rice + notifications + launchers" off
   )" || return 1

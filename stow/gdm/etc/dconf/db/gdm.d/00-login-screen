@@ -46,6 +46,3 @@ sleep-inactive-battery-timeout=180
 [org/gnome/desktop/a11y/applications]
 screen-keyboard-enabled=false
 screen-magnifier-enabled=false
-
-[org/gnome/mutter]
-experimental-features=['scale-monitor-framebuffer']

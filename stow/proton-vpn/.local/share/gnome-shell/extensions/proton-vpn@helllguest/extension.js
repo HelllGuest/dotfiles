@@ -363,12 +363,14 @@ const ProtonVPNButton = GObject.registerClass(
             }
         }
 
-        _scheduleGeoRefresh() {
+        _scheduleGeoRefresh(delayMs = 500) {
+            if (this._destroyed)
+                return;
             if (this._geoRefreshTimeoutId)
                 GLib.Source.remove(this._geoRefreshTimeoutId);
             this._geoRefreshTimeoutId = GLib.timeout_add(
                 GLib.PRIORITY_DEFAULT,
-                500,
+                delayMs,
                 () => {
                     this._geoRefreshTimeoutId = null;
                     this._updateGeoMenu();
@@ -417,10 +419,7 @@ const ProtonVPNButton = GObject.registerClass(
                         console.error('Proton VPN extension:', error);
                         Main.notify('Proton VPN', error.message);
                     } finally {
-                        GLib.timeout_add(GLib.PRIORITY_DEFAULT, 1500, () => {
-                            this._updateGeoMenu();
-                            return GLib.SOURCE_REMOVE;
-                        });
+                        this._scheduleGeoRefresh(1500);
                     }
                 });
                 Main.notify(
@@ -716,6 +715,7 @@ const ProtonVPNButton = GObject.registerClass(
         }
 
         destroy() {
+            this._destroyed = true;
             this._clearPinnedItems();
 
             if (this._openTimeoutId) {

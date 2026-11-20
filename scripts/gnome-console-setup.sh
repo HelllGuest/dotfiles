@@ -10,8 +10,7 @@ dconf write /org/gnome/Console/scrollback-lines 100000
 dconf write /org/gnome/Console/theme "'night'"
 dconf write /org/gnome/Console/audible-bell false
 dconf write /org/gnome/Console/visual-bell false
-dconf write /org/gnome/Console/use-bold true
-dconf write /org/gnome/Console/opacity 0.95
+dconf write /org/gnome/Console/transparency true
 
 PROFILE_PATH="/org/gnome/terminal/legacy/profiles:/"
 DEFAULT_PROFILE=$(dconf read /org/gnome/terminal/legacy/profiles:/default 2>/dev/null | tr -d "'")

@@ -163,6 +163,33 @@ cfg_run - CONFIGURE_UI=whiptail PATH="$CT/bin:$PATH" WT_MENU="$CT/menu" WT_CANCE
 [[ $cfg_rc == 0 && -z $cfg_ran && ! -s $CT/menu ]] \
   || fail "checklist Cancel must return to the menu (rc=$cfg_rc ran=[$cfg_ran])"
 
+# Forced missing TUI backend or unknown CONFIGURE_UI must fail fast (never exit 0).
+_no_dialog="$CT/no-dialog"
+mkdir -p "$_no_dialog"
+for _cmd in bash env timeout mkdir rm mktemp tput dirname cat grep sed printf; do
+  _p="$(command -v "$_cmd" 2>/dev/null || true)"
+  [[ -n $_p ]] && ln -sf "$_p" "$_no_dialog/$_cmd"
+done
+cfg_run - CONFIGURE_UI=dialog PATH="$_no_dialog"
+[[ $cfg_rc -ne 0 && $cfg_out == *'not installed'* ]] \
+  || fail "CONFIGURE_UI=dialog without dialog must exit non-zero (rc=$cfg_rc out=$cfg_out)"
+cfg_run - CONFIGURE_UI=bogus
+[[ $cfg_rc -ne 0 && $cfg_out == *'unknown CONFIGURE_UI'* ]] \
+  || fail "unknown CONFIGURE_UI must exit non-zero (rc=$cfg_rc out=$cfg_out)"
+unset -v _no_dialog _cmd _p
+
+# ui_dims clamps to the terminal and returns 0 (callable under set -e).
+_dims="$(sed -n '/^ui_dims() {/,/^}/p' "$ROOT/scripts/configure.sh")"
+[[ -n $_dims ]] || fail "configure.sh: ui_dims not found"
+_got="$(LINES=20 COLUMNS=70 TERM=xterm bash -euo pipefail -c "$_dims"'
+  ui_dims 20 76 12; echo "$UI_H $UI_W $UI_LH"')" \
+  || fail "ui_dims must return 0 under set -e"
+[[ $_got == '18 66 10' ]] || fail "ui_dims 70x20: want '18 66 10', got '$_got'"
+_got="$(LINES=50 COLUMNS=200 TERM=xterm bash -euo pipefail -c "$_dims"'
+  ui_dims 12 60; echo "$UI_H $UI_W"')" || fail "ui_dims (no list) must return 0"
+[[ $_got == '12 60' ]] || fail "ui_dims must keep the wanted size on a big terminal, got '$_got'"
+unset -v _dims _got
+
 bash -n "$ROOT/scripts/lib/progress.sh" || fail "bash -n progress.sh"
 bash -n "$ROOT/scripts/configure.sh" || fail "bash -n configure.sh"
 bash -n "$ROOT/install.sh" || fail "bash -n install.sh"
