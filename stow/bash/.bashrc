@@ -149,3 +149,7 @@ export ANTHROPIC_BASE_URL="http://127.0.0.1:8787"
 export ENABLE_TOOL_SEARCH="true"
 export OPENAI_BASE_URL="http://127.0.0.1:8787/v1"
 # <<< headroom persistent env <<<
+
+
+# Added by Antigravity CLI installer
+export PATH="/home/songoku/.local/bin:$PATH"
