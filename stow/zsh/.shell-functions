@@ -385,11 +385,21 @@ _rice_starship() {
 }
 _rice_starship
 
+_rice_has_config_flag() {
+    local a
+    for a in "$@"; do
+        case "$a" in
+            -c|--config|--config=*|-h|--help|-v|-V|--version) return 0 ;;
+        esac
+    done
+    return 1
+}
+
 unalias ff btop 2>/dev/null || true
 ff() {
     local p dir="${XDG_CONFIG_HOME:-$HOME/.config}/fastfetch"
-    if [[ $# -eq 0 ]] && p=$(_rice_get fastfetch) && [[ -f $dir/$p.jsonc ]]; then
-        fastfetch --config "$dir/$p.jsonc"
+    if ! _rice_has_config_flag "$@" && p=$(_rice_get fastfetch) && [[ -f $dir/$p.jsonc ]]; then
+        fastfetch --config "$dir/$p.jsonc" "$@"
     else
         fastfetch "$@"
     fi
@@ -398,9 +408,9 @@ ff() {
 btop() {
     local t st src="${XDG_CONFIG_HOME:-$HOME/.config}/btop"
     st=$(_rice_state)
-    if [[ $# -eq 0 ]] && t=$(_rice_get btop) && [[ -f $src/btop.conf ]] && mkdir -p "$st" \
+    if ! _rice_has_config_flag "$@" && t=$(_rice_get btop) && [[ -f $src/btop.conf ]] && mkdir -p "$st" \
         && sed "s/^color_theme = .*/color_theme = \"${t}\"/" "$src/btop.conf" >"$st/btop.conf"; then
-        command btop -c "$st/btop.conf" --themes-dir "$src/themes"
+        command btop -c "$st/btop.conf" --themes-dir "$src/themes" "$@"
     else
         command btop "$@"
     fi

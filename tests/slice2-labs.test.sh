@@ -525,8 +525,10 @@ grep -qx 'save_config_on_exit = false' "$ROOT/stow/btop/.config/btop/btop.conf" 
     [[ "$(cat "$_st/fastfetch")" == minimal ]] || fail "$_sh: ff-preset use must save the preset name"
     : >"$RICE_LOG"; _rs 'ff'
     grep -qx "fastfetch --config $_rt/cfg/fastfetch/minimal.jsonc" "$RICE_LOG" || fail "$_sh: ff must use the saved preset: $(cat "$RICE_LOG")"
+    : >"$RICE_LOG"; _rs 'ff --pipe false'
+    grep -qx "fastfetch --config $_rt/cfg/fastfetch/minimal.jsonc --pipe false" "$RICE_LOG" || fail "$_sh: ff with non-config flags must keep saved preset: $(cat "$RICE_LOG")"
     : >"$RICE_LOG"; _rs 'ff -c gruvbox'
-    grep -qx 'fastfetch -c gruvbox' "$RICE_LOG" || fail "$_sh: ff with arguments must pass them through"
+    grep -qx 'fastfetch -c gruvbox' "$RICE_LOG" || fail "$_sh: ff -c must pass through without override"
     _rs 'ff-preset reset >/dev/null'
     : >"$RICE_LOG"; _rs 'ff'
     grep -qx 'fastfetch ' "$RICE_LOG" || fail "$_sh: ff after reset must run the repo config.jsonc"
@@ -541,6 +543,10 @@ grep -qx 'save_config_on_exit = false' "$ROOT/stow/btop/.config/btop/btop.conf" 
     [[ "$(readlink "$_rt/cfg/alacritty/theme.local.toml")" == themes/gruvbox.toml ]] || fail "$_sh: alacritty theme.local.toml must link to themes/gruvbox.toml"
     : >"$RICE_LOG"; _rs 'btop'
     grep -qx "btop -c $_st/btop.conf --themes-dir $_rt/cfg/btop/themes" "$RICE_LOG" || fail "$_sh: btop must use the override: $(cat "$RICE_LOG")"
+    : >"$RICE_LOG"; _rs 'btop -p 1'
+    grep -qx "btop -c $_st/btop.conf --themes-dir $_rt/cfg/btop/themes -p 1" "$RICE_LOG" || fail "$_sh: btop with non-config flags must keep override: $(cat "$RICE_LOG")"
+    : >"$RICE_LOG"; _rs 'btop -c custom.conf'
+    grep -qx 'btop -c custom.conf' "$RICE_LOG" || fail "$_sh: btop -c must pass through without override"
     grep -qx 'color_theme = "gruvbox_dark"' "$_st/btop.conf" || fail "$_sh: btop override missed color_theme"
     _tracked_unchanged || fail "$_sh: rice-theme modified a tracked config"
     # Not frozen: later edits to the stowed files reach the next shell / btop run.
