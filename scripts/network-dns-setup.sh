@@ -41,7 +41,7 @@ fi
 mapfile -t CONNECTIONS < <(
     case "$MODE" in
         active)
-            nmcli -t -f NAME connection show --active | rg -v '^lo$' || true
+            nmcli -t -f NAME connection show --active | grep -vx 'lo' || true
             ;;
         all-wifi)
             nmcli -t -f NAME,TYPE connection show | awk -F: '$2 == "802-11-wireless" { print $1 }'
@@ -87,7 +87,7 @@ for conn in "${CONNECTIONS[@]}"; do
         ipv6.ignore-auto-dns yes
 done
 
-ACTIVE="$(nmcli -t -f NAME connection show --active | rg -v '^lo$' | head -1 || true)"
+ACTIVE="$(nmcli -t -f NAME connection show --active | grep -vx 'lo' | head -1 || true)"
 if [[ -n "$ACTIVE" ]]; then
     echo "→ Reapplying active connection: $ACTIVE"
     nm_write connection up "$ACTIVE" >/dev/null
