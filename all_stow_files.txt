@@ -1,6 +1,5 @@
 stow/alacritty/.config/alacritty/alacritty.toml
 stow/alacritty/.config/alacritty/theme.toml
-stow/alacritty/.config/alacritty/themes/aura-glass.toml
 stow/alacritty/.config/alacritty/themes/gruvbox.toml
 stow/alacritty/.config/alacritty/themes/secops.toml
 stow/antigravity/.config/Antigravity IDE/User/settings.json
@@ -11,7 +10,6 @@ stow/atuin/.config/atuin/config.toml
 stow/bash/.bashrc
 stow/bash/.inputrc
 stow/btop/.config/btop/btop.conf
-stow/btop/.config/btop/themes/aura_glass.theme
 stow/btop/.config/btop/themes/gruvbox_dark.theme
 stow/btop/.config/btop/themes/secops.theme
 stow/containers/.config/containers/containers.conf
@@ -19,7 +17,6 @@ stow/containers/.config/containers/storage.conf
 stow/continue/.continue/config.yaml
 stow/contour/.config/contour/contour.yml
 stow/cursor/.config/Cursor/User/settings.json
-stow/fastfetch/.config/fastfetch/aura-glass.jsonc
 stow/fastfetch/.config/fastfetch/config.jsonc
 stow/fastfetch/.config/fastfetch/gruvbox.jsonc
 stow/fastfetch/.config/fastfetch/minimal.jsonc
@@ -32,7 +29,6 @@ stow/gdm/etc/systemd/system/gdm.service.d/override.conf
 stow/gdm/etc/udev/rules.d/61-gdm-wayland.rules
 stow/ghostty/.config/ghostty/config
 stow/ghostty/.config/ghostty/theme.conf
-stow/ghostty/.config/ghostty/themes/aura-glass.conf
 stow/ghostty/.config/ghostty/themes/gruvbox.conf
 stow/ghostty/.config/ghostty/themes/secops.conf
 stow/ghostty/.config/systemd/user/app-com.mitchellh.ghostty.service.d/override.conf

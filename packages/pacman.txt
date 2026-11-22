@@ -45,20 +45,16 @@ gnome-characters
 # Pinned in the dock (favorite-apps); explicit so they are never missing
 nautilus
 gnome-text-editor
-# Theme: Aura Glass (scripts/theme-setup.sh runs its pinned installer). Its
-# build + runtime needs: sassc (theme CSS), gettext/libxml2/unzip (Blur My Shell
-# and extension builds), python-gobject/python-cairo/libadwaita (settings app
-# + setup window), libgda6 (Copyous), imagemagick/python-pillow (GDM blur).
+# Desktop: stock Adwaita (scripts/theme-setup.sh). Extension zips need unzip;
+# Copyous needs libgda6; python-gobject/cairo used by setup helpers; libadwaita
+# is the GTK4 toolkit.
 python-gobject
 python-cairo
 libadwaita
-sassc
 gettext
 libxml2
 unzip
 libgda6
-imagemagick
-python-pillow
 # gnome-shell CalendarServer needs libecal/libedataserver
 evolution-data-server
 # Wi-Fi regulatory.db (dmesg -2 without this)

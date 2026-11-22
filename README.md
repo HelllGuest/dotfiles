@@ -8,7 +8,7 @@ A clean, modular, and programmable dotfiles ecosystem optimized for **Arch Linux
 
 - **Privacy Hardened:** Telemetry, usage reporting, and "phoning home" are disabled system-wide (GNOME, VS Code, .NET, etc.).
 - **ThinkPad Optimized:** Hostname or hardware-detected profiles (`thinkpad-p15.sh`, `thinkpad-t14s.sh`, or `laptop.sh`) with power-profiles-daemon (or tuned + `tuned-ppd` on hosts from `t14s-arch-install`), UKIs signed for Secure Boot (sbctl), and a tracked **s2idle** sleep pin (`mem_sleep_default=s2idle`; pair BIOS Sleep State with **Windows and Linux**, not **Linux**/S3 — see `docs/hardened-arch-gnome.md`). Firewall: **firewalld** (`nftables`, default `drop`). Stage B modules: `bash scripts/configure.sh` (firewalld, labs, AI stack, terminal/CLI rice). Lab wrappers: `lab-triage` / `lab-re` / `lab-android` / `lab-web` / `lab-detonate` / `lab-mcp` (see `scripts/labs-setup.sh`, `lab-detonate.sh`, `lab-mcp.sh`). Thermal is firmware-managed. Charge window **70–80** via `scripts/thinkpad-charge-thresholds.sh`.
-- **Elite-Tier Terminal:** Kitty (stock host colors; Gruvbox accents for `lab-*`) & Ghostty with shared Zsh/Bash configs, real-time autocomplete, and switchable Aura Glass / Gruvbox / SecOps themes (`rice-theme`, `ff-preset`; stored as untracked local overrides) across Starship, Fastfetch, btop, Ghostty, and Alacritty.
+- **Elite-Tier Terminal:** Kitty (stock host colors; Gruvbox accents for `lab-*`) & Ghostty with shared Zsh/Bash configs, real-time autocomplete, and switchable Gruvbox / SecOps themes (`rice-theme`, `ff-preset`; stored as untracked local overrides) across Starship, Fastfetch, btop, Ghostty, and Alacritty.
 - **Neovim (Lazy.nvim):** A modular Lua configuration.
 
 ---
@@ -162,7 +162,7 @@ Animated GNOME dock ([Dash2Dock Lite](https://github.com/icedman/dash2dock-lite)
 bash scripts/install-dash2dock.sh
 ```
 
-UUID `dash2dock-lite@icedman.github.com` is in `gnome/extensions.txt` and `gnome/dconf/user.conf`. EGO zip still declares Shell ≤50; the install script patches `metadata.json` for **Shell 51** (unofficial — may still break). Caffeine installs from EGO via `scripts/fetch-gnome-extensions.sh` (`GNOME_EXT_FETCH=1 bash scripts/install-extensions.sh`); Blur My Shell and the clipboard / tray extensions come from Aura Glass (`scripts/theme-setup.sh`). **Wayland:** log out → log in (`Meta.restart` is disabled). Prefs: `gnome-extensions prefs dash2dock-lite@icedman.github.com`.
+UUID `dash2dock-lite@icedman.github.com` is in `gnome/extensions.txt` and `gnome/dconf/user.conf`. EGO zip still declares Shell ≤50; the install script patches `metadata.json` for **Shell 51** (unofficial — may still break). Caffeine, Blur My Shell, Status Tray, Tiling Assistant, and the rest of the Full pack install from EGO via `scripts/fetch-gnome-extensions.sh` (`GNOME_EXT_FETCH=1 bash scripts/install-extensions.sh`). Custom OSD and Restart To get a Shell 51 metadata patch when upstream lags. **Wayland:** log out → log in (`Meta.restart` is disabled). Prefs: `gnome-extensions prefs dash2dock-lite@icedman.github.com`.
 
 ### Shortcuts
 
@@ -172,7 +172,7 @@ Disposable Kali lab (libvirt overlay): `kali-up` (isolated) / `kali-up-nat` / `k
 
 ### Starship
 
-Based on the [Gruvbox Rainbow](https://starship.rs/presets/gruvbox-rainbow) layout with Nerd Font symbols and three built-in palettes: `aura_glass` (default), `gruvbox_dark`, and `secops`. Config: `stow/starship/.config/starship.toml`. Switch across Starship, Fastfetch, btop, Ghostty, and Alacritty with `rice-theme <aura-glass|gruvbox|secops>` (or Fastfetch-only presets via `ff-preset`).
+Based on the [Gruvbox Rainbow](https://starship.rs/presets/gruvbox-rainbow) layout with Nerd Font symbols and two built-in palettes: `gruvbox_dark` (default) and `secops`. Config: `stow/starship/.config/starship.toml`. Switch across Starship, Fastfetch, btop, Ghostty, and Alacritty with `rice-theme <gruvbox|secops>` (or Fastfetch-only presets via `ff-preset`).
 
 Optional older **Crampack** presets (not in this repo):  
 `bash <(curl -fsSL "https://git.new/crampack-sh")`
@@ -324,7 +324,7 @@ stops the script; no silent `|| true`).
 | `SETUP_LABS` | off | `labs-setup.sh` (triage/re/android/web images) |
 | `SETUP_DETONATE` | off | `lab-detonate.sh setup` (capture + VMs; PolarProxy only with `POLARPROXY_SHA256=<verified sha256>`) |
 | `SETUP_AI` | off | `ai-stack-setup.sh` (Headroom/`hr-*`, Ponytail, Continue FIM; **not** Caveman — full `./install.sh` already did cores + extras + P15 ollama) |
-| `SETUP_RICE` | off | `rice-setup.sh` (Aura Glass / Gruvbox / SecOps rice + lock-screen notifications off) |
+| `SETUP_RICE` | off | `rice-setup.sh` (Gruvbox / SecOps rice + lock-screen notifications off) |
 
 ```bash
 bash scripts/configure.sh                      # menu loop
@@ -459,9 +459,8 @@ GNOME_EXT_FETCH=1 bash scripts/install-extensions.sh
 # or: bash scripts/fetch-gnome-extensions.sh
 ```
 
-Installs EGO Caffeine, then Dash2Dock (Blur My Shell comes from Aura Glass,
-see **Theme** below). Safe to re-run. Enable via `install-extensions.sh`;
-Wayland needs log out → log in.
+Installs EGO Caffeine, Blur My Shell, Full pack, then Dash2Dock. Safe to
+re-run. Enable via `install-extensions.sh`; Wayland needs log out → log in.
 
 **Lab commands (after `labs-setup.sh` / configure SETUP_LABS):**
 ```text
@@ -481,7 +480,7 @@ cleanup-input-overrides.sh
 → tmp-semgrep-cleanup.timer enable (user unit) → login shell → zsh (usermod, if not already)
 → fnm install/default 22 → atuin import → zram-setup.sh
 → gnome-session-setup.sh → location-setup.sh → gnome-console-setup.sh
-→ gdm-setup.sh → theme-setup.sh (Aura Glass + GDM; SKIP_THEME=1 skips) → git-setup.sh → nvim-setup.sh → headroom-setup.sh
+→ gdm-setup.sh → theme-setup.sh (stock Adwaita; SKIP_THEME=1 skips) → git-setup.sh → nvim-setup.sh → headroom-setup.sh
 → sync-agent-skills.sh → install-coding-agents.sh (OpenCode + Kimi + MCP; if npm)
 → install-caveman.sh (if npm) → install-ponytail.sh (if node) → install-android-ui-skills.sh (if npx)
 → install-ghidra-cli.sh (if ghidra)
@@ -520,29 +519,15 @@ bash scripts/check.sh --all      # both
 or next to this repo. Its FAILs count only on the T14s Gen 3 AMD (21CQ/21CR), the
 hardware `host-check.sh` targets; on other hosts they are shown as informational.
 
-**Theme:** [Aura Glass](https://github.com/DevWebeloper/aura-glass) (MIT), a
-frosted-glass Shell + GTK4/libadwaita + GTK3 theme with real blur.
-`scripts/theme-setup.sh` fetches it at a pinned commit (`AURA_GLASS_COMMIT`,
-v0.4.4), refuses any other commit, and runs its installer non-interactively:
-`--full --accent blue --no-update-check -y --gdm` on the first install, then
-just `-y`, so choices made in the settings app survive `./install.sh` re-runs.
-That gives its patched Blur My Shell, Custom OSD and helper, the Full extension pack (Status Tray, Tiling
-Assistant, Hot Edge, Kiwi Menu, Copyous, Wiggly, Restart To), Colloid icons,
-the Adwaita pointer, Flatpak access, the **Aura Glass** settings app and a
-blurred GDM login screen (`sudo`). Aura Glass owns the theme, icon, pointer,
-User Themes and Blur My Shell keys, so `gnome/dconf/*.conf` leave them out and
-`backup-gsettings.sh` drops them from snapshots. The first run also removes the
-previous Orchis/Tela/Bibata setup (greeter gresource + pacman hook,
-`theme-sync.service`, the user theme copy and its `~/.config/gtk-4.0` links).
-`check.sh` runs Aura Glass's own `--verify`. Upgrade: bump
-`AURA_GLASS_VERSION` + `AURA_GLASS_COMMIT` together, not the settings app's
-Install button (it moves the checkout off the pin; `check.sh` fails and the
-next run moves it back). The pin covers Aura Glass and what it builds (Blur My
-Shell, Custom OSD, Colloid); the 7 Full-pack extensions come from
-extensions.gnome.org at their current Shell 51 release. Undo: `bash
-~/.cache/dotfiles/aura-glass/uninstall.sh`. Keep the stock greeter:
-`SKIP_AURA_GDM=1`. GNOME Tweaks and Extension Manager are installed from
-`pacman.txt`.
+**Theme:** stock **Adwaita** (GTK + icons + empty User Themes name) via
+`scripts/theme-setup.sh`. It does **not** install Aura Glass. Extension UUIDs
+stay in `gnome/dconf/user.conf` (Blur My Shell, Status Tray, Tiling Assistant,
+and the rest). `gnome/dconf/*.conf` leave gtk-theme / icon / cursor and the
+extension look trees unset; `backup-gsettings.sh` drops those from snapshots.
+The script still removes leftover Orchis/Tela/Bibata greeter hooks
+(`theme-sync.service`, user theme copy, `~/.config/gtk-4.0` links into Orchis).
+`check.sh` verifies Adwaita. Opt out on headless hosts: `SKIP_THEME=1`. GNOME
+Tweaks and Extension Manager are installed from `pacman.txt`.
 
 **Command-finished notifications:** kitty (`notify_on_cmd_finish`), Ghostty
 (`notify-on-command-finish`) and GNOME Console (via `vte.sh`) notify natively when
@@ -590,7 +575,7 @@ Key runtime dependencies (`scripts/check.sh` asserts binaries, shell tools, syml
 
 **Flatpaks** (via `install-flatpaks.sh`): Brave, Zen, Google Chrome, LibreWolf, Proton VPN, Android Studio, Sticky Notes. Chrome may be `--system` or `--user`; both satisfy `check.sh` / hardening presence checks. Browser telemetry debloat: `scripts/browser-hardening.sh` (Chrome = `chromium-base` + `chrome-extra`, which turns off Google AI features (AI Mode, Help Me Write, Gemini on pages, on-device model download); Brave = base + `brave-extra`; `check.sh` fails if the deployed Chrome/Brave policy differs from the repo; verify in `chrome://policy` / `brave://policy`; Zen `user.js` per real profile + Flatpak `systemconfig` + `/etc/firefox/policies` for native; LibreWolf upstream + `librewolf.overrides.cfg`). Launch Zen once before re-running hardening if profiles are new. `/etc` policy paths need sudo.
 
-**Terminals:** `kitty` (primary; Super+Return; also opens `Terminal=true` launchers such as Lab RE / Kali via `xdg-terminal-exec` + `~/.config/xdg-terminals.list` from `stow/kitty`), `ghostty`, optional `alacritty` / `contour`, plus `gnome-console` (kgx). Rice: `bash scripts/rice-setup.sh` (Aura Glass default; switch with `rice-theme aura-glass|gruvbox|secops`; privacy: `show-in-lock-screen false`). Optional suckless `st`: `bash scripts/build-st.sh` (`builds/st/`).
+**Terminals:** `kitty` (primary; Super+Return; also opens `Terminal=true` launchers such as Lab RE / Kali via `xdg-terminal-exec` + `~/.config/xdg-terminals.list` from `stow/kitty`), `ghostty`, optional `alacritty` / `contour`, plus `gnome-console` (kgx). Rice: `bash scripts/rice-setup.sh` (Gruvbox default; switch with `rice-theme gruvbox|secops`; privacy: `show-in-lock-screen false`). Optional suckless `st`: `bash scripts/build-st.sh` (`builds/st/`).
 
 Run `scripts/gnome-console-setup.sh` for Console dconf. **Super+Return → kitty** is in `gnome/dconf/user.conf`.
 

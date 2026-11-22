@@ -364,11 +364,29 @@ lab-mcp() {
 # from the stowed files each time, so repo updates still apply. Ghostty and
 # Alacritty load a gitignored theme.local.* link to one of their themes/.
 _rice_state() { printf '%s' "${XDG_STATE_HOME:-$HOME/.local/state}/dotfiles/theme"; }
-# _rice_get <key>: the saved name, only if it is a plain name (it goes into sed).
+# _rice_get <key>: saved name only if plain and still present in the stowed configs
+# (drops stale aura_glass / deleted presets so sed never points at missing files).
 _rice_get() {
-    local v
-    v=$(cat -- "$(_rice_state)/$1" 2>/dev/null) || return 1
-    [[ $v =~ ^[a-z0-9_-]+$ ]] || return 1
+    local key=$1 v st cfg
+    st=$(_rice_state)
+    v=$(cat -- "$st/$key" 2>/dev/null) || return 1
+    if [[ ! $v =~ ^[a-z0-9_-]+$ ]]; then
+        rm -f -- "$st/$key"
+        return 1
+    fi
+    cfg="${XDG_CONFIG_HOME:-$HOME/.config}"
+    case $key in
+        starship)
+            [[ -f $cfg/starship.toml ]] && grep -q "^\[palettes\.${v}\]" "$cfg/starship.toml" 2>/dev/null \
+                || { rm -f -- "$st/$key"; return 1; }
+            ;;
+        btop)
+            [[ -f $cfg/btop/themes/${v}.theme ]] || { rm -f -- "$st/$key"; return 1; }
+            ;;
+        fastfetch)
+            [[ $v != config && -f $cfg/fastfetch/${v}.jsonc ]] || { rm -f -- "$st/$key"; return 1; }
+            ;;
+    esac
     printf '%s' "$v"
 }
 # Starship reads STARSHIP_CONFIG at every prompt; rebuilt at shell start.
@@ -450,12 +468,12 @@ ff-preset() {
 }
 
 # Unified theme switcher across fastfetch, btop, starship, ghostty, and alacritty.
-# Usage: rice-theme [aura-glass|gruvbox|secops|reset]
+# Usage: rice-theme [gruvbox|secops|reset]
 rice-theme() {
     local cfg="${XDG_CONFIG_HOME:-$HOME/.config}" st
     st=$(_rice_state)
     if [[ $# -eq 0 ]]; then
-        echo "themes: aura-glass | gruvbox | secops | reset (back to the repo defaults)"
+        echo "themes: gruvbox | secops | reset (back to the repo defaults)"
         echo "active: starship=$(_rice_get starship || echo default) · btop=$(_rice_get btop || echo default) · fastfetch=$(_rice_get fastfetch || echo default)"
         return 0
     fi
@@ -468,10 +486,9 @@ rice-theme() {
             echo "✓ theme overrides removed: repo defaults apply"
             return 0
             ;;
-        aura-glass) sp=aura_glass;   bt=aura_glass ;;
-        gruvbox)    sp=gruvbox_dark; bt=gruvbox_dark ;;
-        secops)     sp=secops;       bt=secops ;;
-        *) echo "rice-theme: unknown theme '$name' (use: aura-glass | gruvbox | secops | reset)" >&2; return 1 ;;
+        gruvbox) sp=gruvbox_dark; bt=gruvbox_dark ;;
+        secops)  sp=secops;       bt=secops ;;
+        *) echo "rice-theme: unknown theme '$name' (use: gruvbox | secops | reset)" >&2; return 1 ;;
     esac
     mkdir -p "$st" || return 1
     local updated=() rc=0

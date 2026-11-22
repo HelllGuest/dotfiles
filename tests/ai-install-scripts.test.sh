@@ -53,8 +53,8 @@ grep -q 'ac8057374ec1b5cabb78ea2d08b2ed890d21d156a42b1ac23357fd049edc08c5' \
   "$ROOT/scripts/install-obscura.sh" || fail "install-obscura.sh missing stealth x86_64 SHA-256 pin"
 grep -q 'sha256sum' "$ROOT/scripts/install-obscura.sh" \
   || fail "install-obscura.sh must verify SHA-256 before install"
-! grep -q '^install_ego_zip "blur-my-shell' "$ROOT/scripts/fetch-gnome-extensions.sh" \
-  || fail "fetch-gnome-extensions must not fetch Blur My Shell (Aura Glass builds its own)"
+grep -q '^install_ego_zip "blur-my-shell@aunetx"' "$ROOT/scripts/fetch-gnome-extensions.sh" \
+  || fail "fetch-gnome-extensions must fetch Blur My Shell from EGO"
 grep -q 'GIT_SETUP_NONINTERACTIVE' "$ROOT/scripts/git-setup.sh" \
   || fail "git-setup must support GIT_SETUP_NONINTERACTIVE"
 grep -q 'CONFIGURE_UI' "$ROOT/scripts/configure.sh" \

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# rice-setup.sh — Aura Glass / Gruvbox / SecOps terminal & CLI rice + kgx + notify deps.
+# rice-setup.sh — Gruvbox / SecOps terminal & CLI rice + kgx + notify deps.
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"

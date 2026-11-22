@@ -181,7 +181,7 @@ Checklist tags (fail-fast on module error):
 | `SETUP_LABS` | off | build/pull lab images; shell wrappers |
 | `SETUP_DETONATE` | off | `lab-detonate.sh setup` |
 | `SETUP_AI` | off | Headroom/`hr-*`, Ponytail, Continue FIM (not Caveman) |
-| `SETUP_RICE` | off | Aura Glass / Gruvbox / SecOps rice + `show-in-lock-screen false` |
+| `SETUP_RICE` | off | Gruvbox / SecOps rice + `show-in-lock-screen false` |
 
 Full howto: [README — configure.sh](../README.md#how-to-configuresh-stage-b-tui).
 
@@ -210,8 +210,8 @@ bash scripts/usbguard-setup.sh           # opt-in USB allowlist
 bash scripts/dnscrypt-setup.sh           # opt-in encrypted DNS (NM global DNS; tailnet → MagicDNS)
 ```
 
-Desktop look: `./install.sh` applies Aura Glass (pinned; shell, libadwaita and
-Flatpak apps, GDM) via `scripts/theme-setup.sh`; see
+Desktop look: `./install.sh` applies stock Adwaita via `scripts/theme-setup.sh`
+(Full-pack extensions from EGO via `fetch-gnome-extensions.sh`); see
 [README — install order](../README.md). zsh becomes the login shell.
 
 Packages: `pacman-contrib`, `mat2`, `perl-image-exiftool`, `bleachbit`,

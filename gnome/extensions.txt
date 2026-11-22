@@ -4,3 +4,12 @@ proton-vpn@helllguest
 dash2dock-lite@icedman.github.com
 caffeine@patapon.info
 user-theme@gnome-shell-extensions.gcampax.github.com
+blur-my-shell@aunetx
+custom-osd@neuromorph
+status-tray@keithvassallo.com
+tiling-assistant@leleat-on-github
+hotedge@jonathan.jdoda.ca
+kiwimenu@kemma
+copyous@boerdereinar.dev
+wiggly@mojarch
+restartto@tiagoporsch.github.io

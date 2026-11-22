@@ -9,24 +9,24 @@
             "right": 3
         },
         "color": {
-            "1": "38;2;125;211;252",
-            "2": "38;2;56;189;248"
+            "1": "38;2;250;189;47",
+            "2": "38;2;254;128;25"
         }
     },
     "display": {
         "separator": "  ",
         "color": {
-            "keys": "38;2;125;211;252",
-            "title": "38;2;226;232;240",
-            "separator": "38;2;71;85;105"
+            "keys": "38;2;250;189;47",
+            "title": "38;2;235;219;178",
+            "separator": "38;2;102;92;84"
         },
         "key": {
             "width": 17
         },
         "bar": {
             "char": {
-                "elapsed": "━",
-                "total": "─"
+                "elapsed": "█",
+                "total": "░"
             },
             "border": {
                 "left": "",
@@ -34,7 +34,7 @@
             },
             "color": {
                 "elapsed": "auto",
-                "total": "38;2;51;65;85"
+                "total": "38;2;80;73;69"
             },
             "width": 12
         },
@@ -42,9 +42,9 @@
             "type": 3,
             "ndigits": 0,
             "color": {
-                "green": "38;2;94;234;212",
-                "yellow": "38;2;252;211;77",
-                "red": "38;2;248;113;113"
+                "green": "38;2;184;187;38",
+                "yellow": "38;2;250;189;47",
+                "red": "38;2;251;73;52"
             }
         }
     },
@@ -52,147 +52,147 @@
         {
             "type": "title",
             "color": {
-                "user": "38;2;226;232;240",
-                "at": "38;2;125;211;252",
-                "host": "38;2;165;180;252"
+                "user": "38;2;235;219;178",
+                "at": "38;2;254;128;25",
+                "host": "38;2;250;189;47"
             }
         },
         {
             "type": "custom",
-            "format": "{#38;2;56;189;248}╭── 󰌽 System ──────────────────────────────────────"
+            "format": "{#38;2;250;189;47}╭── 󰌽 System ──────────────────────────────────────"
         },
         {
             "type": "os",
             "key": "│ 󰣇 OS",
-            "keyColor": "38;2;125;211;252"
+            "keyColor": "38;2;250;189;47"
         },
         {
             "type": "host",
             "key": "│ 󰌢 Host",
-            "keyColor": "38;2;125;211;252"
+            "keyColor": "38;2;250;189;47"
         },
         {
             "type": "kernel",
             "key": "│  Kernel",
-            "keyColor": "38;2;125;211;252",
+            "keyColor": "38;2;250;189;47",
             "format": "{sysname} {release}"
         },
         {
             "type": "uptime",
             "key": "│ 󰅐 Uptime",
-            "keyColor": "38;2;125;211;252"
+            "keyColor": "38;2;250;189;47"
         },
         {
             "type": "packages",
             "key": "│ 󰏖 Packages",
-            "keyColor": "38;2;125;211;252"
+            "keyColor": "38;2;250;189;47"
         },
         {
             "type": "shell",
             "key": "│  Shell",
-            "keyColor": "38;2;125;211;252"
+            "keyColor": "38;2;250;189;47"
         },
         {
             "type": "de",
             "key": "│ 󰇄 DE",
-            "keyColor": "38;2;125;211;252"
+            "keyColor": "38;2;250;189;47"
         },
         {
             "type": "wm",
             "key": "│  WM",
-            "keyColor": "38;2;125;211;252"
+            "keyColor": "38;2;250;189;47"
         },
         {
             "type": "terminal",
             "key": "│  Terminal",
-            "keyColor": "38;2;125;211;252"
+            "keyColor": "38;2;250;189;47"
         },
         {
             "type": "display",
             "key": "│ 󰍹 Display",
-            "keyColor": "38;2;125;211;252",
+            "keyColor": "38;2;250;189;47",
             "format": "{width}x{height} @ {refresh-rate} Hz"
         },
         {
             "type": "custom",
-            "format": "{#38;2;165;180;252}├── 󰍛 Hardware ────────────────────────────────────"
+            "format": "{#38;2;131;165;152}├── 󰍛 Hardware ────────────────────────────────────"
         },
         {
             "type": "cpu",
             "key": "│ 󰻠 CPU",
-            "keyColor": "38;2;165;180;252",
+            "keyColor": "38;2;131;165;152",
             "temp": true
         },
         {
             "type": "gpu",
             "key": "│ 󰢮 GPU",
-            "keyColor": "38;2;165;180;252",
+            "keyColor": "38;2;131;165;152",
             "temp": true,
             "format": "{vendor} {name}{?temperature} - {temperature}{?}"
         },
         {
             "type": "memory",
             "key": "│ 󰍛 Memory",
-            "keyColor": "38;2;165;180;252",
+            "keyColor": "38;2;131;165;152",
             "format": "{percentage-bar} {used} / {total} ({percentage})"
         },
         {
             "type": "swap",
             "key": "│ 󰓡 Swap",
-            "keyColor": "38;2;165;180;252",
+            "keyColor": "38;2;131;165;152",
             "format": "{percentage-bar} {used} / {total} ({percentage})"
         },
         {
             "type": "disk",
             "key": "│ 󰋊 Disk /",
-            "keyColor": "38;2;165;180;252",
+            "keyColor": "38;2;131;165;152",
             "folders": "/",
             "format": "{size-percentage-bar} {size-used} / {size-total} ({size-percentage}) [{filesystem}]"
         },
         {
             "type": "battery",
             "key": "│ 󰁹 Battery",
-            "keyColor": "38;2;165;180;252",
+            "keyColor": "38;2;131;165;152",
             "format": "{capacity-bar} {capacity} [{status}]"
         },
         {
             "type": "custom",
-            "format": "{#38;2;94;234;212}├── 󰒃 Security & Net ──────────────────────────────"
+            "format": "{#38;2;142;192;124}├── 󰒃 Security & Net ──────────────────────────────"
         },
         {
             "type": "localip",
             "key": "│ 󰩟 Local IP",
-            "keyColor": "38;2;94;234;212",
+            "keyColor": "38;2;142;192;124",
             "compact": true,
             "showIpv6": false
         },
         {
             "type": "command",
             "key": "│ 󰒃 Firewall",
-            "keyColor": "38;2;94;234;212",
+            "keyColor": "38;2;142;192;124",
             "text": "z=$(firewall-cmd --get-default-zone 2>/dev/null || awk -F= '/^DefaultZone=/{gsub(/[[:space:]]/,\"\",$2); print $2; exit}' /etc/firewalld/firewalld.conf 2>/dev/null); st=$(systemctl is-active firewalld 2>/dev/null || echo inactive); [ -n \"$z\" ] && printf '%s (%s)' \"$z\" \"$st\" || printf '%s' \"$st\""
         },
         {
             "type": "command",
             "key": "│ 󰖂 VPN / Mesh",
-            "keyColor": "38;2;94;234;212",
+            "keyColor": "38;2;142;192;124",
             "text": "out=''; for d in /sys/class/net/proton* /sys/class/net/wg* /sys/class/net/tun* /sys/class/net/tailscale*; do [ -e \"$d\" ] || continue; n=${d##*/}; ip4=$(ip -4 -br addr show \"$n\" 2>/dev/null | awk '{print $3}'); if [ -n \"$ip4\" ]; then st=\"$ip4\"; else st=$(cat \"$d/operstate\" 2>/dev/null || echo down); [ \"$st\" = unknown ] && st=idle; fi; out=\"${out:+$out · }${n} (${st})\"; done; printf '%s' \"${out:-off}\""
         },
         {
             "type": "command",
             "key": "│ 󰢩 Lab net",
-            "keyColor": "38;2;94;234;212",
+            "keyColor": "38;2;142;192;124",
             "text": "out=$(ip -br link show 2>/dev/null | awk '/^(virbr-malware|virbr-kali|virbr0)[[:space:]]/{s=s (s?\" · \":\"\") $1 \" \" $2} END{print s}'); printf '%s' \"${out:-none}\""
         },
         {
             "type": "custom",
-            "format": "{#38;2;71;85;105}╰──────────────────────────────────────────────────"
+            "format": "{#38;2;102;92;84}╰──────────────────────────────────────────────────"
         },
         "break",
         {
             "type": "colors",
             "paddingLeft": 2,
-            "symbol": "circle"
+            "symbol": "square"
         }
     ]
 }

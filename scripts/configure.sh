@@ -240,7 +240,7 @@ run_modules_batch() {
     SETUP_LABS "Labs lab-triage/re/android/web (+ capture)" off \
     SETUP_DETONATE "Detonation VMs + INetSim/PolarProxy" off \
     SETUP_AI "AI MCP / Headroom / Continue / Ponytail" off \
-    SETUP_RICE "Terminal/CLI rice (Aura Glass/Gruvbox/SecOps) + notify" off
+    SETUP_RICE "Terminal/CLI rice (Gruvbox/SecOps) + notify" off
   )" || return 1
 
   CONFIGURE_STEP=0

@@ -67,7 +67,7 @@ echo "=== install.sh (SKIP_CONFIGURE; soft GNOME) ==="
 export SKIP_CONFIGURE=1
 export SKIP_FOXCAGE=1
 export SKIP_OLLAMA=1
-# Aura Glass needs a running GNOME Shell (none on a headless guest).
+# theme-setup.sh needs a GNOME session bus (none on a headless guest).
 export SKIP_THEME=1
 # Headless: no TTY prompts (git identity/hooks/GPG).
 export GIT_SETUP_NONINTERACTIVE=1

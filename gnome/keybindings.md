@@ -56,8 +56,8 @@ kali-wipe           # reset to clean base
 | `fe` | Fuzzy open file in nvim |
 | `rge <pat>` | Ripgrep + open match in nvim |
 | `ff` | Run `fastfetch` (no arguments: the preset saved by `ff-preset use`/`rice-theme`, under `XDG_STATE_HOME`) |
-| `ff-preset [use] <name>` / `ff-preset reset` | List, preview, set, or clear the local Fastfetch preset (`aura-glass`, `gruvbox`, `minimal`, `secops`) |
-| `rice-theme [name\|reset]` | Switch theme (`aura-glass`, `gruvbox`, `secops`) via untracked local overrides (repo updates still apply; `reset` = repo defaults) across Fastfetch, btop, Starship, Ghostty, and Alacritty (Kitty stays stock) |
+| `ff-preset [use] <name>` / `ff-preset reset` | List, preview, set, or clear the local Fastfetch preset (`gruvbox`, `minimal`, `secops`) |
+| `rice-theme [name\|reset]` | Switch theme (`gruvbox`, `secops`) via untracked local overrides (repo updates still apply; `reset` = repo defaults) across Fastfetch, btop, Starship, Ghostty, and Alacritty (Kitty stays stock) |
 | `gai` / `gshow` / `gco` | Interactive git add / log / branch checkout (`gco` fzf picker in Zsh and Bash) |
 | `fcd` | Fuzzy cd with tree preview |
 

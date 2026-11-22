@@ -276,8 +276,7 @@ if [ -f "scripts/gdm-setup.sh" ]; then
     run_step "GDM setup" bash scripts/gdm-setup.sh
 fi
 
-# 3.2a Theme: Aura Glass (pinned) for the shell, GTK4/libadwaita + GTK3 apps,
-# Flatpaks and the GDM login screen; removes the previous theme setup once.
+# 3.2a Theme: stock Adwaita (no Aura Glass). Cleans leftover greeter hooks once.
 # Needs a GNOME login session. Opt out: SKIP_THEME=1 (headless VM).
 if [ "${SKIP_THEME:-0}" = 1 ]; then
     echo "Skipping theme setup (SKIP_THEME=1)."
@@ -403,7 +402,7 @@ elif [ -f "scripts/install-foxcage.sh" ]; then
     run_step "foxcage install" bash scripts/install-foxcage.sh
 fi
 
-# 3.7 Extension downloads: Caffeine (EGO) + Dash2Dock Animated, before enable
+# 3.7 Extension downloads: EGO Full pack + Caffeine + Dash2Dock, before enable
 if [ -f "scripts/fetch-gnome-extensions.sh" ]; then
     run_step "GNOME extension downloads" bash scripts/fetch-gnome-extensions.sh
 fi

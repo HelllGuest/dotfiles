@@ -29,12 +29,12 @@ ENFORCED = {
 # geolocation for night light); never written to the tracked file.
 DROPPED = {
     "org/gnome/settings-daemon/plugins/color": ["night-light-last-coordinates"],
-    # Owned by Aura Glass (scripts/theme-setup.sh): a restored snapshot must not
-    # fight its installer over the theme, icons or pointer.
+    # Live theme/pointer: stock Adwaita is the default; a snapshot must not
+    # pin a custom gtk-theme over scripts/theme-setup.sh.
     "org/gnome/desktop/interface": ["gtk-theme", "icon-theme", "cursor-theme", "cursor-size"],
 }
-# Whole trees Aura Glass writes (Blur My Shell pipelines, its OSD and extension
-# presets, the User Themes name); a stale copy would undo its settings.
+# Extension look trees (Blur My Shell, OSD, tray, tiling, …): left to the live
+# session so a restore does not fight user tweaks or theme-setup.sh.
 DROPPED_TREES = (
     "org/gnome/shell/extensions/user-theme",
     "org/gnome/shell/extensions/blur-my-shell",

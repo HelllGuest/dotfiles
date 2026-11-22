@@ -1200,7 +1200,7 @@ lab-re --check && lab-re
 bash scripts/install-ghidra-cli.sh
 ```
 
-* Terminals: kitty (primary) + ghostty + gnome-console; rice via `scripts/rice-setup.sh` (Aura Glass default; switch via `rice-theme aura-glass|gruvbox|secops`). Ptyxis/rio/wezterm/foot pruned.
+* Terminals: kitty (primary) + ghostty + gnome-console; rice via `scripts/rice-setup.sh` (Gruvbox default; switch via `rice-theme gruvbox|secops`). Ptyxis/rio/wezterm/foot pruned.
 * ghidra-cli: cargo CLI + host skill under `skills/ghidra-cli-host/`; GUI via `ghidra-gui` (cargo `ghidra` shadows `/usr/bin/ghidra`). An install failure is recorded by `./install.sh`, which exits 1 at the end
 * Host `install-rea.sh` is optional only (needs JDK≥21); Stage B AI stack skips it
 
@@ -1623,7 +1623,7 @@ cd ~/dotfiles
 
 * Install packages from `packages/pacman.txt` (kernels, shells, terminals, CLI tools; skips Intel GPU packages on ThinkPad T14s Gen 3 AMD; installs the NVIDIA stack only when an NVIDIA display device is on PCI; skips `power-profiles-daemon` when `tuned-ppd` is present and `rust` when `rustup` is present; replaces an AUR `bootvine-git` left by older dotfiles with the official `bootvine`)
 * Enable the `bootvine` boot screen (`bootvine.service` + `bootvine-shutdown.service`; no `sd-bootvine` initrd hook, so the LUKS prompt is unchanged)
-* Apply the Aura Glass theme (pinned commit; frosted-glass shell with its own Blur My Shell build, the Full extension pack, Colloid icons) to the session, libadwaita and Flatpak apps and the GDM login screen (`scripts/theme-setup.sh`)
+* Apply stock Adwaita for the session (`scripts/theme-setup.sh`; extensions stay as configured in dconf; no Aura Glass)
 * Record every failed step and exit 1 at the end (no silent skips; only `SKIP_*=1` opt-outs skip); `check.sh` fails on missing packages, empty dock icons and dead shortcuts
 * Apply **after** `pacman.txt` exactly one machine profile via `scripts/apply-profile.sh`: `profiles/$(hostname).sh` if present, otherwise `scripts/detect-profile.sh` (`thinkpad-p15`, `thinkpad-t14s`, or `laptop`). Optimus/NVIDIA setup is inside `thinkpad-p15.sh` (no `nvidia.sh`).
 * Install Flatpaks from `packages/flatpak.txt` (Brave, Zen, Chrome, LibreWolf, Proton VPN, Android Studio, Sticky Notes) and AUR packages from `packages/aur.txt` (bootstraps `paru` if no helper exists)

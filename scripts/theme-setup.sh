@@ -1,99 +1,83 @@
 #!/usr/bin/env bash
-# theme-setup.sh — Aura Glass: frosted-glass GNOME Shell + GTK4/libadwaita + GTK3
-# theme with real blur (its own patched Blur My Shell), Colloid icons, the Full
-# extension pack and a blurred GDM login screen.
-#   https://github.com/DevWebeloper/aura-glass (MIT), pinned to one commit.
+# theme-setup.sh — GNOME default (Adwaita) desktop. Does not install Aura Glass.
+# Purges Aura Glass caches, Colloid icons, helper extension, and GTK overrides.
+# Leaves other GNOME Shell extensions alone. Still removes leftover Orchis
+# greeter hooks once.
 #
-# Aura Glass's own installer does the work; this script fetches it at the pin,
-# checks the commit, removes the previous Orchis/Tela/Bibata setup once, and
-# runs it non-interactively. Aura Glass owns the theme, icon, cursor,
-# user-theme and blur-my-shell keys: gnome/dconf/*.conf do not set them and
-# scripts/backup-gsettings.sh drops them from snapshots.
-#   theme-setup.sh          install / re-apply at the pin. The first install
-#                           picks the look (flags below); later runs pass only
-#                           -y, so choices made in the Aura Glass settings app
-#                           (accent, extension pack, icons…) are kept.
-#   theme-setup.sh --check  exit 0 verified, 1 broken (reason on stdout),
-#                           2 not set up (check.sh)
-#   SKIP_AURA_GDM=1         leave the login screen stock (--no-gdm; Aura
-#                           Glass remembers it: turn GDM back on in its app)
-# Upgrade: bump AURA_GLASS_VERSION + AURA_GLASS_COMMIT together (the tag's
-# commit: git ls-remote <repo> 'refs/tags/<tag>^{}'). The settings app's own
-# Install button moves the checkout off the pin; check.sh then fails and the
-# next run puts it back.
+#   theme-setup.sh          reset theme keys; wipe Aura leftovers
+#   theme-setup.sh --check  exit 0 stock ok, 1 broken (reason on stdout),
+#                           2 defaults not applied yet (check.sh)
+# Opt out of install.sh: SKIP_THEME=1
 set -euo pipefail
 
-AURA_GLASS_REPO="https://github.com/DevWebeloper/aura-glass.git"
-AURA_GLASS_VERSION="v0.4.4"
-AURA_GLASS_COMMIT="ccd94dff4a2aedede145f6a6eb04ea1177919bd3"
 CACHE_HOME="${XDG_CACHE_HOME:-$HOME/.cache}"
 DATA_HOME="${XDG_DATA_HOME:-$HOME/.local/share}"
 CONFIG_HOME="${XDG_CONFIG_HOME:-$HOME/.config}"
-SRC="$CACHE_HOME/dotfiles/aura-glass"
 # Old setup (Orchis greeter): root-owned copy of the removed gdm-shell-theme.sh
 # and its pacman hook. Overridable for tests only.
 OLD_GDM_BIN="${THEME_OLD_GDM_BIN:-/usr/local/bin/gdm-shell-theme}"
 OLD_GDM_HOOK="${THEME_OLD_GDM_HOOK:-/etc/pacman.d/hooks/95-gdm-shell-theme.hook}"
-
-# First install: accent matches gnome/dconf/user.conf; no daily GitHub release
-# check (the pin is the version); --full = all 7 optional extensions + icons +
-# pointer + OSD. Aura Glass remembers these in ~/.config/aura-glass.
-if [[ -d $CONFIG_HOME/aura-glass ]]; then
-    AURA_FLAGS=(-y)
-    [[ ${SKIP_AURA_GDM:-0} != 1 ]] || AURA_FLAGS+=(--no-gdm)
-else
-    AURA_FLAGS=(--full --accent blue --no-update-check -y)
-    if [[ ${SKIP_AURA_GDM:-0} == 1 ]]; then AURA_FLAGS+=(--no-gdm); else AURA_FLAGS+=(--gdm); fi
-fi
+AURA_HELPER="aura-glass-blur@aura-glass.local"
 
 die() { echo "✗ $*" >&2; exit 1; }
 
-at_pin() {
-    [[ -f $SRC/install.sh ]] \
-        && [[ "$(git -C "$SRC" rev-parse HEAD 2>/dev/null)" == "$AURA_GLASS_COMMIT" ]]
+gset_get() {
+    gsettings get "$@" 2>/dev/null | tr -d "'"
 }
 
-# --check: 0 = Aura Glass at the pin passes its own --verify, 1 = broken, 2 = not set up.
+aura_paths_present() {
+    [[ -d $CONFIG_HOME/aura-glass ]] \
+        || [[ -d $HOME/.themes/Aura-Glass || -d $DATA_HOME/themes/Aura-Glass ]] \
+        || [[ -d $DATA_HOME/gnome-shell/extensions/$AURA_HELPER ]] \
+        || [[ -d $CACHE_HOME/aura-glass || -d $CACHE_HOME/dotfiles/aura-glass ]] \
+        || [[ -d $DATA_HOME/icons/Colloid || -d $DATA_HOME/icons/Colloid-Dark || -d $DATA_HOME/icons/Colloid-Light ]] \
+        || compgen -G "$CONFIG_HOME/gtk-4.0/gtk.css.backup.*" >/dev/null 2>&1 \
+        || compgen -G "$DATA_HOME/applications/*AuraGlass*" >/dev/null 2>&1
+}
+
+# --check: 0 = GNOME defaults + no Aura leftovers, 1 broken, 2 not applied.
 if [[ ${1:-} == --check ]]; then
     if [[ -e $OLD_GDM_HOOK || -e $OLD_GDM_BIN ]]; then
         echo "old Orchis GDM hook still installed ($OLD_GDM_HOOK)"
         exit 1
     fi
-    [[ -d $CONFIG_HOME/aura-glass ]] || exit 2
-    if ! at_pin; then
-        echo "source checkout missing or not at $AURA_GLASS_VERSION ($SRC)"
+    if aura_paths_present; then
+        echo "Aura Glass leftovers still present — re-run theme-setup.sh"
         exit 1
     fi
-    if ! (cd "$SRC" && bash ./install.sh --verify) >/dev/null 2>&1; then
-        echo "Aura Glass --verify failed (bash $SRC/install.sh --verify)"
-        exit 1
+    gtk="$(gset_get org.gnome.desktop.interface gtk-theme || true)"
+    icon="$(gset_get org.gnome.desktop.interface icon-theme || true)"
+    cursor="$(gset_get org.gnome.desktop.interface cursor-theme || true)"
+    case $gtk in
+        Adwaita|Adwaita-dark) ;;
+        '')
+            echo "could not read gtk-theme (no session gsettings?)"
+            exit 1
+            ;;
+        *)
+            echo "gtk-theme is '$gtk' (want Adwaita)"
+            exit 2
+            ;;
+    esac
+    [[ $icon == Adwaita ]] || { echo "icon-theme is '$icon' (want Adwaita)"; exit 2; }
+    [[ $cursor == Adwaita ]] || { echo "cursor-theme is '$cursor' (want Adwaita)"; exit 2; }
+    if gsettings list-schemas 2>/dev/null | grep -qx org.gnome.shell.extensions.user-theme; then
+        ut="$(gset_get org.gnome.shell.extensions.user-theme name || true)"
+        [[ -z $ut ]] || { echo "user-theme name is '$ut' (want empty)"; exit 2; }
     fi
     exit 0
 fi
 
-# Aura Glass writes gsettings: it needs the session bus of a GNOME login.
-# Checked before anything is removed, so a run from SSH or a TTY changes nothing.
+# gsettings needs the session bus of a GNOME login.
 if [[ -z ${DBUS_SESSION_BUS_ADDRESS:-} && ! -S ${XDG_RUNTIME_DIR:-/nonexistent}/bus ]]; then
-    die "no session D-Bus: Aura Glass cannot write the theme keys — re-run from your GNOME login"
+    die "no session D-Bus: cannot write theme keys — re-run from your GNOME login"
 fi
 
-# 1. Source at the pinned commit (GitHub serves a full SHA directly).
-echo "→ Aura Glass $AURA_GLASS_VERSION source (${AURA_GLASS_COMMIT:0:12})..."
-mkdir -p "$SRC"
-[[ -d $SRC/.git ]] || git -C "$SRC" init -q
-git -C "$SRC" remote remove origin 2>/dev/null || true
-git -C "$SRC" remote add origin "$AURA_GLASS_REPO"
-git -C "$SRC" fetch -q --depth 1 origin "$AURA_GLASS_COMMIT" \
-    || die "could not fetch aura-glass $AURA_GLASS_COMMIT"
-git -C "$SRC" checkout -q --force --detach FETCH_HEAD
-at_pin || die "aura-glass checkout is not at $AURA_GLASS_COMMIT — refusing to run it"
-
-# 2. Remove the previous theme setup (idempotent; nothing left on a fresh host).
+# 1. Remove the previous Orchis theme setup (idempotent).
 if [[ -e $OLD_GDM_BIN ]]; then
     echo "→ Restoring the stock GDM stylesheet (old Orchis greeter + pacman hook)..."
     sudo "$OLD_GDM_BIN" revert
 elif [[ -e $OLD_GDM_HOOK ]]; then
-    # Hook without its root-owned copy: it can only fail on the next upgrade.
     echo "→ Removing the orphaned old GDM theme pacman hook..."
     sudo rm -f "$OLD_GDM_HOOK"
 fi
@@ -103,28 +87,105 @@ if [[ -e $unit_dir/theme-sync.service || -L $unit_dir/default.target.wants/theme
     rm -f "$unit_dir/theme-sync.service" "$unit_dir/default.target.wants/theme-sync.service"
     systemctl --user daemon-reload 2>/dev/null || true
 fi
+# Aura Glass user units (if any survived uninstall).
+rm -f "$unit_dir"/aura-glass-*.service \
+    "$unit_dir"/default.target.wants/aura-glass-*.service \
+    "$unit_dir"/gnome-session.target.wants/aura-glass-*.service 2>/dev/null || true
 rm -f "$DATA_HOME/dotfiles/theme-setup.sh"
 rmdir "$DATA_HOME/dotfiles" 2>/dev/null || true
 rm -rf "$DATA_HOME/themes/Orchis-Dark"
-# Old libadwaita links into the Orchis copy; a real file of the user's stays
-# (Aura Glass backs it up before writing its own).
 for f in gtk.css gtk-dark.css assets; do
     dst="$CONFIG_HOME/gtk-4.0/$f"
     if [[ -L $dst && "$(readlink "$dst")" == */themes/Orchis-Dark/* ]]; then
         rm -f "$dst"
     fi
 done
-# The dotfiles-built clipboard extension (replaced by Copyous in the Full pack).
-rm -rf "$DATA_HOME/gnome-shell/extensions/gnome-clipboard@b00f.github.io"
-# Packages are pacman's to remove: AppIndicator is replaced by Status Tray.
 for p in orchis-theme tela-icon-theme bibata-cursor-theme-bin gnome-shell-extension-appindicator; do
     if pacman -Q "$p" >/dev/null 2>&1; then
         echo "○ replaced package still installed: $p (sudo pacman -Rns $p)"
     fi
 done
 
-# 3. Install, or re-apply with the remembered choices.
-echo "→ Running Aura Glass installer: ${AURA_FLAGS[*]}"
-(cd "$SRC" && bash ./install.sh "${AURA_FLAGS[@]}")
+# 2. Purge Aura Glass completely (caches, icons, helper, GTK backups, desktop entry).
+echo "→ Removing Aura Glass completely..."
+rm -rf "$CONFIG_HOME/aura-glass" \
+    "$HOME/.themes/Aura-Glass" \
+    "$DATA_HOME/themes/Aura-Glass" \
+    "$DATA_HOME/gnome-shell/extensions/$AURA_HELPER" \
+    "$CACHE_HOME/aura-glass" \
+    "$CACHE_HOME/dotfiles/aura-glass" \
+    "$DATA_HOME/icons/Colloid" \
+    "$DATA_HOME/icons/Colloid-Dark" \
+    "$DATA_HOME/icons/Colloid-Light"
+rm -f "$CONFIG_HOME"/gtk-4.0/gtk.css.backup.* \
+    "$DATA_HOME"/applications/io.github.DevWebeloper.AuraGlassSettings.desktop \
+    "$DATA_HOME"/applications/*AuraGlass*.desktop 2>/dev/null || true
+# Drop Aura-written GTK overrides only (leave unrelated user gtk.css alone).
+for f in "$CONFIG_HOME/gtk-3.0/gtk.css" "$CONFIG_HOME/gtk-4.0/gtk.css" "$CONFIG_HOME/gtk-4.0/gtk-dark.css"; do
+    if [[ -f $f ]] && grep -qiE 'aura-glass|Aura Glass|Aura-Glass' "$f" 2>/dev/null; then
+        rm -f "$f"
+    fi
+done
+if command -v gnome-extensions >/dev/null 2>&1; then
+    gnome-extensions disable "$AURA_HELPER" 2>/dev/null || true
+fi
+python3 - "$AURA_HELPER" <<'PY'
+import ast, subprocess, sys
 
-echo "✓ theme: Aura Glass $AURA_GLASS_VERSION (log out and back in: extensions load at login)"
+uuid = sys.argv[1]
+for key in ("enabled-extensions", "disabled-extensions"):
+    try:
+        raw = subprocess.check_output(
+            ["gsettings", "get", "org.gnome.shell", key], text=True
+        ).strip()
+    except subprocess.CalledProcessError:
+        continue
+    s = raw.split(" ", 1)[-1] if raw.startswith("@as") else raw
+    lst = [x for x in ast.literal_eval(s) if x != uuid]
+    gv = "[" + ", ".join(repr(x) for x in lst) + "]"
+    subprocess.check_call(["gsettings", "set", "org.gnome.shell", key, gv])
+
+# Drop only Aura settings tiles from the app picker; keep the rest of the grid.
+try:
+    import gi
+
+    gi.require_version("Gio", "2.0")
+    from gi.repository import Gio, GLib
+
+    drop = ("AuraGlass", "aura-glass")
+    settings = Gio.Settings.new("org.gnome.shell")
+    layout = settings.get_value("app-picker-layout")
+    pages = []
+    changed = False
+    for i in range(layout.n_children()):
+        page = layout.get_child_value(i)
+        builder = GLib.VariantBuilder.new(GLib.VariantType("a{sv}"))
+        for j in range(page.n_children()):
+            entry = page.get_child_value(j)
+            key = entry.get_child_value(0).unpack()
+            if any(s in key for s in drop):
+                changed = True
+                continue
+            builder.add_value(entry)
+        pages.append(builder.end())
+    if changed:
+        settings.set_value(
+            "app-picker-layout",
+            GLib.Variant.new_array(GLib.VariantType("a{sv}"), pages),
+        )
+except Exception:
+    # No PyGObject, no session bus (tests), or unexpected layout shape: skip.
+    pass
+PY
+
+# 3. GNOME schema defaults for theme / pointer / accent / color-scheme.
+echo "→ Resetting GNOME theme keys to defaults..."
+for key in gtk-theme icon-theme cursor-theme cursor-size color-scheme accent-color; do
+    gsettings reset org.gnome.desktop.interface "$key" 2>/dev/null || true
+done
+if gsettings list-schemas 2>/dev/null | grep -qx org.gnome.shell.extensions.user-theme; then
+    gsettings reset org.gnome.shell.extensions.user-theme name 2>/dev/null \
+        || gsettings set org.gnome.shell.extensions.user-theme name ''
+fi
+
+echo "✓ theme: GNOME defaults (Aura Glass removed; other extensions left as-is)"

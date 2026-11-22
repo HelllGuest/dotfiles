@@ -445,10 +445,11 @@ toml_files = [
 for p in toml_files:
     data = tomllib.loads(p.read_text())
     if p.name == "starship.toml":
-        for pal in ("aura_glass", "gruvbox_dark", "secops"):
+        for pal in ("gruvbox_dark", "secops"):
             assert pal in data["palettes"], f"starship missing palette {pal}"
+        assert "aura_glass" not in data.get("palettes", {}), "starship must not keep aura_glass"
 PY
-for _bt in aura_glass gruvbox_dark secops; do
+for _bt in gruvbox_dark secops; do
   _bf="$ROOT/stow/btop/.config/btop/themes/${_bt}.theme"
   [[ -f "$_bf" ]] || fail "missing btop theme $_bt"
   grep -qE '^theme\[main_bg\]="#[0-9a-fA-F]{6}"$' "$_bf" \
@@ -457,9 +458,17 @@ for _bt in aura_glass gruvbox_dark secops; do
   ! grep -vE '^[[:space:]]*(#|$|theme\[[a-z0-9_]+\]="#[0-9a-fA-F]{6}")' "$_bf" | grep -q . \
     || fail "btop theme $_bt has malformed line"
 done
-for _gt in aura-glass gruvbox secops; do
+[[ ! -e $ROOT/stow/btop/.config/btop/themes/aura_glass.theme ]] \
+  || fail "btop aura_glass theme must be removed"
+[[ ! -e $ROOT/stow/alacritty/.config/alacritty/themes/aura-glass.toml ]] \
+  || fail "alacritty aura-glass theme must be removed"
+[[ ! -e $ROOT/stow/fastfetch/.config/fastfetch/aura-glass.jsonc ]] \
+  || fail "fastfetch aura-glass preset must be removed"
+for _gt in gruvbox secops; do
   [[ -f "$ROOT/stow/ghostty/.config/ghostty/themes/${_gt}.conf" ]] || fail "missing ghostty theme $_gt"
 done
+[[ ! -e $ROOT/stow/ghostty/.config/ghostty/themes/aura-glass.conf ]] \
+  || fail "ghostty aura-glass theme must be removed"
 # Active defaults must match one of their shipped templates (no silent drift).
 _match_any() {
   local def=$1 f; shift
@@ -467,7 +476,7 @@ _match_any() {
   return 1
 }
 _match_any "$ROOT/stow/fastfetch/.config/fastfetch/config.jsonc" \
-  "$ROOT"/stow/fastfetch/.config/fastfetch/{aura-glass,gruvbox,minimal,secops}.jsonc \
+  "$ROOT"/stow/fastfetch/.config/fastfetch/{gruvbox,minimal,secops}.jsonc \
   || fail "fastfetch/config.jsonc drifted from shipped presets"
 _match_any "$ROOT/stow/ghostty/.config/ghostty/theme.conf" \
   "$ROOT"/stow/ghostty/.config/ghostty/themes/*.conf \
@@ -519,8 +528,9 @@ grep -qx 'save_config_on_exit = false' "$ROOT/stow/btop/.config/btop/btop.conf" 
     cp "$ROOT/stow/btop/.config/btop/btop.conf" "$_rt/cfg/btop/"
     # ff-preset: list, use (saves a name, never touches config.jsonc), ff honours it, reset, traversal
     _fl="$(_rs 'ff-preset')"
-    grep -qx aura-glass <<<"$_fl" && grep -qx gruvbox <<<"$_fl" && grep -qx minimal <<<"$_fl" && grep -qx secops <<<"$_fl" \
+    grep -qx gruvbox <<<"$_fl" && grep -qx minimal <<<"$_fl" && grep -qx secops <<<"$_fl" \
       || fail "$_sh: ff-preset list missing presets: $_fl"
+    ! grep -qx aura-glass <<<"$_fl" || fail "$_sh: ff-preset must not list aura-glass"
     _rs 'ff-preset use minimal >/dev/null'
     [[ "$(cat "$_st/fastfetch")" == minimal ]] || fail "$_sh: ff-preset use must save the preset name"
     : >"$RICE_LOG"; _rs 'ff'
@@ -561,6 +571,19 @@ grep -qx 'save_config_on_exit = false' "$ROOT/stow/btop/.config/btop/btop.conf" 
     printf "x'/;e id;#\n" >"$_st/starship"
     _sc="$(_rs 'printf %s "${STARSHIP_CONFIG:-}"')"
     [[ -z $_sc ]] || fail "$_sh: an invalid saved palette must be ignored (got $_sc)"
+    # Stale Aura palette / theme names must be dropped (files no longer ship).
+    printf 'aura_glass\n' >"$_st/starship"
+    printf 'aura_glass\n' >"$_st/btop"
+    printf 'aura-glass\n' >"$_st/fastfetch"
+    _sc="$(_rs 'printf %s "${STARSHIP_CONFIG:-}"')"
+    [[ -z $_sc ]] || fail "$_sh: stale aura_glass starship state must be ignored (got $_sc)"
+    [[ ! -e $_st/starship ]] || fail "$_sh: stale aura_glass starship state file must be removed"
+    : >"$RICE_LOG"; _rs 'btop'
+    grep -qx 'btop ' "$RICE_LOG" || fail "$_sh: stale aura_glass btop state must fall back to repo config: $(cat "$RICE_LOG")"
+    [[ ! -e $_st/btop ]] || fail "$_sh: stale aura_glass btop state file must be removed"
+    : >"$RICE_LOG"; _rs 'ff'
+    grep -qx 'fastfetch ' "$RICE_LOG" || fail "$_sh: stale aura-glass fastfetch state must fall back: $(cat "$RICE_LOG")"
+    [[ ! -e $_st/fastfetch ]] || fail "$_sh: stale aura-glass fastfetch state file must be removed"
     _rs 'rice-theme secops >/dev/null'
     grep -qx "palette = 'secops'" "$_st/starship.toml" || fail "$_sh: rice-theme secops missed starship"
     # reset: every override gone, repo defaults back, STARSHIP_CONFIG cleared

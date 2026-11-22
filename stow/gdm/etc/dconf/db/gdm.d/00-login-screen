@@ -15,8 +15,7 @@ clock-show-seconds=false
 clock-show-date=true
 clock-format='24h'
 color-scheme='prefer-dark'
-# Theme, icons and pointer: Aura Glass's 90-aura-glass (scripts/theme-setup.sh
-# runs its --gdm step: greeter stylesheet, blur, wallpaper sync).
+# Theme, icons and pointer: stock Adwaita (scripts/theme-setup.sh); leave unset.
 accent-color='blue'
 font-name='Inter 11'
 
