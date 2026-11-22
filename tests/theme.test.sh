@@ -102,25 +102,53 @@ mkdir -p "$B" "$H/.config/gtk-4.0" "$H/.config/systemd/user/default.target.wants
   "$H/.local/share/themes/Orchis-Dark/gtk-4.0" "$H/.local/share/dotfiles" \
   "$H/.local/share/gnome-shell/extensions/aura-glass-blur@aura-glass.local" \
   "$H/.cache/aura-glass" "$H/.cache/dotfiles/aura-glass" \
-  "$H/.local/share/icons/Colloid-Dark"
+  "$H/.local/share/icons/Colloid-Dark" \
+  "$H/.local/share/flatpak/overrides" "$T/etc/dconf/db/gdm.d"
+: >"$T/etc/dconf/db/gdm.d/90-aura-glass"
+printf '%s\n' '[Context]' \
+  'filesystems=xdg-run/pipewire-0:ro;xdg-config/gtk-3.0:ro;xdg-data/themes:ro;' \
+  >"$H/.local/share/flatpak/overrides/global"
+# Stub uninstall.sh: accept only -y --gdm (order-independent); never --extensions.
+cat >"$H/.cache/dotfiles/aura-glass/uninstall.sh" <<EOF
+#!/bin/bash
+echo "uninstall \$*" >>"$T/uninstall.log"
+ext=0; gdm=0; yes=0
+for a in "\$@"; do
+  case \$a in
+    --extensions|--all|--assets|--full) ext=1 ;;
+    --gdm) gdm=1 ;;
+    -y|--yes) yes=1 ;;
+  esac
+done
+[[ \$ext -eq 0 && \$gdm -eq 1 && \$yes -eq 1 ]] || { echo "bad flags: \$*" >&2; exit 2; }
+exit 0
+EOF
+chmod +x "$H/.cache/dotfiles/aura-glass/uninstall.sh"
 : >"$T/gsettings.log"
+: >"$T/order.log"
 cat >"$B/gsettings" <<EOF
 #!/bin/bash
 echo "gsettings \$*" >>"$T/gsettings.log"
 case \$1 in
   get)
     case \$* in
-      *gtk-theme*) echo "'\${GTK_THEME_GET:-Adwaita}'" ;;
-      *icon-theme*) echo "'\${ICON_THEME_GET:-Adwaita}'" ;;
-      *cursor-theme*) echo "'\${CURSOR_THEME_GET:-Adwaita}'" ;;
-      *user-theme*name*) echo "'\${USER_THEME_GET:-}'" ;;
+      *gtk-theme*) echo "'\${GTK_THEME_GET-Adwaita}'" ;;
+      *icon-theme*) echo "'\${ICON_THEME_GET-Adwaita}'" ;;
+      *cursor-theme*) echo "'\${CURSOR_THEME_GET-Adwaita}'" ;;
+      *user-theme*name*) echo "'\${USER_THEME_GET-}'" ;;
       *enabled-extensions*|*disabled-extensions*) echo "['aura-glass-blur@aura-glass.local', 'blur-my-shell@aunetx']" ;;
       *app-picker-layout*) echo "[{'io.github.DevWebeloper.AuraGlassSettings.desktop': <{'position': <0>}>}]" ;;
       *) echo "''" ;;
     esac
     exit 0
     ;;
-  set|reset) exit 0 ;;
+  set)
+    case \$* in
+      *disabled-extensions*) echo set-disabled >>"$T/order.log" ;;
+    esac
+    exit 0
+    ;;
+  reset) exit 0 ;;
   list-schemas) echo org.gnome.shell.extensions.user-theme; exit 0 ;;
 esac
 exit 0
@@ -128,7 +156,7 @@ EOF
 printf '#!/bin/sh\necho "sudo $*" >>"%s/sudo.log"\nexec "$@"\n' "$T" >"$B/sudo"
 printf '#!/bin/sh\nexit 1\n' >"$B/pacman"
 printf '#!/bin/sh\nexit 0\n' >"$B/systemctl"
-printf '#!/bin/sh\nexit 0\n' >"$B/gnome-extensions"
+printf '#!/bin/sh\necho "gnome-extensions $*" >>"%s/ext.log"\n[ "$1" = disable ] && echo disable >>"%s/order.log"\nexit 0\n' "$T" "$T" >"$B/gnome-extensions"
 printf '#!/bin/sh\necho "revert $*" >>"%s/old-gdm.log"\nrm -f "%s/old-hook" "$0"\n' "$T" "$T" >"$T/old-gdm"
 chmod +x "$B/"* "$T/old-gdm"
 : >"$T/old-hook"
@@ -139,6 +167,7 @@ for f in gtk.css assets; do ln -s "$H/.local/share/themes/Orchis-Dark/gtk-4.0/$f
 echo 'mine' >"$H/.config/gtk-4.0/gtk-dark.css"
 run_ts() { HOME="$H" XDG_CACHE_HOME="" XDG_DATA_HOME="" XDG_CONFIG_HOME="" XDG_RUNTIME_DIR="$T/none" \
   DBUS_SESSION_BUS_ADDRESS="${TS_BUS-unix:path=/fake}" THEME_OLD_GDM_BIN="$T/old-gdm" THEME_OLD_GDM_HOOK="$T/old-hook" \
+  THEME_AURA_GDM_DCONF="$T/etc/dconf/db/gdm.d/90-aura-glass" \
   PATH="$B:$PATH" bash "$TS" "$@"; }
 
 rc=0; out="$(run_ts --check)" || rc=$?
@@ -151,7 +180,7 @@ grep -q 'no session D-Bus' "$T/out" || fail "no bus: must say why: $(cat "$T/out
   || fail "no bus: leftovers must be left untouched"
 [[ ! -e $T/sudo.log && ! -s $T/gsettings.log ]] || fail "no bus: nothing may run (sudo/gsettings)"
 
-: >"$T/gsettings.log"
+: >"$T/gsettings.log"; : >"$T/order.log"; : >"$T/uninstall.log"
 run_ts >"$T/out" 2>&1 || fail "theme-setup.sh failed: $(cat "$T/out")"
 grep -qx "sudo $T/old-gdm revert" "$T/sudo.log" || fail "must revert the old Orchis greeter as root"
 [[ ! -e $T/old-hook ]] || fail "old GDM pacman hook must be gone"
@@ -165,12 +194,30 @@ grep -qx "sudo $T/old-gdm revert" "$T/sudo.log" || fail "must revert the old Orc
   || fail "Aura-Glass theme directories must be removed"
 [[ ! -d $H/.local/share/gnome-shell/extensions/aura-glass-blur@aura-glass.local ]] \
   || fail "Aura helper extension must be removed"
+grep -q 'uninstall -y --gdm' "$T/uninstall.log" \
+  || fail "must run uninstall.sh -y --gdm: $(cat "$T/uninstall.log")"
+! grep -qE -- '--extensions|--all|--assets|--full' "$T/uninstall.log" \
+  || fail "uninstall must not remove extensions: $(cat "$T/uninstall.log")"
+grep -qx "sudo rm -f $T/etc/dconf/db/gdm.d/90-aura-glass" "$T/sudo.log" \
+  || fail "must remove orphaned Aura GDM dconf: $(cat "$T/sudo.log")"
+[[ ! -e $T/etc/dconf/db/gdm.d/90-aura-glass ]] || fail "Aura GDM dconf must be gone"
+_fp="$H/.local/share/flatpak/overrides/global"
+[[ -f $_fp ]] || fail "Flatpak global override must remain when non-Aura entries exist"
+grep -qx 'filesystems=xdg-run/pipewire-0:ro;' "$_fp" \
+  || fail "must keep non-Aura Flatpak mounts with trailing ';': $(cat "$_fp")"
+! grep -qE 'gtk-[34]|xdg-data/(icons|themes)' "$_fp" \
+  || fail "Aura Flatpak mounts must be stripped: $(cat "$_fp")"
+# disable before stripping disabled-extensions (disable alone would re-add the UUID).
+[[ "$(cat "$T/order.log")" == $'disable\nset-disabled' ]] \
+  || fail "gnome-extensions disable must run before stripping disabled-extensions: $(cat "$T/order.log")"
 grep -q "gsettings reset org.gnome.desktop.interface gtk-theme" "$T/gsettings.log" \
   || fail "must reset gtk-theme: $(cat "$T/gsettings.log")"
 grep -q "gsettings reset org.gnome.desktop.interface icon-theme" "$T/gsettings.log" \
   || fail "must reset icon-theme"
 grep -qE "gsettings (reset|set) org.gnome.shell.extensions.user-theme name" "$T/gsettings.log" \
   || fail "must reset/clear user-theme name"
+! grep -q "color-scheme\|accent-color" "$T/gsettings.log" \
+  || fail "must not reset color-scheme/accent-color (user.conf owns them): $(cat "$T/gsettings.log")"
 grep -q "disabled-extensions" "$T/gsettings.log" \
   || fail "must strip Aura helper from disabled-extensions"
 [[ ! -d $H/.cache/aura-glass && ! -d $H/.cache/dotfiles/aura-glass ]] \
@@ -186,6 +233,9 @@ run_ts >/dev/null 2>&1 || fail "theme-setup.sh must be re-runnable"
 grep -q "reset org.gnome.desktop.interface gtk-theme" "$T/gsettings.log" || fail "re-run must still reset gtk-theme"
 
 # --check failures
+rc=0; out="$(GTK_THEME_GET= run_ts --check)" || rc=$?
+[[ $rc -eq 2 && $out == *'could not read gtk-theme'* ]] \
+  || fail "--check empty gtk-theme must be not-applied (rc=2), not broken (rc=$rc): $out"
 rc=0; out="$(GTK_THEME_GET=Aura-Glass run_ts --check)" || rc=$?
 [[ $rc -eq 2 && $out == *Aura-Glass* ]] || fail "--check must report non-Adwaita gtk (rc=$rc): $out"
 rc=0; out="$(ICON_THEME_GET=Colloid-Dark run_ts --check)" || rc=$?

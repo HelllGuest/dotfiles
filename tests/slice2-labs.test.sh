@@ -584,6 +584,14 @@ grep -qx 'save_config_on_exit = false' "$ROOT/stow/btop/.config/btop/btop.conf" 
     : >"$RICE_LOG"; _rs 'ff'
     grep -qx 'fastfetch ' "$RICE_LOG" || fail "$_sh: stale aura-glass fastfetch state must fall back: $(cat "$RICE_LOG")"
     [[ ! -e $_st/fastfetch ]] || fail "$_sh: stale aura-glass fastfetch state file must be removed"
+    # Broken theme.local.* links to deleted aura-glass themes must be removed at shell start.
+    ln -sfn themes/aura-glass.conf "$_rt/cfg/ghostty/theme.local.conf"
+    ln -sfn themes/aura-glass.toml "$_rt/cfg/alacritty/theme.local.toml"
+    _rs ':'
+    [[ ! -e $_rt/cfg/ghostty/theme.local.conf && ! -L $_rt/cfg/ghostty/theme.local.conf ]] \
+      || fail "$_sh: dangling ghostty theme.local.conf must be removed"
+    [[ ! -e $_rt/cfg/alacritty/theme.local.toml && ! -L $_rt/cfg/alacritty/theme.local.toml ]] \
+      || fail "$_sh: dangling alacritty theme.local.toml must be removed"
     _rs 'rice-theme secops >/dev/null'
     grep -qx "palette = 'secops'" "$_st/starship.toml" || fail "$_sh: rice-theme secops missed starship"
     # reset: every override gone, repo defaults back, STARSHIP_CONFIG cleared

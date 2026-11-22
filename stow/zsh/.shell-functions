@@ -389,6 +389,16 @@ _rice_get() {
     esac
     printf '%s' "$v"
 }
+# Drop broken theme.local.* links (e.g. themes/aura-glass.* after that file was removed).
+_rice_drop_stale_theme_locals() {
+    local cfg="${XDG_CONFIG_HOME:-$HOME/.config}" link target
+    for link in "$cfg/ghostty/theme.local.conf" "$cfg/alacritty/theme.local.toml"; do
+        [[ -L $link ]] || continue
+        target=$(readlink -- "$link") || continue
+        [[ $target == /* ]] || target="$(dirname -- "$link")/$target"
+        [[ -e $target ]] || rm -f -- "$link"
+    done
+}
 # Starship reads STARSHIP_CONFIG at every prompt; rebuilt at shell start.
 _rice_starship() {
     local st pal src="${XDG_CONFIG_HOME:-$HOME/.config}/starship.toml"
@@ -401,6 +411,7 @@ _rice_starship() {
     fi
     return 0
 }
+_rice_drop_stale_theme_locals
 _rice_starship
 
 _rice_has_config_flag() {

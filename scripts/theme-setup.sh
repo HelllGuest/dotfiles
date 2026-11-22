@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # theme-setup.sh — GNOME default (Adwaita) desktop. Does not install Aura Glass.
-# Purges Aura Glass caches, Colloid icons, helper extension, and GTK overrides.
-# Leaves other GNOME Shell extensions alone. Still removes leftover Orchis
-# greeter hooks once.
+# Purges Aura Glass caches, Colloid icons, helper extension, GTK overrides,
+# Aura GDM dconf, and Aura Flatpak filesystem overrides. Leaves other GNOME
+# Shell extensions alone. Still removes leftover Orchis greeter hooks once.
 #
 #   theme-setup.sh          reset theme keys; wipe Aura leftovers
 #   theme-setup.sh --check  exit 0 stock ok, 1 broken (reason on stdout),
@@ -18,6 +18,8 @@ CONFIG_HOME="${XDG_CONFIG_HOME:-$HOME/.config}"
 OLD_GDM_BIN="${THEME_OLD_GDM_BIN:-/usr/local/bin/gdm-shell-theme}"
 OLD_GDM_HOOK="${THEME_OLD_GDM_HOOK:-/etc/pacman.d/hooks/95-gdm-shell-theme.hook}"
 AURA_HELPER="aura-glass-blur@aura-glass.local"
+AURA_SRC="${THEME_AURA_SRC:-$CACHE_HOME/dotfiles/aura-glass}"
+AURA_GDM_DCONF="${THEME_AURA_GDM_DCONF:-/etc/dconf/db/gdm.d/90-aura-glass}"
 
 die() { echo "✗ $*" >&2; exit 1; }
 
@@ -29,8 +31,9 @@ aura_paths_present() {
     [[ -d $CONFIG_HOME/aura-glass ]] \
         || [[ -d $HOME/.themes/Aura-Glass || -d $DATA_HOME/themes/Aura-Glass ]] \
         || [[ -d $DATA_HOME/gnome-shell/extensions/$AURA_HELPER ]] \
-        || [[ -d $CACHE_HOME/aura-glass || -d $CACHE_HOME/dotfiles/aura-glass ]] \
+        || [[ -d $CACHE_HOME/aura-glass || -d $AURA_SRC ]] \
         || [[ -d $DATA_HOME/icons/Colloid || -d $DATA_HOME/icons/Colloid-Dark || -d $DATA_HOME/icons/Colloid-Light ]] \
+        || [[ -e $AURA_GDM_DCONF ]] \
         || compgen -G "$CONFIG_HOME/gtk-4.0/gtk.css.backup.*" >/dev/null 2>&1 \
         || compgen -G "$DATA_HOME/applications/*AuraGlass*" >/dev/null 2>&1
 }
@@ -51,8 +54,9 @@ if [[ ${1:-} == --check ]]; then
     case $gtk in
         Adwaita|Adwaita-dark) ;;
         '')
+            # Headless / no session bus: not broken, just not applied yet.
             echo "could not read gtk-theme (no session gsettings?)"
-            exit 1
+            exit 2
             ;;
         *)
             echo "gtk-theme is '$gtk' (want Adwaita)"
@@ -106,29 +110,70 @@ for p in orchis-theme tela-icon-theme bibata-cursor-theme-bin gnome-shell-extens
     fi
 done
 
-# 2. Purge Aura Glass completely (caches, icons, helper, GTK backups, desktop entry).
+# 2. Revert Aura GDM / Flatpak *before* deleting the checkout (uninstall.sh lives there).
 echo "→ Removing Aura Glass completely..."
-rm -rf "$CONFIG_HOME/aura-glass" \
-    "$HOME/.themes/Aura-Glass" \
-    "$DATA_HOME/themes/Aura-Glass" \
-    "$DATA_HOME/gnome-shell/extensions/$AURA_HELPER" \
-    "$CACHE_HOME/aura-glass" \
-    "$CACHE_HOME/dotfiles/aura-glass" \
-    "$DATA_HOME/icons/Colloid" \
-    "$DATA_HOME/icons/Colloid-Dark" \
-    "$DATA_HOME/icons/Colloid-Light"
-rm -f "$CONFIG_HOME"/gtk-4.0/gtk.css.backup.* \
-    "$DATA_HOME"/applications/io.github.DevWebeloper.AuraGlassSettings.desktop \
-    "$DATA_HOME"/applications/*AuraGlass*.desktop 2>/dev/null || true
-# Drop Aura-written GTK overrides only (leave unrelated user gtk.css alone).
-for f in "$CONFIG_HOME/gtk-3.0/gtk.css" "$CONFIG_HOME/gtk-4.0/gtk.css" "$CONFIG_HOME/gtk-4.0/gtk-dark.css"; do
-    if [[ -f $f ]] && grep -qiE 'aura-glass|Aura Glass|Aura-Glass' "$f" 2>/dev/null; then
-        rm -f "$f"
-    fi
-done
+if [[ -f $AURA_SRC/uninstall.sh ]]; then
+    # -y --gdm only: never pass --extensions / --all (Full pack must stay).
+    echo "→ Running Aura uninstall (--gdm; keep extensions)..."
+    (cd "$AURA_SRC" && bash ./uninstall.sh -y --gdm) || true
+fi
+# Orphans when uninstall.sh is already gone or left GDM/Flatpak behind.
+if [[ -e $AURA_GDM_DCONF ]]; then
+    echo "→ Removing orphaned Aura GDM dconf ($AURA_GDM_DCONF)..."
+    sudo rm -f "$AURA_GDM_DCONF"
+    sudo dconf update 2>/dev/null || true
+fi
+# Strip Aura GTK/icon/theme shares from the user global Flatpak override (granted
+# or negated). Do not use --nofilesystem: that writes !path and re-matches forever.
+_fp_global="$DATA_HOME/flatpak/overrides/global"
+if [[ -f $_fp_global ]] && grep -qE '!?xdg-config/gtk-[34]\.0|!?xdg-data/(icons|themes)' "$_fp_global"; then
+    echo "→ Clearing Aura Flatpak --user GTK/icon/theme filesystem overrides..."
+    python3 - "$_fp_global" <<'PY'
+import pathlib, re, sys
+
+path = pathlib.Path(sys.argv[1])
+try:
+    text = path.read_text(encoding="utf-8")
+except OSError as exc:
+    print(f"could not read {path}: {exc}", file=sys.stderr)
+    raise SystemExit(0)
+aura = re.compile(
+    r"!?xdg-config/gtk-[34]\.0(?::[^;]*)?$|!?xdg-data/(?:icons|themes)(?::[^;]*)?$"
+)
+out = []
+changed = False
+for line in text.splitlines(keepends=True):
+    if not line.startswith("filesystems="):
+        out.append(line)
+        continue
+    raw = line[len("filesystems=") :].strip()
+    trailing = raw.endswith(";")
+    parts = [p for p in raw.split(";") if p]
+    kept = [p for p in parts if not aura.fullmatch(p)]
+    if kept != parts:
+        changed = True
+    if kept:
+        fs = "filesystems=" + ";".join(kept)
+        if trailing:
+            fs += ";"
+        out.append(fs + "\n")
+body = "".join(out)
+# Drop a Context-only stub left with no keys.
+if re.fullmatch(r"\s*(\[Context\]\s*)*", body):
+    path.unlink(missing_ok=True)
+    changed = True
+elif changed:
+    path.write_text(body, encoding="utf-8")
+PY
+fi
+
+# Disable first so Shell records it, then strip lists (disable alone would re-add
+# the UUID to disabled-extensions after a prior strip).
 if command -v gnome-extensions >/dev/null 2>&1; then
     gnome-extensions disable "$AURA_HELPER" 2>/dev/null || true
 fi
+
+# Strip helper from extension lists only when it is present (no redundant writes).
 python3 - "$AURA_HELPER" <<'PY'
 import ast, subprocess, sys
 
@@ -141,7 +186,13 @@ for key in ("enabled-extensions", "disabled-extensions"):
     except subprocess.CalledProcessError:
         continue
     s = raw.split(" ", 1)[-1] if raw.startswith("@as") else raw
-    lst = [x for x in ast.literal_eval(s) if x != uuid]
+    try:
+        lst = ast.literal_eval(s)
+    except (SyntaxError, ValueError, MemoryError, TypeError):
+        continue
+    if not isinstance(lst, list) or uuid not in lst:
+        continue
+    lst = [x for x in lst if x != uuid]
     gv = "[" + ", ".join(repr(x) for x in lst) + "]"
     subprocess.check_call(["gsettings", "set", "org.gnome.shell", key, gv])
 
@@ -178,9 +229,28 @@ except Exception:
     pass
 PY
 
-# 3. GNOME schema defaults for theme / pointer / accent / color-scheme.
-echo "→ Resetting GNOME theme keys to defaults..."
-for key in gtk-theme icon-theme cursor-theme cursor-size color-scheme accent-color; do
+rm -rf "$CONFIG_HOME/aura-glass" \
+    "$HOME/.themes/Aura-Glass" \
+    "$DATA_HOME/themes/Aura-Glass" \
+    "$DATA_HOME/gnome-shell/extensions/$AURA_HELPER" \
+    "$CACHE_HOME/aura-glass" \
+    "$AURA_SRC" \
+    "$DATA_HOME/icons/Colloid" \
+    "$DATA_HOME/icons/Colloid-Dark" \
+    "$DATA_HOME/icons/Colloid-Light"
+rm -f "$CONFIG_HOME"/gtk-4.0/gtk.css.backup.* \
+    "$DATA_HOME"/applications/io.github.DevWebeloper.AuraGlassSettings.desktop \
+    "$DATA_HOME"/applications/*AuraGlass*.desktop 2>/dev/null || true
+# Drop Aura-written GTK overrides only (leave unrelated user gtk.css alone).
+for f in "$CONFIG_HOME/gtk-3.0/gtk.css" "$CONFIG_HOME/gtk-4.0/gtk.css" "$CONFIG_HOME/gtk-4.0/gtk-dark.css"; do
+    if [[ -f $f ]] && grep -qiE 'aura-glass|Aura Glass|Aura-Glass' "$f" 2>/dev/null; then
+        rm -f "$f"
+    fi
+done
+
+# 3. Reset only the keys Aura owned. Keep color-scheme / accent from user.conf.
+echo "→ Resetting GTK/icon/cursor theme keys to defaults..."
+for key in gtk-theme icon-theme cursor-theme cursor-size; do
     gsettings reset org.gnome.desktop.interface "$key" 2>/dev/null || true
 done
 if gsettings list-schemas 2>/dev/null | grep -qx org.gnome.shell.extensions.user-theme; then
