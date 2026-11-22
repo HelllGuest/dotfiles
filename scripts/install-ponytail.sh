@@ -21,9 +21,13 @@ export PATH="${HOME}/.opencode/bin:${HOME}/.npm-global/bin:${HOME}/.local/bin:${
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 PONYTAIL_REPO="https://github.com/DietrichGebert/ponytail.git"
 PONYTAIL_TAG="${PONYTAIL_TAG:-v5.3.3}"
+# Commit SHA matching PONYTAIL_TAG; bump tag + commit together (refuses moved tags).
+PONYTAIL_COMMIT="${PONYTAIL_COMMIT:-7801d061243d7b753bad0e0b3c057cd250b11755}"
 PONYTAIL_DIR="${PONYTAIL_DIR:-${XDG_DATA_HOME:-$HOME/.local/share}/ponytail}"
 AGENTS_SKILLS="${HOME}/.agents/skills"
 OPENCODE_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/opencode"
+PONYTAIL_TMPS=()
+trap '(( ${#PONYTAIL_TMPS[@]} )) && rm -rf -- "${PONYTAIL_TMPS[@]}"' EXIT
 
 die() { echo "error: $*" >&2; exit 1; }
 say() { printf '>> %s\n' "$*"; }
@@ -31,26 +35,34 @@ warn() { echo "warning: $*" >&2; }
 
 command -v git >/dev/null 2>&1 || die "git required"
 command -v node >/dev/null 2>&1 || die "node required (fnm/node first)"
+[[ "$PONYTAIL_COMMIT" =~ ^[0-9a-f]{40}$ ]] || die "PONYTAIL_COMMIT must be a 40-char commit SHA"
 
-say "sync DietrichGebert/ponytail (${PONYTAIL_TAG}) → ${PONYTAIL_DIR}"
+say "sync DietrichGebert/ponytail (${PONYTAIL_TAG} @ ${PONYTAIL_COMMIT:0:12}) → ${PONYTAIL_DIR}"
 mkdir -p "$(dirname "$PONYTAIL_DIR")"
 if [[ -d "$PONYTAIL_DIR/.git" ]]; then
   git -C "$PONYTAIL_DIR" fetch --depth 1 origin "refs/tags/${PONYTAIL_TAG}:refs/tags/${PONYTAIL_TAG}" >/dev/null 2>&1 \
-    || git -C "$PONYTAIL_DIR" fetch --tags origin >/dev/null 2>&1 || true
-  git -C "$PONYTAIL_DIR" checkout -B main "${PONYTAIL_TAG}" >/dev/null 2>&1
+    || git -C "$PONYTAIL_DIR" fetch --depth 1 origin "$PONYTAIL_COMMIT" >/dev/null 2>&1 \
+    || die "failed to fetch ponytail ${PONYTAIL_TAG}"
+  git -C "$PONYTAIL_DIR" checkout -B main "${PONYTAIL_TAG}" >/dev/null 2>&1 \
+    || git -C "$PONYTAIL_DIR" checkout -B main "${PONYTAIL_COMMIT}" >/dev/null 2>&1
 else
   rm -rf "$PONYTAIL_DIR"
   git clone --depth 1 --branch "${PONYTAIL_TAG}" "$PONYTAIL_REPO" "$PONYTAIL_DIR" >/dev/null 2>&1
   git -C "$PONYTAIL_DIR" checkout -B main "${PONYTAIL_TAG}" >/dev/null 2>&1 || true
 fi
 
+got_commit="$(git -C "$PONYTAIL_DIR" rev-parse HEAD 2>/dev/null || true)"
+[[ "$got_commit" == "$PONYTAIL_COMMIT" ]] \
+  || die "ponytail ${PONYTAIL_TAG} resolved to ${got_commit:-unknown}, expected ${PONYTAIL_COMMIT} — refusing a moved tag"
+
 [[ -f "$PONYTAIL_DIR/AGENTS.md" && -d "$PONYTAIL_DIR/skills/ponytail" ]] \
   || die "ponytail checkout incomplete at $PONYTAIL_DIR"
 
 # 1. Hub skills (ponytail, ponytail-review, ponytail-audit, ponytail-debt, ponytail-gain, ponytail-help)
+PONYTAIL_SKILLS=(ponytail ponytail-review ponytail-audit ponytail-debt ponytail-gain ponytail-help)
 say "install ponytail skills → $AGENTS_SKILLS"
 mkdir -p "$AGENTS_SKILLS"
-for _skill in ponytail ponytail-review ponytail-audit ponytail-debt ponytail-gain ponytail-help; do
+for _skill in "${PONYTAIL_SKILLS[@]}"; do
   if [[ -d "$PONYTAIL_DIR/skills/$_skill" ]]; then
     rm -rf "${AGENTS_SKILLS:?}/$_skill"
     cp -a "$PONYTAIL_DIR/skills/$_skill" "${AGENTS_SKILLS}/$_skill"
@@ -114,12 +126,13 @@ if command -v gemini >/dev/null 2>&1; then
     rm -rf "${HOME}/.gemini/extensions/ponytail"
   fi
   if [[ ! -f "${HOME}/.gemini/extensions/ponytail/gemini-extension.json" ]]; then
+    mkdir -p "${HOME}/.cache"
     _gem_tmp="$(mktemp -d "${HOME}/.cache/ponytail-gemini.XXXXXX")"
+    PONYTAIL_TMPS+=("$_gem_tmp")
     (
       cd "$_gem_tmp"
       GEMINI_CLI_TRUST_WORKSPACE=true gemini extensions uninstall ponytail >/dev/null 2>&1 || true
-      GEMINI_CLI_TRUST_WORKSPACE=true gemini extensions install https://github.com/DietrichGebert/ponytail --consent >/dev/null 2>&1 \
-        || GEMINI_CLI_TRUST_WORKSPACE=true gemini extensions install "$PONYTAIL_DIR" --consent >/dev/null 2>&1 \
+      GEMINI_CLI_TRUST_WORKSPACE=true gemini extensions install "$PONYTAIL_DIR" --consent >/dev/null 2>&1 \
         || warn "gemini extensions install ponytail failed"
     )
     rm -rf "$_gem_tmp"
@@ -131,6 +144,7 @@ fi
 if command -v agy >/dev/null 2>&1 || [[ -d "${HOME}/.gemini/config" ]]; then
   AGY_PLUGIN_DIR="${HOME}/.gemini/config/plugins/ponytail"
   _agy_stage="$(mktemp -d "${TMPDIR:-/tmp}/ponytail-agy.XXXXXX")"
+  PONYTAIL_TMPS+=("$_agy_stage")
   mkdir -p "$_agy_stage/ponytail/rules" "$_agy_stage/ponytail/skills"
   cat > "$_agy_stage/ponytail/plugin.json" <<'EOF'
 {
@@ -140,7 +154,7 @@ if command -v agy >/dev/null 2>&1 || [[ -d "${HOME}/.gemini/config" ]]; then
 }
 EOF
   cp -a "$PONYTAIL_DIR/AGENTS.md" "$_agy_stage/ponytail/rules/AGENTS.md"
-  for _s in ponytail ponytail-review ponytail-audit ponytail-debt ponytail-gain ponytail-help; do
+  for _s in "${PONYTAIL_SKILLS[@]}"; do
     if [[ -d "$PONYTAIL_DIR/skills/$_s" ]]; then
       cp -a "$PONYTAIL_DIR/skills/$_s" "$_agy_stage/ponytail/skills/$_s"
     fi

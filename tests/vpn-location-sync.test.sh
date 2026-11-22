@@ -81,5 +81,7 @@ out="$(ACTION=up run VPN_UP=1 FAKE_JSON='{"latitude":95.1,"longitude":2}')" && f
 rm -f "$T/curl.log"
 out="$(ACTION=up run NM_UP=1 FAKE_JSON='{"latitude":1,"longitude":2}' || true)"
 [[ ! -e $T/curl.log ]] || fail "must not geolocate over the real egress when the tunnel is down: $(cat "$T/curl.log")"
+grep -qxF '0.0' "$T/etc/geolocation" || fail "failed VPN lookup must replace home coords with neutral 0.0 placeholder: $(cat "$T/etc/geolocation")"
+! grep -qxF '10.0' "$T/etc/geolocation" || fail "failed VPN lookup must not leave home coords in /etc/geolocation"
 
 echo "PASS: vpn-location-sync.test.sh"

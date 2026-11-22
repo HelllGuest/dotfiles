@@ -12,14 +12,23 @@ set -euo pipefail
 
 [[ $EUID -eq 0 ]] || { echo "run as root: sudo $0"; exit 1; }
 
-DEV=/dev/mapper/cryptroot
+FSTYPE=$(findmnt -no FSTYPE /)
+[[ "$FSTYPE" == btrfs ]] || { echo "root filesystem is '$FSTYPE', expected btrfs" >&2; exit 1; }
+DEV=$(findmnt -no SOURCE / | sed 's/\[.*//')
 UUID=$(findmnt -no UUID /)
+[[ -n "$DEV" && -n "$UUID" ]] || { echo "could not determine root btrfs device/UUID" >&2; exit 1; }
 TOP=/mnt/btrfs-top
 # nofail: a /tmp mount failure must not drop the boot to emergency — it falls back
 # to the empty /tmp dir on @ instead. nodatacow disables compression by design.
 OPTS="rw,noatime,nodatacow,nosuid,nodev,nofail,ssd,space_cache=v2,subvol=/@tmp"
 
-echo ">> root btrfs UUID: $UUID"
+cleanup_top() {
+    mountpoint -q "$TOP" && umount "$TOP" || true
+    rmdir "$TOP" 2>/dev/null || true
+}
+trap cleanup_top EXIT
+
+echo ">> root btrfs: $DEV (UUID=$UUID)"
 
 # 1. backup fstab
 cp -v /etc/fstab "/etc/fstab.bak-$(date +%F-%H%M%S)"
@@ -37,7 +46,7 @@ else
 fi
 chmod 1777 "$TOP/@tmp"         # sticky + world-writable, required for /tmp
 ls -ld "$TOP/@tmp"; lsattr -d "$TOP/@tmp"
-umount "$TOP"; rmdir "$TOP"
+cleanup_top
 
 # 3. add fstab entry if not present
 if grep -qE '^[^#]*[[:space:]]/tmp[[:space:]]+btrfs' /etc/fstab; then

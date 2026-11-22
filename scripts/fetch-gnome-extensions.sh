@@ -1,14 +1,23 @@
 #!/usr/bin/env bash
-# fetch-gnome-extensions.sh — download/build extensions that are not pacman/AUR/stow-owned
+# fetch-gnome-extensions.sh — download/verify EGO extensions that are not pacman/AUR/stow-owned
 # Targets the live extensions dir (folded stow symlink under proton-vpn package).
 # Safe to re-run. Does not enable (see install-extensions.sh).
+#
+# Usage:
+#   bash scripts/fetch-gnome-extensions.sh
+#   bash scripts/fetch-gnome-extensions.sh --only <uuid>
 
 set -euo pipefail
 
-REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 EXT_ROOT="${XDG_DATA_HOME:-$HOME/.local/share}/gnome-shell/extensions"
 CURL_BIN="${GNOME_EXT_CURL:-/usr/bin/curl}"
 EGO_BASE="https://extensions.gnome.org/download-extension"
+ONLY_UUID=""
+if [[ "${1:-}" == --only ]]; then
+    ONLY_UUID="${2:?--only requires an extension UUID}"
+fi
+EGO_TMPS=()
+trap '(( ${#EGO_TMPS[@]} )) && rm -rf -- "${EGO_TMPS[@]}"' EXIT
 
 info() { echo "→ $*"; }
 
@@ -34,15 +43,27 @@ PY
 
 install_ego_zip() {
     local uuid="$1" version_tag="$2" label="$3"
-    local patch51="${4:-0}"
-    local tmp zip dir
+    local patch51="${4:-0}" expected_sha="${5:-}"
+    [[ -z "$ONLY_UUID" || "$ONLY_UUID" == "$uuid" ]] || return 0
+    local tmp zip dir got_sha
     tmp="$(mktemp -d)"
+    EGO_TMPS+=("$tmp")
     zip="$tmp/${uuid}.shell-extension.zip"
     dir="$EXT_ROOT/$uuid"
 
     info "EGO ${label} (${uuid}, tag ${version_tag})"
     "$CURL_BIN" -fsSL -o "$zip" \
         "${EGO_BASE}/${uuid}.shell-extension.zip?version_tag=${version_tag}"
+
+    [[ ${expected_sha,,} =~ ^[0-9a-f]{64}$ ]] || {
+        echo "✗ ${uuid}: expected 64-hex SHA-256 pin" >&2
+        return 1
+    }
+    got_sha="$(sha256sum "$zip" | awk '{print $1}')"
+    if [[ "$got_sha" != "${expected_sha,,}" ]]; then
+        echo "✗ ${uuid}: SHA-256 mismatch (got $got_sha want ${expected_sha,,}) — refusing to unpack" >&2
+        return 1
+    fi
 
     rm -rf "$dir"
     mkdir -p "$dir"
@@ -54,26 +75,38 @@ install_ego_zip() {
     fi
     rm -rf "$tmp"
     [[ $patch51 == 1 ]] && patch_shell_51 "$uuid"
+    return 0
 }
 
 mkdir -p "$EXT_ROOT"
 
-# Shell-51 EGO builds (version_tag from extensions.gnome.org shell_version_map).
-install_ego_zip "caffeine@patapon.info" "${CAFFEINE_TAG:-76057}" "Caffeine"
-install_ego_zip "blur-my-shell@aunetx" "${BLUR_MY_SHELL_TAG:-78246}" "Blur My Shell"
-install_ego_zip "status-tray@keithvassallo.com" "${STATUS_TRAY_TAG:-78680}" "Status Tray"
-install_ego_zip "tiling-assistant@leleat-on-github" "${TILING_ASSISTANT_TAG:-76100}" "Tiling Assistant"
-install_ego_zip "hotedge@jonathan.jdoda.ca" "${HOTEDGE_TAG:-74490}" "Hot Edge"
-install_ego_zip "kiwimenu@kemma" "${KIWIMENU_TAG:-77866}" "Kiwi Menu"
-install_ego_zip "copyous@boerdereinar.dev" "${COPYOUS_TAG:-76772}" "Copyous"
-install_ego_zip "wiggly@mojarch" "${WIGGLY_TAG:-76032}" "Wiggly"
-# EGO lags Shell 51 on these two; zip + metadata patch (same idea as Dash2Dock).
-install_ego_zip "custom-osd@neuromorph" "${CUSTOM_OSD_TAG:-55755}" "Custom OSD" 1
-install_ego_zip "restartto@tiagoporsch.github.io" "${RESTARTTO_TAG:-73214}" "Restart To" 1
+# Shell-51 EGO builds (version_tag + SHA-256 pinned together).
+install_ego_zip "caffeine@patapon.info" "${CAFFEINE_TAG:-76057}" "Caffeine" 0 \
+    "${CAFFEINE_SHA256:-3ec59c6d1a62c26ba5c45128b084b62ef4e112fa66008768b5094df940e6a164}"
+install_ego_zip "blur-my-shell@aunetx" "${BLUR_MY_SHELL_TAG:-78246}" "Blur My Shell" 0 \
+    "${BLUR_MY_SHELL_SHA256:-065d53b27dff3bbdd867deeab0316c030da7702c8c313c2a734d0eb05cf4f4a7}"
+install_ego_zip "status-tray@keithvassallo.com" "${STATUS_TRAY_TAG:-78680}" "Status Tray" 0 \
+    "${STATUS_TRAY_SHA256:-949863dde58bf71b4a2b416333278c62253758b9027c2f51c59b04e57177d7de}"
+install_ego_zip "tiling-assistant@leleat-on-github" "${TILING_ASSISTANT_TAG:-76100}" "Tiling Assistant" 0 \
+    "${TILING_ASSISTANT_SHA256:-bd4ec3320cfa53aafa7a63d6f0fbc7642ee4afb4d29abc416fed9e43a9378c30}"
+install_ego_zip "hotedge@jonathan.jdoda.ca" "${HOTEDGE_TAG:-74490}" "Hot Edge" 0 \
+    "${HOTEDGE_SHA256:-4b816de2c335b2518d368b557f604099d82698112acbb2b9ea838f7473c67352}"
+install_ego_zip "kiwimenu@kemma" "${KIWIMENU_TAG:-77866}" "Kiwi Menu" 0 \
+    "${KIWIMENU_SHA256:-a458d5229b2ea3dcaa8881c28c7b522a86904f80a6ae933398ef485e865f51e9}"
+install_ego_zip "copyous@boerdereinar.dev" "${COPYOUS_TAG:-76772}" "Copyous" 0 \
+    "${COPYOUS_SHA256:-fe9eb3b039040b777228e578ebc6b66042f8781e0dae78abf69d9927f1695537}"
+install_ego_zip "wiggly@mojarch" "${WIGGLY_TAG:-76032}" "Wiggly" 0 \
+    "${WIGGLY_SHA256:-51d994ed3bd7b37a93d60b20fef40ae6356c8206dbad0beafa897e42dce09028}"
+# EGO lags Shell 51 on these three; zip + metadata patch.
+install_ego_zip "custom-osd@neuromorph" "${CUSTOM_OSD_TAG:-55755}" "Custom OSD" 1 \
+    "${CUSTOM_OSD_SHA256:-a5b497ba2ac846b8a78e1c3df9b2764d95886a4530630edb619b7745398a157a}"
+install_ego_zip "restartto@tiagoporsch.github.io" "${RESTARTTO_TAG:-73214}" "Restart To" 1 \
+    "${RESTARTTO_SHA256:-16edfd59e432f8bf1aed4e02e2d87a49512367537019d2c2acb1e8517fd410af}"
+install_ego_zip "dash2dock-lite@icedman.github.com" "${DASH2DOCK_VERSION_TAG:-71180}" "Dash2Dock Animated" 1 \
+    "${DASH2DOCK_SHA256:-14db6849ba6edcb63f25032007e182d2b7d842568e9c1386587d7a08c6c53abe}"
 
-# Dash2Dock: EGO ≤50 metadata; install script patches 51 (unofficial)
-bash "$REPO_ROOT/scripts/install-dash2dock.sh"
-
-echo "✓ Fetched GNOME extensions into $EXT_ROOT"
-echo "  Enable: bash $REPO_ROOT/scripts/install-extensions.sh"
-echo "  Wayland: log out → log in so Shell reloads extensions (Meta.restart is disabled)."
+if [[ -z "$ONLY_UUID" ]]; then
+    echo "✓ Fetched GNOME extensions into $EXT_ROOT"
+    echo "  Enable: bash $(cd "$(dirname "$0")" && pwd)/install-extensions.sh"
+    echo "  Wayland: log out → log in so Shell reloads extensions (Meta.restart is disabled)."
+fi

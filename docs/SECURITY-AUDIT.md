@@ -20,7 +20,7 @@ Classification used below:
 | `git grep -P` pattern scans | `eval`, remote code piped to shells, `sudo -E`, world-writable `chmod`, dynamic `source`, unguarded `rm -rf`, downloads, container flags |
 | Local regex secret scanner (Python, no network) | Working tree and all 138 commits of history; installer repo (48 commits). Reports file and rule only, never values |
 | Podman (rootless) | Behavioural tests of lab hardening against the real lab images |
-| Repo test suite | 14 test files that day (4 added, several extended), all passing; later grew to 22 `tests/*.test.sh` |
+| Repo test suite | 14 test files that day (4 added, several extended), all passing; later grew to 23 `tests/*.test.sh` |
 | Mutation testing | Each fix reverted in a scratch copy; the regression test must fail (all caught; see the final run in the report below) |
 
 Not available and not installed (no authorization to install or upload):
@@ -132,9 +132,16 @@ ShellCheck showed no new warnings on the 27 changed shell files; docs lint 0
 issues; stow inventory unchanged. No host configuration was changed during the
 audit, no secrets were printed, and no destructive host commands ran.
 
-> **Snapshot drift (post-audit):** 22 `tests/*.test.sh` as of 2026-11-22.
-> `gdm-shell-theme.sh` / greeter hook removed with Aura → stock Adwaita
-> (`theme-setup.sh`). `virbr-malware` bridge now sets `zone="lab-malware"`.
+> **Snapshot drift (post-audit):** 23 `tests/*.test.sh` as of 2026-11-22 (added
+> `tests/hardening-scripts.test.sh`). `gdm-shell-theme.sh` / greeter hook removed
+> with Aura → stock Adwaita (`theme-setup.sh`). `virbr-malware` bridge now sets
+> `zone="lab-malware"`. Supply-chain and script hardening: `install-ponytail.sh`
+> commit-pinned (`PONYTAIL_COMMIT`; local Gemini install), `install-photogimp.sh`
+> and all 11 EGO zips in `fetch-gnome-extensions.sh` SHA-256 pinned,
+> `rebuild-v3.sh` parses `validpgpkeys` statically (no `source ./PKGBUILD`),
+> `minimal-stow.sh` refuses to overwrite real files, `tmp-to-disk.sh` derives the
+> btrfs root via `findmnt` with an `EXIT` unmount trap, and `vpn-location-sync.sh`
+> writes a neutral `0.0` placeholder on lookup failure.
 
 ## Actions for the operator
 

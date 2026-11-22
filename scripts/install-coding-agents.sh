@@ -54,8 +54,11 @@ install_caveman_opencode() {
     return 0
   fi
   tmp="$(mktemp)"
-  curl -fsSL --proto '=https' --tlsv1.2 -o "$tmp" \
-    "https://raw.githubusercontent.com/JuliusBrussee/caveman/${tag}/install.sh"
+  if ! curl -fsSL --proto '=https' --tlsv1.2 -o "$tmp" \
+    "https://raw.githubusercontent.com/JuliusBrussee/caveman/${tag}/install.sh"; then
+    rm -f "$tmp"
+    return 1
+  fi
   got="$(sha256sum "$tmp" | awk '{print $1}')"
   if [[ "$got" != "$sha" ]]; then
     rm -f "$tmp"

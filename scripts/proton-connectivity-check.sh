@@ -57,6 +57,7 @@ fi
 CURL_ERR_FILE="$(mktemp)"
 API_HEADERS_FILE="$(mktemp)"
 API_BODY_FILE="$(mktemp)"
+trap 'rm -f "$CURL_ERR_FILE" "$API_HEADERS_FILE" "$API_BODY_FILE"' EXIT
 HTTP_CODE="$(curl -sS -o "$API_BODY_FILE" -D "$API_HEADERS_FILE" --max-time "$CURL_TIMEOUT" \
     -w '%{http_code}' "$PROTON_API_URL" 2>"$CURL_ERR_FILE" || true)"
 HTTP_CODE="${HTTP_CODE:-000}"

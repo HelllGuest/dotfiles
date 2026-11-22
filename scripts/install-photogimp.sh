@@ -6,6 +6,8 @@
 set -euo pipefail
 
 PHOTO_URL="${PHOTO_URL:-https://github.com/Diolinux/PhotoGIMP/releases/download/3.0/PhotoGIMP-linux.zip}"
+# SHA-256 of PhotoGIMP 3.0 release zip; override with PHOTO_SHA256 if overriding PHOTO_URL.
+PHOTO_SHA256="${PHOTO_SHA256:-1af6e2a6308bbc0fb716a7dbbd68036adbcc091da16432869c7c6c6aef18e54e}"
 CURL_BIN="${PHOTO_CURL:-/usr/bin/curl}"
 
 if ! command -v gimp >/dev/null 2>&1; then
@@ -45,6 +47,12 @@ ZIP="$TMP/PhotoGIMP-linux.zip"
 
 echo "Downloading PhotoGIMP..."
 "$CURL_BIN" -fsSL -o "$ZIP" "$PHOTO_URL"
+[[ ${PHOTO_SHA256,,} =~ ^[0-9a-f]{64}$ ]] || { echo "ERROR: PHOTO_SHA256 must be 64 hex chars" >&2; exit 1; }
+GOT_SHA="$(sha256sum "$ZIP" | awk '{print $1}')"
+if [[ "$GOT_SHA" != "${PHOTO_SHA256,,}" ]]; then
+    echo "ERROR: PhotoGIMP SHA-256 mismatch (got $GOT_SHA want ${PHOTO_SHA256,,}) — refusing to unpack" >&2
+    exit 1
+fi
 unzip -qo "$ZIP" -d "$TMP/extract"
 
 SRC=""
@@ -66,7 +74,6 @@ apply_photogimp_tree() {
         rsync -a --exclude='pluginrc' "$SRC/.config/GIMP/3.0/" "$dest/"
     else
         cp -a "$SRC/.config/GIMP/3.0/." "$dest/"
-        rm -f "$dest/pluginrc"
     fi
     # PhotoGIMP ships config-version 3.0.0; bump to installed GIMP so prefs load cleanly.
     if [[ -f "$dest/gimprc" ]]; then

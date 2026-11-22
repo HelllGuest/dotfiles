@@ -39,6 +39,12 @@ grep -q 'SKIP_SKILL_SYNC' "$ROOT/scripts/install-caveman.sh" \
 
 grep -q 'PONYTAIL_TAG:-v5.3.3' "$ROOT/scripts/install-ponytail.sh" \
   || fail "ponytail tag pin missing"
+grep -q 'PONYTAIL_COMMIT="${PONYTAIL_COMMIT:-[0-9a-f]\{40\}}"' "$ROOT/scripts/install-ponytail.sh" \
+  || fail "ponytail commit pin missing"
+grep -q 'refusing a moved tag' "$ROOT/scripts/install-ponytail.sh" \
+  || fail "ponytail must refuse a moved tag"
+! grep -q 'gemini extensions install https://github.com/DietrichGebert/ponytail' "$ROOT/scripts/install-ponytail.sh" \
+  || fail "ponytail gemini extension must install from verified local checkout, not unpinned GitHub HEAD"
 grep -q 'SKIP_SKILL_SYNC' "$ROOT/scripts/install-ponytail.sh" \
   || fail "ponytail SKIP_SKILL_SYNC missing"
 grep -q 'agy plugin install' "$ROOT/scripts/install-ponytail.sh" \

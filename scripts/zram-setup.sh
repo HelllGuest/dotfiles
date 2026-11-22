@@ -5,7 +5,7 @@ set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 SRC="${REPO_ROOT}/stow/zram/etc/systemd/zram-generator.conf"
-DEST="/etc/systemd/zram-generator.conf"
+DEST="${ZRAM_DEST:-/etc/systemd/zram-generator.conf}"
 
 if [ ! -f "$SRC" ]; then
     echo "Missing zram source: $SRC" >&2
@@ -13,6 +13,7 @@ if [ ! -f "$SRC" ]; then
 fi
 
 tmp="$(mktemp)"
+trap 'rm -f "$tmp"' EXIT
 cp "$SRC" "$tmp"
 
 if [ -L "$DEST" ]; then

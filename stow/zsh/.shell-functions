@@ -17,7 +17,7 @@ fcd() {
     local dir
     dir=$(fd --type d --hidden --follow --exclude .git 2>/dev/null | \
         fzf --preview 'eza --tree --level=2 --color=always {} 2>/dev/null || ls -la {}')
-    [[ -n "$dir" ]] && cd "$dir"
+    [[ -n "$dir" ]] && { cd "$dir" || return; }
 }
 
 ex() {
@@ -93,7 +93,7 @@ gshow() {
 }
 
 gcl() {
-    git clone "$1" && cd "$(basename "$1" .git)"
+    git clone "$1" && { cd "$(basename "$1" .git)" || return; }
 }
 
 mkproj() {
@@ -391,12 +391,9 @@ _rice_get() {
 }
 # Drop broken theme.local.* links (e.g. themes/aura-glass.* after that file was removed).
 _rice_drop_stale_theme_locals() {
-    local cfg="${XDG_CONFIG_HOME:-$HOME/.config}" link target
+    local cfg="${XDG_CONFIG_HOME:-$HOME/.config}" link
     for link in "$cfg/ghostty/theme.local.conf" "$cfg/alacritty/theme.local.toml"; do
-        [[ -L $link ]] || continue
-        target=$(readlink -- "$link") || continue
-        [[ $target == /* ]] || target="$(dirname -- "$link")/$target"
-        [[ -e $target ]] || rm -f -- "$link"
+        [[ -L $link && ! -e $link ]] && rm -f -- "$link"
     done
 }
 # Starship reads STARSHIP_CONFIG at every prompt; rebuilt at shell start.

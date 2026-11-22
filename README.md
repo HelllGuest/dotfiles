@@ -163,7 +163,7 @@ Optional [PhotoGIMP](https://github.com/Diolinux/PhotoGIMP) patch on pacman **gi
 bash scripts/install-photogimp.sh
 ```
 
-Maps the upstream `3.0` config tree into the live dir (`~/.config/GIMP/3.2` on GIMP 3.2.x), skips stale `pluginrc`, bumps `config-version`, also patches Flatpak GIMP config when `org.gimp.GIMP` is installed, rewrites the PhotoGIMP `.desktop` `Exec` to native `gimp` (upstream zip is Flatpak/`gimp-3.0`-only), hides stock `gimp.desktop`, installs icons, and backs up existing config to `~/GIMP-<ver>-backup-YYYYMMDD`. Launch: app menu **PhotoGIMP**, or `gimp`.
+Verifies `PHOTO_SHA256` before unpacking, maps the upstream `3.0` config tree into the live dir (`~/.config/GIMP/3.2` on GIMP 3.2.x), skips stale `pluginrc`, bumps `config-version`, also patches Flatpak GIMP config when `org.gimp.GIMP` is installed, rewrites the PhotoGIMP `.desktop` `Exec` to native `gimp` (upstream zip is Flatpak/`gimp-3.0`-only), hides stock `gimp.desktop`, installs icons, and backs up existing config to `~/GIMP-<ver>-backup-YYYYMMDD`. Launch: app menu **PhotoGIMP**, or `gimp`.
 
 ### Dash2Dock Animated
 
@@ -173,7 +173,7 @@ Animated GNOME dock ([Dash2Dock Lite](https://github.com/icedman/dash2dock-lite)
 bash scripts/install-dash2dock.sh
 ```
 
-UUID `dash2dock-lite@icedman.github.com` is in `gnome/extensions.txt` and `gnome/dconf/user.conf`. EGO zip still declares Shell ≤50; the install script patches `metadata.json` for **Shell 51** (unofficial — may still break). Caffeine, Blur My Shell, Status Tray, Tiling Assistant, and the rest of the Full pack install from EGO via `scripts/fetch-gnome-extensions.sh` (`GNOME_EXT_FETCH=1 bash scripts/install-extensions.sh`). Custom OSD and Restart To get a Shell 51 metadata patch when upstream lags. **Wayland:** log out → log in (`Meta.restart` is disabled). Prefs: `gnome-extensions prefs dash2dock-lite@icedman.github.com`.
+UUID `dash2dock-lite@icedman.github.com` is in `gnome/extensions.txt` and `gnome/dconf/user.conf`. `install-dash2dock.sh` delegates the SHA-256-verified EGO download and Shell 51 `metadata.json` patch to `scripts/fetch-gnome-extensions.sh --only dash2dock-lite@icedman.github.com` (unofficial patch — may still break). Caffeine, Blur My Shell, Status Tray, Tiling Assistant, and the rest of the Full pack also install with pinned SHA-256 checksums via `scripts/fetch-gnome-extensions.sh` (`GNOME_EXT_FETCH=1 bash scripts/install-extensions.sh`). Custom OSD and Restart To get the same Shell 51 metadata patch when upstream lags. **Wayland:** log out → log in (`Meta.restart` is disabled). Prefs: `gnome-extensions prefs dash2dock-lite@icedman.github.com`.
 
 ### Shortcuts
 
@@ -475,11 +475,10 @@ the repo. git reads both files; `~/.gitconfig` wins on conflicts.
 
 ```bash
 GNOME_EXT_FETCH=1 bash scripts/install-extensions.sh
-# or: bash scripts/fetch-gnome-extensions.sh
+# or: bash scripts/fetch-gnome-extensions.sh [--only <uuid>]
 ```
 
-Installs EGO Caffeine, Blur My Shell, Full pack, then Dash2Dock. Safe to
-re-run. Enable via `install-extensions.sh`; Wayland needs log out → log in.
+Downloads and SHA-256-verifies all 11 EGO zips (Caffeine, Blur My Shell, 8 Full-pack, Dash2Dock). Safe to re-run. Enable via `install-extensions.sh`; Wayland needs log out → log in.
 
 **Lab commands (after `labs-setup.sh` / configure SETUP_LABS):**
 ```text
@@ -588,7 +587,7 @@ Key runtime dependencies (`scripts/check.sh` asserts binaries, shell tools, syml
 
 **Shell tools** (also asserted): `atuin`, `fzf`, `fd`, `ripgrep` (`rg`), `bat`, `eza`, `zoxide`, `direnv`, `git-delta` (`delta`). `fnm` (Node) and `rclone` are in `pacman.txt` but optional for `check.sh`.
 
-**AI:** `./install.sh` installs the full stack: Headroom (`hr-claude` / `hr-cursor` / `hr-opencode` / `hr-agy` / `hr-proxy`), OpenCode + Kimi, Caveman `v4.1.0` + Ponytail `v5.3.3`, Continue FIM config, Obscura CDP/MCP, ecosystem + RE skills, hub sync; on P15 also `ollama-setup.sh` (CUDA + qwen pulls; `SKIP_OLLAMA=1` opts out). `configure.sh` `SETUP_AI` runs `ai-stack-setup.sh` (Headroom/Ponytail/Continue; **not** Caveman). Modular re-run: `bash scripts/ai-stack-setup.sh`
+**AI:** `./install.sh` installs the full stack: Headroom (`hr-claude` / `hr-cursor` / `hr-opencode` / `hr-agy` / `hr-proxy`), OpenCode + Kimi, Caveman `v4.1.0` (SHA-256) + Ponytail `v5.3.3` (`PONYTAIL_COMMIT` SHA), Continue FIM config, Obscura CDP/MCP, ecosystem + RE skills, hub sync; on P15 also `ollama-setup.sh` (CUDA + qwen pulls; `SKIP_OLLAMA=1` opts out). `configure.sh` `SETUP_AI` runs `ai-stack-setup.sh` (Headroom/Ponytail/Continue; **not** Caveman). Modular re-run: `bash scripts/ai-stack-setup.sh`
 
 **Graphics (optional):** `gimp` + PhotoGIMP via `scripts/install-photogimp.sh`
 
@@ -616,7 +615,7 @@ Clipboard: selecting text auto-copies in kitty and ghostty (`copy_on_select`); i
 
 **GNOME session:** `scripts/gnome-session-setup.sh` — dconf profile, EGO fetch (Caffeine, Blur My Shell, Full-pack, Dash2Dock), and extension enable. Super+1–4 workspaces. Mouse/touchpad/keyboard use **stock GNOME defaults** (reset on session setup via `scripts/reset-input-defaults.sh`).
 
-**Location spoofing:** `scripts/location-setup.sh` — static GeoClue coords in `/etc/geolocation` (home from gitignored `stow/system/etc/geolocation.local`, else a Greenwich placeholder; VPN exit when `proton0` is up). Panel extension `proton-vpn@helllguest` shows spoofed coords and **Sync spoofed location** (runs `pkexec vpn-location-sync sync`). Manual: `vpn-location-sync` or `sudo vpn-location-sync sync`. As root (dispatcher / `pkexec`) it only reads the root-owned copy in `/usr/local/share/vpn-location-sync/`, never your home directory, so re-run `location-setup.sh` after editing `geolocation.local`.
+**Location spoofing:** `scripts/location-setup.sh` — static GeoClue coords in `/etc/geolocation` (home from gitignored `stow/system/etc/geolocation.local`, else a Greenwich placeholder; VPN exit when `proton0` is up, retrying once on transient lookup failure and falling back to a neutral `0.0` placeholder so home coords never stay active during VPN). Panel extension `proton-vpn@helllguest` shows spoofed coords and **Sync spoofed location** (runs `pkexec vpn-location-sync sync`). Manual: `vpn-location-sync` or `sudo vpn-location-sync sync`. As root (dispatcher / `pkexec`) it only reads the root-owned copy in `/usr/local/share/vpn-location-sync/`, never your home directory, so re-run `location-setup.sh` after editing `geolocation.local`.
 
 **Fonts:** Run `scripts/install-fonts.sh` for top Nerd Fonts (JetBrains Mono, Meslo, FiraCode, Cascadia, Iosevka, etc.)
 
@@ -741,7 +740,7 @@ systemctl is-enabled paccache.timer          # expect: enabled after ops-hygiene
 systemctl is-active usbguard                 # active only after usbguard-setup
 systemctl is-active dnscrypt-proxy           # active only after dnscrypt-setup
 
-for t in ~/dotfiles/tests/*.test.sh; do bash "$t" || break; done
+for t in ~/dotfiles/tests/*.test.sh; do bash "$t" || break; done   # KALI_TEST_NET=1 adds live Kali URL probe
 bash ~/t14s-arch-install/tests/smoke.test.sh   # if that repo is present
 ```
 

@@ -66,8 +66,9 @@ else
         HOME_GEO="$INSTALLED_HOME_GEO"
     fi
 fi
+log() { printf '[vpn-location-sync] %s\n' "$*"; }
+
 if [[ -z "$HOME_GEO" ]]; then
-    log() { printf '[vpn-location-sync] %s\n' "$*"; }
     log "ERROR: no trusted home geolocation (run location-setup.sh; root uses $INSTALLED_HOME_GEO only)" >&2
     exit 1
 fi
@@ -75,13 +76,11 @@ GEO_FILE="/etc/geolocation"
 VPN_IF="${VPN_IF:-proton0}"
 ACTION="${1:-sync}"
 
-log() { printf '[vpn-location-sync] %s\n' "$*"; }
-
 write_geolocation() {
     local lat="$1" lon="$2" label="$3"
     local tmp
     tmp="$(mktemp)"
-    cat >"$tmp" <<EOF
+    if ! cat >"$tmp" <<EOF
 # ${label}
 # Updated by vpn-location-sync.sh at $(date -Iseconds)
 ${lat}
@@ -89,7 +88,14 @@ ${lon}
 5
 1000
 EOF
-    install -m 0644 -o root -g root "$tmp" "$GEO_FILE"
+    then
+        rm -f "$tmp"
+        return 1
+    fi
+    if ! install -m 0644 -o root -g root "$tmp" "$GEO_FILE"; then
+        rm -f "$tmp"
+        return 1
+    fi
     rm -f "$tmp"
     log "wrote $GEO_FILE → $label ($lat, $lon)"
 }
@@ -104,11 +110,15 @@ restart_geoclue() {
 }
 
 fetch_vpn_coords() {
-    local json="" lat lon city country
+    local json="" lat lon city country attempt
     # Only through the tunnel: an unbound fallback would send the real (ISP)
     # address to ipapi.co whenever the tunnel is not carrying traffic.
     if ip link show "$VPN_IF" 2>/dev/null | grep -q 'LOWER_UP'; then
-        json="$("$CURL" -sf --max-time 15 --interface "$VPN_IF" https://ipapi.co/json/ 2>/dev/null || true)"
+        for attempt in 1 2; do
+            json="$("$CURL" -sf --max-time 15 --interface "$VPN_IF" https://ipapi.co/json/ 2>/dev/null || true)"
+            [[ -n "$json" ]] && break
+            [[ "$attempt" -eq 1 ]] && sleep 1
+        done
     fi
     if [[ -z "$json" ]]; then
         log "ERROR: could not geolocate VPN exit IP" >&2
@@ -148,7 +158,12 @@ vpn_is_up() {
 
 apply_sync() {
     if vpn_is_up; then
-        fetch_vpn_coords
+        if ! fetch_vpn_coords; then
+            # Never leave real home coords active during a VPN session on lookup failure.
+            write_geolocation "0.0" "0.0" "Proton VPN exit — lookup failed (neutral placeholder)"
+            restart_geoclue
+            return 1
+        fi
     else
         restore_home_location
     fi

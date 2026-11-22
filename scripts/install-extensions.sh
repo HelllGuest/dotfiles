@@ -31,16 +31,25 @@ while read -r extension; do
         echo "    ⚠ not installed or incompatible"
 done < "$EXT_FILE"
 
-# Drop stale UUIDs that break enabled-extensions
+# Drop stale UUIDs that break enabled-extensions (guarded for headless/empty output).
 python3 - <<'PY'
 import ast
 import subprocess
 
-raw = subprocess.check_output(
-    ["gsettings", "get", "org.gnome.shell", "enabled-extensions"], text=True
-).strip()
+try:
+    raw = subprocess.check_output(
+        ["gsettings", "get", "org.gnome.shell", "enabled-extensions"], text=True
+    ).strip()
+except subprocess.CalledProcessError:
+    raise SystemExit(0)
 s = raw.split(" ", 1)[-1] if raw.startswith("@as") else raw
-lst = [x for x in ast.literal_eval(s) if x != "clipd@devtochukwu"]
+try:
+    lst = ast.literal_eval(s)
+except (SyntaxError, ValueError, MemoryError, TypeError):
+    raise SystemExit(0)
+if not isinstance(lst, list) or "clipd@devtochukwu" not in lst:
+    raise SystemExit(0)
+lst = [x for x in lst if x != "clipd@devtochukwu"]
 gv = "[" + ", ".join(repr(x) for x in lst) + "]"
 subprocess.check_call(["gsettings", "set", "org.gnome.shell", "enabled-extensions", gv])
 PY

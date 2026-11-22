@@ -121,15 +121,19 @@ telemetry_ensure_claude_env() {
   command -v jq >/dev/null 2>&1 || return 0
   local tmp
   tmp="$(mktemp)"
-  jq -s '
+  if jq -s '
     .[0] as $user | .[1] as $kit |
     $user * {
       includeCoAuthoredBy: $kit.includeCoAuthoredBy,
       skipWebFetchPreflight: ($kit.skipWebFetchPreflight // $user.skipWebFetchPreflight),
       env: (($user.env // {}) + ($kit.env // {}))
     }
-  ' "$settings" "$kit" > "$tmp"
-  mv "$tmp" "$settings"
+  ' "$settings" "$kit" > "$tmp"; then
+    mv "$tmp" "$settings"
+  else
+    rm -f "$tmp"
+    return 1
+  fi
 }
 
 # Gemini CLI: usage stats off + OTel off (privacy.usageStatisticsEnabled / telemetry.enabled).
@@ -143,11 +147,15 @@ telemetry_ensure_gemini() {
   fi
   local tmp
   tmp="$(mktemp)"
-  jq '
+  if jq '
     .privacy = ((.privacy // {}) + {usageStatisticsEnabled: false})
     | .telemetry = ((.telemetry // {}) + {enabled: false})
-  ' "$settings" > "$tmp"
-  mv "$tmp" "$settings"
+  ' "$settings" > "$tmp"; then
+    mv "$tmp" "$settings"
+  else
+    rm -f "$tmp"
+    return 1
+  fi
 }
 
 # OpenCode: no share, no autoupdate, OTel off (product has no master telemetry kill).
@@ -157,12 +165,16 @@ telemetry_ensure_opencode() {
   command -v jq >/dev/null 2>&1 || return 1
   local tmp
   tmp="$(mktemp)"
-  jq '
+  if jq '
     .share = "disabled"
     | .autoupdate = false
     | .experimental = ((.experimental // {}) + {openTelemetry: false})
-  ' "$settings" > "$tmp"
-  mv "$tmp" "$settings"
+  ' "$settings" > "$tmp"; then
+    mv "$tmp" "$settings"
+  else
+    rm -f "$tmp"
+    return 1
+  fi
 }
 
 # Atuin: no sync / update check / secrets_filter (+ secret history_filter canary).
@@ -242,6 +254,10 @@ telemetry_ensure_kimi_mcp() {
   fi
   local tmp
   tmp="$(mktemp)"
-  jq 'del(.mcpServers["custom-keep"])' "$settings" > "$tmp"
-  mv "$tmp" "$settings"
+  if jq 'del(.mcpServers["custom-keep"])' "$settings" > "$tmp"; then
+    mv "$tmp" "$settings"
+  else
+    rm -f "$tmp"
+    return 1
+  fi
 }

@@ -1,37 +1,38 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # minimal-stow.sh
 # A simple bash alternative to GNU Stow for basic symlinking.
-# Usage: ./minimal-stow.sh [package_dir]
+# Refuses to overwrite existing non-symlink files (matches GNU Stow safety).
+# Usage: ./minimal-stow.sh <package_dir> [target_dir]
+set -euo pipefail
 
-PACKAGE=$1
-TARGET=${2:-$HOME}
+PACKAGE="${1:-}"
+TARGET="${2:-$HOME}"
 
-if [ -z "$PACKAGE" ]; then
-    echo "Usage: ./minimal-stow.sh [package_dir] [target_dir]"
+if [[ -z "$PACKAGE" ]]; then
+    echo "Usage: ./minimal-stow.sh <package_dir> [target_dir]" >&2
     exit 1
 fi
 
-if [ ! -d "$PACKAGE" ]; then
-    echo "Error: Directory $PACKAGE does not exist."
+if [[ ! -d "$PACKAGE" ]]; then
+    echo "Error: Directory $PACKAGE does not exist." >&2
     exit 1
 fi
 
+PACKAGE="${PACKAGE%/}"
 echo "Linking $PACKAGE to $TARGET..."
 
-# Walk through the package directory
-find "$PACKAGE" -type f | while read -r src; do
-    # Calculate the relative path from the package root
-    rel_path=${src#$PACKAGE/}
+# Walk files and symlinks; NUL-delimited so spaces in paths (e.g. Antigravity IDE) work.
+while IFS= read -r -d '' src; do
+    rel_path="${src#"$PACKAGE/"}"
     dest="$TARGET/$rel_path"
-    
-    # Ensure destination directory exists
+
+    if [[ -e "$dest" && ! -L "$dest" ]]; then
+        echo "Error: $dest exists and is not a symlink — refusing to overwrite" >&2
+        exit 1
+    fi
+
     mkdir -p "$(dirname "$dest")"
-    
-    # Remove existing file or symlink
-    rm -f "$dest"
-    
-    # Create symlink (using absolute path for source)
-    ln -s "$(realpath "$src")" "$dest"
+    ln -snf "$(realpath -s "$src")" "$dest"
     echo "  $rel_path -> $dest"
-done
+done < <(find "$PACKAGE" \( -type f -o -type l \) -print0)

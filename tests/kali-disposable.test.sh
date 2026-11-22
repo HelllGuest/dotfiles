@@ -105,9 +105,14 @@ _kali_url="$(grep -oE 'https://kali\.download/cloud-images/kali-[0-9.]+/kali-lin
 _kali_ver="${_kali_url#*/cloud-images/kali-}"; _kali_ver="${_kali_ver%%/*}"
 [[ $_kali_url == *"/kali-linux-${_kali_ver}-cloud-"* ]] || fail "Kali dir and file versions differ: $_kali_url"
 unset _kali_ver
-_kali_code="$(curl -fsSIL -o /dev/null -w '%{http_code}' "$_kali_url" 2>/dev/null || echo 000)"
-[[ "$_kali_code" == "200" ]] || fail "default Kali image URL returned HTTP $_kali_code (want 200): $_kali_url"
-unset _kali_url _kali_code
+if [[ ${KALI_TEST_NET:-0} == 1 || ${CI:-} == true ]]; then
+  _kali_code="$(curl -fsSIL -o /dev/null -w '%{http_code}' "$_kali_url" 2>/dev/null || echo 000)"
+  [[ "$_kali_code" == "200" ]] || fail "default Kali image URL returned HTTP $_kali_code (want 200): $_kali_url"
+  unset _kali_code
+else
+  echo "SKIP: live Kali URL probe (set KALI_TEST_NET=1 to run)"
+fi
+unset _kali_url
 grep -q 'owner/repo:skill1,skill2' "$ROOT/scripts/install-re-skills.sh" \
   || fail "install-re-skills must document selective skill filter"
 grep -q 'lib/agent-skills.sh' "$ROOT/scripts/install-re-skills.sh" \

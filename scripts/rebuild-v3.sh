@@ -94,9 +94,27 @@ for pkg in "${PACKAGES[@]}"; do
     cd "${work}/${pkg}"
     rm -f "${pkgdest}/${pkg}"-*.pkg.tar.*
     echo "==> makepkg ${pkg}"
-    if [[ -f PKGBUILD ]]; then
-        mapfile -t pgpkeys < <(bash -c 'set +u; source ./PKGBUILD; printf "%s\n" "${validpgpkeys[@]}"' 2>/dev/null || true)
-        pgpkeys=("${pgpkeys[@]// /}")
+    if [[ -f .SRCINFO || -f PKGBUILD ]]; then
+        mapfile -t pgpkeys < <(python3 - <<'PY'
+import pathlib, re
+
+keys = []
+srcinfo = pathlib.Path(".SRCINFO")
+if srcinfo.is_file():
+    for line in srcinfo.read_text(encoding="utf-8", errors="ignore").splitlines():
+        m = re.match(r"^\s*validpgpkeys\s*=\s*([0-9A-Fa-f]{16,})\s*$", line)
+        if m:
+            keys.append(m.group(1))
+if not keys:
+    pb = pathlib.Path("PKGBUILD")
+    if pb.is_file():
+        m = re.search(r"(?ms)^validpgpkeys\s*=\s*\((.*?)\)", pb.read_text(encoding="utf-8", errors="ignore"))
+        if m:
+            keys.extend(re.findall(r"[0-9A-Fa-f]{16,}", m.group(1)))
+for k in dict.fromkeys(keys):
+    print(k)
+PY
+        )
         if [[ ${#pgpkeys[@]} -gt 0 && -n ${pgpkeys[0]:-} ]]; then
             gpg --keyserver hkps://keyserver.ubuntu.com --recv-keys "${pgpkeys[@]}" || true
         fi
