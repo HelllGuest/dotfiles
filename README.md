@@ -67,6 +67,8 @@ systemctl --user enable --now podman.socket
 
 ```bash
 sudo systemctl disable --now docker.service docker.socket
+# leftover bridge from a prior daemon (optional cleanup):
+sudo ip link delete docker0 2>/dev/null || true
 systemctl --user enable --now podman.socket
 ```
 
@@ -104,20 +106,29 @@ To disable per-directory auto-switching (no prompt on shell start), remove `--us
 bash scripts/headroom-setup.sh    # install/upgrade + MCP registration
 ```
 
-After setup, prefer a **systemd user** persistent proxy (survives logout when linger is on):
+`./install.sh` runs `sync-agent-skills.sh` **before** `headroom-setup.sh` so `~/.claude`, `~/.cursor`, and the other agent dirs exist for MCP merges. After setup, prefer a **systemd user** persistent proxy (survives logout when linger is on). Either the upstream preset or the repo unit:
 
 ```bash
+# Option A — upstream persistent service:
 headroom install apply --preset persistent-service --runtime python --scope user \
   --providers auto --profile default --port 8787 --backend anthropic --mode token --no-telemetry
+systemctl --user status headroom-default.service
+
+# Option B — repo unit (what ai-stack-setup.sh can enable):
+systemctl --user enable --now hr-proxy.service
+
 loginctl enable-linger "$USER"   # once, so it survives logout
-systemctl --user status headroom-default.service   # enabled + active
 headroom doctor
 ```
+
+Claude Code CLI is optional (`○` in `check.sh` until installed): `npm install -g @anthropic-ai/claude-code` (after fnm Node 22).
 
 | Command | What it does |
 |---------|----------------|
 | `hr-claude` | `headroom wrap claude` — proxy + launch Claude Code |
 | `hr-cursor` | Start proxy; paste printed Base URL into Cursor → Settings → Models |
+| `hr-opencode` | Proxy + launch OpenCode |
+| `hr-agy` | Proxy + launch Antigravity CLI (`agy`) |
 | `hr-proxy` | One-shot proxy on port `8787` (`HEADROOM_PORT` to override) |
 
 **Routing & MCP:** `scripts/headroom-setup.sh` sets `ANTHROPIC_BASE_URL` and `ENABLE_TOOL_SEARCH` in `~/.claude/settings.json` and registers the `headroom` MCP server across Claude Code, Cursor (`~/.cursor/mcp.json`), OpenCode (`~/.config/opencode/opencode.json`), Kimi Code (`~/.kimi-code/mcp.json`), Gemini CLI (`~/.gemini/settings.json`), and Antigravity (`~/.gemini/config/mcp_config.json`). Interactive shells also get `ANTHROPIC_BASE_URL` / `OPENAI_BASE_URL` from stowed `~/.zshrc` / `~/.bashrc` (and `~/.profile`). If `headroom doctor` warns that those vars are unset, the *current* process never sourced the rc file (common in IDE/agent shells): `source ~/.zshrc`, open a new terminal, or `export ANTHROPIC_BASE_URL=http://127.0.0.1:8787` / `OPENAI_BASE_URL=http://127.0.0.1:8787/v1`.
@@ -187,11 +198,13 @@ dotfiles/
 ├── stow/            # GNU Stow packages → $HOME (system/zram/gdm via setup scripts, not stow -t /)
 │   ├── bash/ zsh/   # shells; shared .shell-* under zsh/
 │   ├── system/      # /etc template (sleep, firewalld-era units, udev, Wayland) → system-setup.sh
-│   ├── containers/  # rootless Podman containers.conf
+│   ├── containers/  # rootless Podman containers.conf + storage.conf
 │   ├── privacy/     # telemetry opt-out environment.d
 │   ├── zram/ gdm/   # templates → zram-setup.sh / gdm-setup.sh
 │   ├── kitty/ ghostty/ alacritty/ contour/
-│   └── nvim/ starship/ atuin/ git/ vscode/ cursor/ … 
+│   ├── nvim/ starship/ atuin/ git/ vscode/ cursor/ antigravity/
+│   ├── fastfetch/ btop/ htop/ continue/ flutter/ npm/
+│   └── applications/ gnome-text-editor/ proton-vpn/ tmp-cleanup/ pacman/ …
 ├── browsers/        # chromium-base (+ chrome-extra, brave-extra); zen; LibreWolf
 ├── packages/        # pacman.txt, flatpak.txt, aur.txt, re-extra.txt, thinkpad-t14s.txt, …
 ├── profiles/        # thinkpad-p15 | thinkpad-t14s | laptop | p15
@@ -251,13 +264,13 @@ Manual phases: [docs/hardened-arch-gnome.md](docs/hardened-arch-gnome.md).
 Rehearse: `scripts/arch-install-vmtest.sh`. Then **1. Full Bootstrap** (Stage B).
 
 ### 1. Full Bootstrap (Recommended)
-Installs packages, stows configs into `$HOME`, installs `stow/system/` into `/etc` as root-owned files, restores GNOME settings, and runs health checks.
+Installs packages, stows configs into `$HOME`, installs `stow/system/` into `/etc` as root-owned files, restores GNOME settings, and runs health checks. Run as your desktop user (**not** `sudo ./install.sh`; it rejects `EUID == 0`).
 ```bash
 ./install.sh
 # Optional: run Stage B TUI modules during install (fails hard if a module fails):
 # CONFIGURE=1 ./install.sh
 # Headless / serial: CONFIGURE=1 CONFIGURE_UI=plain ./install.sh
-# Skip foxcage / ollama: SKIP_FOXCAGE=1 SKIP_OLLAMA=1 ./install.sh
+# Skip foxcage / ollama / theme: SKIP_FOXCAGE=1 SKIP_OLLAMA=1 SKIP_THEME=1 ./install.sh
 ```
 
 Machine profiles run in `./install.sh` via `scripts/apply-profile.sh` **after** `packages/pacman.txt` (exactly one profile): `profiles/$(hostname).sh` if it exists, otherwise `scripts/detect-profile.sh` (ThinkPad P15 → `thinkpad-p15`, ThinkPad T14s Gen 3 AMD 21CQ/21CR → `thinkpad-t14s`, other ThinkPads/laptop chassis → `laptop`). Pacman first so Optimus/NVIDIA packages exist before `thinkpad-p15` enables services and rebuilds UKIs (GPU packages in `packages/pacman.txt`: the Intel packages are skipped on the AMD T14s, and the NVIDIA packages (`nvidia-open-dkms`, `nvidia-prime`, `nvidia-utils`, `egl-wayland`) are installed only when `has_nvidia_gpu` finds an NVIDIA display device on PCI, so the T14s, VMs and other laptops skip the NVIDIA stack and its DKMS builds). There is no `nvidia.sh`; Optimus setup is inside `profiles/thinkpad-p15.sh`.
@@ -279,7 +292,8 @@ scripts/arch-install.sh          # → DMI detect / TUI radio
 
 **Stage A½ — enable Secure Boot (optional, after first boot works with SB disabled in BIOS):**
 ```text
-BIOS → clear Secure Boot keys → Setup Mode
+BIOS → clear Secure Boot keys → Setup Mode   # required; enroll fails if Setup Mode is off
+sudo sbctl sign -s /boot/vmlinuz-linux{,-lts,-hardened}   # if sbctl verify still lists them
 sudo sbctl enroll-keys -m          # -m keeps Microsoft keys (Windows on shared ESP)
 BIOS → Secure Boot → Enabled
 sbctl status && sbctl verify
@@ -366,7 +380,9 @@ bash scripts/dnscrypt-setup.sh   # dnscrypt-proxy on 127.0.0.1/::1 + NM DNS
 ```
 
 `check.sh` soft-probes these (○ until packages/services are present). Plain DNS
-override without encrypt: `bash scripts/network-dns-setup.sh` (or `--all-wifi`).
+override without encrypt: `bash scripts/network-dns-setup.sh` (or `--all-wifi`);
+it skips bridge/tun/vpn ifaces (`virbr0`, `docker0`, …) so one bad connection
+does not abort the rest.
 
 #### How to: firewalld lab zones / `lab-malware`
 
@@ -384,16 +400,19 @@ virbr0          → libvirt          (kali-disposable / NAT guests)
 virbr-malware   → lab-malware      (iface + source 192.168.200.0/24; DROP; no masq/forward)
 ```
 
-`virbr-malware` is defined with `<dns enable="no"/>`, so libvirt's dnsmasq only
-serves DHCP (`67/udp`, allowed in `lab-malware`) and advertises `192.168.200.1`
+`virbr-malware` is defined with `<dns enable="no"/>` and
+`zone="lab-malware"` on the bridge (so libvirt does not reclaim it into the
+stock `libvirt` zone). Libvirt's dnsmasq only serves DHCP (`67/udp`, allowed in
+`lab-malware`) and advertises `192.168.200.1`
 as the guest's DNS server. Nothing answers on `:53` until INetSim runs
 (`lab-detonate.sh`), so lookups never reach real DNS. The zone has no ICMP
 rule: guests cannot ping the gateway; test with a port instead.
 
 `ensure_lab_malware_zone` (shared by `firewalld-lab-zones` + `lab-detonate`) binds **both**
 the interface and the `192.168.200.0/24` source, unbinds `virbr-malware` from
-`libvirt`/`block`, and uses `sudo` for permanent queries (polkit). Hosts
-upgraded from Slice 1 may still show the bridge under `libvirt` or `block`.
+`libvirt`/`block`, and uses `sudo` (or direct `firewall-cmd` when already root).
+Hosts upgraded before `zone="lab-malware"` on the bridge XML may still show the
+iface under `libvirt` until `firewalld-lab-zones.sh` redefines the network.
 
 ```bash
 sudo firewall-cmd --get-default-zone          # drop
@@ -466,22 +485,25 @@ re-run. Enable via `install-extensions.sh`; Wayland needs log out → log in.
 ```text
 lab-triage | lab-re | lab-android | lab-web | lab-detonate | lab-mcp
 ```
-`lab-detonate.sh capture-up` keeps INetSim logs and captured SMTP/FTP/HTTP-POST data under `/srv/lab/capture` (`inetsim-data/`); the container runs read-only with minimal caps (`LAB_CAPTURE_BIND` overrides `192.168.200.1`). `lab-detonate.sh linux-define` seeds Alpine `nocloud` cloud-init (`DETONATE_LINUX_PASS`, default `detonate`) and powers off cleanly before taking the `clean` snapshot. PolarProxy starts only if its hash matches the one verified at setup. Interactive lab images build with rootless Podman (`lab-capture` builds in rootful Podman via `lab-detonate.sh setup` so `capture-up`'s `sudo podman run` sees it; `lab-web` uses signed Arch `chromium`; `lab-android` shares persistent named volumes `lab-android-flutter` and `lab-android-sdk` with `lab-mcp.sh`). On linux-hardened that needs `fuse-overlayfs` (in `pacman.txt`) and the stowed `containers` package (`storage.conf`); `bash scripts/check.sh` reports it under "Podman (rootless)".
+`lab-detonate.sh capture-up` keeps INetSim logs and captured SMTP/FTP/HTTP-POST data under `/srv/lab/capture` (`inetsim-data/`); the container runs read-only with minimal caps (`LAB_CAPTURE_BIND` overrides `192.168.200.1`). `lab-detonate.sh linux-define` seeds Alpine `nocloud` cloud-init (`DETONATE_LINUX_PASS`, default `detonate`) and powers off cleanly before taking the `clean` snapshot. PolarProxy starts only if its hash matches the one verified at setup. Interactive lab images build with rootless Podman using `--network=host` (pasta/slirp throttles multi-GB pacman pulls). `lab-capture` builds in rootful Podman via `lab-detonate.sh setup` so `capture-up`'s `sudo podman run` sees it; `lab-web` uses signed Arch `chromium`; `lab-android` shares persistent named volumes `lab-android-flutter` and `lab-android-sdk` with `lab-mcp.sh`). On linux-hardened that needs `fuse-overlayfs` (in `pacman.txt`) and the stowed `containers` package (`storage.conf`); `bash scripts/check.sh` reports it under "Podman (rootless)".
 
 **What `./install.sh` runs, in order:**
 ```text
-cleanup-input-overrides.sh
-→ sudo -v once + keep-alive (long AUR builds no longer time out the sudo prompt)
+reject EUID==0 (never sudo ./install.sh)
+→ sudo -v once + keep-alive (pkill -P then kill on EXIT; long AUR builds no longer time out sudo)
+→ cleanup-input-overrides.sh
 → pacman -Syu packages/pacman.txt (one batch; on failure retried per package)
 → bootvine enable (bootvine.service + bootvine-shutdown.service)
 → apply-profile.sh (hostname e.g. p15, or detect-profile.sh — after packages so NVIDIA DKMS exists)
-→ install-flatpaks.sh → install-aur.sh (bootstraps paru, after `rustup default stable` on a rustup host; --sudoloop; per-package retry)
-→ install-fonts.sh → stow ($HOME; system/ via system-setup.sh; skips zram & gdm)
+→ install-flatpaks.sh → install-fonts.sh
+→ stow ($HOME; system/ via system-setup.sh installs makepkg x86-64-v3; skips zram & gdm)
+→ install-aur.sh (after system-setup; bootstraps paru after `rustup default stable`; --sudoloop; per-package retry)
 → tmp-semgrep-cleanup.timer enable (user unit) → login shell → zsh (usermod, if not already)
-→ fnm install/default 22 → atuin import → zram-setup.sh
+→ fnm install/default/use 22 (default/use only if install succeeds) → atuin import → zram-setup.sh
 → gnome-session-setup.sh → location-setup.sh → gnome-console-setup.sh
-→ gdm-setup.sh → theme-setup.sh (stock Adwaita; SKIP_THEME=1 skips) → git-setup.sh → nvim-setup.sh → headroom-setup.sh
-→ sync-agent-skills.sh → install-coding-agents.sh (OpenCode + Kimi + MCP; if npm)
+→ gdm-setup.sh → theme-setup.sh (stock Adwaita; SKIP_THEME=1 skips) → git-setup.sh → nvim-setup.sh
+→ sync-agent-skills.sh (creates agent dirs) → headroom-setup.sh
+→ install-coding-agents.sh (OpenCode + Kimi + MCP; if npm)
 → install-caveman.sh (if npm) → install-ponytail.sh (if node) → install-android-ui-skills.sh (if npx)
 → install-ghidra-cli.sh (if ghidra)
 → install-obscura.sh (headless browser + MCP)
@@ -491,7 +513,7 @@ cleanup-input-overrides.sh
 → ai-stack-setup.sh (AI_STACK_EXTRAS_ONLY=1: Continue FIM, P15 OpenCode↔ollama, hr-proxy)
 → ollama-setup.sh (P15 only; SKIP_OLLAMA=1 skips; no-op elsewhere)
 → install-photogimp.sh → install-foxcage.sh (if podman; SKIP_FOXCAGE=1 skips)
-→ fetch-gnome-extensions.sh (Caffeine + Dash2Dock) → install-extensions.sh
+→ fetch-gnome-extensions.sh (Caffeine, Blur My Shell, 8 Full-pack, Dash2Dock) → install-extensions.sh
 → configure.sh one checklist pass (only with CONFIGURE=1; SKIP_CONFIGURE=1 skips the hint)
 → privacy-hardener.sh (incl. browser-hardening.sh)
 → ops-hygiene.sh (paccache + flatpak unused + paccache.timer; SKIP_OPS_HYGIENE=1 skips)
@@ -524,10 +546,13 @@ hardware `host-check.sh` targets; on other hosts they are shown as informational
 stay in `gnome/dconf/user.conf` (Blur My Shell, Status Tray, Tiling Assistant,
 and the rest). `gnome/dconf/*.conf` leave gtk-theme / icon / cursor and the
 extension look trees unset; `backup-gsettings.sh` drops those from snapshots.
-The script still removes leftover Orchis/Tela/Bibata greeter hooks
-(`theme-sync.service`, user theme copy, `~/.config/gtk-4.0` links into Orchis).
-`check.sh` verifies Adwaita. Opt out on headless hosts: `SKIP_THEME=1`. GNOME
-Tweaks and Extension Manager are installed from `pacman.txt`.
+On apply it purges leftovers: Orchis/Tela/Bibata greeter hooks
+(`theme-sync.service`, user theme copy, `~/.config/gtk-4.0` Orchis links),
+Aura Glass (`uninstall.sh -y --gdm` when present,
+`/etc/dconf/db/gdm.d/90-aura-glass`, Flatpak GTK/icon overrides, Colloid icons,
+helper extension, GTK css/settings overrides). `check.sh` verifies Adwaita. Opt
+out: `SKIP_THEME=1`. GNOME Tweaks and Extension Manager are installed from
+`pacman.txt`.
 
 **Command-finished notifications:** kitty (`notify_on_cmd_finish`), Ghostty
 (`notify-on-command-finish`) and GNOME Console (via `vte.sh`) notify natively when
@@ -557,11 +582,11 @@ Do **not** `stow -t / zram` (a symlink into `$HOME` breaks at early boot). `inst
 ### 4. Dependencies
 Key runtime dependencies (`scripts/check.sh` asserts binaries, shell tools, symlinks, fonts, optional AI, and Zen `user.js` when present; every `packages/pacman.txt` / `aur.txt` / `flatpak.txt` entry is checked under "Install completeness"):
 
-**Core:** `stow`, `zsh`, `starship`, `neovim`, `flatpak`, `rclone`, `jq`, `dart-sass`, `zram-generator`
+**Core** (`check.d/10-core-tools.sh`): `stow`, `zsh`, `starship`, `nvim`, `kitty`, `ghostty`, `fastfetch`, `btop`, `htop`, `dconf`, `jq`. Also required by completeness: `flatpak` (every `flatpak.txt` app) and `zram-generator` (via `zram-setup.sh` → `/etc/systemd/zram-generator.conf`).
 
 **Zsh:** zinit bootstraps on first launch; plugins load via `.zsh-plugins`
 
-**Shell tools:** `atuin`, `fzf`, `fd`, `ripgrep`, `bat`, `eza`, `zoxide`, `direnv`, `git-delta`, `fnm`
+**Shell tools** (also asserted): `atuin`, `fzf`, `fd`, `ripgrep` (`rg`), `bat`, `eza`, `zoxide`, `direnv`, `git-delta` (`delta`). `fnm` (Node) and `rclone` are in `pacman.txt` but optional for `check.sh`.
 
 **AI:** `./install.sh` installs the full stack: Headroom (`hr-claude` / `hr-cursor` / `hr-opencode` / `hr-agy` / `hr-proxy`), OpenCode + Kimi, Caveman `v4.1.0` + Ponytail `v5.3.3`, Continue FIM config, Obscura CDP/MCP, ecosystem + RE skills, hub sync; on P15 also `ollama-setup.sh` (CUDA + qwen pulls; `SKIP_OLLAMA=1` opts out). `configure.sh` `SETUP_AI` runs `ai-stack-setup.sh` (Headroom/Ponytail/Continue; **not** Caveman). Modular re-run: `bash scripts/ai-stack-setup.sh`
 
@@ -575,9 +600,9 @@ Key runtime dependencies (`scripts/check.sh` asserts binaries, shell tools, syml
 
 **Flatpaks** (via `install-flatpaks.sh`): Brave, Zen, Google Chrome, LibreWolf, Proton VPN, Android Studio, Sticky Notes. Chrome may be `--system` or `--user`; both satisfy `check.sh` / hardening presence checks. Browser telemetry debloat: `scripts/browser-hardening.sh` (Chrome = `chromium-base` + `chrome-extra`, which turns off Google AI features (AI Mode, Help Me Write, Gemini on pages, on-device model download); Brave = base + `brave-extra`; `check.sh` fails if the deployed Chrome/Brave policy differs from the repo; verify in `chrome://policy` / `brave://policy`; Zen `user.js` per real profile + Flatpak `systemconfig` + `/etc/firefox/policies` for native; LibreWolf upstream + `librewolf.overrides.cfg`). Launch Zen once before re-running hardening if profiles are new. `/etc` policy paths need sudo.
 
-**Terminals:** `kitty` (primary; Super+Return; also opens `Terminal=true` launchers such as Lab RE / Kali via `xdg-terminal-exec` + `~/.config/xdg-terminals.list` from `stow/kitty`), `ghostty`, optional `alacritty` / `contour`, plus `gnome-console` (kgx). Rice: `bash scripts/rice-setup.sh` (Gruvbox default; switch with `rice-theme gruvbox|secops`; privacy: `show-in-lock-screen false`). Optional suckless `st`: `bash scripts/build-st.sh` (`builds/st/`).
+**Terminals:** `kitty` (primary: Super+Return, `xdg-terminals.list`, and `x-scheme-handler/terminal`), `ghostty`, optional `alacritty` / `contour`, plus `gnome-console` (kgx). Rice: `bash scripts/rice-setup.sh` (Gruvbox default; switch with `rice-theme gruvbox|secops`; privacy: `show-in-lock-screen false`). Optional suckless `st`: `bash scripts/build-st.sh` (`builds/st/`).
 
-Run `scripts/gnome-console-setup.sh` for Console dconf. **Super+Return → kitty** is in `gnome/dconf/user.conf`.
+`scripts/gnome-console-setup.sh` sets Console dconf and registers `kitty.desktop` for `x-scheme-handler/terminal`. **Super+Return → kitty** is in `gnome/dconf/user.conf`.
 
 Clipboard: selecting text auto-copies in kitty and ghostty (`copy_on_select`); in kitty, right-click also copies the selection (Shift+right-click extends it).
 
@@ -589,7 +614,7 @@ Clipboard: selecting text auto-copies in kitty and ghostty (`copy_on_select`); i
 
 **Neovim:** `scripts/nvim-setup.sh` — Lazy.nvim plugins, Treesitter parsers, Mason LSP on first launch. Leader = Space.
 
-**GNOME session:** `scripts/gnome-session-setup.sh` — dconf profile, Dash2Dock install, and extensions. Super+1–4 workspaces. Mouse/touchpad/keyboard use **stock GNOME defaults** (reset on session setup via `scripts/reset-input-defaults.sh`).
+**GNOME session:** `scripts/gnome-session-setup.sh` — dconf profile, EGO fetch (Caffeine, Blur My Shell, Full-pack, Dash2Dock), and extension enable. Super+1–4 workspaces. Mouse/touchpad/keyboard use **stock GNOME defaults** (reset on session setup via `scripts/reset-input-defaults.sh`).
 
 **Location spoofing:** `scripts/location-setup.sh` — static GeoClue coords in `/etc/geolocation` (home from gitignored `stow/system/etc/geolocation.local`, else a Greenwich placeholder; VPN exit when `proton0` is up). Panel extension `proton-vpn@helllguest` shows spoofed coords and **Sync spoofed location** (runs `pkexec vpn-location-sync sync`). Manual: `vpn-location-sync` or `sudo vpn-location-sync sync`. As root (dispatcher / `pkexec`) it only reads the root-owned copy in `/usr/local/share/vpn-location-sync/`, never your home directory, so re-run `location-setup.sh` after editing `geolocation.local`.
 
@@ -620,7 +645,8 @@ We take a "quiet by default" approach:
 | `evolution-data-server` / `wireless-regdb` (or any `pacman.txt` package) missing | Older `install.sh` fed `#` comment lines to pacman (`target not found: # …`), aborting the whole package step | Pull, then re-run `./install.sh` (comments are stripped now) |
 | `unsafe path transition /etc` during `pacman` | `/etc` owned by user (old `gdm-setup.sh` used `rsync -a`) | `bash scripts/gdm-setup.sh` (restores root + 755), or `sudo chown root:root /etc && sudo chmod 755 /etc` |
 | No inbound / wrong default zone | firewalld zones not applied or default ≠ `drop` | `bash scripts/firewalld-lab-zones.sh`; `sudo firewall-cmd --get-default-zone` |
-| `virbr-malware` listed under `libvirt` / `block` | Pre-`lab-malware` bind left over | [firewalld howto](#how-to-firewalld-lab-zones--lab-malware); confirm iface + `192.168.200.0/24` |
+| `virbr-malware` listed under `libvirt` / `block` | Bridge XML missing `zone=lab-malware`, or pre-bind leftover | `sudo bash scripts/firewalld-lab-zones.sh` (redefines + rebinds; needs a real TTY/polkit auth); [howto](#how-to-firewalld-lab-zones--lab-malware) |
+| `lab-detonate status` hangs / waits for password | Old script used interactive `sudo` for firewalld/podman | Pull latest: status uses `sudo -n` + `virsh -c qemu:///system`; setup/capture still need sudo |
 | `INVALID_ZONE: lab-malware` | Zone never created on this host | Same as above (`lib/lab-malware-zone.sh`) |
 | Stage B VM hangs on Name/Email prompt | Interactive git setup on serial | Pull fixes; harness sets `GIT_SETUP_NONINTERACTIVE` |
 | `DOTFILES_STAGEB_RESULT=PASS_HEADLESS` | Install failed only on checks that need a desktop session / launched apps | Expected on a headless VM; the guest log lists each ✗ |

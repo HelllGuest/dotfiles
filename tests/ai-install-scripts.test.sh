@@ -65,8 +65,10 @@ grep -q 'PASS_HEADLESS' "$ROOT/scripts/vm-stageb-guest.sh" \
   || fail "vm-stageb-guest must emit PASS_HEADLESS for headless-only install failures"
 grep -q 'PASS_CONFIGURE' "$ROOT/scripts/vm-stageb-guest.sh" "$ROOT/scripts/vm-stageb-run.sh" \
   && fail "PASS_CONFIGURE (passes any install failure) must be gone" || true
-grep -q 'sudo firewall-cmd --permanent --get-zones' "$ROOT/scripts/lib/lab-malware-zone.sh" \
-  || fail "lab-malware-zone must query permanent zones with sudo"
+grep -q '_lab_fw' "$ROOT/scripts/lib/lab-malware-zone.sh" \
+  || fail "lab-malware-zone must use _lab_fw (sudo when not root)"
+grep -q 'sudo firewall-cmd' "$ROOT/scripts/lib/lab-malware-zone.sh" \
+  || fail "lab-malware-zone _lab_fw must fall back to sudo firewall-cmd"
 grep -q '192.168.200.0/24' "$ROOT/scripts/lib/lab-malware-zone.sh" \
   || fail "lab-malware-zone must bind source 192.168.200.0/24"
 grep -q 'fail_step' "$ROOT/install.sh" \
@@ -155,10 +157,14 @@ grep -q 'SKIP_SKILL_SYNC=1' "$ROOT/install.sh" || fail "install.sh must batch sk
 sync_count="$(grep -c 'bash scripts/sync-agent-skills.sh' "$ROOT/install.sh" || true)"
 [[ "$sync_count" -eq 2 ]] \
   || fail "install.sh must call sync-agent-skills.sh twice (pre + post AI)"
-grep -q '3\.5a Kit skills first' "$ROOT/install.sh" \
-  || fail "install.sh missing pre-AI sync block (3.5a)"
+grep -q '3\.5 Kit skills first' "$ROOT/install.sh" \
+  || fail "install.sh missing pre-AI sync block (3.5)"
 grep -q '3\.5h Hub mirror after AI' "$ROOT/install.sh" \
   || fail "install.sh missing post-AI sync block (3.5h)"
+# Headroom merges into agent dirs that sync-agent-skills mkdir -p creates.
+(( $(grep -n -m1 'Agent skills pre-sync' "$ROOT/install.sh" | cut -d: -f1) < \
+   $(grep -n -m1 'Headroom setup' "$ROOT/install.sh" | cut -d: -f1) )) \
+  || fail "install.sh must run sync-agent-skills before headroom-setup"
 grep -q 'install-coding-agents.sh' "$ROOT/install.sh" \
   || fail "install.sh must call install-coding-agents.sh"
 grep -q 'install-ecosystem-skills.sh' "$ROOT/install.sh" \

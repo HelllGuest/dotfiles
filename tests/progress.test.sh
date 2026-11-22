@@ -30,7 +30,8 @@ grep -q 'advance_progress' "$ROOT/install.sh" \
 
 _rs=$(grep -c 'run_step "' "$ROOT/install.sh")
 _ap=0
-for _lab in "pacman packages" "machine profile" "stow dotfiles" "privacy hardener" "health check"; do
+for _lab in "pacman packages" "machine profile" "stow dotfiles" "Node 22 (fnm install)" \
+  "privacy hardener" "health check"; do
   grep -q "advance_progress \"$_lab\"" "$ROOT/install.sh" \
     || fail "missing advance_progress \"$_lab\""
   _ap=$((_ap + 1))

@@ -34,6 +34,10 @@ For Claude Code: also keep a project `CLAUDE.md` whose first line is
 ## Shell / token hygiene
 * Prefer `rtk <cmd>` for noisy CLI output when the project/dotfiles use RTK.
 * Do not dump huge logs into chat; quote the shortest decisive lines.
+* Read-only / status paths must not hang on polkit: use unprivileged APIs when
+  possible (`virsh -c qemu:///system` for libvirt group), else `sudo -n`.
+* Never leave a test grepping a helper string you just renamed; update the test
+  in the same change.
 
 ## Before editing
 Read and understand the existing architecture, patterns, dependencies, and
@@ -124,7 +128,9 @@ Explain the last change or a named target. Do not narrate unrelated code.
 
 ### `docs`
 Update README and inline docs only when current docs are wrong or incomplete
-relative to the code. No fluff; verify links and formatting.
+relative to the code. No fluff; verify links and formatting. Prefer one
+canonical howto (usually README); other docs link to it instead of forking.
+Delete obsolete sections; do not keep long "historical" dumps.
 
 ### `security`
 Review the diff for SQL/XSS/command injection, unsafe file access, authz gaps,

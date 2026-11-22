@@ -856,13 +856,9 @@ systemctl enable --now firewalld
 ```
 
 Libvirt: bind `virbr0` to zone `libvirt`. Air-gapped malware net: host-only
-`virbr-malware` in zone `lab-malware` (iface **and** source `192.168.200.0/24`;
-DROP, no masq/forward; see `scripts/lib/lab-malware-zone.sh` /
-`firewalld-lab-zones.sh`). The network has libvirt DNS disabled; dnsmasq only
-serves DHCP (`67/udp`) and hands out `192.168.200.1` (INetSim) as DNS, so guest
-lookups never reach real resolvers. Permanent firewall-cmd queries need sudo under polkit.
-Pre-Slice-2B hosts may still list the bridge under `libvirt`/`block` until
-`firewalld-lab-zones.sh` is re-run. Howto:
+`virbr-malware` with bridge `zone="lab-malware"` (iface **and** source
+`192.168.200.0/24`; DROP, no masq/forward; DNS off, DHCP advertises
+`192.168.200.1`). Details:
 [README — firewalld lab zones](../README.md#how-to-firewalld-lab-zones--lab-malware).
 
 Default behavior:
@@ -954,27 +950,16 @@ with `SKIP_NM_GLOBAL=1`. Howto:
 
 ## Libvirt disposable Kali (virbr0 NAT)
 
-firewalld default zone `drop` rejects unsolicited inbound; libvirt guest NAT
-needs `virbr0` in the stock `libvirt` zone (forward + masquerade). Prefer that
-over opening the host default zone. `scripts/firewalld-lab-zones.sh` and
-`scripts/kali-disposable.sh setup` / `start --nat` / `start --lan`:
+Default zone `drop` rejects unsolicited inbound; guest NAT needs `virbr0` in
+stock `libvirt` (forward + masquerade). `firewalld-lab-zones.sh` + kali
+`setup` / `start --nat` / `start --lan` bind that; malware guests use
+`virbr-malware` → `lab-malware` (see [README howto](../README.md#how-to-firewalld-lab-zones--lab-malware)).
 
-* permanent `--zone=libvirt --add-interface=virbr0` (inherits when bridge appears)
-* runtime `--change-interface=virbr0` when the iface exists
-* host-only `virbr-malware` → zone `lab-malware` (iface + source
-  `192.168.200.0/24`; DROP; no NAT/forward; ports 21, 25, 53, 67/udp DHCP, 80,
-  443, 10080, 10443; libvirt DNS disabled so only INetSim answers `:53`)
-* Upgrade note: if `virbr-malware` still sits in `libvirt` or `block`, re-run
-  `bash scripts/firewalld-lab-zones.sh` (or `ensure_lab_malware_zone`) so the
-  bridge leaves those zones; confirm with
-  `sudo firewall-cmd --permanent --zone=lab-malware --list-all`
-
-Boot unit `virbr0-up.service` (from `stow/system/`, installed by
-`system-setup.sh` / kali `setup`) runs `virsh net-start default` then
-`ip link set virbr0 up` after `libvirtd` (avoids `Cannot find device virbr0`
-when the oneshot races the bridge). Check: `systemctl status virbr0-up`.
-
-Lab usage: [fresh-install RE — Disposable Kali](fresh-install-coding-re.md#disposable-kali).
+Boot unit `virbr0-up.service` (`stow/system/`, via `system-setup.sh` / kali
+`setup`) runs `virsh net-start default` then `ip link set virbr0 up` after
+`libvirtd` (avoids `Cannot find device virbr0`). Check:
+`systemctl status virbr0-up`. Lab usage:
+[fresh-install RE — Disposable Kali](fresh-install-coding-re.md#disposable-kali).
 
 ---
 
@@ -1200,7 +1185,7 @@ lab-re --check && lab-re
 bash scripts/install-ghidra-cli.sh
 ```
 
-* Terminals: kitty (primary) + ghostty + gnome-console; rice via `scripts/rice-setup.sh` (Gruvbox default; switch via `rice-theme gruvbox|secops`). Ptyxis/rio/wezterm/foot pruned.
+* Terminals: kitty (primary: Super+Return, `xdg-terminals.list`, `x-scheme-handler/terminal`) + ghostty + gnome-console; rice via `scripts/rice-setup.sh` (Gruvbox default; switch via `rice-theme gruvbox|secops`). Ptyxis/rio/wezterm/foot pruned.
 * ghidra-cli: cargo CLI + host skill under `skills/ghidra-cli-host/`; GUI via `ghidra-gui` (cargo `ghidra` shadows `/usr/bin/ghidra`). An install failure is recorded by `./install.sh`, which exits 1 at the end
 * Host `install-rea.sh` is optional only (needs JDK≥21); Stage B AI stack skips it
 
@@ -1464,7 +1449,9 @@ sbctl create-keys
 
 # Sign boot chain
 
-Sign UKIs **and** systemd-boot (`-s` saves each path to the sbctl db):
+Sign UKIs **and** systemd-boot (`-s` saves each path to the sbctl db). If
+`sbctl verify` still lists unsigned raw kernels (legacy ESP layout), sign those
+too:
 
 ```bash
 sbctl sign -s /boot/EFI/Linux/arch-linux-lts.efi
@@ -1473,6 +1460,10 @@ sbctl sign -s /boot/EFI/Linux/arch-linux-hardened.efi
 sbctl sign -s /boot/EFI/Linux/arch-linux-hardened-fallback.efi
 sbctl sign -s /boot/EFI/systemd/systemd-bootx64.efi
 sbctl sign -s /boot/EFI/BOOT/BOOTX64.EFI
+# only if verify still reports them:
+sbctl sign -s /boot/vmlinuz-linux
+sbctl sign -s /boot/vmlinuz-linux-lts
+sbctl sign -s /boot/vmlinuz-linux-hardened
 ```
 
 The `zz-sbctl` pacman hook auto-resigns saved paths on kernel package updates:
@@ -1616,20 +1607,20 @@ Log into GNOME, open a terminal, then clone and install:
 ```bash
 git clone https://github.com/HelllGuest/dotfiles.git ~/dotfiles
 cd ~/dotfiles
-./install.sh
+./install.sh   # desktop user only — never sudo ./install.sh
 ```
 
-`./install.sh` (run from a GNOME session; full step-by-step order in [README — Script execution order](../README.md#script-execution-order-fresh-machine)) will:
+`./install.sh` (rejects `EUID == 0`; run from a GNOME session; full step-by-step order in [README — Script execution order](../README.md#script-execution-order-fresh-machine)) will:
 
 * Install packages from `packages/pacman.txt` (kernels, shells, terminals, CLI tools; skips Intel GPU packages on ThinkPad T14s Gen 3 AMD; installs the NVIDIA stack only when an NVIDIA display device is on PCI; skips `power-profiles-daemon` when `tuned-ppd` is present and `rust` when `rustup` is present; replaces an AUR `bootvine-git` left by older dotfiles with the official `bootvine`)
 * Enable the `bootvine` boot screen (`bootvine.service` + `bootvine-shutdown.service`; no `sd-bootvine` initrd hook, so the LUKS prompt is unchanged)
-* Apply stock Adwaita for the session (`scripts/theme-setup.sh`; extensions stay as configured in dconf; no Aura Glass)
+* Apply stock Adwaita for the session (`scripts/theme-setup.sh`; purges leftover Aura Glass / Orchis hooks; extensions stay as configured in dconf; no Aura Glass install)
 * Record every failed step and exit 1 at the end (no silent skips; only `SKIP_*=1` opt-outs skip); `check.sh` fails on missing packages, empty dock icons and dead shortcuts
 * Apply **after** `pacman.txt` exactly one machine profile via `scripts/apply-profile.sh`: `profiles/$(hostname).sh` if present, otherwise `scripts/detect-profile.sh` (`thinkpad-p15`, `thinkpad-t14s`, or `laptop`). Optimus/NVIDIA setup is inside `thinkpad-p15.sh` (no `nvidia.sh`).
-* Install Flatpaks from `packages/flatpak.txt` (Brave, Zen, Chrome, LibreWolf, Proton VPN, Android Studio, Sticky Notes) and AUR packages from `packages/aur.txt` (bootstraps `paru` if no helper exists)
-* Stow configs to `$HOME` (skips `zram` and `gdm`); install `system/` into `/etc` as root-owned files via `scripts/system-setup.sh`; materialize `zram-generator.conf` via `scripts/zram-setup.sh`
-* Apply GNOME session dconf (`gnome/dconf/user.conf`), Console settings, Dash2Dock + extensions, location spoofing, and stock input defaults (`scripts/reset-input-defaults.sh` + `scripts/cleanup-input-overrides.sh`)
-* Configure GDM, Git, Neovim, Headroom proxy + MCP (`scripts/headroom-setup.sh`), AI coding/RE agents + plugins + skills (`sync-agent-skills.sh`, `install-coding-agents.sh`, `install-caveman.sh`, `install-ponytail.sh`, `install-android-ui-skills.sh`, `install-ghidra-cli.sh`, `install-obscura.sh`, `install-re-skills.sh`, `install-ecosystem-skills.sh`; REA via `lab-re`), PhotoGIMP, and foxcage (`install-foxcage.sh`, Firefox in rootless Podman when `podman` exists).
+* Install Flatpaks from `packages/flatpak.txt`, then fonts, then stow `$HOME` and install `system/` via `scripts/system-setup.sh` (includes `/etc/makepkg.conf.d/zz-x86-64-v3.conf`), **then** AUR from `packages/aur.txt` (bootstraps `paru` after the v3 makepkg drop-in)
+* Materialize `zram-generator.conf` via `scripts/zram-setup.sh` (skips stowing `zram` / `gdm`)
+* Apply GNOME session dconf (`gnome/dconf/user.conf`), Console dconf + `kitty.desktop` for `x-scheme-handler/terminal`, EGO fetch + extensions, location spoofing, and stock input defaults (`scripts/reset-input-defaults.sh` + `scripts/cleanup-input-overrides.sh`)
+* Configure GDM, Git, Neovim; `sync-agent-skills.sh` **before** Headroom MCP (`scripts/headroom-setup.sh`); then AI coding/RE agents + plugins + skills (`install-coding-agents.sh`, `install-caveman.sh`, `install-ponytail.sh`, `install-android-ui-skills.sh`, `install-ghidra-cli.sh`, `install-obscura.sh`, `install-re-skills.sh`, `install-ecosystem-skills.sh`; REA via `lab-re`), PhotoGIMP, and foxcage (`install-foxcage.sh`, Firefox in rootless Podman when `podman` exists).
 * Stage B modular TUI: `bash scripts/configure.sh` (dialog/whiptail/plain;
   override with `CONFIGURE_UI=…`; fail-fast; `SETUP_FIREWALLD` on by default;
   `SETUP_OLLAMA` on only for P15; `SETUP_LABS` / `SETUP_DETONATE` / `SETUP_AI` /
@@ -1637,7 +1628,7 @@ cd ~/dotfiles
   Howtos: [configure](../README.md#how-to-configuresh-stage-b-tui),
   [VM Stage B](../README.md#how-to-stage-b-on-a-stage-a-qcow2),
   [firewalld](../README.md#how-to-firewalld-lab-zones--lab-malware).
-* Run `scripts/privacy-hardener.sh` (incl. `browser-hardening.sh`), then
+* Run `scripts/privacy-hardener.sh` (browser-hardening failure is recorded but layers 3–7 still run), then
   `scripts/ops-hygiene.sh` (paccache + flatpak unused + `paccache.timer`;
   `SKIP_OPS_HYGIENE=1` skips), then `scripts/check.sh` and
   `scripts/validate-configs.sh`. Opt-in USB/DNS:
@@ -1747,20 +1738,11 @@ sudo firewall-cmd --permanent --zone=lab-malware --list-all
 ```
 
 If `virbr-malware` still sits under `libvirt` or `block`, re-run
-`bash scripts/firewalld-lab-zones.sh` (or `ensure_lab_malware_zone`).
+`sudo bash scripts/firewalld-lab-zones.sh` on a real TTY (redefines bridge
+`zone="lab-malware"`; polkit auth required).
 
----
-
-# Verify ops / privacy kits
-
-Soft checks (`check.sh` prints ○ until enabled):
-
-```bash
-command -v mat2 exiftool bleachbit paccache usbguard dnscrypt-proxy
-systemctl is-enabled paccache.timer    # after ops-hygiene / install.sh
-systemctl is-active usbguard           # only after usbguard-setup.sh
-systemctl is-active dnscrypt-proxy     # only after dnscrypt-setup.sh
-```
+Ops / privacy soft checks: [README — ops / privacy kits](../README.md#how-to-ops--privacy-kits)
+(`mat2` / `usbguard` / `dnscrypt-proxy`; `check.sh` prints ○ until enabled).
 
 ---
 

@@ -79,6 +79,16 @@ nm_write() {
 
 for conn in "${CONNECTIONS[@]}"; do
     [[ -z "$conn" ]] && continue
+    # Bridges/tunnels (virbr0, docker0, …) often have ipv6.method=ignore/disabled
+    # and reject ipv6.dns — skip them so one bad iface does not abort the rest.
+    _ctype="$(nmcli -g connection.type connection show "$conn" 2>/dev/null || true)"
+    case "$_ctype" in
+        bridge|tun|tap|loopback|wireguard|vpn)
+            echo "○ skip $conn (type $_ctype)"
+            continue
+            ;;
+    esac
+    unset -v _ctype
     echo "→ $conn: DNS ${PRIMARY_DNS} ${SECONDARY_DNS} / ${PRIMARY_DNS6} ${SECONDARY_DNS6} (ignore auto-dns)"
     nm_write connection modify "$conn" \
         ipv4.dns "${PRIMARY_DNS} ${SECONDARY_DNS}" \

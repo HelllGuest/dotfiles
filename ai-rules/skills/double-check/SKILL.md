@@ -24,3 +24,5 @@ do not confirm the work is fine by default.
 * Race conditions
 * Error handling gaps (swallowed errors, missing rollback)
 * Missing tests for new behavior
+* Stale tests that still grep for a renamed helper/string
+* Forked or obsolete docs that diverge from the canonical howto

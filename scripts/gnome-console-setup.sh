@@ -30,8 +30,9 @@ fi
 
 # GNOME media-keys / custom-keybindings live in gnome/dconf/user.conf (do not overwrite here).
 
+# kitty is primary (Super+Return, xdg-terminals.list); keep MIME handler in sync.
 if command -v xdg-mime >/dev/null 2>&1; then
-    xdg-mime default org.gnome.Console.desktop x-scheme-handler/terminal 2>/dev/null || true
+    xdg-mime default kitty.desktop x-scheme-handler/terminal 2>/dev/null || true
 fi
 
 echo "✓ GNOME Console configured"

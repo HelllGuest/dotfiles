@@ -5,6 +5,12 @@
 
 set -e
 
+# Stow targets $HOME. Never sudo ./stow-only.sh.
+if [[ ${EUID:-$(id -u)} -eq 0 ]]; then
+    echo "error: run as your desktop user, not root (sudo ./stow-only.sh stows into /root)" >&2
+    exit 1
+fi
+
 echo "Applying dotfiles..."
 
 # Ensure ~/.config exists

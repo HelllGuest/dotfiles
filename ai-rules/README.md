@@ -46,7 +46,9 @@ does remove other orphan files and empty dirs).
 Skills: if `~/.claude/skills` or `~/.kiro/skills` is missing, symlink the whole
 kit `skills/` dir; if it is already a symlink, retarget it; if it is a real
 directory, add per-skill symlinks (existing non-symlink entries such as
-`find-skills` / `caveman` are left alone). When run via
+`find-skills` / `caveman` are left alone). Cursor's mixed
+`~/.cursor/skills` tree gets the kit skill names force-retargeted to
+`~/dev/ai-rules/skills/<name>` (other third-party skills stay). When run via
 `scripts/sync-agent-skills.sh`, `~/.claude/skills` and `~/.kiro/skills` are
 ensured to be real directories first so mirroring the full `~/.agents/skills`
 hub across Claude, Cursor, OpenCode, Kimi, Gemini CLI, Antigravity, and Kiro
@@ -69,8 +71,13 @@ re-run `install.sh` to publish. `agentsync` resolves the kit via
 ## Day to day
 
 ```bash
+# After editing this tree (or ~/dev/ai-rules), publish + refresh IDE skills:
+./install.sh
 agentsync ~/Projects/my-app    # or: agentsync .   inside a repo
 ```
+
+`docs` skill / AGENTS `docs` command: keep one canonical howto (usually the
+project README); link from other docs; delete obsolete sections.
 
 In any IDE / CLI chat:
 

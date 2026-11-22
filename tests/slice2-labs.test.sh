@@ -24,6 +24,8 @@ do
   [[ -f $f ]] || fail "missing $f"
 done
 
+grep -q 'podman build --network=host' "$ROOT/scripts/labs-setup.sh" \
+  || fail "labs-setup.sh must build with --network=host (isolated nets starve pacman)"
 for f in "$ROOT/scripts/labs-setup.sh" "$ROOT/scripts/ai-stack-setup.sh" \
   "$ROOT/scripts/rice-setup.sh" "$ROOT/scripts/configure.sh" \
   "$ROOT/labs/lab-android/entrypoint.sh"; do
@@ -201,6 +203,8 @@ grep -qE "<dns[^>]*enable=['\"]no['\"]" "$ROOT/scripts/firewalld-lab-zones.sh" \
   || fail "virbr-malware XML must set dns enable=no (INetSim owns DNS)"
 grep -q 'dhcp-option=6,192.168.200.1' "$ROOT/scripts/firewalld-lab-zones.sh" \
   || fail "virbr-malware DHCP must advertise DNS 192.168.200.1 (INetSim)"
+grep -qE 'zone=["'\'']lab-malware["'\'']' "$ROOT/scripts/firewalld-lab-zones.sh" \
+  || fail "virbr-malware bridge XML must set zone=lab-malware (stop libvirt reclaim)"
 grep -q 'sudo firewall-cmd --permanent --get-zones' "$ROOT/scripts/firewalld-lab-zones.sh" \
   || fail "firewalld-lab-zones must query zones with sudo"
 

@@ -20,7 +20,7 @@ Classification used below:
 | `git grep -P` pattern scans | `eval`, remote code piped to shells, `sudo -E`, world-writable `chmod`, dynamic `source`, unguarded `rm -rf`, downloads, container flags |
 | Local regex secret scanner (Python, no network) | Working tree and all 138 commits of history; installer repo (48 commits). Reports file and rule only, never values |
 | Podman (rootless) | Behavioural tests of lab hardening against the real lab images |
-| Repo test suite | 14 test files (4 added, several extended), all passing |
+| Repo test suite | 14 test files that day (4 added, several extended), all passing; later grew to 22 `tests/*.test.sh` |
 | Mutation testing | Each fix reverted in a scratch copy; the regression test must fail (all caught; see the final run in the report below) |
 
 Not available and not installed (no authorization to install or upload):
@@ -127,38 +127,32 @@ untrusted data, no `sudo -E`, no world-writable `chmod`.
 | V6 (cont.) | The pre-push gate stays silent in repos with nothing to check. | `tests/git-hooks.test.sh`. |
 | Config | `inetsim.conf` used option names INetSim ignores (`http_port`, `https_port`, `dns_port`, `create_html_index`); renamed to `*_bind_port`, dead option removed. | INetSim run: no unknown-option warnings, ports still bound. |
 
-Final state: all 14 test files pass; ShellCheck shows no new warnings on the 27
-changed shell files; docs lint 0 issues; stow inventory unchanged. No host
-configuration was changed during the audit, no secrets were printed, and no
-destructive host commands ran.
+Final state **as of that audit day**: all 14 test files then present passed;
+ShellCheck showed no new warnings on the 27 changed shell files; docs lint 0
+issues; stow inventory unchanged. No host configuration was changed during the
+audit, no secrets were printed, and no destructive host commands ran.
 
-### Follow-up: new privileged surface (GDM theme)
-
-`scripts/gdm-shell-theme.sh install` adds `/usr/local/bin/gdm-shell-theme`
-(root-owned copy, `0755`) and `/etc/pacman.d/hooks/95-gdm-shell-theme.hook`,
-which runs it as root after `gnome-shell` or theme upgrades. Controls: the hook
-never executes the user-writable checkout; it reads only root-owned inputs
-(`/usr/share/themes`, the stock gresource); Python runs isolated (`-I`); the
-headless GNOME Shell check runs as `nobody` in a throwaway home on a private
-D-Bus, in its own process group that is reaped before cleanup; the pristine
-copy is saved only when pacman (`-Qkk`) reports the stock file unmodified; the
-gresource is replaced by an atomic rename. `sudo gdm-shell-theme revert`
-removes both files and restores the stock file.
+> **Snapshot drift (post-audit):** 22 `tests/*.test.sh` as of 2026-11-22.
+> `gdm-shell-theme.sh` / greeter hook removed with Aura → stock Adwaita
+> (`theme-setup.sh`). `virbr-malware` bridge now sets `zone="lab-malware"`.
 
 ## Actions for the operator
 
-These apply the fixes to this machine (none were run during the audit):
+These applied the audit fixes to a machine (none were run *during* the 2026-11-16
+audit). On the T14s blackbox host (2026-11-22): stock Adwaita, Podman primary
+(`docker.service` disabled, `podman.socket` user-enabled), `usbguard` +
+`dnscrypt-proxy` active, `hr-proxy.service` enabled, Claude CLI present; Secure
+Boot still needs BIOS Setup Mode before `sbctl enroll-keys -m`.
 
-1. **Urgent:** `bash scripts/location-setup.sh`. The installed
-   `/usr/local/bin/vpn-location-sync` is the vulnerable version (V1) and is
-   exploitable on this host until it is replaced. Re-run it after any edit to
-   `geolocation.local`.
-2. `bash ai-rules/install.sh`: refresh the global hooks in `~/dev/ai-rules`
-   (V6), then `git config --local hooks.trusted true` in your own projects that
-   should keep pre-push checks.
-3. `./install.sh`: installs the missing packages (dnscrypt-proxy, usbguard, …),
-   the updated `kali-lan-host-prep` is installed by `kali-disposable.sh setup`.
-4. `bash scripts/dnscrypt-setup.sh`: encrypted DNS for every network (C1).
-5. `bash scripts/browser-hardening.sh`: deploy WebRTC policies (C2).
+1. **Urgent (if not yet):** `bash scripts/location-setup.sh`. Re-run after any
+   edit to `geolocation.local`.
+2. `bash ai-rules/install.sh`: refresh global hooks in `~/dev/ai-rules` (V6),
+   then `git config --local hooks.trusted true` in projects that should keep
+   pre-push checks.
+3. `./install.sh` as desktop user (rejects root): packages + stow; AUR after
+   `system-setup.sh`; `sync-agent-skills` before `headroom-setup`.
+4. `bash scripts/dnscrypt-setup.sh` / `bash scripts/usbguard-setup.sh` (opt-in).
+5. `bash scripts/browser-hardening.sh`: WebRTC policies (C2); or via
+   `privacy-hardener.sh` (continues layers 3–7 if browsers fail).
 6. `bash scripts/labs-setup.sh`: rebuild `lab-capture` / `lab-web` (V5, V8).
 7. Decide on U1 (history rewrite) before making this repository public.

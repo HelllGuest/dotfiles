@@ -44,6 +44,10 @@ grep -q 'for z in block libvirt' "$ZONE_LIB" \
   || fail "lab-malware helper must unbind block+libvirt"
 grep -q 'still in libvirt' "$ZONE_LIB" \
   || fail "lab-malware helper must postcheck libvirt is clear"
+grep -q 'still in libvirt (runtime)' "$ZONE_LIB" \
+  || fail "lab-malware helper must postcheck runtime libvirt is clear"
+grep -q '_lab_fw' "$ZONE_LIB" \
+  || fail "lab-malware helper must use _lab_fw (root-safe)"
 grep -q 'firewalld inactive' "$ZONE_LIB" \
   || fail "lab-malware helper must warn when firewalld inactive"
 grep -q 'postcondition failed' "$ZONE_LIB" \
@@ -84,12 +88,14 @@ _ls_check="$(grep -n -m1 'sudo podman image exists localhost/lab-capture:latest'
   && sed -n "${_ls_check},$((_ls_check + 1))p" "$ROOT/scripts/labs-setup.sh" | grep -q 'exit 1' \
   || fail "labs-setup must stop when lab-capture is missing after lab-detonate.sh setup"
 unset -v _ls_setup _ls_check
-grep -q 'sudo podman build -t localhost/lab-capture:latest' "$ROOT/scripts/lab-detonate.sh" \
+grep -qE 'sudo podman build --network=host -t localhost/lab-capture:latest' "$ROOT/scripts/lab-detonate.sh" \
   || fail "lab-detonate setup must build lab-capture in rootful podman store"
 grep -q 'sudo podman image exists localhost/lab-capture:latest' "$ROOT/scripts/lab-detonate.sh" \
   || fail "lab-detonate capture-up must check rootful podman store"
-grep -q 'sudo firewall-cmd --permanent --zone=lab-malware --list-interfaces' "$ROOT/scripts/lab-detonate.sh" \
-  || fail "lab-detonate status must query permanent firewalld zone with sudo"
+grep -q 'sudo -n firewall-cmd --permanent --zone=lab-malware --list-interfaces' "$ROOT/scripts/lab-detonate.sh" \
+  || fail "lab-detonate status must query permanent firewalld zone with sudo -n (no polkit hang)"
+grep -q 'qemu:///system' "$ROOT/scripts/lab-detonate.sh" \
+  || fail "lab-detonate virsh must use qemu:///system (libvirt group, no sudo when possible)"
 grep -q '21/tcp' "$ZONE_LIB" && grep -q '25/tcp' "$ZONE_LIB" \
   || fail "lab-malware zone must allow INetSim FTP (21/tcp) and SMTP (25/tcp)"
 grep -q 'LAB_CAPTURE_BIND' "$ROOT/labs/lab-capture/entrypoint.sh" \

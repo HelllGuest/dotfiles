@@ -12,11 +12,15 @@ echo "→ Creating $LAB_ROOT/{samples,out}..."
 sudo install -d -m 0755 -o root -g root "$LAB_ROOT"
 sudo install -d -m 0755 -o "$USER" -g "$USER" "$LAB_ROOT/samples" "$LAB_ROOT/out"
 
-echo "→ Building lab images (may take a while)..."
-podman build -t localhost/lab-triage:latest "$REPO_ROOT/labs/lab-triage"
-podman build -t localhost/lab-re:latest "$REPO_ROOT/labs/lab-re"
-podman build -t localhost/lab-android:latest "$REPO_ROOT/labs/lab-android"
-podman build -t localhost/lab-web:latest "$REPO_ROOT/labs/lab-web"
+# Host network: isolated build nets (pasta/slirp) throttle multi-GB pacman pulls
+# (lab-re) to tens of KB/s behind dnscrypt. Runtime wrappers stay pasta/none.
+echo "→ Building lab images (may take a while; --network=host for pacman)..."
+_podman_build() { podman build --network=host "$@"; }
+_podman_build -t localhost/lab-triage:latest "$REPO_ROOT/labs/lab-triage"
+_podman_build -t localhost/lab-re:latest "$REPO_ROOT/labs/lab-re"
+_podman_build -t localhost/lab-android:latest "$REPO_ROOT/labs/lab-android"
+_podman_build -t localhost/lab-web:latest "$REPO_ROOT/labs/lab-web"
+unset -f _podman_build
 
 echo "→ Detonation helpers (virbr-malware + rootful lab-capture + INetSim/PolarProxy)..."
 bash "$REPO_ROOT/scripts/lab-detonate.sh" setup || echo "WARN: lab-detonate setup skipped"

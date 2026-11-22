@@ -50,6 +50,16 @@ for dep in 'stow -R -t "$HOME"' 'fnm install 22' 'run_step "Coding agents"' 'run
 done
 (( cfg < $(line 'bash scripts/privacy-hardener.sh') )) || fail "configure.sh must run before privacy + check.sh"
 
+# AUR after system-setup (makepkg x86-64-v3); skills before Headroom; no root; no --adopt
+grep -qE 'EUID.*-eq 0' "$I" || fail "install.sh must reject root (EUID == 0)"
+grep -qE 'EUID.*-eq 0' "$ROOT/stow-only.sh" || fail "stow-only.sh must reject root (EUID == 0)"
+(( $(line 'bash ../scripts/system-setup.sh') < $(line 'run_step "AUR install"') )) \
+  || fail "AUR install must run after system-setup.sh (makepkg.conf.d v3)"
+(( $(line 'run_step "Agent skills pre-sync"') < $(line 'run_step "Headroom setup"') )) \
+  || fail "sync-agent-skills must run before headroom-setup"
+! grep -qE 'stow[[:space:]].*--adopt' "$ROOT/scripts/gnome-session-setup.sh" \
+  || fail "gnome-session-setup.sh must not stow --adopt (overwrites tracked files)"
+
 # --- one extension pass, recorded by install.sh ---------------------------------
 grep -q 'env SKIP_GNOME_EXTENSIONS=1 bash scripts/gnome-session-setup.sh' "$I" \
   || fail "install.sh must stop gnome-session-setup.sh from fetching/enabling extensions itself"
@@ -82,6 +92,10 @@ grep -qE "$_hok" <<<'✗ t14s-selftest: FAIL bluetooth FAIL pipewire ' \
   || fail "HEADLESS_OK must accept bluetooth/pipewire selftest fails on headless QEMU"
 ! grep -qE "$_hok" <<<'✗ t14s-selftest: FAIL bluetooth FAIL firewalld ' \
   || fail "HEADLESS_OK must reject real selftest fails (firewalld)"
+
+# network-dns-setup.sh skips bridge/tun/vpn (virbr0/docker0 break ipv6.dns)
+grep -qE 'bridge\|tun\|tap\|loopback\|wireguard\|vpn' "$ROOT/scripts/network-dns-setup.sh" \
+  || fail "network-dns-setup.sh must skip bridge/tun/vpn connection types"
 
 # network-dns-setup.sh: retry via sudo on polkit denial; do not sudo on other errors.
 (

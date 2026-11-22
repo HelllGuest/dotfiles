@@ -73,8 +73,9 @@ Zsh also uses **fzf-tab** and **forgit** (`gfga`, `gfglo`, etc.).
 
 ## Setup-only tools
 
-fnm Node pins, Headroom (`hr-claude` / `hr-cursor` / `hr-proxy`), PhotoGIMP, and
-Dash2Dock are documented in the [README](../README.md) shell section.
+fnm Node pins, Headroom (`hr-claude` / `hr-cursor` / `hr-opencode` / `hr-agy` /
+`hr-proxy`), PhotoGIMP, and Dash2Dock are documented in the
+[README](../README.md) shell section.
 
 ---
 
@@ -152,7 +153,7 @@ Multiline paste protection enabled.
 
 ## GNOME Console (kgx)
 
-Quick throwaway terminal — `kgx`. Tuned by `scripts/gnome-console-setup.sh` (100k scrollback, night theme, transparency enabled).
+Quick throwaway terminal — `kgx`. Tuned by `scripts/gnome-console-setup.sh` (100k scrollback, night theme, transparency enabled). That script also registers **`kitty.desktop`** for `x-scheme-handler/terminal` (kitty stays primary; Console is not the MIME default).
 Commands over 15 s that finish while the window is unfocused raise a desktop
 notification (Console's own, via `vte.sh`; kitty and Ghostty do the same
 natively; other terminals get the shell's `notify-send`).

@@ -73,11 +73,12 @@ fi
 MALWARE_XML="$(mktemp)"
 trap 'rm -f "$MALWARE_XML"' EXIT
 # dns enable=no → INetSim owns :53; dhcp-option=6 still advertises 192.168.200.1
-# so guest resolv.conf is not empty.
+# so guest resolv.conf is not empty. zone=lab-malware stops libvirt reclaiming the
+# bridge into the stock libvirt firewalld zone on every reload/start.
 cat >"$MALWARE_XML" <<'EOF'
 <network xmlns:dnsmasq="http://libvirt.org/schemas/network/dnsmasq/1.0">
   <name>virbr-malware</name>
-  <bridge name="virbr-malware" stp="on" delay="0"/>
+  <bridge name="virbr-malware" zone="lab-malware" stp="on" delay="0"/>
   <domain name="malware.lab"/>
   <dns enable="no"/>
   <ip address="192.168.200.1" netmask="255.255.255.0">
@@ -100,12 +101,13 @@ if command -v virsh >/dev/null 2>&1; then
     _xml="$(sudo virsh net-dumpxml virbr-malware 2>/dev/null || true)"
     if grep -q '<forward' <<<"$_xml" \
       || ! grep -qE "<dns[^>]*enable=['\"]no['\"]" <<<"$_xml" \
-      || ! grep -q 'dhcp-option=6,192.168.200.1' <<<"$_xml"; then
+      || ! grep -q 'dhcp-option=6,192.168.200.1' <<<"$_xml" \
+      || ! grep -qE 'zone=['\"]lab-malware['\"]' <<<"$_xml"; then
       _redef=1
     fi
   fi
   if [[ $_redef -eq 1 ]]; then
-    echo "→ Redefining virbr-malware (no forward; dns off; DHCP DNS=192.168.200.1)..."
+    echo "→ Redefining virbr-malware (no forward; dns off; zone=lab-malware)..."
     sudo virsh net-destroy virbr-malware 2>/dev/null || true
     sudo virsh net-undefine virbr-malware 2>/dev/null || true
     sudo virsh net-define "$MALWARE_XML"

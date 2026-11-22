@@ -33,7 +33,15 @@ die() { echo "ERR $*" >&2; exit 1; }
 say() { printf '→ %s\n' "$*"; }
 need() { command -v "$1" >/dev/null || die "missing $1"; }
 
-virsh_s() { sudo virsh "$@"; }
+# Prefer unprivileged qemu:///system (libvirt group); sudo only when needed.
+if [[ ${EUID:-$(id -u)} -eq 0 ]]; then
+  VIRSH_CMD=(virsh -c qemu:///system)
+elif virsh -c qemu:///system uri >/dev/null 2>&1; then
+  VIRSH_CMD=(virsh -c qemu:///system)
+else
+  VIRSH_CMD=(sudo virsh -c qemu:///system)
+fi
+virsh_s() { "${VIRSH_CMD[@]}" "$@"; }
 
 ensure_net() {
   need virsh
@@ -53,7 +61,8 @@ cmd_setup() {
   sudo install -d -m 0755 -o "$USER" -g "$USER" "$DET_DIR" "$CAPTURE_LOG" \
     "$CAPTURE_LOG/inetsim" "$CAPTURE_LOG/polarproxy" "$LAB_ROOT/samples" "$LAB_ROOT/out"
   say "Building lab-capture (INetSim) image (rootful store for capture-up)..."
-  sudo podman build -t localhost/lab-capture:latest "$REPO_ROOT/labs/lab-capture"
+  # Host network: same as labs-setup.sh — isolated build nets starve pacman pulls.
+  sudo podman build --network=host -t localhost/lab-capture:latest "$REPO_ROOT/labs/lab-capture"
   # Optional PolarProxy binary (host-side; not baked — Netresec URL varies).
   # It runs on the host, and Netresec publishes no checksum for "latest", so
   # install only a download whose SHA-256 the operator supplied after checking
@@ -302,10 +311,16 @@ cmd_status() {
   virsh_s net-info virbr-malware 2>/dev/null || echo "missing"
   ip -br addr show virbr-malware 2>/dev/null || true
   if command -v firewall-cmd >/dev/null; then
-    echo "lab-malware ifaces: $(sudo firewall-cmd --permanent --zone=lab-malware --list-interfaces 2>/dev/null || true)"
+    # sudo -n: never hang on polkit when status is run from an agent/IDE.
+    _ifaces=$(sudo -n firewall-cmd --permanent --zone=lab-malware --list-interfaces 2>/dev/null) \
+      || _ifaces=$(sudo -n firewall-cmd --zone=lab-malware --list-interfaces 2>/dev/null) \
+      || _ifaces="(sudo required)"
+    echo "lab-malware ifaces: ${_ifaces}"
+    unset -v _ifaces
   fi
   echo "=== capture ==="
-  sudo podman ps -a --filter name=lab-inetsim --format '{{.Names}} {{.Status}}' 2>/dev/null || true
+  sudo -n podman ps -a --filter name=lab-inetsim --format '{{.Names}} {{.Status}}' 2>/dev/null \
+    || echo "lab-inetsim: (sudo required for rootful podman)"
   pgrep -a PolarProxy 2>/dev/null || echo "PolarProxy: not running"
   echo "=== domains ==="
   virsh_s list --all 2>/dev/null | grep -E "detonate|Name" || true

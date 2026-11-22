@@ -4,7 +4,8 @@
 # Required binaries, /etc ownership and stow/system links, shell tools, login shell.
 
 # 1. Check for required binaries
-REQUIRED_BINARIES=("stow" "zsh" "starship" "nvim" "ghostty" "fastfetch" "btop" "htop" "dconf" "jq")
+# kitty is the primary terminal (Super+Return / MIME); ghostty is also required.
+REQUIRED_BINARIES=("stow" "zsh" "starship" "nvim" "kitty" "ghostty" "fastfetch" "btop" "htop" "dconf" "jq")
 SHELL_BINARIES=("atuin" "fzf" "fd" "rg" "bat" "eza" "zoxide" "direnv" "delta")
 for bin in "${REQUIRED_BINARIES[@]}"; do
     if command -v "$bin" >/dev/null 2>&1; then

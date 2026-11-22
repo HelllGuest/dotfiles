@@ -142,10 +142,11 @@ Then remove the ISO, reboot, and log into GNOME.
 
 ### Stage A½ — Secure Boot (optional; after first good boot, before Stage B)
 
-1. BIOS → clear Secure Boot keys → Setup Mode.
-2. `sudo sbctl enroll-keys -m` (`-m` keeps Microsoft keys for a shared ESP / Windows).
-3. BIOS → Secure Boot → Enabled.
-4. `sbctl status && sbctl verify`.
+1. BIOS → clear Secure Boot keys → Setup Mode (required; `enroll-keys` fails if Setup Mode is off).
+2. `sudo sbctl verify` — if raw `vmlinuz-*` show unsigned: `sudo sbctl sign -s /boot/vmlinuz-linux{,-lts,-hardened}`.
+3. `sudo sbctl enroll-keys -m` (`-m` keeps Microsoft keys for a shared ESP / Windows).
+4. BIOS → Secure Boot → Enabled.
+5. `sbctl status && sbctl verify`.
 
 Verify Stage A (read-only; runs t14s-arch-install `tests/host-check.sh`, ~80
 checks; root-only ones too after `sudo -v`):
@@ -185,48 +186,24 @@ Checklist tags (fail-fast on module error):
 
 Full howto: [README — configure.sh](../README.md#how-to-configuresh-stage-b-tui).
 
-#### How to: firewalld lab zones / `lab-malware`
-
-```bash
-bash scripts/firewalld-lab-zones.sh
-# or: source scripts/lib/lab-malware-zone.sh && ensure_lab_malware_zone
-sudo firewall-cmd --get-default-zone
-sudo firewall-cmd --get-active-zones
-sudo firewall-cmd --permanent --zone=lab-malware --list-all
-# expect: virbr-malware iface + source 192.168.200.0/24; target DROP; 67/udp listed
-# guest on virbr-malware: 192.168.200.x lease, DNS 192.168.200.1, no real DNS
-```
-
-Details: [README — firewalld howto](../README.md#how-to-firewalld-lab-zones--lab-malware),
-[Verify Firewall](hardened-arch-gnome.md#verify-firewall).
-
-#### How to: ops / privacy kits
-
-```bash
-bash scripts/ops-hygiene.sh              # paccache + flatpak unused (auto on install)
-mat2 ./artifact.pdf && exiftool ./shot.jpg
-bleachbit
-bash scripts/usbguard-setup.sh           # opt-in USB allowlist
-bash scripts/dnscrypt-setup.sh           # opt-in encrypted DNS (NM global DNS; tailnet → MagicDNS)
-```
-
-Desktop look: `./install.sh` applies stock Adwaita via `scripts/theme-setup.sh`
-(Full-pack extensions from EGO via `fetch-gnome-extensions.sh`); see
-[README — install order](../README.md). zsh becomes the login shell.
-
-Packages: `pacman-contrib`, `mat2`, `perl-image-exiftool`, `bleachbit`,
-`usbguard`, `dnscrypt-proxy` in `packages/pacman.txt`. Full howto:
-[README — ops / privacy kits](../README.md#how-to-ops--privacy-kits).
+Firewall / malware net: [README — firewalld lab zones](../README.md#how-to-firewalld-lab-zones--lab-malware)
+(`bash scripts/firewalld-lab-zones.sh`; bridge `zone="lab-malware"`). Ops kits /
+usbguard / dnscrypt: [README — ops / privacy kits](../README.md#how-to-ops--privacy-kits).
+Desktop look: stock Adwaita via `theme-setup.sh` (EGO Full-pack via
+`fetch-gnome-extensions.sh`); [README — install order](../README.md).
 
 #### How to: full bootstrap (`./install.sh`)
 
 ```bash
 cd ~/dotfiles
 bash scripts/p15-dotfiles-preflight.sh   # P15 only
-./install.sh                             # Caveman + Ponytail + packages + stow + …
-# Headless pipe: GIT_SETUP_NONINTERACTIVE=1 ./install.sh
+./install.sh                             # as desktop user (rejects root); AUR after system-setup v3 makepkg; skills before Headroom
+# Headless pipe: GIT_SETUP_NONINTERACTIVE=1 SKIP_THEME=1 ./install.sh
 # Explicit Optimus re-run if needed: bash profiles/thinkpad-p15.sh
 # Optional REA host MCP (prefer lab-re): bash scripts/install-rea.sh
+# Optional Claude CLI: npm install -g @anthropic-ai/claude-code
+# Opt-in: bash scripts/usbguard-setup.sh ; bash scripts/dnscrypt-setup.sh
+# Opt-in proxy: systemctl --user enable --now hr-proxy.service && loginctl enable-linger $USER
 exec zsh
 reboot   # P15: UKI must embed nvidia_drm.modeset=1 + rd.driver.blacklist=nouveau
 # after reboot (P15 Optimus):
@@ -268,7 +245,7 @@ See [Verify sleep](hardened-arch-gnome.md#verify-sleep-s2idle).
 | Editors | Neovim (Lazy), VSCodium (`vscodium-bin`), Cursor / Antigravity (AUR) |
 | Languages | fnm Node 22, rust, `python-pipx`, `flutter-bin`, jdk-openjdk (+ JDK 17 for Android) |
 | Mobile | Flatpak Android Studio; `ANDROID_HOME` in `.shell-exports`; alias `as` |
-| AI stack | Headroom + `hr-*`, OpenCode + Kimi (`install-coding-agents.sh`), Caveman + Ponytail (complementary; `./install.sh` both, SETUP_AI = Ponytail), Continue FIM→ollama (P15), Obscura, `ai-stack-setup.sh` / `sync-agent-skills.sh` |
+| AI stack | `sync-agent-skills` then Headroom + `hr-*` / optional `hr-proxy.service`, OpenCode + Kimi (`install-coding-agents.sh`), Caveman + Ponytail (complementary; `./install.sh` both, SETUP_AI = Ponytail), Continue FIM→ollama (P15), Obscura, `ai-stack-setup.sh` |
 | Labs | `lab-triage` / `lab-re` / `lab-android` / `lab-web` / `lab-detonate` / `lab-mcp` via `labs-setup.sh` |
 | Local builds | x86-64-v3 makepkg drop-in; `bash scripts/rebuild-v3.sh` after big upgrades |
 
@@ -287,6 +264,7 @@ also installed, disable the system daemon so it does not fight Podman:
 
 ```bash
 sudo systemctl disable --now docker.service docker.socket
+sudo ip link delete docker0 2>/dev/null || true   # leftover bridge
 ```
 
 Real Docker daemon for one shell: `FORCE_DOCKER=1`.

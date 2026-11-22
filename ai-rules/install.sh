@@ -96,6 +96,24 @@ link_skills() {
 link_skills "$HOME/.claude/skills"
 link_skills "$HOME/.kiro/skills"
 
+# Cursor keeps a mixed ~/.cursor/skills tree (many third-party skills). Always
+# retarget only the kit skill names so AGENTS procedures stay in sync.
+echo "==> Skills: Cursor (~/.cursor/skills kit names)"
+CURSOR_SKILLS="${HOME}/.cursor/skills"
+if [[ -d $CURSOR_SKILLS || -L $CURSOR_SKILLS ]]; then
+  mkdir -p "$CURSOR_SKILLS"
+  for skill_dir in "$SRC_SKILLS"/*/; do
+    [[ -d $skill_dir ]] || continue
+    name="$(basename "$skill_dir")"
+    entry="$CURSOR_SKILLS/$name"
+    rm -rf "$entry"
+    ln -sfn "$SRC_SKILLS/$name" "$entry"
+    echo "    $name -> $SRC_SKILLS/$name"
+  done
+else
+  echo "  skip ($CURSOR_SKILLS missing)"
+fi
+
 echo "==> Claude Code settings (merge telemetry + no co-author)"
 mkdir -p "$HOME/.claude"
 KIT_CLAUDE="$TARGET/claude-settings.json"

@@ -14,10 +14,10 @@ sudo pacman -S --needed --noconfirm "${PAC_PKGS[@]}" 2>/dev/null || \
 
 mkdir -p "$HOME/.config"
 cd "$STOW_DIR" || exit 1
-# Empty gnome-session stow package removed; dconf/extensions below are enough.
-if ! stow -R --adopt -t "$HOME" proton-vpn 2>/dev/null; then
-  stow -t "$HOME" proton-vpn 2>/dev/null || \
-    echo "⚠ stow proton-vpn skipped (extension likely already present)" >&2
+# install.sh already stows proton-vpn without --adopt; never --adopt (would
+# overwrite tracked repo files with modified live copies).
+if ! stow -R -t "$HOME" proton-vpn 2>/dev/null; then
+  echo "⚠ stow proton-vpn skipped (already present or conflict)" >&2
 fi
 
 if [[ -f "$REPO_ROOT/gnome/dconf/user.conf" ]]; then

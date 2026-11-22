@@ -23,6 +23,7 @@ source "$REPO_ROOT/scripts/lib/telemetry.sh"
 say() { printf '→ %s\n' "$*"; }
 warn() { echo "warning: $*" >&2; }
 
+FAILED=0
 echo "Applying privacy hardening (telemetry / reporting off)..."
 
 # ── 1. GNOME (desktop OS) ───────────────────────────────────────────
@@ -50,7 +51,11 @@ fi
 # ── 2. Browsers ─────────────────────────────────────────────────────
 if [[ "${SKIP_BROWSER_HARDENING:-0}" != "1" && -f "$REPO_ROOT/scripts/browser-hardening.sh" ]]; then
   say "Browsers (Chrome / Brave / Zen / LibreWolf)"
-  bash "$REPO_ROOT/scripts/browser-hardening.sh" || warn "browser-hardening failed"
+  # Continue layers 3–7 on failure; exit non-zero at the end.
+  bash "$REPO_ROOT/scripts/browser-hardening.sh" || {
+    warn "browser-hardening failed"
+    FAILED=1
+  }
 else
   say "Browsers skipped (SKIP_BROWSER_HARDENING=1 or script missing)"
 fi
@@ -168,3 +173,4 @@ Privacy hardening complete.
 Re-login (or reboot) so environment.d applies to GUI apps.
 Verify: bash scripts/check.sh | grep -i telemetry
 EOF
+exit "$FAILED"

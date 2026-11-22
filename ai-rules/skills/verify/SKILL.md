@@ -33,4 +33,7 @@ as SKIPPED with a reason; never invent confidence.
 11. Performance implications
 12. Documentation still matches behavior
 
+Also check: tests that `grep` for helper strings still match after renames;
+docs still point at the canonical howto (no forked duplicates).
+
 End with a short Findings section only if any FAIL items exist.

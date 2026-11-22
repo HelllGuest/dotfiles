@@ -25,7 +25,7 @@ Thank you for helping improve this setup. Follow these guidelines to keep the re
 - **fzf:** do not add `copy-selection` to `FZF_DEFAULT_OPTS` (unsupported in fzf 0.72); use per-invocation `--bind` with `wl-copy` / `xclip` if needed.
 - **Containers:** `DOCKER_HOST` in `.shell-exports` only when Podman socket exists; do not force Podman when Docker is the target runtime.
 - **x86-64-v3:** `stow/system/etc/makepkg.conf.d/zz-x86-64-v3.conf` retunes local/AUR C/C++/Rust/Go builds for this Comet Lake CPU. User overlay: `stow/pacman/.config/pacman/makepkg.conf`. Rebuild hot extra/ packages with `scripts/rebuild-v3.sh` (default: zstd xz lz4), signed by a local rebuild-v3 key. Repo upgrades overwrite those packages; re-run the script. Do not use v4 (no AVX-512).
-- **Headroom:** pinned pipx install via `scripts/install-headroom.sh` (`HEADROOM_VERSION`; no auto-upgrade, bump the pin deliberately); setup via `scripts/headroom-setup.sh`; shell entry points in `.shell-functions` (`hr-claude`, `hr-cursor`, `hr-proxy`) — do not also alias those names in `.shell-aliases`. Prefer `headroom install apply --preset persistent-service … --no-telemetry` over one-shot `hr-proxy` for always-on. Stowed shell rc may export `ANTHROPIC_BASE_URL` / `OPENAI_BASE_URL` for interactive shells; Cursor still needs manual Base URL paste in the IDE. RTK is separate (not under `~/.headroom/bin`). Document behavior in the README Headroom section when changing setup scripts.
+- **Headroom:** pinned pipx install via `scripts/install-headroom.sh` (`HEADROOM_VERSION`; no auto-upgrade, bump the pin deliberately); setup via `scripts/headroom-setup.sh`; shell entry points in `.shell-functions` (`hr-claude`, `hr-cursor`, `hr-opencode`, `hr-agy`, `hr-proxy`) — do not also alias those names in `.shell-aliases`. Prefer `headroom install apply --preset persistent-service … --no-telemetry` or `systemctl --user enable --now hr-proxy.service` over one-shot `hr-proxy` for always-on. Stowed shell rc may export `ANTHROPIC_BASE_URL` / `OPENAI_BASE_URL` for interactive shells; Cursor still needs manual Base URL paste in the IDE. RTK is separate (not under `~/.headroom/bin`). Document behavior in the README Headroom section when changing setup scripts.
 - **PhotoGIMP:** optional; `scripts/install-photogimp.sh` overwrites GIMP config under `~/.config/GIMP/<major.minor>`. Do not commit user GIMP config into stow.
 - **Dash2Dock:** install via `scripts/install-dash2dock.sh` (EGO zip, not stale AUR). Keep UUID in `gnome/extensions.txt` and `gnome/dconf/user.conf` `enabled-extensions`. Wayland: log out/in after install.
 - Do not reintroduce `.zsh-aliases` / `.zsh-exports` — use the `.shell-*` naming scheme.
@@ -66,10 +66,20 @@ Thank you for helping improve this setup. Follow these guidelines to keep the re
 - Browser policies: `browsers/policies/chromium-base.json` (Chrome + Brave) merged with brand overlays `chrome-extra.json` (Google AI/services) and `brave-extra.json` (Brave services); missing overlay = base only. Validate names against the current [Chrome policy list](https://chromeenterprise.google/policies/) and brave-core `policy_definitions/BraveSoftware` (names are case-sensitive; unknown, `cloud_only` and removed keys are silently ignored). Zen: `zen-policies.json` + `browsers/zen/user.js`. LibreWolf: `browsers/librewolf/librewolf.overrides.cfg`. Deploy via `scripts/lib/browsers.sh` / `browser-hardening.sh`.
 - Shell plugin packages: pacman extras in `pacman.txt`; AUR plugins such as **forgit** and **blesh-git** belong in `aur.txt`.
 
+### Install order (`install.sh`)
+
+- Rejects root (`EUID == 0`). Never document `sudo ./install.sh`.
+- AUR (`install-aur.sh`) runs **after** `system-setup.sh` so paru/makepkg see `zz-x86-64-v3.conf`.
+- `sync-agent-skills.sh` runs **before** `headroom-setup.sh` (agent config dirs must exist).
+- `gnome-session-setup.sh` must not `stow --adopt` (overwrites tracked files).
+- EXIT sudo-keepalive trap: `pkill -P` then `kill` (no `|| true`; banned by `tests/install-completeness.test.sh`).
+- `privacy-hardener.sh`: on browser-hardening failure set `FAILED=1`, finish layers 3–7, `exit "$FAILED"`.
+
 ### GNOME (`gnome/`)
 
 - Export live settings: `./scripts/backup-gsettings.sh` (overwrites `gnome/dconf/user.conf`; re-asserts the lock-screen, autorun and privacy keys after the dump, so add new hardening keys to its `ENFORCED` table)
-- Theme is stock Adwaita via `scripts/theme-setup.sh` (no Aura Glass). Do not add `gtk-theme` / `icon-theme` / `cursor-theme` / `cursor-size` or the `user-theme` / `blur-my-shell` trees to `user.conf`, `extensions.conf` or `stow/gdm/…/00-login-screen` (`backup-gsettings.sh` drops them; `tests/theme.test.sh` enforces it). Keep the Full-pack UUIDs in `gnome/extensions.txt` and `user.conf` `enabled-extensions`; fetch via `scripts/fetch-gnome-extensions.sh`.
+- Theme is stock Adwaita via `scripts/theme-setup.sh` (no Aura Glass; purges Aura/Orchis leftovers). Do not add `gtk-theme` / `icon-theme` / `cursor-theme` / `cursor-size` or the `user-theme` / `blur-my-shell` trees to `user.conf`, `extensions.conf` or `stow/gdm/…/00-login-screen` (`backup-gsettings.sh` drops them; `tests/theme.test.sh` enforces it). Keep the Full-pack UUIDs in `gnome/extensions.txt` and `user.conf` `enabled-extensions`; fetch via `scripts/fetch-gnome-extensions.sh`.
+- Primary terminal is kitty (`Super+Return`, `xdg-terminals.list`, `x-scheme-handler/terminal` via `gnome-console-setup.sh`).
 - Avoid machine-specific paths unless intentionally updating the reference snapshot.
 - Do **not** commit touchpad/mouse/keyboard overrides unless deliberately changing from stock GNOME defaults; session setup resets peripherals via `scripts/reset-input-defaults.sh`.
 
@@ -87,7 +97,7 @@ Thank you for helping improve this setup. Follow these guidelines to keep the re
 |-------------|--------|
 | New shell feature / plugin | `README.md`, `CHANGELOG.md` |
 | New stow package | `README.md`, `all_stow_files.txt`, `CHANGELOG.md` |
-| Install script behavior | `README.md`, `docs/hardened-arch-gnome.md`, `docs/fresh-install-coding-re.md` (purpose stacks) |
+| Install script behavior | `README.md` (canonical howtos), `docs/hardened-arch-gnome.md` (phases), `docs/fresh-install-coding-re.md` (purpose stacks; link README howtos, do not fork them) |
 | `stow/system/` / `system-setup.sh` | `docs/hardened-arch-gnome.md` (Phase 1 `system/` files section), `tests/system-setup.test.sh`, `CHANGELOG.md` |
 | Profile / Secure Boot behavior | `README.md`, `docs/hardened-arch-gnome.md` (Phases 23, 27, 28), `CHANGELOG.md` |
 | Package list change | `CHANGELOG.md` |
@@ -96,7 +106,8 @@ Thank you for helping improve this setup. Follow these guidelines to keep the re
 | Container CLI / `DOCKER_HOST` | `README.md`, `docs/hardened-arch-gnome.md`, `CHANGELOG.md` |
 | fzf / shell exports | `README.md`, `gnome/keybindings.md`, `CHANGELOG.md` |
 | fnm / Node version pins | `README.md`, `CHANGELOG.md`, troubleshooting table |
-| Headroom / AI agents / skills | `README.md` (Headroom / Maintenance), `docs/fresh-install-coding-re.md`, `ai-rules/README.md`, `CHANGELOG.md` |
+| Headroom / AI agents / skills | `README.md` (Headroom / Maintenance), `docs/fresh-install-coding-re.md`, `ai-rules/` (`AGENTS.md`, `skills/*/SKILL.md`, then `ai-rules/install.sh`), `CHANGELOG.md` |
+| Shared agent constitution | Edit `ai-rules/AGENTS.md` (repo kit); run `ai-rules/install.sh` to publish `~/dev/ai-rules` and refresh Claude/Kiro skill links |
 | Privacy / telemetry / browsers | `README.md` (Privacy + Flatpaks), `CONTRIBUTING.md` (packages), `docs/hardened-arch-gnome.md` (Phase 27), `stow/privacy`, `scripts/lib/telemetry.sh`, `CHANGELOG.md` |
 | PhotoGIMP / GIMP | `README.md` (PhotoGIMP section), `CHANGELOG.md` |
 | foxcage (pin bump) | `scripts/install-foxcage.sh` header (update steps), `tests/foxcage.test.sh` pins, `README.md`, `CHANGELOG.md` |

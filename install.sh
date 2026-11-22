@@ -7,6 +7,12 @@
 # Ensure we are in the repo root
 cd "$(dirname "$0")" || exit 1
 
+# Stow targets $HOME; makepkg/AUR refuse root. Never sudo ./install.sh.
+if [[ ${EUID:-$(id -u)} -eq 0 ]]; then
+    echo "error: run as your desktop user, not root (sudo ./install.sh stows into /root)" >&2
+    exit 1
+fi
+
 # Ensure user-local tool paths are on PATH on fresh first-boot bash sessions
 for _p in "$HOME/.opencode/bin" "$HOME/.npm-global/bin" "${PNPM_HOME:-$HOME/.local/share/pnpm}" "$HOME/go/bin" "$HOME/.cargo/bin" "$HOME/.local/bin"; do
     case ":$PATH:" in
@@ -74,7 +80,7 @@ progress_banner "Stage B · $(ui_bar 0 20) 0/${INSTALL_STEPS}"
 sudo -v || { echo "sudo authentication failed — install.sh needs sudo." >&2; exit 1; }
 ( while kill -0 "$$" 2>/dev/null; do sudo -n -v 2>/dev/null; sleep 50; done ) &
 SUDO_KEEPALIVE_PID=$!
-trap 'kill "$SUDO_KEEPALIVE_PID" 2>/dev/null' EXIT
+trap 'pkill -P "$SUDO_KEEPALIVE_PID" 2>/dev/null; kill "$SUDO_KEEPALIVE_PID" 2>/dev/null; wait "$SUDO_KEEPALIVE_PID" 2>/dev/null' EXIT
 
 # Legacy touchpad udev/inhibit cleanup (if present from older dotfiles)
 if [ -f "scripts/cleanup-input-overrides.sh" ]; then
@@ -143,18 +149,13 @@ if [ -f "scripts/install-flatpaks.sh" ]; then
     run_step "Flatpak install" bash scripts/install-flatpaks.sh
 fi
 
-# 1.15 Install AUR packages (optional — requires yay/paru)
-if [ -f "scripts/install-aur.sh" ]; then
-    echo "Installing AUR packages..."
-    run_step "AUR install" bash scripts/install-aur.sh
-fi
-
 # 1.2 Install Fonts
 if [ -f "scripts/install-fonts.sh" ]; then
     run_step "Font install" bash scripts/install-fonts.sh
 fi
 
 # 2. Setup symlinks using Stow or Fallback
+# system-setup.sh installs /etc/makepkg.conf.d/zz-x86-64-v3.conf before AUR builds.
 STOW_CMD="stow"
 if ! command -v stow >/dev/null 2>&1; then
     echo "GNU Stow not found. Using minimal-stow fallback..."
@@ -189,6 +190,12 @@ for dir in */; do
 done
 cd .. || exit 1
 
+# 2.05 AUR after system-setup so paru/makepkg see x86-64-v3 flags
+if [ -f "scripts/install-aur.sh" ]; then
+    echo "Installing AUR packages..."
+    run_step "AUR install" bash scripts/install-aur.sh
+fi
+
 # 2.0a User units shipped by stow packages (stow links them; nothing enabled them).
 # daemon-reload first: the manager has not seen the freshly linked unit file.
 run_step "tmp-semgrep-cleanup.timer" bash -c \
@@ -214,10 +221,13 @@ fi
 if need_cmd fnm "Node.js LTS via fnm"; then
     echo "Setting up Node.js LTS (22) via fnm..."
     eval "$(fnm env --shell bash)"
-    run_step "Node 22 (fnm install)" fnm install 22
-    run_step "Node 22 (fnm default)" fnm default 22
-    run_step "Node 22 (fnm use)" fnm use 22
-    eval "$(fnm env --shell bash)"
+    advance_progress "Node 22 (fnm install)"
+    if fnm install 22; then
+        run_step "Node 22 (fnm default)" fnm default 22
+        run_step "Node 22 (fnm use)" fnm use 22
+    else
+        fail_step "Node 22 (fnm install) failed — re-run: fnm install 22"
+    fi
 fi
 
 # 2.2 Import shell history into atuin
@@ -295,14 +305,14 @@ if [ -f "scripts/nvim-setup.sh" ]; then
     run_step "Neovim setup" bash scripts/nvim-setup.sh
 fi
 
-# 3.5 Headroom (Claude / Cursor context proxy — optional, pipx user-local)
-if [ -f "scripts/headroom-setup.sh" ]; then
-    run_step "Headroom setup" bash scripts/headroom-setup.sh
-fi
-
-# 3.5a Kit skills first (fallback if post-AI sync fails later)
+# 3.5 Kit skills first (creates ~/.claude, ~/.cursor, … that Headroom merges into)
 if [ -f "scripts/sync-agent-skills.sh" ]; then
     run_step "Agent skills pre-sync" bash scripts/sync-agent-skills.sh
+fi
+
+# 3.5a Headroom (Claude / Cursor context proxy — optional, pipx user-local)
+if [ -f "scripts/headroom-setup.sh" ]; then
+    run_step "Headroom setup" bash scripts/headroom-setup.sh
 fi
 
 # 3.5b OpenCode + Kimi CLIs + MCP configs (before caveman so opencode is detected)
@@ -443,7 +453,7 @@ if [ "${SKIP_OPS_HYGIENE:-0}" != 1 ] && [ -f "scripts/ops-hygiene.sh" ]; then
     run_step "Ops hygiene" bash scripts/ops-hygiene.sh
 fi
 
-# 4.5 Tailscale + firewalld (optional; no-op if firewalld inactive / tailscale absent)
+# 4.5 Tailscale + firewalld (tailscale is in pacman.txt; need_cmd fails if missing)
 if [ -f "scripts/firewalld-tailscale.sh" ] && need_cmd tailscale "Tailscale firewalld rules"; then
     run_step "Tailscale firewalld rules" bash scripts/firewalld-tailscale.sh
 fi

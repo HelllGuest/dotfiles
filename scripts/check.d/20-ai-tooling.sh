@@ -13,7 +13,7 @@ for bin in claude cursor headroom; do
     fi
 done
 if command -v headroom >/dev/null 2>&1; then
-    echo "  shell: hr-claude | hr-cursor | hr-proxy"
+    echo "  shell: hr-claude | hr-cursor | hr-opencode | hr-agy | hr-proxy"
     # Optional: hr-* wrappers start their own proxy. A persistent one is either
     # headroom's install preset (headroom-default) or the repo's hr-proxy unit.
     _hr_unit=""

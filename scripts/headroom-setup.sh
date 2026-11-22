@@ -87,9 +87,14 @@ Cursor (paste Base URL into Settings → Models; IDE ignores shell env):
   hr-cursor
   # Override OpenAI Base URL with the URL printed by hr-cursor
 
+OpenCode / Antigravity CLI:
+  hr-opencode
+  hr-agy
+
 One-shot proxy only:
   hr-proxy
   # or: ANTHROPIC_BASE_URL=http://127.0.0.1:${PORT} claude
+  # persistent: systemctl --user enable --now hr-proxy.service
 
 MCP (Claude / Codex / OpenCode when detected):
   headroom mcp install --force

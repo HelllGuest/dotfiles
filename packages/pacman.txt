@@ -9,7 +9,6 @@ bolt
 bottom
 brightnessctl
 cfitsio
-dart-sass
 direnv
 dust
 duf
