@@ -47,11 +47,15 @@ sudo systemctl enable --now firewalld
 # --set-default-zone already persists; --permanent is invalid with it.
 sudo firewall-cmd --set-default-zone=drop || true
 
-# libvirt zone XML ships with the libvirt package (not firewalld alone).
+# libvirt zone XML ships with the libvirt package; dnsmasq is required by
+# libvirt virtual networks (default + virbr-malware DHCP).
 if ! sudo firewall-cmd --permanent --get-zones 2>/dev/null | grep -qw libvirt; then
-  echo "→ Installing libvirt (provides firewalld libvirt zone + virsh)..."
-  sudo pacman -S --needed --noconfirm libvirt
+  echo "→ Installing libvirt + dnsmasq (firewalld libvirt zone + virbr-malware DHCP)..."
+  sudo pacman -S --needed --noconfirm libvirt dnsmasq
   sudo firewall-cmd --reload || true
+elif ! command -v dnsmasq >/dev/null 2>&1; then
+  echo "→ Installing dnsmasq (required for libvirt virbr-malware DHCP)..."
+  sudo pacman -S --needed --noconfirm dnsmasq
 fi
 
 if command -v virsh >/dev/null 2>&1; then
@@ -113,8 +117,12 @@ if command -v virsh >/dev/null 2>&1; then
     sudo virsh net-define "$MALWARE_XML"
   fi
   unset -v _redef _xml
-  sudo virsh net-autostart virbr-malware 2>/dev/null || true
-  sudo virsh net-start virbr-malware 2>/dev/null || true
+  sudo virsh net-autostart virbr-malware >/dev/null 2>&1 || true
+  _ninfo="$(sudo virsh net-info virbr-malware 2>/dev/null || true)"
+  if ! grep -qiE '^Active:[[:space:]]+yes' <<<"$_ninfo"; then
+    sudo virsh net-start virbr-malware
+  fi
+  unset -v _ninfo
 fi
 
 echo "→ Binding virbr-malware to firewalld zone lab-malware..."

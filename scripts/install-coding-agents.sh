@@ -5,11 +5,11 @@
 # refreshes Caveman's OpenCode plugin when the caveman installer is available.
 #
 # Env:
-#   OPENCODE_NPM_SPEC     default opencode-ai@1.19.4
-#   KIMI_NPM_SPEC         default @moonshot-ai/kimi-code@2.3.0
-#   REA_AGENTS_VERSION    default 6.9.0 (MCP npx pin; match labs/lab-re)
+#   OPENCODE_NPM_SPEC     default opencode-ai@1.19.6
+#   KIMI_NPM_SPEC         default @moonshot-ai/kimi-code@2.7.2
+#   REA_AGENTS_VERSION    default 6.10.1 (MCP npx pin; match labs/lab-re)
 #   SKIP_CAVEMAN_OPENCODE=1  skip caveman --only opencode
-#   CAVEMAN_TAG           forwarded to install-caveman pins (default v4.1.0)
+#   CAVEMAN_TAG           forwarded to install-caveman pins (default v4.2.0)
 #
 # Usage:
 #   bash scripts/install-coding-agents.sh
@@ -18,12 +18,12 @@
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-OPENCODE_NPM_SPEC="${OPENCODE_NPM_SPEC:-opencode-ai@1.19.4}"
-KIMI_NPM_SPEC="${KIMI_NPM_SPEC:-@moonshot-ai/kimi-code@2.3.0}"
-REA_AGENTS_VERSION="${REA_AGENTS_VERSION:-6.9.0}"
+OPENCODE_NPM_SPEC="${OPENCODE_NPM_SPEC:-opencode-ai@1.19.6}"
+KIMI_NPM_SPEC="${KIMI_NPM_SPEC:-@moonshot-ai/kimi-code@2.7.2}"
+REA_AGENTS_VERSION="${REA_AGENTS_VERSION:-6.10.1}"
 OPENCODE_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/opencode"
 KIMI_CODE_HOME="${KIMI_CODE_HOME:-$HOME/.kimi-code}"
-JADX_JAR="${XDG_DATA_HOME:-$HOME/.local/share}/rea/jadx-headless-mcp-0.7.1-all.jar"
+JADX_JAR="${XDG_DATA_HOME:-$HOME/.local/share}/rea/jadx-headless-mcp-0.8.0-all.jar"
 GHIDRA_INSTALL_DIR="${GHIDRA_INSTALL_DIR:-/opt/ghidra}"
 HOPPER_LAUNCHER_PATH="${HOPPER_LAUNCHER_PATH:-/opt/hopper/bin/Hopper}"
 HEADROOM_BIN="${HOME}/.local/bin/headroom"
@@ -46,8 +46,8 @@ install_caveman_opencode() {
   done
   local tmp tag sha got caveman_dir
   caveman_dir="${XDG_DATA_HOME:-$HOME/.local/share}/caveman"
-  tag="${CAVEMAN_TAG:-v4.1.0}"
-  sha="${CAVEMAN_INSTALL_SHA256:-2e39b2a9b4ce47620757abc8a55ad33a23dd65217f8a998135108f92f83c00a1}"
+  tag="${CAVEMAN_TAG:-v4.2.0}"
+  sha="${CAVEMAN_INSTALL_SHA256:-ee97bd7e6a6dad90f464b0a86b401e0d467f18db8e46178979823c2f23233740}"
   if [[ -f "$caveman_dir/installer/install.js" ]]; then
     CAVEMAN_REF="$tag" node "$caveman_dir/installer/install.js" --only opencode --non-interactive --force \
       || warn "caveman opencode local install failed"

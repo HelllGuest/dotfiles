@@ -1179,7 +1179,7 @@ Installed or wired by `./install.sh`; documented once in the README:
 # PHASE 17f — GHIDRA-CLI / LAB-RE (OPTIONAL)
 
 ```bash
-# preferred RE stack (JDK21 + Ghidra + jadx + rizin + rea-agents@6.9.0):
+# preferred RE stack (JDK21 + Ghidra + jadx + rizin + rea-agents@6.10.1):
 lab-re --check && lab-re
 # optional host cargo CLI when pacman ghidra is installed:
 bash scripts/install-ghidra-cli.sh

@@ -17,7 +17,7 @@ RUN pacman -Syu --noconfirm --needed \
     && useradd -m -u 1000 lab
 
 # Pin REA inside the image (not on the host).
-ARG REA_AGENTS_VERSION=6.9.0
+ARG REA_AGENTS_VERSION=6.10.1
 USER root
 RUN npm install -g "rea-agents@${REA_AGENTS_VERSION}" \
     && mkdir -p /opt/rea \

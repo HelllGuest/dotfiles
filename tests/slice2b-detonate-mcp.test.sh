@@ -96,6 +96,15 @@ grep -q 'sudo -n firewall-cmd --permanent --zone=lab-malware --list-interfaces' 
   || fail "lab-detonate status must query permanent firewalld zone with sudo -n (no polkit hang)"
 grep -q 'qemu:///system' "$ROOT/scripts/lab-detonate.sh" \
   || fail "lab-detonate virsh must use qemu:///system (libvirt group, no sudo when possible)"
+! grep -q 'virsh -c qemu:///system uri' "$ROOT/scripts/lab-detonate.sh" \
+  || fail "lab-detonate must not probe virsh uri (triggers polkit / faillock for non-libvirt users)"
+grep -q 'grep -qw libvirt' "$ROOT/scripts/lab-detonate.sh" \
+  && grep -q 'sudo -n virsh -c qemu:///system' "$ROOT/scripts/lab-detonate.sh" \
+  || fail "lab-detonate must gate unprivileged virsh on libvirt group and use sudo -n for status"
+grep -q 'failed to start virbr-malware' "$ROOT/scripts/lab-detonate.sh" \
+  && grep -q 'dnsmasq' "$ROOT/scripts/lab-detonate.sh" \
+  && grep -q 'dnsmasq' "$ROOT/scripts/firewalld-lab-zones.sh" \
+  || fail "lab-detonate and firewalld-lab-zones must ensure dnsmasq and fail closed if virbr-malware will not start"
 grep -q '21/tcp' "$ZONE_LIB" && grep -q '25/tcp' "$ZONE_LIB" \
   || fail "lab-malware zone must allow INetSim FTP (21/tcp) and SMTP (25/tcp)"
 grep -q 'LAB_CAPTURE_BIND' "$ROOT/labs/lab-capture/entrypoint.sh" \

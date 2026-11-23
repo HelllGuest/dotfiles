@@ -325,7 +325,7 @@ paru -S --needed imhex-bin android-apktool-bin
 
 ### AI reverse-engineering (MCP + skills)
 
-Prefer containerized REA inside `lab-re` (`rea-agents@6.9.0` + JDK21/Ghidra/jadx/rizin). Host `install-rea.sh` is optional (needs JDK≥21). `./install.sh` still runs RE skills when npx is available; it does **not** auto-run host REA.
+Prefer containerized REA inside `lab-re` (`rea-agents@6.10.1` + JDK21/Ghidra/jadx/rizin). Host `install-rea.sh` is optional (needs JDK≥21). `./install.sh` still runs RE skills when npx is available; it does **not** auto-run host REA.
 
 | Layer | What | Install |
 |-------|------|---------|

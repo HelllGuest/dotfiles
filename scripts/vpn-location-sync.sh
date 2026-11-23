@@ -75,11 +75,14 @@ fi
 GEO_FILE="/etc/geolocation"
 VPN_IF="${VPN_IF:-proton0}"
 ACTION="${1:-sync}"
+SYNC_TMPS=()
+trap '(( ${#SYNC_TMPS[@]} )) && rm -f -- "${SYNC_TMPS[@]}"' EXIT
 
 write_geolocation() {
     local lat="$1" lon="$2" label="$3"
     local tmp
     tmp="$(mktemp)"
+    SYNC_TMPS+=("$tmp")
     if ! cat >"$tmp" <<EOF
 # ${label}
 # Updated by vpn-location-sync.sh at $(date -Iseconds)

@@ -30,9 +30,9 @@ done
 grep -q 'cloudflare/skills' "$ROOT/packages/agent-skills.txt" \
   || fail "agent-skills manifest missing cloudflare pack"
 
-grep -q 'CAVEMAN_TAG:-v4.1.0' "$ROOT/scripts/install-caveman.sh" \
+grep -q 'CAVEMAN_TAG:-v4.2.0' "$ROOT/scripts/install-caveman.sh" \
   || fail "caveman tag pin missing"
-grep -q '2e39b2a9b4ce47620757abc8a55ad33a23dd65217f8a998135108f92f83c00a1' \
+grep -q 'ee97bd7e6a6dad90f464b0a86b401e0d467f18db8e46178979823c2f23233740' \
   "$ROOT/scripts/install-caveman.sh" || fail "caveman SHA-256 pin missing"
 grep -q 'SKIP_SKILL_SYNC' "$ROOT/scripts/install-caveman.sh" \
   || fail "caveman SKIP_SKILL_SYNC missing"
@@ -53,9 +53,9 @@ grep -q 'install-ponytail.sh' "$ROOT/install.sh" \
   || fail "install.sh must call install-ponytail.sh"
 grep -q 'claude mcp add -s user obscura' "$ROOT/scripts/install-obscura.sh" \
   || fail "install-obscura.sh must register obscura at Claude user scope (-s user)"
-grep -q 'OBSCURA_VERSION:-v0.2.6' "$ROOT/scripts/install-obscura.sh" \
+grep -q 'OBSCURA_VERSION:-v0.2.7' "$ROOT/scripts/install-obscura.sh" \
   || fail "install-obscura.sh must pin OBSCURA_VERSION"
-grep -q 'ac8057374ec1b5cabb78ea2d08b2ed890d21d156a42b1ac23357fd049edc08c5' \
+grep -q '1d6514beacef9fe75671f4bf7a66d3a7bceef9bde39f8156d1ca4a701eb1e216' \
   "$ROOT/scripts/install-obscura.sh" || fail "install-obscura.sh missing stealth x86_64 SHA-256 pin"
 grep -q 'sha256sum' "$ROOT/scripts/install-obscura.sh" \
   || fail "install-obscura.sh must verify SHA-256 before install"
@@ -84,9 +84,9 @@ grep -q 'INSTALL_FAILED' "$ROOT/install.sh" \
 grep -q 'opencode/AGENTS.md' "$ROOT/scripts/sync-agent-skills.sh" \
   || fail "sync-agent-skills.sh must sync shared AGENTS.md into opencode/AGENTS.md"
 
-grep -q 'OPENCODE_NPM_SPEC:-opencode-ai@1.19.4' \
+grep -q 'OPENCODE_NPM_SPEC:-opencode-ai@1.19.6' \
   "$ROOT/scripts/install-coding-agents.sh" || fail "opencode npm pin missing"
-grep -q 'KIMI_NPM_SPEC:-@moonshot-ai/kimi-code@2.3.0' \
+grep -q 'KIMI_NPM_SPEC:-@moonshot-ai/kimi-code@2.7.2' \
   "$ROOT/scripts/install-coding-agents.sh" || fail "kimi npm pin missing"
 grep -q 'ONLY_CAVEMAN_OPENCODE' "$ROOT/scripts/install-coding-agents.sh" \
   || fail "coding-agents opencode-plugin mode missing"
@@ -354,7 +354,7 @@ grep -q 'ln -sfnT' "$ROOT/scripts/install-coding-agents.sh" \
   || fail "coding-agents must use ln -sfnT for brand links"
 grep -q 'preserve other servers' "$ROOT/scripts/install-coding-agents.sh" \
   || fail "coding-agents must merge kimi mcp (not clobber)"
-grep -q 'REA_AGENTS_VERSION:-6.9.0' "$ROOT/scripts/install-rea.sh" \
+grep -q 'REA_AGENTS_VERSION:-6.10.1' "$ROOT/scripts/install-rea.sh" \
   || fail "install-rea must pin REA_AGENTS_VERSION like coding-agents / lab-re"
 grep -q 'rea-agents@latest' "$ROOT/scripts/install-rea.sh" \
   && fail "install-rea must not use rea-agents@latest"
@@ -464,11 +464,11 @@ path.write_text(json.dumps({"mcpServers": {"custom": {"url": "https://example.te
 data = json.loads(path.read_text())
 servers = data.setdefault("mcpServers", {})
 servers["headroom"] = {"command": "headroom", "args": ["mcp", "serve"]}
-servers["rea"] = {"command": "npx", "args": ["-y", "rea-agents@6.9.0", "mcp"]}
+servers["rea"] = {"command": "npx", "args": ["-y", "rea-agents@6.10.1", "mcp"]}
 path.write_text(json.dumps(data, indent=2))
 out = json.loads(path.read_text())
 assert "custom" in out["mcpServers"], out
-assert out["mcpServers"]["rea"]["args"][1] == "rea-agents@6.9.0"
+assert out["mcpServers"]["rea"]["args"][1] == "rea-agents@6.10.1"
 assert "headroom" in out["mcpServers"]
 print("kimi-merge-sim ok")
 PY

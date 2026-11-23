@@ -9,7 +9,7 @@
 # already exist; Slice 2 AI stack does NOT call it by default.
 #
 # * npm global rea-agents
-# * jadx-headless-mcp 0.7.1 JAR (SHA-256 pinned; REA does not download engines itself)
+# * jadx-headless-mcp 0.8.0 JAR (SHA-256 pinned; REA does not download engines itself)
 # * rea setup --all-detected --yes (MCP + reverse-engineer-anything skill)
 # * environment.d for JADX / Ghidra / Hopper paths (no JAVA_HOME — Android keeps 17)
 # * MCP env: JAVA_HOME (JDK>=21), GHIDRA, JADX, HOPPER when present
@@ -24,11 +24,11 @@
 
 set -euo pipefail
 
-JADX_VER="0.7.1"
-JADX_SHA256="6e5eacf500b64292bfb73c49797c1958f6ee44646e43e868039ae7feb573ff75"
+JADX_VER="0.8.0"
+JADX_SHA256="4b9a01c23845c123c217840182d2b5f2c26a7ca20dec3d08810b310fc80a2372"
 JADX_URL="https://github.com/1013503897/jadx-headless-mcp/releases/download/v${JADX_VER}/jadx-headless-mcp-${JADX_VER}-all.jar"
 # Keep in sync with scripts/install-coding-agents.sh (REA_AGENTS_VERSION)
-REA_AGENTS_VERSION="${REA_AGENTS_VERSION:-6.9.0}"
+REA_AGENTS_VERSION="${REA_AGENTS_VERSION:-6.10.1}"
 REA_DIR="${XDG_DATA_HOME:-$HOME/.local/share}/rea"
 JADX_JAR="${REA_DIR}/jadx-headless-mcp-${JADX_VER}-all.jar"
 GHIDRA_INSTALL_DIR="${GHIDRA_INSTALL_DIR:-/opt/ghidra}"

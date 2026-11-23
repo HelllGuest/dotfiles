@@ -562,7 +562,7 @@ native 15 s lives in the kitty/Ghostty configs).
 Opt-in after install (not auto): `bash scripts/usbguard-setup.sh`,
 `bash scripts/dnscrypt-setup.sh`. See
 [How to: ops / privacy kits](#how-to-ops--privacy-kits).
-REA backends: use `lab-re` (JDK21/Ghidra/jadx/rizin + `rea-agents@6.9.0`). Optional host MCP only:
+REA backends: use `lab-re` (JDK21/Ghidra/jadx/rizin + `rea-agents@6.10.1`). Optional host MCP only:
 `bash scripts/install-rea.sh` (needs host JDK≥21).
 
 > `scripts/tmp-to-disk.sh` is **not** part of this flow — `arch-install.sh` already
@@ -587,7 +587,7 @@ Key runtime dependencies (`scripts/check.sh` asserts binaries, shell tools, syml
 
 **Shell tools** (also asserted): `atuin`, `fzf`, `fd`, `ripgrep` (`rg`), `bat`, `eza`, `zoxide`, `direnv`, `git-delta` (`delta`). `fnm` (Node) and `rclone` are in `pacman.txt` but optional for `check.sh`.
 
-**AI:** `./install.sh` installs the full stack: Headroom (`hr-claude` / `hr-cursor` / `hr-opencode` / `hr-agy` / `hr-proxy`), OpenCode + Kimi, Caveman `v4.1.0` (SHA-256) + Ponytail `v5.3.3` (`PONYTAIL_COMMIT` SHA), Continue FIM config, Obscura CDP/MCP, ecosystem + RE skills, hub sync; on P15 also `ollama-setup.sh` (CUDA + qwen pulls; `SKIP_OLLAMA=1` opts out). `configure.sh` `SETUP_AI` runs `ai-stack-setup.sh` (Headroom/Ponytail/Continue; **not** Caveman). Modular re-run: `bash scripts/ai-stack-setup.sh`
+**AI:** `./install.sh` installs the full stack: Headroom (`hr-claude` / `hr-cursor` / `hr-opencode` / `hr-agy` / `hr-proxy`), OpenCode + Kimi, Caveman `v4.2.0` (SHA-256) + Ponytail `v5.3.3` (`PONYTAIL_COMMIT` SHA), Continue FIM config, Obscura CDP/MCP, ecosystem + RE skills, hub sync; on P15 also `ollama-setup.sh` (CUDA + qwen pulls; `SKIP_OLLAMA=1` opts out). `configure.sh` `SETUP_AI` runs `ai-stack-setup.sh` (Headroom/Ponytail/Continue; **not** Caveman). Modular re-run: `bash scripts/ai-stack-setup.sh`
 
 **Graphics (optional):** `gimp` + PhotoGIMP via `scripts/install-photogimp.sh`
 
@@ -605,7 +605,7 @@ Key runtime dependencies (`scripts/check.sh` asserts binaries, shell tools, syml
 
 Clipboard: selecting text auto-copies in kitty and ghostty (`copy_on_select`); in kitty, right-click also copies the selection (Shift+right-click extends it).
 
-**Ghidra / RE AI:** prefer `lab-re` (container: JDK21 + Ghidra + jadx + rizin + `rea-agents@6.9.0`). Optional host: pacman `ghidra` + `bash scripts/install-ghidra-cli.sh` / `bash scripts/install-rea.sh` (needs JDK≥21). Extra skills: `bash scripts/install-re-skills.sh`. Details: [fresh-install RE guide](docs/fresh-install-coding-re.md#ai-reverse-engineering-mcp--skills).
+**Ghidra / RE AI:** prefer `lab-re` (container: JDK21 + Ghidra + jadx + rizin + `rea-agents@6.10.1`). Optional host: pacman `ghidra` + `bash scripts/install-ghidra-cli.sh` / `bash scripts/install-rea.sh` (needs JDK≥21). Extra skills: `bash scripts/install-re-skills.sh`. Details: [fresh-install RE guide](docs/fresh-install-coding-re.md#ai-reverse-engineering-mcp--skills).
 
 **GDM:** `scripts/gdm-setup.sh` copies greeter config to `/etc` (not stow — GDM cannot read `$HOME`), enables Wayland, compiles greeter dconf, and enables `gdm.service`. Greeter changes appear after **reboot** (or `sudo systemctl restart gdm`, which logs you out). Optional fingerprint: `scripts/fingerprint-setup.sh`.
 
@@ -690,7 +690,7 @@ We take a "quiet by default" approach:
 | Caveman (`/caveman`) | `bash scripts/install-caveman.sh` |
 | Ponytail (`/ponytail`) | `bash scripts/install-ponytail.sh` |
 | Android UI skills | `bash scripts/install-android-ui-skills.sh` (Compose + Material 3) |
-| REA in lab-re | `lab-re` / rebuild `podman build -t localhost/lab-re labs/lab-re` (`rea-agents@6.9.0`) |
+| REA in lab-re | `lab-re` / rebuild `podman build -t localhost/lab-re labs/lab-re` (`rea-agents@6.10.1`) |
 | REA host MCP (optional) | `bash scripts/install-rea.sh` (needs JDK≥21; Hopper: `INSTALL_HOPPER=1`) |
 | Labs / detonate / MCP | `bash scripts/labs-setup.sh`; `lab-detonate` / `lab-mcp` |
 | Stage B TUI | `bash scripts/configure.sh` ([howto](#how-to-configuresh-stage-b-tui)); `CONFIGURE_UI=plain` for serial/CI |

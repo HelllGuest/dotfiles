@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
 # install-caveman.sh — JuliusBrussee/caveman for all detected agents (X1 / P15)
 #
-# Pins release tag v4.1.0. Downloads the installer, verifies SHA-256, optionally
+# Pins release tag v4.2.0. Downloads the installer, verifies SHA-256, optionally
 # dry-runs, then installs plugins/skills/hooks for every agent present.
 # Safe to re-run.
 #
 # Env:
-#   CAVEMAN_TAG              override tag (default v4.1.0; must match SHA)
+#   CAVEMAN_TAG              override tag (default v4.2.0; must match SHA)
 #   CAVEMAN_INSTALL_SHA256   override expected digest of install.sh
 #   CAVEMAN_DRY_RUN=1        run upstream --dry-run only
 #   SKIP_SKILL_SYNC=1        skip sync-agent-skills.sh (install.sh batches sync)
@@ -19,9 +19,9 @@ set -euo pipefail
 
 export PATH="${HOME}/.opencode/bin:${HOME}/.npm-global/bin:${HOME}/.local/bin:${PATH}"
 
-CAVEMAN_TAG="${CAVEMAN_TAG:-v4.1.0}"
-# sha256 of https://raw.githubusercontent.com/JuliusBrussee/caveman/v4.1.0/install.sh
-CAVEMAN_INSTALL_SHA256="${CAVEMAN_INSTALL_SHA256:-2e39b2a9b4ce47620757abc8a55ad33a23dd65217f8a998135108f92f83c00a1}"
+CAVEMAN_TAG="${CAVEMAN_TAG:-v4.2.0}"
+# sha256 of https://raw.githubusercontent.com/JuliusBrussee/caveman/v4.2.0/install.sh
+CAVEMAN_INSTALL_SHA256="${CAVEMAN_INSTALL_SHA256:-ee97bd7e6a6dad90f464b0a86b401e0d467f18db8e46178979823c2f23233740}"
 INSTALL_URL="https://raw.githubusercontent.com/JuliusBrussee/caveman/${CAVEMAN_TAG}/install.sh"
 CAVEMAN_DIR="${XDG_DATA_HOME:-$HOME/.local/share}/caveman"
 TMP="$(mktemp)"

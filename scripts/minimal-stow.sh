@@ -19,20 +19,40 @@ if [[ ! -d "$PACKAGE" ]]; then
     exit 1
 fi
 
-PACKAGE="${PACKAGE%/}"
+PACKAGE="$(realpath "$PACKAGE")"
+TARGET="$(realpath -s "$TARGET")"
+[[ "$PACKAGE" != "/" ]] || { echo "Error: refusing to stow /" >&2; exit 1; }
 echo "Linking $PACKAGE to $TARGET..."
 
-# Walk files and symlinks; NUL-delimited so spaces in paths (e.g. Antigravity IDE) work.
-while IFS= read -r -d '' src; do
+# Collect entries first so a conflict fails before any symlink is created.
+mapfile -d '' -t entries < <(find "$PACKAGE" \( -type f -o -type l \) -print0)
+
+for src in "${entries[@]}"; do
     rel_path="${src#"$PACKAGE/"}"
     dest="$TARGET/$rel_path"
-
     if [[ -e "$dest" && ! -L "$dest" ]]; then
         echo "Error: $dest exists and is not a symlink — refusing to overwrite" >&2
         exit 1
     fi
+    # Refuse to traverse an existing symlinked or non-directory parent under TARGET.
+    parent="$(dirname "$dest")"
+    while [[ "$parent" != "$TARGET" && "$parent" != "/" && "$parent" != "." ]]; do
+        if [[ -L "$parent" ]]; then
+            echo "Error: parent dir $parent is a symlink — refusing to link into it" >&2
+            exit 1
+        fi
+        if [[ -e "$parent" && ! -d "$parent" ]]; then
+            echo "Error: parent path $parent exists and is not a directory — refusing to overwrite" >&2
+            exit 1
+        fi
+        parent="$(dirname "$parent")"
+    done
+done
 
+for src in "${entries[@]}"; do
+    rel_path="${src#"$PACKAGE/"}"
+    dest="$TARGET/$rel_path"
     mkdir -p "$(dirname "$dest")"
-    ln -snf "$(realpath -s "$src")" "$dest"
+    ln -snf "$src" "$dest"
     echo "  $rel_path -> $dest"
-done < <(find "$PACKAGE" \( -type f -o -type l \) -print0)
+done

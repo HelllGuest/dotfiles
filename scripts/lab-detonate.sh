@@ -33,24 +33,32 @@ die() { echo "ERR $*" >&2; exit 1; }
 say() { printf '→ %s\n' "$*"; }
 need() { command -v "$1" >/dev/null || die "missing $1"; }
 
-# Prefer unprivileged qemu:///system (libvirt group); sudo only when needed.
-if [[ ${EUID:-$(id -u)} -eq 0 ]]; then
+# Prefer unprivileged qemu:///system when root or in the libvirt group; never
+# probe `virsh uri` (triggers polkit auth and can faillock non-libvirt users).
+if [[ ${EUID:-$(id -u)} -eq 0 ]] || id -Gn 2>/dev/null | grep -qw libvirt; then
   VIRSH_CMD=(virsh -c qemu:///system)
-elif virsh -c qemu:///system uri >/dev/null 2>&1; then
-  VIRSH_CMD=(virsh -c qemu:///system)
+  VIRSH_RO_CMD=(virsh -c qemu:///system)
 else
   VIRSH_CMD=(sudo virsh -c qemu:///system)
+  VIRSH_RO_CMD=(sudo -n virsh -c qemu:///system)
 fi
 virsh_s() { "${VIRSH_CMD[@]}" "$@"; }
+virsh_ro() { "${VIRSH_RO_CMD[@]}" "$@"; }
 
 ensure_net() {
   need virsh
-  sudo systemctl enable --now libvirtd.service 2>/dev/null || true
-  if ! virsh_s net-info virbr-malware >/dev/null 2>&1; then
-    die "virbr-malware missing — run: bash scripts/firewalld-lab-zones.sh"
+  if ! command -v dnsmasq >/dev/null 2>&1; then
+    say "Installing dnsmasq (required for libvirt virbr-malware DHCP)..."
+    sudo pacman -S --needed --noconfirm dnsmasq
   fi
-  virsh_s net-start virbr-malware 2>/dev/null || true
-  virsh_s net-autostart virbr-malware 2>/dev/null || true
+  sudo systemctl enable --now libvirtd.service 2>/dev/null || true
+  local _info
+  _info="$(virsh_s net-info virbr-malware 2>/dev/null)" \
+    || die "virbr-malware missing — run: bash scripts/firewalld-lab-zones.sh"
+  if ! grep -qiE '^Active:[[:space:]]+yes' <<<"$_info"; then
+    virsh_s net-start virbr-malware || die "failed to start virbr-malware network"
+  fi
+  virsh_s net-autostart virbr-malware >/dev/null 2>&1 || true
   ensure_lab_malware_zone
   sudo ip link set virbr-malware up 2>/dev/null || true
 }
@@ -308,7 +316,7 @@ cmd_windows_define() {
 
 cmd_status() {
   echo "=== virbr-malware ==="
-  virsh_s net-info virbr-malware 2>/dev/null || echo "missing"
+  virsh_ro net-info virbr-malware 2>/dev/null || echo "missing (or sudo required)"
   ip -br addr show virbr-malware 2>/dev/null || true
   if command -v firewall-cmd >/dev/null; then
     # sudo -n: never hang on polkit when status is run from an agent/IDE.
@@ -323,7 +331,7 @@ cmd_status() {
     || echo "lab-inetsim: (sudo required for rootful podman)"
   pgrep -a PolarProxy 2>/dev/null || echo "PolarProxy: not running"
   echo "=== domains ==="
-  virsh_s list --all 2>/dev/null | grep -E "detonate|Name" || true
+  virsh_ro list --all 2>/dev/null | grep -E "detonate|Name" || true
 }
 
 usage() {

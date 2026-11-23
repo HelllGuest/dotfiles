@@ -46,7 +46,9 @@ else
 fi
 chmod 1777 "$TOP/@tmp"         # sticky + world-writable, required for /tmp
 ls -ld "$TOP/@tmp"; lsattr -d "$TOP/@tmp"
-cleanup_top
+# Fail loudly on happy-path unmount (trap handles error paths).
+umount "$TOP"
+rmdir "$TOP"
 
 # 3. add fstab entry if not present
 if grep -qE '^[^#]*[[:space:]]/tmp[[:space:]]+btrfs' /etc/fstab; then

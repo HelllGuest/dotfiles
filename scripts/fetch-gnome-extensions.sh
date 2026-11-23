@@ -13,9 +13,19 @@ EXT_ROOT="${XDG_DATA_HOME:-$HOME/.local/share}/gnome-shell/extensions"
 CURL_BIN="${GNOME_EXT_CURL:-/usr/bin/curl}"
 EGO_BASE="https://extensions.gnome.org/download-extension"
 ONLY_UUID=""
-if [[ "${1:-}" == --only ]]; then
-    ONLY_UUID="${2:?--only requires an extension UUID}"
+if [[ $# -gt 0 ]]; then
+    case "$1" in
+        --only)
+            [[ $# -eq 2 && -n "${2:-}" ]] || { echo "Usage: $0 [--only <uuid>]" >&2; exit 1; }
+            ONLY_UUID="$2"
+            ;;
+        *)
+            echo "Usage: $0 [--only <uuid>]" >&2
+            exit 1
+            ;;
+    esac
 fi
+MATCHED=0
 EGO_TMPS=()
 trap '(( ${#EGO_TMPS[@]} )) && rm -rf -- "${EGO_TMPS[@]}"' EXIT
 
@@ -43,17 +53,18 @@ PY
 
 install_ego_zip() {
     local uuid="$1" version_tag="$2" label="$3"
-    local patch51="${4:-0}" expected_sha="${5:-}"
+    local patch51="${4:-0}" expected_sha="${5:-}" url_override="${6:-}"
     [[ -z "$ONLY_UUID" || "$ONLY_UUID" == "$uuid" ]] || return 0
-    local tmp zip dir got_sha
+    MATCHED=1
+    local tmp zip dir got_sha url
     tmp="$(mktemp -d)"
     EGO_TMPS+=("$tmp")
     zip="$tmp/${uuid}.shell-extension.zip"
     dir="$EXT_ROOT/$uuid"
+    url="${url_override:-${EGO_BASE}/${uuid}.shell-extension.zip?version_tag=${version_tag}}"
 
     info "EGO ${label} (${uuid}, tag ${version_tag})"
-    "$CURL_BIN" -fsSL -o "$zip" \
-        "${EGO_BASE}/${uuid}.shell-extension.zip?version_tag=${version_tag}"
+    "$CURL_BIN" -fsSL -o "$zip" "$url"
 
     [[ ${expected_sha,,} =~ ^[0-9a-f]{64}$ ]] || {
         echo "✗ ${uuid}: expected 64-hex SHA-256 pin" >&2
@@ -78,8 +89,6 @@ install_ego_zip() {
     return 0
 }
 
-mkdir -p "$EXT_ROOT"
-
 # Shell-51 EGO builds (version_tag + SHA-256 pinned together).
 install_ego_zip "caffeine@patapon.info" "${CAFFEINE_TAG:-76057}" "Caffeine" 0 \
     "${CAFFEINE_SHA256:-3ec59c6d1a62c26ba5c45128b084b62ef4e112fa66008768b5094df940e6a164}"
@@ -103,7 +112,13 @@ install_ego_zip "custom-osd@neuromorph" "${CUSTOM_OSD_TAG:-55755}" "Custom OSD" 
 install_ego_zip "restartto@tiagoporsch.github.io" "${RESTARTTO_TAG:-73214}" "Restart To" 1 \
     "${RESTARTTO_SHA256:-16edfd59e432f8bf1aed4e02e2d87a49512367537019d2c2acb1e8517fd410af}"
 install_ego_zip "dash2dock-lite@icedman.github.com" "${DASH2DOCK_VERSION_TAG:-71180}" "Dash2Dock Animated" 1 \
-    "${DASH2DOCK_SHA256:-14db6849ba6edcb63f25032007e182d2b7d842568e9c1386587d7a08c6c53abe}"
+    "${DASH2DOCK_SHA256:-14db6849ba6edcb63f25032007e182d2b7d842568e9c1386587d7a08c6c53abe}" \
+    "${DASH2DOCK_URL:-}"
+
+if [[ -n "$ONLY_UUID" && $MATCHED -eq 0 ]]; then
+    echo "✗ unknown extension UUID: $ONLY_UUID" >&2
+    exit 1
+fi
 
 if [[ -z "$ONLY_UUID" ]]; then
     echo "✓ Fetched GNOME extensions into $EXT_ROOT"

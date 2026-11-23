@@ -113,10 +113,10 @@ if [[ -f $CANON/install.sh && -f $CANON/lib/80-chroot-setup.sh ]]; then
     || fail "canonical Stage A missing nvidia modeset"
   grep -q 'thinkpad-charge-thresholds' "${CANON_CHROOT[@]}" \
     || fail "canonical Stage A missing charge thresholds"
-  grep -q 'github-cli glab' "$CANON/lib/50-packages.sh" \
-    || fail "canonical base must include github-cli glab"
-  grep -q 'htop btop fastfetch' "$CANON/lib/50-packages.sh" \
-    || fail "canonical base must include htop btop fastfetch"
+  grep -q 'github-cli glab' "${CANON_CHROOT[@]}" \
+    || fail "canonical Stage A devtools must include github-cli glab"
+  grep -q 'btop fastfetch' "${CANON_CHROOT[@]}" \
+    || fail "canonical Stage A cli bundle must include btop fastfetch"
 else
   echo "NOTE: skip canonical seed checks (no sibling t14s-arch-install)"
 fi

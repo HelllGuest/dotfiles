@@ -5,9 +5,9 @@
 
 set -euo pipefail
 
-PHOTO_URL="${PHOTO_URL:-https://github.com/Diolinux/PhotoGIMP/releases/download/3.0/PhotoGIMP-linux.zip}"
-# SHA-256 of PhotoGIMP 3.0 release zip; override with PHOTO_SHA256 if overriding PHOTO_URL.
-PHOTO_SHA256="${PHOTO_SHA256:-1af6e2a6308bbc0fb716a7dbbd68036adbcc091da16432869c7c6c6aef18e54e}"
+PHOTO_URL="${PHOTO_URL:-https://github.com/Diolinux/PhotoGIMP/releases/download/3.1/PhotoGIMP-linux.zip}"
+# SHA-256 of PhotoGIMP 3.1 release zip; override with PHOTO_SHA256 if overriding PHOTO_URL.
+PHOTO_SHA256="${PHOTO_SHA256:-bf0e1279870d40152beb3e702cf3e4e01a6892031a1ace5bc4a9b858894b584e}"
 CURL_BIN="${PHOTO_CURL:-/usr/bin/curl}"
 
 if ! command -v gimp >/dev/null 2>&1; then

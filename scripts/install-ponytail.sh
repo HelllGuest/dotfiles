@@ -19,7 +19,7 @@ set -euo pipefail
 export PATH="${HOME}/.opencode/bin:${HOME}/.npm-global/bin:${HOME}/.local/bin:${PATH}"
 
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-PONYTAIL_REPO="https://github.com/DietrichGebert/ponytail.git"
+PONYTAIL_REPO="${PONYTAIL_REPO:-https://github.com/DietrichGebert/ponytail.git}"
 PONYTAIL_TAG="${PONYTAIL_TAG:-v5.3.3}"
 # Commit SHA matching PONYTAIL_TAG; bump tag + commit together (refuses moved tags).
 PONYTAIL_COMMIT="${PONYTAIL_COMMIT:-7801d061243d7b753bad0e0b3c057cd250b11755}"
@@ -40,20 +40,28 @@ command -v node >/dev/null 2>&1 || die "node required (fnm/node first)"
 say "sync DietrichGebert/ponytail (${PONYTAIL_TAG} @ ${PONYTAIL_COMMIT:0:12}) → ${PONYTAIL_DIR}"
 mkdir -p "$(dirname "$PONYTAIL_DIR")"
 if [[ -d "$PONYTAIL_DIR/.git" ]]; then
-  git -C "$PONYTAIL_DIR" fetch --depth 1 origin "refs/tags/${PONYTAIL_TAG}:refs/tags/${PONYTAIL_TAG}" >/dev/null 2>&1 \
-    || git -C "$PONYTAIL_DIR" fetch --depth 1 origin "$PONYTAIL_COMMIT" >/dev/null 2>&1 \
+  # Force-update tag ref and verify commit BEFORE touching the working tree.
+  git -C "$PONYTAIL_DIR" fetch --depth 1 origin "+refs/tags/${PONYTAIL_TAG}:refs/tags/${PONYTAIL_TAG}" >/dev/null 2>&1 \
     || die "failed to fetch ponytail ${PONYTAIL_TAG}"
-  git -C "$PONYTAIL_DIR" checkout -B main "${PONYTAIL_TAG}" >/dev/null 2>&1 \
-    || git -C "$PONYTAIL_DIR" checkout -B main "${PONYTAIL_COMMIT}" >/dev/null 2>&1
+  got_commit="$(git -C "$PONYTAIL_DIR" rev-parse "refs/tags/${PONYTAIL_TAG}^{commit}" 2>/dev/null || true)"
+  [[ "$got_commit" == "$PONYTAIL_COMMIT" ]] \
+    || die "ponytail ${PONYTAIL_TAG} resolved to ${got_commit:-unknown}, expected ${PONYTAIL_COMMIT} — refusing a moved tag"
+  git -C "$PONYTAIL_DIR" checkout -q -B main "$PONYTAIL_COMMIT" >/dev/null 2>&1
 else
+  # Stage with --no-checkout on the same filesystem so a moved tag never lands in PONYTAIL_DIR.
+  _clone_stage="$(mktemp -d "$(dirname "$PONYTAIL_DIR")/.ponytail-clone.XXXXXX")"
+  PONYTAIL_TMPS+=("$_clone_stage")
+  git clone --no-checkout --depth 1 --branch "${PONYTAIL_TAG}" "$PONYTAIL_REPO" "$_clone_stage/repo" >/dev/null 2>&1 \
+    || die "failed to clone ponytail ${PONYTAIL_TAG}"
+  got_commit="$(git -C "$_clone_stage/repo" rev-parse "HEAD^{commit}" 2>/dev/null || true)"
+  [[ "$got_commit" == "$PONYTAIL_COMMIT" ]] \
+    || die "ponytail ${PONYTAIL_TAG} resolved to ${got_commit:-unknown}, expected ${PONYTAIL_COMMIT} — refusing a moved tag"
+  git -C "$_clone_stage/repo" checkout -q -B main "$PONYTAIL_COMMIT" >/dev/null 2>&1
   rm -rf "$PONYTAIL_DIR"
-  git clone --depth 1 --branch "${PONYTAIL_TAG}" "$PONYTAIL_REPO" "$PONYTAIL_DIR" >/dev/null 2>&1
-  git -C "$PONYTAIL_DIR" checkout -B main "${PONYTAIL_TAG}" >/dev/null 2>&1 || true
+  mv "$_clone_stage/repo" "$PONYTAIL_DIR"
+  rm -rf "$_clone_stage"
+  unset _clone_stage
 fi
-
-got_commit="$(git -C "$PONYTAIL_DIR" rev-parse HEAD 2>/dev/null || true)"
-[[ "$got_commit" == "$PONYTAIL_COMMIT" ]] \
-  || die "ponytail ${PONYTAIL_TAG} resolved to ${got_commit:-unknown}, expected ${PONYTAIL_COMMIT} — refusing a moved tag"
 
 [[ -f "$PONYTAIL_DIR/AGENTS.md" && -d "$PONYTAIL_DIR/skills/ponytail" ]] \
   || die "ponytail checkout incomplete at $PONYTAIL_DIR"

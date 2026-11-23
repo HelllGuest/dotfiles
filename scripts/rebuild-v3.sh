@@ -110,7 +110,8 @@ if not keys:
     if pb.is_file():
         m = re.search(r"(?ms)^validpgpkeys\s*=\s*\((.*?)\)", pb.read_text(encoding="utf-8", errors="ignore"))
         if m:
-            keys.extend(re.findall(r"[0-9A-Fa-f]{16,}", m.group(1)))
+            body = "\n".join(l.split("#", 1)[0] for l in m.group(1).splitlines())
+            keys.extend(re.findall(r"[0-9A-Fa-f]{16,}", body))
 for k in dict.fromkeys(keys):
     print(k)
 PY
