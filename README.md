@@ -480,11 +480,13 @@ GNOME_EXT_FETCH=1 bash scripts/install-extensions.sh
 
 Downloads and SHA-256-verifies all 11 EGO zips (Caffeine, Blur My Shell, 8 Full-pack, Dash2Dock). Safe to re-run. Enable via `install-extensions.sh`; Wayland needs log out → log in.
 
-**Lab commands (after `labs-setup.sh` / configure SETUP_LABS):**
+**Lab commands (run `firewalld-lab-zones.sh` before `labs-setup.sh` / configure `SETUP_FIREWALLD` + `SETUP_LABS`):**
 ```text
 lab-triage | lab-re | lab-android | lab-web | lab-detonate | lab-mcp
 ```
-`lab-detonate.sh capture-up` keeps INetSim logs and captured SMTP/FTP/HTTP-POST data under `/srv/lab/capture` (`inetsim-data/`); the container runs read-only with minimal caps (`LAB_CAPTURE_BIND` overrides `192.168.200.1`). `lab-detonate.sh linux-define` seeds Alpine `nocloud` cloud-init (`DETONATE_LINUX_PASS`, default `detonate`) and powers off cleanly before taking the `clean` snapshot. PolarProxy starts only if its hash matches the one verified at setup. Interactive lab images build with rootless Podman using `--network=host` (pasta/slirp throttles multi-GB pacman pulls). `lab-capture` builds in rootful Podman via `lab-detonate.sh setup` so `capture-up`'s `sudo podman run` sees it; `lab-web` uses signed Arch `chromium`; `lab-android` shares persistent named volumes `lab-android-flutter` and `lab-android-sdk` with `lab-mcp.sh`). On linux-hardened that needs `fuse-overlayfs` (in `pacman.txt`) and the stowed `containers` package (`storage.conf`); `bash scripts/check.sh` reports it under "Podman (rootless)".
+`/work` safety guardrail (`scripts/lib/lab-workdir.sh`): launching any `lab-*` wrapper or `lab-mcp` from `$HOME` (including the GNOME app-grid launchers `Lab RE` and `Lab Android`), `~/dotfiles`, hidden dirs under `$HOME`, `/srv/lab/samples`, system/runtime paths, or any directory holding a live socket prints `lab: refusing to mount <dir> as /work (<reason>). Using /srv/lab/out — cd into a project first.` and mounts `/srv/lab/out` as scratch `/work` instead. This is expected (not a failure) so container code cannot reach `~/.ssh`, `~/.gnupg`, or dotfiles. To work on a project, `cd` into its directory first (for example `cd ~/dev/app && lab-android`).
+
+`lab-detonate.sh capture-up` keeps INetSim logs and captured SMTP/FTP/HTTP-POST data under `/srv/lab/capture` (`inetsim-data/`); the container runs read-only with minimal caps (`LAB_CAPTURE_BIND` overrides `192.168.200.1`). `lab-detonate.sh linux-define` seeds Alpine `nocloud` cloud-init (`DETONATE_LINUX_PASS`, default `detonate`) and powers off cleanly before taking the `clean` snapshot. PolarProxy starts only if its hash matches the one verified at setup. Interactive lab images build with rootless Podman using `--network=host` (pasta/slirp throttles multi-GB pacman pulls). `lab-capture` builds in rootful Podman via `lab-detonate.sh setup` so `capture-up`'s `sudo podman run` sees it; `lab-web` uses signed Arch `chromium`; `lab-android` shares persistent named volumes `lab-android-flutter` and `lab-android-sdk` with `lab-mcp.sh` and forwards the Wayland socket (with `XDG_RUNTIME_DIR`) only when it exists. On linux-hardened that needs `fuse-overlayfs` (in `pacman.txt`) and the stowed `containers` package (`storage.conf`); `bash scripts/check.sh` reports it under "Podman (rootless)".
 
 **What `./install.sh` runs, in order:**
 ```text
@@ -646,7 +648,8 @@ We take a "quiet by default" approach:
 | No inbound / wrong default zone | firewalld zones not applied or default ≠ `drop` | `bash scripts/firewalld-lab-zones.sh`; `sudo firewall-cmd --get-default-zone` |
 | `virbr-malware` listed under `libvirt` / `block` | Bridge XML missing `zone=lab-malware`, or pre-bind leftover | `sudo bash scripts/firewalld-lab-zones.sh` (redefines + rebinds; needs a real TTY/polkit auth); [howto](#how-to-firewalld-lab-zones--lab-malware) |
 | `lab-detonate status` hangs / waits for password | Old script used interactive `sudo` for firewalld/podman | Pull latest: status uses `sudo -n` + `virsh -c qemu:///system`; setup/capture still need sudo |
-| `INVALID_ZONE: lab-malware` | Zone never created on this host | Same as above (`lib/lab-malware-zone.sh`) |
+| `ERR virbr-malware missing` / `INVALID_ZONE: lab-malware` | `firewalld-lab-zones.sh` not run before `labs-setup.sh`, or older script started `virbr-malware` before creating `lab-malware` | `bash scripts/firewalld-lab-zones.sh && bash scripts/labs-setup.sh` ([howto](#how-to-firewalld-lab-zones--lab-malware)) |
+| `lab: refusing to mount /home/… as /work (home/root leak). Using /srv/lab/out` | Expected safety guardrail (`scripts/lib/lab-workdir.sh`) blocks mounting `$HOME`, dotfiles, hidden dirs, samples, and socket dirs read-write; GNOME app-grid launchers start in `$HOME` | Not an error (`/srv/lab/out` is mounted as scratch `/work`); to mount a project, run `cd ~/path/to/project && lab-android` (or `lab-re` / `lab-triage` / `lab-web`) |
 | Stage B VM hangs on Name/Email prompt | Interactive git setup on serial | Pull fixes; harness sets `GIT_SETUP_NONINTERACTIVE` |
 | `DOTFILES_STAGEB_RESULT=PASS_HEADLESS` | Install failed only on checks that need a desktop session / launched apps | Expected on a headless VM; the guest log lists each ✗ |
 | SSH blocked after lab-zones | drop zone has no 22/tcp | `sudo firewall-cmd --permanent --add-service=ssh && sudo firewall-cmd --reload` (only if you need SSH) |
@@ -692,7 +695,7 @@ We take a "quiet by default" approach:
 | Android UI skills | `bash scripts/install-android-ui-skills.sh` (Compose + Material 3) |
 | REA in lab-re | `lab-re` / rebuild `podman build -t localhost/lab-re labs/lab-re` (`rea-agents@6.10.1`) |
 | REA host MCP (optional) | `bash scripts/install-rea.sh` (needs JDK≥21; Hopper: `INSTALL_HOPPER=1`) |
-| Labs / detonate / MCP | `bash scripts/labs-setup.sh`; `lab-detonate` / `lab-mcp` |
+| Labs / detonate / MCP | `bash scripts/firewalld-lab-zones.sh && bash scripts/labs-setup.sh`; `lab-detonate` / `lab-mcp` |
 | Stage B TUI | `bash scripts/configure.sh` ([howto](#how-to-configuresh-stage-b-tui)); `CONFIGURE_UI=plain` for serial/CI |
 | Stage B VM harness | `bash scripts/vm-stageb-run.sh` (needs Stage A `test-disk.qcow2`) |
 | Terminal / CLI rice | `bash scripts/rice-setup.sh`; switch theme with `rice-theme` / `ff-preset` |

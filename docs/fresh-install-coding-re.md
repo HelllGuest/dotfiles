@@ -246,7 +246,7 @@ See [Verify sleep](hardened-arch-gnome.md#verify-sleep-s2idle).
 | Languages | fnm Node 22, rust, `python-pipx`, `flutter-bin`, jdk-openjdk (+ JDK 17 for Android) |
 | Mobile | Flatpak Android Studio; `ANDROID_HOME` in `.shell-exports`; alias `as` |
 | AI stack | `sync-agent-skills` then Headroom + `hr-*` / optional `hr-proxy.service`, OpenCode + Kimi (`install-coding-agents.sh`), Caveman + Ponytail (complementary; `./install.sh` both, SETUP_AI = Ponytail), Continue FIM→ollama (P15), Obscura, `ai-stack-setup.sh` |
-| Labs | `lab-triage` / `lab-re` / `lab-android` / `lab-web` / `lab-detonate` / `lab-mcp` via `labs-setup.sh` |
+| Labs | `lab-triage` / `lab-re` / `lab-android` / `lab-web` / `lab-detonate` / `lab-mcp` via `firewalld-lab-zones.sh` then `labs-setup.sh` (`cd` into a project for `/work`; app-grid launches default to `/srv/lab/out`, see [README](../README.md)) |
 | Local builds | x86-64-v3 makepkg drop-in; `bash scripts/rebuild-v3.sh` after big upgrades |
 
 ### Containers (Podman — in `pacman.txt`)
