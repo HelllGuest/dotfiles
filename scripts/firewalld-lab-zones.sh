@@ -73,6 +73,12 @@ if [[ -d /sys/class/net/virbr0 ]]; then
     || { echo "firewalld-lab-zones: runtime virbr0 → libvirt failed" >&2; exit 1; }
 fi
 
+# Create/load the lab-malware firewalld zone BEFORE virsh net-start: the bridge
+# XML sets zone="lab-malware", so libvirt fails with INVALID_ZONE if it doesn't
+# exist in firewalld yet.
+echo "→ Ensuring firewalld zone lab-malware..."
+ensure_lab_malware_zone
+
 # Host-only malware net (no forward / no NAT)
 MALWARE_XML="$(mktemp)"
 trap 'rm -f "$MALWARE_XML"' EXIT
@@ -124,9 +130,6 @@ if command -v virsh >/dev/null 2>&1; then
   fi
   unset -v _ninfo
 fi
-
-echo "→ Binding virbr-malware to firewalld zone lab-malware..."
-ensure_lab_malware_zone
 
 if [[ -d /sys/class/net/virbr0 ]]; then
   sudo firewall-cmd --zone=libvirt --change-interface=virbr0 \

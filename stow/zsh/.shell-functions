@@ -322,8 +322,9 @@ lab-android() {
     _lab_reexec_kitty "lab-android" "#98971a" lab-android "$@" && return
     local extra=()
     [[ -e /dev/kvm ]] && extra+=(--device /dev/kvm)
-    if [[ -n "${WAYLAND_DISPLAY:-}" && -n "${XDG_RUNTIME_DIR:-}" ]]; then
+    if [[ -n "${WAYLAND_DISPLAY:-}" && -n "${XDG_RUNTIME_DIR:-}" && -S "${XDG_RUNTIME_DIR}/${WAYLAND_DISPLAY}" ]]; then
         extra+=(-e "WAYLAND_DISPLAY=${WAYLAND_DISPLAY}")
+        extra+=(-e "XDG_RUNTIME_DIR=${XDG_RUNTIME_DIR}")
         extra+=(-v "${XDG_RUNTIME_DIR}/${WAYLAND_DISPLAY}:${XDG_RUNTIME_DIR}/${WAYLAND_DISPLAY}")
     fi
     local samples out work

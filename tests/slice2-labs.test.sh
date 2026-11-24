@@ -205,6 +205,11 @@ grep -q 'dhcp-option=6,192.168.200.1' "$ROOT/scripts/firewalld-lab-zones.sh" \
   || fail "virbr-malware DHCP must advertise DNS 192.168.200.1 (INetSim)"
 grep -qE 'zone=["'\'']lab-malware["'\'']' "$ROOT/scripts/firewalld-lab-zones.sh" \
   || fail "virbr-malware bridge XML must set zone=lab-malware (stop libvirt reclaim)"
+_fw_zone_ln="$(grep -n -m1 '^ensure_lab_malware_zone$' "$ROOT/scripts/firewalld-lab-zones.sh" | cut -d: -f1)"
+_fw_start_ln="$(grep -n -m1 'virsh net-start virbr-malware' "$ROOT/scripts/firewalld-lab-zones.sh" | cut -d: -f1)"
+[[ -n $_fw_zone_ln && -n $_fw_start_ln ]] && (( _fw_zone_ln < _fw_start_ln )) \
+  || fail "firewalld-lab-zones must create lab-malware zone before virsh net-start virbr-malware"
+unset -v _fw_zone_ln _fw_start_ln
 grep -q 'sudo firewall-cmd --permanent --get-zones' "$ROOT/scripts/firewalld-lab-zones.sh" \
   || fail "firewalld-lab-zones must query zones with sudo"
 
@@ -422,6 +427,13 @@ grep -q 'source "$(cd "$(dirname "$0")" && pwd)/lib/lab-workdir.sh"' "$ROOT/scri
 _ae_out="$(bash "$ROOT/labs/lab-android/entrypoint.sh" printf '%s' '{"jsonrpc":"2.0"}' </dev/null)"
 [[ "$_ae_out" == '{"jsonrpc":"2.0"}' ]] || fail "lab-android entrypoint polluted non-tty stdout: $_ae_out"
 unset -v _ae_out
+
+# Wayland pass-through in lab-android must export XDG_RUNTIME_DIR and check socket exists.
+_la_fn="$(awk '/^lab-android\(\) \{/{f=1} f; f&&/^}$/{exit}' "$ROOT/stow/zsh/.shell-functions")"
+grep -q 'XDG_RUNTIME_DIR=\${XDG_RUNTIME_DIR}' <<<"$_la_fn" \
+  && grep -q -- '-S "\${XDG_RUNTIME_DIR}/\${WAYLAND_DISPLAY}"' <<<"$_la_fn" \
+  || fail "lab-android must export XDG_RUNTIME_DIR and guard Wayland bind with -S"
+unset -v _la_fn
 
 # Behavioral: fastfetch templates parse cleanly and render without color/schema errors.
 for _ff in "$ROOT"/stow/fastfetch/.config/fastfetch/*.jsonc; do
