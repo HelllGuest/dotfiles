@@ -265,12 +265,20 @@ Rehearse: `scripts/arch-install-vmtest.sh`. Then **1. Full Bootstrap** (Stage B)
 
 ### 1. Full Bootstrap (Recommended)
 Installs packages, stows configs into `$HOME`, installs `stow/system/` into `/etc` as root-owned files, restores GNOME settings, and runs health checks. Run as your desktop user (**not** `sudo ./install.sh`; it rejects `EUID == 0`).
+
+On an interactive TTY, `./install.sh` opens a **TUI menu** (`dialog` / `whiptail` / `plain`, shared via `scripts/lib/ui-menu.sh`) with presets (Full, Custom checklist, Core, Dotfiles & desktop, AI & RE, Stage B modules, Health check). Non-TTY sessions (CI / headless VM) and `--all` run the full default install with no prompts. A GNOME GUI mode (`zenity`) is available via `--gui` or the stowed **Dotfiles Installer** app-grid launcher (`dotfiles-installer.desktop`).
+
 ```bash
-./install.sh
-# Optional: run Stage B TUI modules during install (fails hard if a module fails):
-# CONFIGURE=1 ./install.sh
-# Headless / serial: CONFIGURE=1 CONFIGURE_UI=plain ./install.sh
-# Skip foxcage / ollama / theme: SKIP_FOXCAGE=1 SKIP_OLLAMA=1 SKIP_THEME=1 ./install.sh
+./install.sh                              # interactive TUI menu on TTY (full install on non-TTY)
+./install.sh --gui                        # GNOME GUI dialogs (zenity)
+./install.sh --all                        # full default install without prompts (alias: -y / INSTALL_ALL=1)
+./install.sh --only stow,desktop,check    # run only selected sections (no menu)
+./install.sh --skip ai,apps               # run defaults except listed sections
+./install.sh --list                       # list all section names
+# Optional: run Stage B TUI modules during full install (fails hard if a module fails):
+# CONFIGURE=1 ./install.sh --all
+# Headless / serial: CONFIGURE=1 CONFIGURE_UI=plain ./install.sh --all
+# Skip foxcage / ollama / theme: SKIP_FOXCAGE=1 SKIP_OLLAMA=1 SKIP_THEME=1 ./install.sh --all
 ```
 
 Machine profiles run in `./install.sh` via `scripts/apply-profile.sh` **after** `packages/pacman.txt` (exactly one profile): `profiles/$(hostname).sh` if it exists, otherwise `scripts/detect-profile.sh` (ThinkPad P15 → `thinkpad-p15`, ThinkPad T14s Gen 3 AMD 21CQ/21CR → `thinkpad-t14s`, other ThinkPads/laptop chassis → `laptop`). Pacman first so Optimus/NVIDIA packages exist before `thinkpad-p15` enables services and rebuilds UKIs (GPU packages in `packages/pacman.txt`: the Intel packages are skipped on the AMD T14s, and the NVIDIA packages (`nvidia-open-dkms`, `nvidia-prime`, `nvidia-utils`, `egl-wayland`) are installed only when `has_nvidia_gpu` finds an NVIDIA display device on PCI, so the T14s, VMs and other laptops skip the NVIDIA stack and its DKMS builds). There is no `nvidia.sh`; Optimus setup is inside `profiles/thinkpad-p15.sh`.
@@ -319,9 +327,11 @@ scripts/thinkpad-charge-thresholds.sh  # tmpfiles + late-boot service; profile /
 
 #### How to: `configure.sh` (Stage B TUI)
 
-UI backend (auto): **dialog** if present, else **whiptail**, else plain checklist
-on the TTY (Arch often has whiptail only — `pacman -S dialog` optional). Force
-with `CONFIGURE_UI=plain|dialog|whiptail` (use `plain` on serial / CI / no TTY).
+UI backend (shared with `install.sh` in `scripts/lib/ui-menu.sh`): auto-detects
+**dialog** → **whiptail** → **plain** on the TTY (Arch often has whiptail only —
+`pacman -S dialog` optional), or **zenity** GUI with `--gui` / `CONFIGURE_UI=gui`.
+Force with `--tui|--gui|--plain` or `CONFIGURE_UI=plain|tui|dialog|whiptail|gui|zenity`
+(use `plain` on serial / CI / no TTY).
 Theme matches Stage A (blue screen, cyan chrome, backtitle `Dotfiles configure · Stage B`).
 Interactive runs open an archdi-style **main menu** (Modules / Profile / Quit) that
 loops until Quit (plain menu: Ctrl-D quits, a bad number asks again).

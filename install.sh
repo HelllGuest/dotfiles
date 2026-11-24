@@ -3,6 +3,9 @@
 # Arch GNOME Rice Installer
 # Run from a GNOME session terminal after first login (Stage B in README).
 # dconf, extension enable, and gsettings steps need an active user session.
+#
+# Interactive TTY opens a TUI menu (dialog/whiptail/plain) so you can run
+# everything, pick sections, or use a preset. Non-TTY or --all runs full install.
 
 # Ensure we are in the repo root
 cd "$(dirname "$0")" || exit 1
@@ -22,10 +25,270 @@ for _p in "$HOME/.opencode/bin" "$HOME/.npm-global/bin" "${PNPM_HOME:-$HOME/.loc
 done
 unset _p
 
+# ── Sections & CLI / Menu selection ──────────────────────────────────────
+INSTALL_DEFAULT_SECTIONS=(packages profile flatpak fonts stow aur shell desktop dev ai apps hardening check)
+INSTALL_ALL_SECTIONS=("${INSTALL_DEFAULT_SECTIONS[@]}" configure)
+
+install_usage() {
+    cat <<'EOF'
+Usage: ./install.sh [OPTIONS]
+
+Run interactively on a TTY to open the TUI menu, or pass flags for GUI / selective runs.
+Non-TTY sessions (CI / headless VM) run the full default install automatically.
+
+Options:
+  --menu           Open interactive menu (default on interactive TTY)
+  --all, -y        Run all default sections non-interactively
+  --tui            Force terminal TUI (dialog / whiptail)
+  --gui            Force GNOME GUI dialogs (zenity)
+  --plain          Force plain text prompts
+  --only LIST      Run only comma-separated sections (no menu)
+  --skip LIST      Run default sections except comma-separated ones (no menu)
+  --list           List available section names and exit
+  -h, --help       Show this help and exit
+
+Environment:
+  INSTALL_ALL=1    Same as --all
+  INSTALL_UI=...   plain|tui|dialog|whiptail|gui|zenity
+  SKIP_THEME=1 / SKIP_OLLAMA=1 / SKIP_FOXCAGE=1 / SKIP_OPS_HYGIENE=1 / CONFIGURE=1
+EOF
+}
+
+install_list_sections() {
+    cat <<'EOF'
+packages   Pacman packages (pacman.txt), input cleanup, bootvine
+profile    Machine hardware profile (apply-profile.sh)
+flatpak    Flatpak apps (packages/flatpak.txt)
+fonts      Fonts (scripts/install-fonts.sh)
+stow       Dotfiles stow + /etc system configs + user timers
+aur        AUR packages (packages/aur.txt)
+shell      zsh login shell, Node 22 (fnm), atuin history, zram
+desktop    GNOME session, location, Console, GDM, theme, extensions
+dev        Git global config + Neovim plugins/treesitter
+ai         AI & RE stack (skills, Headroom, agents, ghidra-cli, Obscura, Ollama)
+apps       Optional apps (PhotoGIMP, foxcage)
+configure  Stage B configurator (firewalld, labs, detonate, rice) [opt-in]
+hardening  Privacy hardener, ops hygiene, Tailscale firewalld
+check      Health check (check.sh) + config validation
+EOF
+}
+
+_install_valid_section() {
+    local s
+    for s in "${INSTALL_ALL_SECTIONS[@]}"; do
+        [[ $s == "$1" ]] && return 0
+    done
+    return 1
+}
+
+INSTALL_MODE="auto"
+INSTALL_CLI_MODE=0
+INSTALL_UI="${INSTALL_UI:-}"
+INSTALL_ONLY=""
+INSTALL_SKIP=""
+INSTALL_SECTIONS=""
+
+if [[ ${INSTALL_ALL:-0} == 1 ]]; then
+    INSTALL_MODE="all"
+fi
+
+while (($#)); do
+    case "$1" in
+        --menu) INSTALL_MODE="menu"; INSTALL_CLI_MODE=1 ;;
+        --all|-y) INSTALL_MODE="all"; INSTALL_CLI_MODE=1 ;;
+        --gui|--zenity) INSTALL_UI="gui"; (( INSTALL_CLI_MODE == 0 )) && INSTALL_MODE="menu" ;;
+        --tui) INSTALL_UI="tui"; (( INSTALL_CLI_MODE == 0 )) && INSTALL_MODE="menu" ;;
+        --plain) INSTALL_UI="plain"; (( INSTALL_CLI_MODE == 0 )) && INSTALL_MODE="menu" ;;
+        --only)
+            [[ $# -ge 2 ]] || { echo "install.sh: --only requires a comma-separated list" >&2; exit 2; }
+            INSTALL_ONLY="$2"; INSTALL_MODE="filter"; INSTALL_CLI_MODE=1; shift
+            ;;
+        --only=*)
+            INSTALL_ONLY="${1#--only=}"; INSTALL_MODE="filter"; INSTALL_CLI_MODE=1
+            ;;
+        --skip)
+            [[ $# -ge 2 ]] || { echo "install.sh: --skip requires a comma-separated list" >&2; exit 2; }
+            INSTALL_SKIP="$2"; INSTALL_MODE="filter"; INSTALL_CLI_MODE=1; shift
+            ;;
+        --skip=*)
+            INSTALL_SKIP="${1#--skip=}"; INSTALL_MODE="filter"; INSTALL_CLI_MODE=1
+            ;;
+        --list) install_list_sections; exit 0 ;;
+        -h|--help) install_usage; exit 0 ;;
+        *)
+            echo "install.sh: unknown option '$1' (try --help)" >&2
+            exit 2
+            ;;
+    esac
+    shift
+done
+
+if [[ -n $INSTALL_ONLY && -n $INSTALL_SKIP ]]; then
+    echo "install.sh: use either --only or --skip, not both" >&2
+    exit 2
+fi
+
+if [[ -n $INSTALL_ONLY ]]; then
+    IFS=',' read -r -a _req <<<"$INSTALL_ONLY"
+    _chosen=()
+    for _s in "${_req[@]}"; do
+        [[ -z $_s ]] && continue
+        if ! _install_valid_section "$_s"; then
+            echo "install.sh: unknown section '$_s' (run ./install.sh --list)" >&2
+            exit 2
+        fi
+        _chosen+=("$_s")
+    done
+    if [[ ${#_chosen[@]} -eq 0 ]]; then
+        echo "install.sh: --only list is empty" >&2
+        exit 2
+    fi
+    INSTALL_SECTIONS="$(printf '%s\n' "${_chosen[@]}")"
+    if printf '%s\n' "$INSTALL_SECTIONS" | grep -qx 'configure'; then
+        CONFIGURE=1
+    fi
+    unset _req _chosen _s
+elif [[ -n $INSTALL_SKIP ]]; then
+    IFS=',' read -r -a _sk <<<"$INSTALL_SKIP"
+    for _s in "${_sk[@]}"; do
+        [[ -z $_s ]] && continue
+        if ! _install_valid_section "$_s"; then
+            echo "install.sh: unknown section '$_s' (run ./install.sh --list)" >&2
+            exit 2
+        fi
+    done
+    _base=("${INSTALL_DEFAULT_SECTIONS[@]}")
+    if [[ ${CONFIGURE:-0} == 1 || ${CONFIGURE:-} == Y ]]; then
+        _base+=(configure)
+    fi
+    _chosen=()
+    for _d in "${_base[@]}"; do
+        _drop=0
+        for _s in "${_sk[@]}"; do
+            [[ $_d == "$_s" ]] && _drop=1
+        done
+        (( _drop == 0 )) && _chosen+=("$_d")
+    done
+    if [[ ${#_chosen[@]} -eq 0 ]]; then
+        echo "install.sh: nothing left to run after --skip" >&2
+        exit 0
+    fi
+    INSTALL_SECTIONS="$(printf '%s\n' "${_chosen[@]}")"
+    unset _sk _base _chosen _d _s _drop
+elif [[ $INSTALL_MODE == menu || ( $INSTALL_MODE == auto && ( ( -t 0 && -t 1 ) || $INSTALL_UI == gui || $INSTALL_UI == zenity ) ) ]]; then
+    # shellcheck source=scripts/lib/ui-menu.sh
+    source scripts/lib/ui-menu.sh
+    ui_init "$INSTALL_UI" "Dotfiles Installer · Stage B" "INSTALL_UI" || exit 1
+    trap ui_theme_cleanup EXIT
+    ui_theme_init
+    # shellcheck disable=SC2034 # consumed by ui_menu in lib/ui-menu.sh
+    DEFAULT_MENU_ITEM="custom"
+
+    while true; do
+        _pick="$(ui_menu "Choose what to install (Esc/Cancel quits)" \
+            custom    "Custom install — pick sections (checklist)" \
+            full      "Full install — all standard sections" \
+            core      "Core system (packages, profile, stow, shell, dev, check)" \
+            desktop   "Dotfiles & desktop (stow, desktop, dev, check)" \
+            ai        "AI & RE stack (ai, check)" \
+            configure "Stage B modules (configure.sh: firewalld, labs, rice)" \
+            check     "Health check & config validation only" \
+            quit      "Quit")" || _pick="quit"
+        # shellcheck disable=SC2034 # consumed by ui_menu in lib/ui-menu.sh
+        DEFAULT_MENU_ITEM="$_pick"
+        case "$_pick" in
+            custom)
+                if _sel="$(ui_checklist "Select sections to run" \
+                    packages  "Pacman packages (pacman.txt), input cleanup, bootvine" on \
+                    profile   "Machine hardware profile (apply-profile.sh)" on \
+                    flatpak   "Flatpak apps (packages/flatpak.txt)" on \
+                    fonts     "Fonts (scripts/install-fonts.sh)" on \
+                    stow      "Dotfiles stow + /etc system configs + user timers" on \
+                    aur       "AUR packages (packages/aur.txt)" on \
+                    shell     "zsh login shell, Node 22 (fnm), atuin history, zram" on \
+                    desktop   "GNOME session, location, Console, GDM, theme, extensions" on \
+                    dev       "Git global config + Neovim plugins/treesitter" on \
+                    ai        "AI & RE stack (skills, Headroom, agents, ghidra-cli, Obscura, Ollama)" on \
+                    apps      "Optional apps (PhotoGIMP, foxcage)" on \
+                    configure "Stage B configurator (firewalld, labs, detonate, rice)" off \
+                    hardening "Privacy hardener, ops hygiene, Tailscale firewalld" on \
+                    check     "Health check (check.sh) + config validation" on)"; then
+                    _valid=()
+                    _bad=()
+                    while IFS= read -r _s; do
+                        [[ -z $_s || $_s == NONE ]] && continue
+                        if _install_valid_section "$_s"; then
+                            _valid+=("$_s")
+                        else
+                            _bad+=("$_s")
+                        fi
+                    done <<<"$_sel"
+                    if [[ ${#_bad[@]} -gt 0 ]]; then
+                        ui_msg "Unknown section(s): ${_bad[*]}"
+                        unset _sel _valid _bad _s
+                        continue
+                    fi
+                    if [[ ${#_valid[@]} -eq 0 ]]; then
+                        ui_msg "No sections selected."
+                        unset _sel _valid _bad _s
+                        continue
+                    fi
+                    INSTALL_SECTIONS="$(printf '%s\n' "${_valid[@]}")"
+                    if printf '%s\n' "$INSTALL_SECTIONS" | grep -qx 'configure'; then
+                        CONFIGURE=1
+                    fi
+                    unset _sel _valid _bad _s
+                    break
+                fi
+                ;;
+            full)
+                INSTALL_SECTIONS=""
+                break
+                ;;
+            core)
+                INSTALL_SECTIONS="$(printf '%s\n' packages profile stow shell dev check)"
+                break
+                ;;
+            desktop)
+                INSTALL_SECTIONS="$(printf '%s\n' stow desktop dev check)"
+                break
+                ;;
+            ai)
+                INSTALL_SECTIONS="$(printf '%s\n' ai check)"
+                break
+                ;;
+            configure)
+                ui_theme_cleanup
+                CONFIGURE_UI="$UI" bash scripts/configure.sh
+                _rc=$?
+                if [[ ${INSTALL_PAUSE:-0} == 1 && -t 0 ]]; then
+                    read -r -p "Press Enter to close..." _
+                fi
+                exit "$_rc"
+                ;;
+            check)
+                INSTALL_SECTIONS="check"
+                break
+                ;;
+            quit|*)
+                ui_theme_cleanup
+                echo "Installation cancelled."
+                exit 0
+                ;;
+        esac
+    done
+    unset _pick
+fi
+
 # Every failed step sets this (the run continues); exit 1 at the end if set.
-# Only explicit opt-outs (SKIP_*=1) skip a step.
+# Only explicit opt-outs (SKIP_*=1 or menu/section selection) skip a step.
 INSTALL_FAILED=0
 INSTALL_FAIL_REASONS=()
+: "${INSTALL_SECTIONS:=}"
+section_on() {
+    [[ -z "$INSTALL_SECTIONS" ]] && return 0
+    printf '%s\n' "$INSTALL_SECTIONS" | grep -qx "$1"
+}
 fail_step() {
     echo "$1"
     INSTALL_FAILED=1
@@ -72,22 +335,48 @@ need_cmd() {
 NODE_SRC="Node 22 via fnm, step 2.1"
 
 echo "Starting installation..."
+if [[ -n "$INSTALL_SECTIONS" ]]; then
+    echo "Selected sections: $(printf '%s' "$INSTALL_SECTIONS" | tr '\n' ' ')"
+fi
 progress_banner "Stage B · $(ui_bar 0 20) 0/${INSTALL_STEPS}"
+
+SUDO_KEEPALIVE_PID=""
+_install_cleanup() {
+    if declare -F ui_theme_cleanup >/dev/null 2>&1; then
+        ui_theme_cleanup
+    fi
+    if [[ -n "${SUDO_KEEPALIVE_PID:-}" ]]; then
+        pkill -P "$SUDO_KEEPALIVE_PID" 2>/dev/null
+        kill "$SUDO_KEEPALIVE_PID" 2>/dev/null
+        wait "$SUDO_KEEPALIVE_PID" 2>/dev/null
+    fi
+}
+trap _install_cleanup EXIT
+
+_install_needs_sudo() {
+    local s
+    for s in packages profile flatpak fonts stow aur shell desktop dev ai apps configure hardening; do
+        section_on "$s" && return 0
+    done
+    return 1
+}
 
 # Authenticate once and keep sudo alive for the whole run: AUR builds take
 # long enough for a later sudo prompt to time out unattended, which used to
 # drop every built AUR package without installing it.
-sudo -v || { echo "sudo authentication failed — install.sh needs sudo." >&2; exit 1; }
-( while kill -0 "$$" 2>/dev/null; do sudo -n -v 2>/dev/null; sleep 50; done ) &
-SUDO_KEEPALIVE_PID=$!
-trap 'pkill -P "$SUDO_KEEPALIVE_PID" 2>/dev/null; kill "$SUDO_KEEPALIVE_PID" 2>/dev/null; wait "$SUDO_KEEPALIVE_PID" 2>/dev/null' EXIT
+if _install_needs_sudo; then
+    sudo -v || { echo "sudo authentication failed — install.sh needs sudo." >&2; exit 1; }
+    ( while kill -0 "$$" 2>/dev/null; do sudo -n -v 2>/dev/null; sleep 50; done ) &
+    SUDO_KEEPALIVE_PID=$!
+fi
 
 # Legacy touchpad udev/inhibit cleanup (if present from older dotfiles)
-if [ -f "scripts/cleanup-input-overrides.sh" ]; then
+if section_on packages && [ -f "scripts/cleanup-input-overrides.sh" ]; then
     run_step "Input override cleanup" bash scripts/cleanup-input-overrides.sh
 fi
 
 # 1. Install packages (before machine profile — NVIDIA/Optimus needs nvidia-* present)
+if section_on packages; then
 if [ -f "packages/pacman.txt" ]; then
     advance_progress "pacman packages"
     echo "Installing pacman packages..."
@@ -125,37 +414,41 @@ if [ -f "packages/pacman.txt" ]; then
         fail_step "Kernel upgraded during this run (running $(uname -r) has no modules left): reboot, then re-run ./install.sh — module-loading steps below may fail until then"
     fi
 fi
+fi
 
 # 1.04 Boot screen (bootvine): stage 2 + shutdown only. No sd-bootvine initrd
 # hook, so the LUKS unlock prompt stays the stock sd-encrypt flow.
 # bootvine-shutdown.service has its own [Install] (no Also=), enable both.
+if section_on packages; then
 if pacman -Q bootvine >/dev/null 2>&1; then
     run_step "bootvine enable" sudo systemctl enable bootvine.service bootvine-shutdown.service
 else
     fail_step "bootvine not installed (packages/pacman.txt) — boot screen not enabled"
 fi
+fi
 
 # 1.05 Machine profile (hostname override, else hardware detect)
 # Runs after pacman so thinkpad-p15 can enable nvidia-*.service and rebuild UKIs.
-if [ -f "scripts/apply-profile.sh" ]; then
+if section_on profile && [ -f "scripts/apply-profile.sh" ]; then
     advance_progress "machine profile"
     bash scripts/apply-profile.sh \
         || fail_step "Profile application failed (sudo / hardware setup) — see output above."
 fi
 
 # 1.1 Install Flatpaks
-if [ -f "scripts/install-flatpaks.sh" ]; then
+if section_on flatpak && [ -f "scripts/install-flatpaks.sh" ]; then
     echo "Installing flatpak packages..."
     run_step "Flatpak install" bash scripts/install-flatpaks.sh
 fi
 
 # 1.2 Install Fonts
-if [ -f "scripts/install-fonts.sh" ]; then
+if section_on fonts && [ -f "scripts/install-fonts.sh" ]; then
     run_step "Font install" bash scripts/install-fonts.sh
 fi
 
 # 2. Setup symlinks using Stow or Fallback
 # system-setup.sh installs /etc/makepkg.conf.d/zz-x86-64-v3.conf before AUR builds.
+if section_on stow; then
 STOW_CMD="stow"
 if ! command -v stow >/dev/null 2>&1; then
     echo "GNU Stow not found. Using minimal-stow fallback..."
@@ -189,21 +482,25 @@ for dir in */; do
     fi
 done
 cd .. || exit 1
+fi
 
 # 2.05 AUR after system-setup so paru/makepkg see x86-64-v3 flags
-if [ -f "scripts/install-aur.sh" ]; then
+if section_on aur && [ -f "scripts/install-aur.sh" ]; then
     echo "Installing AUR packages..."
     run_step "AUR install" bash scripts/install-aur.sh
 fi
 
 # 2.0a User units shipped by stow packages (stow links them; nothing enabled them).
 # daemon-reload first: the manager has not seen the freshly linked unit file.
-run_step "tmp-semgrep-cleanup.timer" bash -c \
-    'systemctl --user daemon-reload && systemctl --user enable --now tmp-semgrep-cleanup.timer'
+if section_on stow; then
+    run_step "tmp-semgrep-cleanup.timer" bash -c \
+        'systemctl --user daemon-reload && systemctl --user enable --now tmp-semgrep-cleanup.timer'
+fi
 
 # 2.0 Login shell: zsh (the dotfiles' primary shell; kitty, Ghostty, Console
 # and the rest start the login shell). Stage A sets it at useradd; other hosts
 # may still be on bash.
+if section_on shell; then
 if need_cmd zsh "zsh login shell"; then
     zsh_path="$(command -v zsh)"
     login_shell="$(getent passwd "$USER" | cut -d: -f7)"
@@ -216,8 +513,10 @@ if need_cmd zsh "zsh login shell"; then
     fi
     unset zsh_path login_shell
 fi
+fi
 
 # 2.1 Bootstrap Node.js LTS via fnm (avoids bleeding-edge system node breaking native addons)
+if section_on shell; then
 if need_cmd fnm "Node.js LTS via fnm"; then
     echo "Setting up Node.js LTS (22) via fnm..."
     eval "$(fnm env --shell bash)"
@@ -229,6 +528,9 @@ if need_cmd fnm "Node.js LTS via fnm"; then
         fail_step "Node 22 (fnm install) failed — re-run: fnm install 22"
     fi
 fi
+elif command -v fnm >/dev/null 2>&1; then
+    eval "$(fnm env --shell bash)"
+fi
 
 # 2.2 Import shell history into atuin
 # The rc files keep history under XDG_STATE_HOME; atuin only finds it via
@@ -236,6 +538,7 @@ fi
 # (fresh install) means nothing to import, not a failure. Import once: atuin
 # re-imports duplicate entries (bash history has no timestamps), and after the
 # first import atuin records new commands itself.
+if section_on shell; then
 if need_cmd atuin "atuin history import"; then
     _hist_found=0
     _stamp_dir="${XDG_DATA_HOME:-$HOME/.local/share}/atuin"
@@ -260,13 +563,15 @@ if need_cmd atuin "atuin history import"; then
     fi
     unset _hist_found _sh _hf
 fi
+fi
 
 # 2.3 Materialize zram config (early-boot safe; not a $HOME symlink)
-if [ -f "scripts/zram-setup.sh" ]; then
+if section_on shell && [ -f "scripts/zram-setup.sh" ]; then
     run_step "zram setup" bash scripts/zram-setup.sh
 fi
 
 # 3. Restore GNOME session (dconf + extensions + tablet handler)
+if section_on desktop; then
 if [ -f "scripts/gnome-session-setup.sh" ]; then
     # Extensions are fetched + enabled once, at 3.7/3.8 (failures recorded there).
     run_step "GNOME session setup" env SKIP_GNOME_EXTENSIONS=1 bash scripts/gnome-session-setup.sh
@@ -293,9 +598,11 @@ if [ "${SKIP_THEME:-0}" = 1 ]; then
 elif [ -f "scripts/theme-setup.sh" ]; then
     run_step "Theme setup" bash scripts/theme-setup.sh
 fi
+fi
 
 # 3.3 Git global config (identity, hooks, signing). Noninteractive when
 # stdin is not a TTY or GIT_SETUP_NONINTERACTIVE=1 (applies defaults).
+if section_on dev; then
 if [ -f "scripts/git-setup.sh" ]; then
     run_step "Git setup" bash scripts/git-setup.sh
 fi
@@ -304,7 +611,9 @@ fi
 if [ -f "scripts/nvim-setup.sh" ]; then
     run_step "Neovim setup" bash scripts/nvim-setup.sh
 fi
+fi
 
+if section_on ai; then
 # 3.5 Kit skills first (creates ~/.claude, ~/.cursor, … that Headroom merges into)
 if [ -f "scripts/sync-agent-skills.sh" ]; then
     run_step "Agent skills pre-sync" bash scripts/sync-agent-skills.sh
@@ -397,7 +706,9 @@ fi
 if [ "${SKIP_OLLAMA:-0}" != 1 ] && [ -f "scripts/ollama-setup.sh" ]; then
     run_step "ollama setup" bash scripts/ollama-setup.sh
 fi
+fi
 
+if section_on apps; then
 # 3.6 PhotoGIMP (Photoshop-like GIMP layout — optional)
 if [ -f "scripts/install-photogimp.sh" ]; then
     run_step "PhotoGIMP setup" bash scripts/install-photogimp.sh
@@ -411,7 +722,9 @@ elif ! need_cmd podman "foxcage"; then
 elif [ -f "scripts/install-foxcage.sh" ]; then
     run_step "foxcage install" bash scripts/install-foxcage.sh
 fi
+fi
 
+if section_on desktop; then
 # 3.7 Extension downloads: EGO Full pack + Caffeine + Dash2Dock, before enable
 if [ -f "scripts/fetch-gnome-extensions.sh" ]; then
     run_step "GNOME extension downloads" bash scripts/fetch-gnome-extensions.sh
@@ -421,16 +734,19 @@ fi
 if [ -f "scripts/install-extensions.sh" ]; then
     run_step "GNOME extensions" bash scripts/install-extensions.sh
 fi
+fi
 
 # 3.9 Stage B configurator (firewalld / ollama / labs / rice) — opt-in.
 # Default: print hint only (Stage A already seeds firewalld drop). Force with
 # CONFIGURE=1; skip with SKIP_CONFIGURE=1. Headless: CONFIGURE_UI=plain.
 # Runs after stow (containers storage.conf, continue, starship), fnm (node/npm
 # for SETUP_AI) and the extension pass, so its modules find what they build on.
-if [ "${SKIP_CONFIGURE:-0}" != 1 ] && [ -f scripts/configure.sh ]; then
+if section_on configure && [ "${SKIP_CONFIGURE:-0}" != 1 ] && [ -f scripts/configure.sh ]; then
     if [ "${CONFIGURE:-0}" = 1 ] || [ "${CONFIGURE:-}" = Y ]; then
-        if [ ! -t 0 ] && [ -z "${CONFIGURE_UI:-}" ]; then
+        if [ ! -t 0 ] && [ -z "${CONFIGURE_UI:-}" ] && [ "${UI:-}" != "zenity" ]; then
             export CONFIGURE_UI=plain
+        elif [ -n "${UI:-}" ] && [ -z "${CONFIGURE_UI:-}" ]; then
+            export CONFIGURE_UI="$UI"
         fi
         # One checklist pass then continue install (no interactive menu loop).
         CONFIGURE_ONCE=1 bash scripts/configure.sh \
@@ -440,6 +756,7 @@ if [ "${SKIP_CONFIGURE:-0}" != 1 ] && [ -f scripts/configure.sh ]; then
     fi
 fi
 
+if section_on hardening; then
 # 4. Privacy Hardening (before health check so telemetry probes reflect final state)
 if [ -f "scripts/privacy-hardener.sh" ]; then
     advance_progress "privacy hardener"
@@ -457,8 +774,10 @@ fi
 if [ -f "scripts/firewalld-tailscale.sh" ] && need_cmd tailscale "Tailscale firewalld rules"; then
     run_step "Tailscale firewalld rules" bash scripts/firewalld-tailscale.sh
 fi
+fi
 
 # 5. Final Health Check
+if section_on check; then
 if [ -f "scripts/check.sh" ]; then
     advance_progress "health check"
     bash scripts/check.sh \
@@ -468,6 +787,7 @@ fi
 if [ -f "scripts/validate-configs.sh" ]; then
     run_step "Config validation" bash scripts/validate-configs.sh
 fi
+fi
 
 if [ "$INSTALL_FAILED" -ne 0 ]; then
     echo "Installation finished with failures:"
@@ -475,7 +795,13 @@ if [ "$INSTALL_FAILED" -ne 0 ]; then
         echo "  - $_r"
     done
     unset _r
+    if [[ ${INSTALL_PAUSE:-0} == 1 && -t 0 ]]; then
+        read -r -p "Press Enter to close..." _
+    fi
     exit 1
 fi
 
 echo "Installation complete!"
+if [[ ${INSTALL_PAUSE:-0} == 1 && -t 0 ]]; then
+    read -r -p "Press Enter to close..." _
+fi

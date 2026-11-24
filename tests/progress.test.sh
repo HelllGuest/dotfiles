@@ -43,12 +43,18 @@ unset -v _rs _ap _expect _lab
 
 grep -q 'scripts/lib/progress.sh' "$ROOT/scripts/configure.sh" \
   || fail "configure.sh must source progress.sh"
-grep -q -- '--backtitle' "$ROOT/scripts/configure.sh" \
-  || fail "configure.sh must set dialog/whiptail backtitle"
-grep -q 'NEWT_COLORS=' "$ROOT/scripts/configure.sh" \
-  || fail "configure.sh must set NEWT_COLORS"
-grep -q 'dialogrc' "$ROOT/scripts/configure.sh" \
-  || fail "configure.sh must write a dialogrc"
+grep -q 'scripts/lib/ui-menu.sh' "$ROOT/scripts/configure.sh" \
+  || fail "configure.sh must source ui-menu.sh"
+grep -q 'scripts/lib/ui-menu.sh' "$ROOT/install.sh" \
+  || fail "install.sh must source ui-menu.sh"
+grep -q -- '--backtitle' "$ROOT/scripts/lib/ui-menu.sh" \
+  || fail "ui-menu.sh must set dialog/whiptail backtitle"
+grep -q 'NEWT_COLORS=' "$ROOT/scripts/lib/ui-menu.sh" \
+  || fail "ui-menu.sh must set NEWT_COLORS"
+grep -q 'dialogrc' "$ROOT/scripts/lib/ui-menu.sh" \
+  || fail "ui-menu.sh must write a dialogrc"
+grep -q 'zenity --list --checklist' "$ROOT/scripts/lib/ui-menu.sh" \
+  || fail "ui-menu.sh must support zenity GUI checklist"
 grep -q 'progress_line' "$ROOT/scripts/configure.sh" \
   || fail "configure.sh run_mod must call progress_line"
 grep -q 'progress_banner' "$ROOT/scripts/configure.sh" \
@@ -71,7 +77,7 @@ CT="$(mktemp -d)"
 trap 'rm -rf "$CT"' EXIT
 mkdir -p "$CT/scripts/lib" "$CT/bin"
 cp "$ROOT/scripts/configure.sh" "$CT/scripts/"
-cp "$ROOT/scripts/lib/dmi.sh" "$ROOT/scripts/lib/progress.sh" "$CT/scripts/lib/"
+cp "$ROOT/scripts/lib/dmi.sh" "$ROOT/scripts/lib/progress.sh" "$ROOT/scripts/lib/ui-menu.sh" "$CT/scripts/lib/"
 for _m in firewalld-lab-zones apply-profile ollama-setup labs-setup lab-detonate ai-stack-setup rice-setup; do
   printf '#!/bin/sh\necho %s >>"%s/ran"\n' "$_m" "$CT" >"$CT/scripts/$_m.sh"
 done
@@ -164,7 +170,7 @@ cfg_run - CONFIGURE_UI=whiptail PATH="$CT/bin:$PATH" WT_MENU="$CT/menu" WT_CANCE
 [[ $cfg_rc == 0 && -z $cfg_ran && ! -s $CT/menu ]] \
   || fail "checklist Cancel must return to the menu (rc=$cfg_rc ran=[$cfg_ran])"
 
-# Forced missing TUI backend or unknown CONFIGURE_UI must fail fast (never exit 0).
+# Forced missing TUI/GUI backend or unknown CONFIGURE_UI must fail fast (never exit 0).
 _no_dialog="$CT/no-dialog"
 mkdir -p "$_no_dialog"
 for _cmd in bash env timeout mkdir rm mktemp tput dirname cat grep sed printf; do
@@ -174,14 +180,96 @@ done
 cfg_run - CONFIGURE_UI=dialog PATH="$_no_dialog"
 [[ $cfg_rc -ne 0 && $cfg_out == *'not installed'* ]] \
   || fail "CONFIGURE_UI=dialog without dialog must exit non-zero (rc=$cfg_rc out=$cfg_out)"
+cfg_run - CONFIGURE_UI=gui PATH="$_no_dialog"
+[[ $cfg_rc -ne 0 && $cfg_out == *'not installed'* ]] \
+  || fail "CONFIGURE_UI=gui without zenity must exit non-zero (rc=$cfg_rc out=$cfg_out)"
 cfg_run - CONFIGURE_UI=bogus
 [[ $cfg_rc -ne 0 && $cfg_out == *'unknown CONFIGURE_UI'* ]] \
   || fail "unknown CONFIGURE_UI must exit non-zero (rc=$cfg_rc out=$cfg_out)"
 unset -v _no_dialog _cmd _p
 
+# Stand-in zenity GUI backend: --checklist prints TRUE tags; --radiolist pops $ZN_MENU.
+cat >"$CT/bin/zenity" <<'ZN'
+#!/usr/bin/env bash
+mode=""
+for a in "$@"; do
+  case $a in
+    --checklist) mode=checklist ;;
+    --radiolist) mode=radiolist ;;
+    --info) exit 0 ;;
+  esac
+done
+if [[ $mode == radiolist ]]; then
+  q=$(head -1 "$ZN_MENU"); sed -i 1d "$ZN_MENU"
+  [[ -z $q || $q == quit ]] && exit 1
+  printf '%s\n' "$q"
+  exit 0
+fi
+if [[ $mode == checklist ]]; then
+  [[ -n ${ZN_CANCEL:-} ]] && exit 1
+  if [[ -n ${ZN_PICK:-} ]]; then
+    printf '%s\n' $ZN_PICK
+    exit 0
+  fi
+  args=()
+  for a in "$@"; do [[ $a != --* ]] && args+=("$a"); done
+  i=0
+  while (( i + 2 < ${#args[@]} )); do
+    [[ ${args[i]} == TRUE ]] && printf '%s\n' "${args[i + 1]}"
+    i=$((i + 3))
+  done
+  exit 0
+fi
+exit 0
+ZN
+chmod +x "$CT/bin/zenity"
+# GUI without DISPLAY/WAYLAND_DISPLAY must fail cleanly.
+cfg_run - DISPLAY= WAYLAND_DISPLAY= CONFIGURE_UI=gui PATH="$CT/bin:$PATH"
+[[ $cfg_rc -ne 0 && $cfg_out == *'DISPLAY/WAYLAND_DISPLAY'* ]] \
+  || fail "CONFIGURE_UI=gui without display must fail (rc=$cfg_rc out=$cfg_out)"
+printf 'modules\nquit\n' >"$CT/zmenu"
+cfg_run - WAYLAND_DISPLAY=wayland-0 CONFIGURE_UI=gui PATH="$CT/bin:$PATH" ZN_MENU="$CT/zmenu"
+[[ $cfg_rc == 0 && $cfg_ran == firewalld-lab-zones && ! -s $CT/zmenu ]] \
+  || fail "zenity GUI menu loop failed (rc=$cfg_rc ran=[$cfg_ran])"
+# configure.sh CLI flags (--gui / --plain) work identically to CONFIGURE_UI.
+: >"$CT/ran"
+printf 'modules\nquit\n' >"$CT/zmenu"
+WAYLAND_DISPLAY=wayland-0 ZN_MENU="$CT/zmenu" PATH="$CT/bin:$PATH" \
+  bash "$CT/scripts/configure.sh" --gui </dev/null >/dev/null 2>&1 \
+  || fail "configure.sh --gui failed"
+[[ "$(cat "$CT/ran")" == firewalld-lab-zones ]] \
+  || fail "configure.sh --gui ran wrong modules: $(cat "$CT/ran")"
+: >"$CT/ran"
+bash "$CT/scripts/configure.sh" --plain </dev/null >/dev/null 2>&1 \
+  || fail "configure.sh --plain failed"
+[[ "$(cat "$CT/ran")" == firewalld-lab-zones ]] \
+  || fail "configure.sh --plain ran wrong modules: $(cat "$CT/ran")"
+
+# ui_checklist plain mode must not glob-expand '*' and ui_menu zenity must
+# pre-select the first row when DEFAULT_MENU_ITEM does not match any tag.
+_noglob="$(cd "$CT" && bash -euo pipefail -c '
+  source "$1"; ui_init plain; ui_checklist "Pick" a "A" on
+' _ "$ROOT/scripts/lib/ui-menu.sh" <<<'*' 2>/dev/null)"
+[[ $_noglob == '*' ]] || fail "ui_checklist plain must not glob-expand '*' (got: $_noglob)"
+_zchk="$CT/bin/zenity-chk"
+cat >"$_zchk" <<'ZC'
+#!/usr/bin/env bash
+printf '%s\n' "$@" >"$Z_ARGS"
+printf 'first\n'
+ZC
+chmod +x "$_zchk"
+_zout="$(Z_ARGS="$CT/zargs" WAYLAND_DISPLAY=wayland-0 PATH="$CT/bin:$PATH" bash -euo pipefail -c '
+  source "$1"; UI=zenity; DEFAULT_MENU_ITEM="stale"
+  zenity() { "'"$_zchk"'" "$@"; }
+  ui_menu "M" first "First" second "Second"
+' _ "$ROOT/scripts/lib/ui-menu.sh")"
+[[ $_zout == first ]] && grep -q '^TRUE$' "$CT/zargs" \
+  || fail "ui_menu zenity must default to TRUE on first row when DEFAULT_MENU_ITEM misses"
+unset -v _noglob _zchk _zout
+
 # ui_dims clamps to the terminal and returns 0 (callable under set -e).
-_dims="$(sed -n '/^ui_dims() {/,/^}/p' "$ROOT/scripts/configure.sh")"
-[[ -n $_dims ]] || fail "configure.sh: ui_dims not found"
+_dims="$(sed -n '/^ui_dims() {/,/^}/p' "$ROOT/scripts/lib/ui-menu.sh")"
+[[ -n $_dims ]] || fail "ui-menu.sh: ui_dims not found"
 _got="$(LINES=20 COLUMNS=70 TERM=xterm bash -euo pipefail -c "$_dims"'
   ui_dims 20 76 12; echo "$UI_H $UI_W $UI_LH"')" \
   || fail "ui_dims must return 0 under set -e"
@@ -191,7 +279,98 @@ _got="$(LINES=50 COLUMNS=200 TERM=xterm bash -euo pipefail -c "$_dims"'
 [[ $_got == '12 60' ]] || fail "ui_dims must keep the wanted size on a big terminal, got '$_got'"
 unset -v _dims _got
 
+# ── install.sh menu & selective section flags (stub repo in $CT/inst) ──
+IR="$CT/inst"
+mkdir -p "$IR/scripts/lib" "$IR/bin" "$IR/bin-ok"
+cp "$ROOT/install.sh" "$IR/"
+cp "$ROOT/scripts/lib/progress.sh" "$ROOT/scripts/lib/ui-menu.sh" "$IR/scripts/lib/"
+for _s in check validate-configs git-setup nvim-setup privacy-hardener ops-hygiene configure; do
+  printf '#!/bin/sh\necho %s >>"%s/ran"\n' "$_s" "$IR" >"$IR/scripts/$_s.sh"
+done
+# Failing sudo stub proves check-only runs never ask for sudo; ok stub tracks sudo calls.
+printf '#!/bin/sh\necho "SUDO_CALLED" >>"%s/ran"; exit 99\n' "$IR" >"$IR/bin/sudo"
+printf '#!/bin/sh\n[ "$1" = -v ] && echo "SUDO_V" >>"%s/sudo.log"; exit 0\n' "$IR" >"$IR/bin-ok/sudo"
+chmod +x "$IR/bin/sudo" "$IR/bin-ok/sudo"
+_out="$(bash "$IR/install.sh" --list)"
+grep -q '^packages ' <<<"$_out" && grep -q '^check ' <<<"$_out" \
+  || fail "install.sh --list must print section names"
+bash "$IR/install.sh" --help | grep -q -- '--only' \
+  || fail "install.sh --help must document --only"
+if bash "$IR/install.sh" --only bogus >/dev/null 2>&1; then
+  fail "install.sh --only bogus must exit non-zero"
+fi
+if bash "$IR/install.sh" --only check --skip dev >/dev/null 2>&1; then
+  fail "install.sh must reject combining --only and --skip"
+fi
+# --only check runs only check + validate-configs and never calls sudo.
+: >"$IR/ran"
+PATH="$IR/bin:$PATH" bash "$IR/install.sh" --only check </dev/null >/dev/null 2>&1 \
+  || fail "install.sh --only check failed"
+[[ "$(tr '\n' ' ' <"$IR/ran")" == "check validate-configs " ]] \
+  || fail "install.sh --only check ran wrong scripts: $(cat "$IR/ran")"
+# --only dev,check runs git + nvim + check AND authenticates sudo (git/nvim setup need sudo).
+: >"$IR/ran"; : >"$IR/sudo.log"
+PATH="$IR/bin-ok:$PATH" bash "$IR/install.sh" --only dev,check </dev/null >/dev/null 2>&1 \
+  || fail "install.sh --only dev,check failed"
+[[ "$(tr '\n' ' ' <"$IR/ran")" == "git-setup nvim-setup check validate-configs " ]] \
+  || fail "install.sh --only dev,check ran wrong scripts: $(cat "$IR/ran")"
+grep -qx 'SUDO_V' "$IR/sudo.log" || fail "install.sh --only dev must call sudo -v"
+# --skip with CONFIGURE=1 preserves configure unless configure itself is skipped.
+: >"$IR/ran"
+CONFIGURE=1 PATH="$IR/bin-ok:$PATH" bash "$IR/install.sh" \
+  --skip packages,profile,flatpak,fonts,stow,aur,shell,desktop,dev,ai,apps,hardening </dev/null >/dev/null 2>&1 \
+  || fail "install.sh CONFIGURE=1 --skip failed"
+[[ "$(tr '\n' ' ' <"$IR/ran")" == "configure check validate-configs " ]] \
+  || fail "install.sh CONFIGURE=1 --skip dropped configure: $(cat "$IR/ran")"
+: >"$IR/ran"
+CONFIGURE=1 PATH="$IR/bin:$PATH" bash "$IR/install.sh" \
+  --skip packages,profile,flatpak,fonts,stow,aur,shell,desktop,dev,ai,apps,hardening,configure </dev/null >/dev/null 2>&1 \
+  || fail "install.sh CONFIGURE=1 --skip ...,configure failed"
+[[ "$(tr '\n' ' ' <"$IR/ran")" == "check validate-configs " ]] \
+  || fail "install.sh --skip configure must skip configure: $(cat "$IR/ran")"
+# GUI (--gui) with stub zenity: pick custom checklist → dev + check.
+: >"$IR/ran"
+printf 'custom\n' >"$IR/zmenu"
+WAYLAND_DISPLAY=wayland-0 ZN_MENU="$IR/zmenu" ZN_PICK="dev check" \
+  PATH="$CT/bin:$IR/bin-ok:$PATH" bash "$IR/install.sh" --gui </dev/null >/dev/null 2>&1 \
+  || fail "install.sh --gui custom selection failed"
+[[ "$(tr '\n' ' ' <"$IR/ran")" == "git-setup nvim-setup check validate-configs " ]] \
+  || fail "install.sh --gui ran wrong scripts: $(cat "$IR/ran")"
+# INSTALL_UI=gui off-TTY and INSTALL_ALL=1 --gui both open GUI menu (Quit exits 0, no sudo).
+: >"$IR/ran"
+printf 'quit\n' >"$IR/zmenu"
+WAYLAND_DISPLAY=wayland-0 INSTALL_UI=gui ZN_MENU="$IR/zmenu" \
+  PATH="$CT/bin:$IR/bin:$PATH" bash "$IR/install.sh" </dev/null >/dev/null 2>&1 \
+  || fail "INSTALL_UI=gui off-TTY must open GUI menu and exit 0 on Quit"
+[[ ! -s $IR/ran ]] || fail "INSTALL_UI=gui quit must not run any scripts: $(cat "$IR/ran")"
+printf 'quit\n' >"$IR/zmenu"
+WAYLAND_DISPLAY=wayland-0 INSTALL_ALL=1 ZN_MENU="$IR/zmenu" \
+  PATH="$CT/bin:$IR/bin:$PATH" bash "$IR/install.sh" --gui </dev/null >/dev/null 2>&1 \
+  || fail "INSTALL_ALL=1 --gui must honor CLI --gui and exit 0 on Quit"
+[[ ! -s $IR/ran ]] || fail "INSTALL_ALL=1 --gui quit must not run any scripts: $(cat "$IR/ran")"
+# Plain menu loop: mistyped tag is warned and rejected; valid tag runs cleanly.
+: >"$IR/ran"
+_pm_out="$(printf '1\ncheck badtag\n1\ncheck\n' | PATH="$IR/bin:$PATH" \
+  bash "$IR/install.sh" --plain 2>&1)" \
+  || fail "install.sh --plain typo then check failed: $_pm_out"
+grep -q 'Unknown section(s): badtag' <<<"$_pm_out" \
+  || fail "install.sh --plain must warn on mistyped section: $_pm_out"
+[[ "$(tr '\n' ' ' <"$IR/ran")" == "check validate-configs " ]] \
+  || fail "install.sh --plain ran wrong scripts: $(cat "$IR/ran")"
+unset -v IR _s _out _pm_out
+
+# Desktop launcher for GUI installer exists and is valid.
+_desk="$ROOT/stow/applications/.local/share/applications/dotfiles-installer.desktop"
+[[ -f $_desk ]] || fail "missing dotfiles-installer.desktop"
+grep -q './install.sh --gui' "$_desk" || fail "dotfiles-installer.desktop must launch ./install.sh --gui"
+if command -v desktop-file-validate >/dev/null 2>&1; then
+  desktop-file-validate "$_desk" 2>&1 | grep -v ' hint: ' | grep -q . \
+    && fail "desktop-file-validate dotfiles-installer.desktop failed"
+fi
+unset -v _desk
+
 bash -n "$ROOT/scripts/lib/progress.sh" || fail "bash -n progress.sh"
+bash -n "$ROOT/scripts/lib/ui-menu.sh" || fail "bash -n ui-menu.sh"
 bash -n "$ROOT/scripts/configure.sh" || fail "bash -n configure.sh"
 bash -n "$ROOT/install.sh" || fail "bash -n install.sh"
 
