@@ -1607,24 +1607,25 @@ Log into GNOME, open a terminal, then clone and install:
 ```bash
 git clone https://github.com/HelllGuest/dotfiles.git ~/dotfiles
 cd ~/dotfiles
-./install.sh   # desktop user only — never sudo ./install.sh
+./install.sh   # desktop user only (never sudo); opens TUI menu on TTY (--gui for zenity, --all for full unattended, --only/--skip for selective runs)
 ```
 
-`./install.sh` (rejects `EUID == 0`; run from a GNOME session; full step-by-step order in [README — Script execution order](../README.md#script-execution-order-fresh-machine)) will:
+`./install.sh` (rejects `EUID == 0`; run from a GNOME session; full step-by-step order and flags in [README — Script execution order](../README.md#script-execution-order-fresh-machine)) will:
 
 * Install packages from `packages/pacman.txt` (kernels, shells, terminals, CLI tools; skips Intel GPU packages on ThinkPad T14s Gen 3 AMD; installs the NVIDIA stack only when an NVIDIA display device is on PCI; skips `power-profiles-daemon` when `tuned-ppd` is present and `rust` when `rustup` is present; replaces an AUR `bootvine-git` left by older dotfiles with the official `bootvine`)
 * Enable the `bootvine` boot screen (`bootvine.service` + `bootvine-shutdown.service`; no `sd-bootvine` initrd hook, so the LUKS prompt is unchanged)
 * Apply stock Adwaita for the session (`scripts/theme-setup.sh`; purges leftover Aura Glass / Orchis hooks; extensions stay as configured in dconf; no Aura Glass install)
-* Record every failed step and exit 1 at the end (no silent skips; only `SKIP_*=1` opt-outs skip); `check.sh` fails on missing packages, empty dock icons and dead shortcuts
+* Record every failed step and exit 1 at the end (no silent skips; only explicit `SKIP_*=1` opt-outs or menu/`--only`/`--skip` section selection skip); `check.sh` fails on missing packages, empty dock icons and dead shortcuts
 * Apply **after** `pacman.txt` exactly one machine profile via `scripts/apply-profile.sh`: `profiles/$(hostname).sh` if present, otherwise `scripts/detect-profile.sh` (`thinkpad-p15`, `thinkpad-t14s`, or `laptop`). Optimus/NVIDIA setup is inside `thinkpad-p15.sh` (no `nvidia.sh`).
 * Install Flatpaks from `packages/flatpak.txt`, then fonts, then stow `$HOME` and install `system/` via `scripts/system-setup.sh` (includes `/etc/makepkg.conf.d/zz-x86-64-v3.conf`), **then** AUR from `packages/aur.txt` (bootstraps `paru` after the v3 makepkg drop-in)
 * Materialize `zram-generator.conf` via `scripts/zram-setup.sh` (skips stowing `zram` / `gdm`)
 * Apply GNOME session dconf (`gnome/dconf/user.conf`), Console dconf + `kitty.desktop` for `x-scheme-handler/terminal`, EGO fetch + extensions, location spoofing, and stock input defaults (`scripts/reset-input-defaults.sh` + `scripts/cleanup-input-overrides.sh`)
 * Configure GDM, Git, Neovim; `sync-agent-skills.sh` **before** Headroom MCP (`scripts/headroom-setup.sh`); then AI coding/RE agents + plugins + skills (`install-coding-agents.sh`, `install-caveman.sh`, `install-ponytail.sh`, `install-android-ui-skills.sh`, `install-ghidra-cli.sh`, `install-obscura.sh`, `install-re-skills.sh`, `install-ecosystem-skills.sh`; REA via `lab-re`), PhotoGIMP, and foxcage (`install-foxcage.sh`, Firefox in rootless Podman when `podman` exists).
-* Stage B modular TUI: `bash scripts/configure.sh` (dialog/whiptail/plain;
-  override with `CONFIGURE_UI=…`; fail-fast; `SETUP_FIREWALLD` on by default;
-  `SETUP_OLLAMA` on only for P15; `SETUP_LABS` / `SETUP_DETONATE` / `SETUP_AI` /
-  `SETUP_RICE` opt-in). Optional qcow2 harness: `bash scripts/vm-stageb-run.sh`.
+* Stage B modular TUI/GUI: `bash scripts/configure.sh` (`dialog`/`whiptail`/`zenity`/`plain`;
+  `--gui` or `CONFIGURE_UI=…`; shared with `./install.sh` via `scripts/lib/ui-menu.sh`;
+  fail-fast; `SETUP_FIREWALLD` on by default; `SETUP_OLLAMA` on only for P15;
+  `SETUP_LABS` / `SETUP_DETONATE` / `SETUP_AI` / `SETUP_RICE` opt-in). Optional qcow2
+  harness: `bash scripts/vm-stageb-run.sh`.
   Howtos: [configure](../README.md#how-to-configuresh-stage-b-tui),
   [VM Stage B](../README.md#how-to-stage-b-on-a-stage-a-qcow2),
   [firewalld](../README.md#how-to-firewalld-lab-zones--lab-malware).

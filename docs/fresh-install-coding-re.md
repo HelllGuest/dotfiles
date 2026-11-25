@@ -158,7 +158,7 @@ sudo -v && bash ~/dotfiles/scripts/check.sh --stage-a
 
 ### Stage B — Dotfiles (requires an active GNOME session)
 
-Two paths: modular TUI (`configure.sh`) or full bootstrap (`./install.sh`).
+Two paths: modular TUI/GUI (`configure.sh`) or full/selective bootstrap (`./install.sh`; interactive TTY opens a TUI menu, `--gui` uses zenity, `--all` or non-TTY runs the full default install).
 Headless / qcow2: see [How to: Stage B VM](../README.md#how-to-stage-b-on-a-stage-a-qcow2)
 (or run `bash scripts/vm-stageb-run.sh`).
 
@@ -169,6 +169,7 @@ git clone https://github.com/HelllGuest/dotfiles.git ~/dotfiles
 cd ~/dotfiles
 bash scripts/p15-dotfiles-preflight.sh   # P15 only; skip on T14s
 bash scripts/configure.sh                # dialog → whiptail → plain
+# bash scripts/configure.sh --gui        # GNOME zenity GUI
 # CONFIGURE_UI=plain bash scripts/configure.sh   # serial / CI / no TTY
 ```
 
@@ -192,13 +193,14 @@ usbguard / dnscrypt: [README — ops / privacy kits](../README.md#how-to-ops--pr
 Desktop look: stock Adwaita via `theme-setup.sh` (EGO Full-pack via
 `fetch-gnome-extensions.sh`); [README — install order](../README.md).
 
-#### How to: full bootstrap (`./install.sh`)
+#### How to: full or selective bootstrap (`./install.sh`)
 
 ```bash
 cd ~/dotfiles
 bash scripts/p15-dotfiles-preflight.sh   # P15 only
-./install.sh                             # as desktop user (rejects root); AUR after system-setup v3 makepkg; skills before Headroom
-# Headless pipe: GIT_SETUP_NONINTERACTIVE=1 SKIP_THEME=1 ./install.sh
+./install.sh                             # interactive TUI menu on TTY (rejects root); --gui for zenity; --all for full unattended
+# Selective: ./install.sh --only stow,desktop,check   # or --skip ai,apps (--list shows sections)
+# Headless pipe (auto full install): GIT_SETUP_NONINTERACTIVE=1 SKIP_THEME=1 ./install.sh --all
 # Explicit Optimus re-run if needed: bash profiles/thinkpad-p15.sh
 # Optional REA host MCP (prefer lab-re): bash scripts/install-rea.sh
 # Optional Claude CLI: npm install -g @anthropic-ai/claude-code

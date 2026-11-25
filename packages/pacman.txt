@@ -44,6 +44,8 @@ gnome-characters
 # Pinned in the dock (favorite-apps); explicit so they are never missing
 nautilus
 gnome-text-editor
+# GNOME GUI dialogs for ./install.sh --gui, configure.sh --gui, and Dotfiles Installer
+zenity
 # Desktop: stock Adwaita (scripts/theme-setup.sh). Extension zips need unzip;
 # Copyous needs libgda6; python-gobject/cairo used by setup helpers; libadwaita
 # is the GTK4 toolkit.

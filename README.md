@@ -194,7 +194,7 @@ Optional older **Crampack** presets (not in this repo):
 
 ```text
 dotfiles/
-├── install.sh       # First-boot orchestrator (pacman → profile → stow → agents…)
+├── install.sh       # First-boot orchestrator (TUI/GUI menu + selective sections; pacman → profile → stow → agents…)
 ├── stow/            # GNU Stow packages → $HOME (system/zram/gdm via setup scripts, not stow -t /)
 │   ├── bash/ zsh/   # shells; shared .shell-* under zsh/
 │   ├── system/      # /etc template (sleep, firewalld-era units, udev, Wayland) → system-setup.sh
@@ -208,7 +208,7 @@ dotfiles/
 ├── browsers/        # chromium-base (+ chrome-extra, brave-extra); zen; LibreWolf
 ├── packages/        # pacman.txt, flatpak.txt, aur.txt, re-extra.txt, thinkpad-t14s.txt, …
 ├── profiles/        # thinkpad-p15 | thinkpad-t14s | laptop | p15
-├── scripts/         # Installers, setup, check (lib/ = dmi, charge conf, shared helpers)
+├── scripts/         # Installers, setup, check (lib/ = dmi, ui-menu, progress, lab-workdir, shared helpers)
 ├── labs/            # lab-triage / lab-re / lab-android / lab-web / lab-capture Containerfiles + MCP example
 ├── tests/           # Smoke tests (`*.test.sh`, CI)
 ├── gnome/           # dconf, extensions.txt, keybindings.md
@@ -312,9 +312,9 @@ sbctl status && sbctl verify
 git clone https://github.com/HelllGuest/dotfiles.git ~/dotfiles
 cd ~/dotfiles
 bash scripts/p15-dotfiles-preflight.sh   # P15 only — optional readiness check
-bash scripts/configure.sh                # modular TUI (preferred for labs/AI/rice/firewalld)
-# or full bootstrap:
-./install.sh                             # requires GNOME session for dconf/extensions
+bash scripts/configure.sh                # modular TUI/GUI (--gui for zenity; labs/AI/rice/firewalld)
+# interactive bootstrap menu (or --gui / --all / --only …):
+./install.sh                             # TTY opens TUI menu; --all runs full bootstrap (needs GNOME session)
 # hostname p15 → profiles/p15.sh → thinkpad-p15 (Optimus). Or re-run:
 # bash profiles/thinkpad-p15.sh
 exec zsh
@@ -351,7 +351,8 @@ stops the script; no silent `|| true`).
 | `SETUP_RICE` | off | `rice-setup.sh` (Gruvbox / SecOps rice + lock-screen notifications off) |
 
 ```bash
-bash scripts/configure.sh                      # menu loop
+bash scripts/configure.sh                      # TUI menu loop (dialog/whiptail/plain)
+bash scripts/configure.sh --gui                # GNOME GUI dialogs (zenity)
 CONFIGURE_ONCE=1 bash scripts/configure.sh     # one checklist (install.sh)
 CONFIGURE_UI=plain bash scripts/configure.sh   # serial: plain menu loop
 CONFIGURE_UI=plain bash scripts/configure.sh </dev/null   # no TTY: one-shot, defaults
@@ -501,7 +502,8 @@ lab-triage | lab-re | lab-android | lab-web | lab-detonate | lab-mcp
 **What `./install.sh` runs, in order:**
 ```text
 reject EUID==0 (never sudo ./install.sh)
-→ sudo -v once + keep-alive (pkill -P then kill on EXIT; long AUR builds no longer time out sudo)
+→ parse flags (--all/--gui/--tui/--plain/--only/--skip/--list) or open TUI/GUI menu on interactive TTY
+→ sudo -v once + keep-alive (skipped for check-only runs; pkill -P then kill on EXIT; long AUR builds no longer time out sudo)
 → cleanup-input-overrides.sh
 → pacman -Syu packages/pacman.txt (one batch; on failure retried per package)
 → bootvine enable (bootvine.service + bootvine-shutdown.service)
@@ -525,14 +527,15 @@ reject EUID==0 (never sudo ./install.sh)
 → ollama-setup.sh (P15 only; SKIP_OLLAMA=1 skips; no-op elsewhere)
 → install-photogimp.sh → install-foxcage.sh (if podman; SKIP_FOXCAGE=1 skips)
 → fetch-gnome-extensions.sh (Caffeine, Blur My Shell, 8 Full-pack, Dash2Dock) → install-extensions.sh
-→ configure.sh one checklist pass (only with CONFIGURE=1; SKIP_CONFIGURE=1 skips the hint)
+→ configure.sh one checklist pass (with CONFIGURE=1, --only configure, or custom checklist; SKIP_CONFIGURE=1 skips the hint)
 → privacy-hardener.sh (incl. browser-hardening.sh)
 → ops-hygiene.sh (paccache + flatpak unused + paccache.timer; SKIP_OPS_HYGIENE=1 skips)
 → firewalld-tailscale.sh (if tailscale) → check.sh → validate-configs.sh
 ```
 Nothing is skipped quietly: every failed step, and every step whose prerequisite
 from `pacman.txt` is missing (npm, npx, node, podman, ghidra, …), is listed at
-the end and `./install.sh` exits 1. Only explicit `SKIP_*=1` opt-outs skip.
+the end and `./install.sh` exits 1. Only explicit `SKIP_*=1` opt-outs or
+menu/`--only`/`--skip` section selection skip.
 `check.sh` ("Install completeness") fails on any missing pacman/AUR/Flatpak
 package, dock icon without an app, shortcut whose command is missing, or
 listed extension that is not installed.
@@ -706,7 +709,7 @@ We take a "quiet by default" approach:
 | REA in lab-re | `lab-re` / rebuild `podman build -t localhost/lab-re labs/lab-re` (`rea-agents@6.10.1`) |
 | REA host MCP (optional) | `bash scripts/install-rea.sh` (needs JDK≥21; Hopper: `INSTALL_HOPPER=1`) |
 | Labs / detonate / MCP | `bash scripts/firewalld-lab-zones.sh && bash scripts/labs-setup.sh`; `lab-detonate` / `lab-mcp` |
-| Stage B TUI | `bash scripts/configure.sh` ([howto](#how-to-configuresh-stage-b-tui)); `CONFIGURE_UI=plain` for serial/CI |
+| Stage B TUI / GUI | `bash scripts/configure.sh [--gui]` ([howto](#how-to-configuresh-stage-b-tui)); `./install.sh --gui` (or **Dotfiles Installer** app-grid launcher) for selective bootstrap; `CONFIGURE_UI=plain` for serial/CI |
 | Stage B VM harness | `bash scripts/vm-stageb-run.sh` (needs Stage A `test-disk.qcow2`) |
 | Terminal / CLI rice | `bash scripts/rice-setup.sh`; switch theme with `rice-theme` / `ff-preset` |
 | Live lab/firewall health | See checklist below |

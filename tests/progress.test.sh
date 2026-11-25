@@ -359,7 +359,8 @@ grep -q 'Unknown section(s): badtag' <<<"$_pm_out" \
   || fail "install.sh --plain ran wrong scripts: $(cat "$IR/ran")"
 unset -v IR _s _out _pm_out
 
-# Desktop launcher for GUI installer exists and is valid.
+# Desktop launcher for GUI installer exists and is valid, and zenity is in pacman.txt.
+grep -qx 'zenity' "$ROOT/packages/pacman.txt" || fail "packages/pacman.txt must include zenity for --gui / Dotfiles Installer"
 _desk="$ROOT/stow/applications/.local/share/applications/dotfiles-installer.desktop"
 [[ -f $_desk ]] || fail "missing dotfiles-installer.desktop"
 grep -q './install.sh --gui' "$_desk" || fail "dotfiles-installer.desktop must launch ./install.sh --gui"

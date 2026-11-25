@@ -69,6 +69,7 @@ Thank you for helping improve this setup. Follow these guidelines to keep the re
 ### Install order (`install.sh`)
 
 - Rejects root (`EUID == 0`). Never document `sudo ./install.sh`.
+- Interactive TTY opens the shared `scripts/lib/ui-menu.sh` TUI menu (presets + custom checklist); `--all`/`-y`/non-TTY run the full default install; `--gui`/`--tui`/`--plain`, `--only`, `--skip`, and `--list` control UI/sections. Only `check`-only runs skip `sudo -v`. Keep the `INSTALL_FAILED=0`..`echo "Starting installation..."` helper block and column-0 `packages/pacman.txt` anchors intact (`tests/bootvine.test.sh`, `tests/install-completeness.test.sh`, `tests/thinkpad-t14s.test.sh`).
 - AUR (`install-aur.sh`) runs **after** `system-setup.sh` so paru/makepkg see `zz-x86-64-v3.conf`.
 - `sync-agent-skills.sh` runs **before** `headroom-setup.sh` (agent config dirs must exist).
 - `gnome-session-setup.sh` must not `stow --adopt` (overwrites tracked files).
@@ -140,7 +141,7 @@ Thank you for helping improve this setup. Follow these guidelines to keep the re
 
 | Role | Scripts |
 |------|---------|
-| Bootstrap | `install.sh`, `configure.sh` (Stage B TUI), `vm-stageb-run.sh` / `vm-stageb-guest.sh`, `stow-only.sh`, `minimal-stow.sh`, thin Stage A handoffs `arch-install{,-t14s,-p15}.sh` + `lib/stage-a-handoff.sh` (canonical: t14s-arch-install), `arch-install-vmtest.sh`, `p15-dotfiles-preflight.sh`, `apply-profile.sh`, `detect-profile.sh` |
+| Bootstrap | `install.sh` (TUI/GUI menu + selective sections), `configure.sh` (Stage B TUI/GUI via `lib/ui-menu.sh`), `vm-stageb-run.sh` / `vm-stageb-guest.sh`, `stow-only.sh`, `minimal-stow.sh`, thin Stage A handoffs `arch-install{,-t14s,-p15}.sh` + `lib/stage-a-handoff.sh` (canonical: t14s-arch-install), `arch-install-vmtest.sh`, `p15-dotfiles-preflight.sh`, `apply-profile.sh`, `detect-profile.sh` |
 | Containers / VM / labs | `agent-run.sh` (hardened rootless Podman; `stow/containers`, whose `storage.conf` sets `fuse-overlayfs` as `mount_program` for linux-hardened), `kali-disposable.sh`, `kali-lan-host-prep.sh`, `labs-setup.sh`, `lab-detonate.sh`, `lab-mcp.sh`, `lib/lab-malware-zone.sh` (iface + `192.168.200.0/24` → `lab-malware`) |
 | Packages | `install-flatpaks.sh`, `install-aur.sh`, `bootstrap-aur.sh`, `install-fonts.sh` |
 | GNOME / desktop | `gnome-session-setup.sh`, `install-extensions.sh`, `fetch-gnome-extensions.sh` (SHA-256 pinned EGO zips + `--only`), `install-dash2dock.sh` (wrapper), `gnome-console-setup.sh`, `rice-setup.sh`, `theme-setup.sh` (stock Adwaita), `gdm-setup.sh`, `backup-gsettings.sh`, `restore-gsettings.sh`, `reset-input-defaults.sh`, `cleanup-input-overrides.sh` |
