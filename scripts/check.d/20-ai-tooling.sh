@@ -4,7 +4,7 @@
 # AI CLIs, Headroom, agent skills, OpenCode/Kimi/Gemini/Antigravity, MCP configs.
 
 echo "--- AI tooling (optional) ---"
-for bin in claude cursor headroom; do
+for bin in claude cursor gemini agy headroom; do
     if command -v "$bin" >/dev/null 2>&1; then
         ver="$($bin --version 2>/dev/null | head -1 || true)"
         echo "✓ $bin is installed${ver:+ ($ver)}"

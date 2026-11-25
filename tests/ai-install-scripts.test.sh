@@ -539,9 +539,65 @@ grep -q '"$WANT_STAMP $(bin_hash)"' "$_gc" || fail "stamp must include the binar
 rm -rf "$_T"; unset -v _gc _pblk _br _o; unset -f _prun
 
 # sync-agent-skills + ai-rules/install.sh: prevent writing hub symlinks back into kit
-grep -q 'if \[\[ -L "\$CLAUDE" \]\]; then' "$ROOT/scripts/sync-agent-skills.sh" \
-  || fail "sync-agent-skills must replace whole-dir symlink \$CLAUDE before install.sh"
+grep -q 'for _sroot in "\$CLAUDE" "\$KIRO_SKILLS" "\$GEMINI_SKILLS" "\$AGY_SKILLS"' "$ROOT/scripts/sync-agent-skills.sh" \
+  || fail "sync-agent-skills must replace whole-dir symlinks for claude/kiro/gemini/antigravity before install.sh"
 grep -q '\-type l' "$ROOT/ai-rules/install.sh" \
   || fail "ai-rules/install.sh sync_kit_cp must clean up orphan symlinks (-type l)"
+
+# Google AI tools (Gemini CLI / Antigravity / Gemini Code Assist / Jules) support:
+# root GEMINI.md bridge, agentsync GEMINI.md handling, ai-rules/install.sh Gemini rules/skills/telemetry.
+[[ -f "$ROOT/GEMINI.md" ]] && [[ "$(head -1 "$ROOT/GEMINI.md")" == "@AGENTS.md" ]] \
+  || fail "repo root GEMINI.md must bridge @AGENTS.md"
+jq -e '.privacy.usageStatisticsEnabled == false and .telemetry.enabled == false' \
+  "$ROOT/ai-rules/gemini-settings.json" >/dev/null \
+  || fail "ai-rules/gemini-settings.json must disable privacy.usageStatisticsEnabled and telemetry.enabled"
+(
+  _gt="$(mktemp -d)"
+  trap 'rm -rf "$_gt"' EXIT
+  mkdir -p "$_gt/home/.config/Antigravity IDE/User" "$_gt/home/.gemini" "$_gt/src" "$_gt/proj" "$_gt/custom" "$_gt/oldskills"
+  cp -r "$ROOT/ai-rules" "$_gt/src/"
+  # Pre-seed a whole-dir symlink at ~/.gemini/skills to verify install.sh unwraps it.
+  ln -s "$_gt/oldskills" "$_gt/home/.gemini/skills"
+  printf '{"theme":"dark","mcpServers":{"x":{"command":"y"}}}\n' >"$_gt/home/.gemini/settings.json"
+  printf '{"editor.fontSize":14}\n' >"$_gt/home/.config/Antigravity IDE/User/settings.json"
+  HOME="$_gt/home" XDG_CONFIG_HOME="$_gt/home/.config" XDG_DATA_HOME="$_gt/home/.local/share" \
+    GIT_CONFIG_GLOBAL="$_gt/gitconfig" \
+    bash "$_gt/src/ai-rules/install.sh" "$_gt/kit" >/dev/null \
+    || fail "ai-rules/install.sh failed in isolated Google AI test"
+  # Global rule symlinks + real skill dirs (never whole-dir symlink into kit)
+  for _p in "$_gt/home/.gemini/AGENTS.md" "$_gt/home/.gemini/GEMINI.md" \
+      "$_gt/home/.gemini/config/AGENTS.md" "$_gt/home/.gemini/config/GEMINI.md"; do
+    [[ -L "$_p" && "$(readlink "$_p")" == "$_gt/kit/AGENTS.md" ]] \
+      || fail "missing or wrong Google AI global rule link: $_p"
+  done
+  for _d in "$_gt/home/.gemini/skills" "$_gt/home/.gemini/config/skills"; do
+    [[ -d "$_d" && ! -L "$_d" && -L "$_d/verify" ]] \
+      || fail "Google AI skills dir must be a real dir with kit skill symlinks: $_d"
+  done
+  # Gemini telemetry merged without clobbering existing user keys; fresh install uses 0600.
+  jq -e '.theme == "dark" and .mcpServers.x.command == "y" and .privacy.usageStatisticsEnabled == false and .telemetry.enabled == false' \
+    "$_gt/home/.gemini/settings.json" >/dev/null \
+    || fail "ai-rules/install.sh broke or skipped ~/.gemini/settings.json merge"
+  rm -f "$_gt/home/.gemini/settings.json"
+  HOME="$_gt/home" XDG_CONFIG_HOME="$_gt/home/.config" XDG_DATA_HOME="$_gt/home/.local/share" \
+    GIT_CONFIG_GLOBAL="$_gt/gitconfig" \
+    bash "$_gt/src/ai-rules/install.sh" "$_gt/kit" >/dev/null \
+    || fail "ai-rules/install.sh failed on fresh ~/.gemini/settings.json"
+  [[ "$(stat -c '%a' "$_gt/home/.gemini/settings.json")" == "600" ]] \
+    || fail "fresh ~/.gemini/settings.json must be mode 600"
+  # Antigravity IDE/User/settings.json merged cleanly (no cursor.general.*)
+  jq -e '."editor.fontSize" == 14 and ."telemetry.telemetryLevel" == "off" and (has("cursor.general.privacyMode") | not)' \
+    "$_gt/home/.config/Antigravity IDE/User/settings.json" >/dev/null \
+    || fail "ai-rules/install.sh missed Antigravity IDE/User/settings.json"
+  # agentsync wires AGENTS.md + CLAUDE.md + GEMINI.md and preserves custom GEMINI.md
+  AI_RULES_HOME="$_gt/kit" bash "$_gt/kit/bin/agentsync" "$_gt/proj" >/dev/null \
+    || fail "agentsync failed on fresh project"
+  [[ -L "$_gt/proj/AGENTS.md" && "$(cat "$_gt/proj/CLAUDE.md")" == "@AGENTS.md" && "$(cat "$_gt/proj/GEMINI.md")" == "@AGENTS.md" ]] \
+    || fail "agentsync must create AGENTS.md, CLAUDE.md, and GEMINI.md bridges"
+  printf 'custom instructions\n' >"$_gt/custom/GEMINI.md"
+  _warn="$(AI_RULES_HOME="$_gt/kit" bash "$_gt/kit/bin/agentsync" "$_gt/custom" 2>&1)"
+  grep -q 'WARN: .*GEMINI\.md exists' <<<"$_warn" && [[ "$(cat "$_gt/custom/GEMINI.md")" == "custom instructions" ]] \
+    || fail "agentsync must warn and not overwrite custom GEMINI.md: $_warn"
+)
 
 echo "PASS: ai-install-scripts.test.sh"

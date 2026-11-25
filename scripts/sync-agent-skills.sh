@@ -36,14 +36,14 @@ say() { printf '>> %s\n' "$*"; }
 
 [[ -x "$AI_RULES_SRC/install.sh" ]] || die "missing $AI_RULES_SRC/install.sh (clone full dotfiles repo)"
 
-# Ensure ~/.claude/skills and ~/.kiro/skills are real dirs before install.sh runs so mirroring
+# Ensure skill roots are real dirs before install.sh runs so mirroring
 # hub skills never writes back into $AI_RULES_TARGET/skills.
-if [[ -L "$CLAUDE" ]]; then
-  rm -f "$CLAUDE"
-fi
-if [[ -L "$KIRO_SKILLS" ]]; then
-  rm -f "$KIRO_SKILLS"
-fi
+for _sroot in "$CLAUDE" "$KIRO_SKILLS" "$GEMINI_SKILLS" "$AGY_SKILLS"; do
+  if [[ -L "$_sroot" ]]; then
+    rm -f "$_sroot"
+  fi
+done
+unset _sroot
 mkdir -p "$AGENTS" "$CLAUDE" "$CURSOR" "$OPENCODE" "$KIMI_AGENTS" "$KIMI_CODE" \
   "$GEMINI_SKILLS" "$AGY_SKILLS" "$KIRO_SKILLS"
 

@@ -6,7 +6,7 @@ agent_skills_die() { echo "error: $*" >&2; exit 1; }
 agent_skills_say() { printf '>> %s\n' "$*"; }
 agent_skills_warn() { echo "warning: $*" >&2; }
 
-# Ensure skills CLI can detect/link Cursor, Claude, OpenCode, Kimi, hub.
+# Ensure skills CLI can detect/link Cursor, Claude, OpenCode, Kimi, Gemini/Antigravity, hub.
 agent_skills_prepare_dirs() {
   mkdir -p \
     "${HOME}/.cursor/skills" \
@@ -15,6 +15,8 @@ agent_skills_prepare_dirs() {
     "${XDG_CONFIG_HOME:-$HOME/.config}/agents/skills" \
     "${KIMI_CODE_HOME:-$HOME/.kimi-code}/skills" \
     "${HOME}/.kimi" \
+    "${HOME}/.gemini/skills" \
+    "${HOME}/.gemini/config/skills" \
     "${HOME}/.agents/skills"
   local kimi_skills="${KIMI_CODE_HOME:-$HOME/.kimi-code}/skills"
   local link="${HOME}/.kimi/skills"
@@ -86,7 +88,7 @@ agent_skills_install_manifest() {
 agent_skills_maybe_sync() {
   local root="${1:-${REPO_ROOT:-}}"
   if [[ "${SKIP_SKILL_SYNC:-0}" != "1" && -n "$root" && -f "$root/scripts/sync-agent-skills.sh" ]]; then
-    agent_skills_say "mirror hub → claude/cursor/opencode/kimi"
+    agent_skills_say "mirror hub → claude/cursor/opencode/kimi/gemini/antigravity/kiro"
     bash "$root/scripts/sync-agent-skills.sh" || true
   fi
 }

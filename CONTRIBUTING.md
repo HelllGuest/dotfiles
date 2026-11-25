@@ -108,7 +108,7 @@ Thank you for helping improve this setup. Follow these guidelines to keep the re
 | fzf / shell exports | `README.md`, `gnome/keybindings.md`, `CHANGELOG.md` |
 | fnm / Node version pins | `README.md`, `CHANGELOG.md`, troubleshooting table |
 | Headroom / AI agents / skills | `README.md` (Headroom / Maintenance), `docs/fresh-install-coding-re.md`, `ai-rules/` (`AGENTS.md`, `skills/*/SKILL.md`, then `ai-rules/install.sh`), `CHANGELOG.md` |
-| Shared agent constitution | Edit `ai-rules/AGENTS.md` (repo kit); run `ai-rules/install.sh` to publish `~/dev/ai-rules` and refresh Claude/Kiro skill links |
+| Shared agent constitution | Edit `ai-rules/AGENTS.md` (repo kit); run `ai-rules/install.sh` to publish `~/dev/ai-rules` and refresh Claude/Kiro/Cursor/Gemini/Antigravity skill links and rules |
 | Privacy / telemetry / browsers | `README.md` (Privacy + Flatpaks), `CONTRIBUTING.md` (packages), `docs/hardened-arch-gnome.md` (Phase 27), `stow/privacy`, `scripts/lib/telemetry.sh`, `CHANGELOG.md` |
 | PhotoGIMP / GIMP (pin bump) | `scripts/install-photogimp.sh` (`PHOTO_URL` + `PHOTO_SHA256`), `README.md` (PhotoGIMP section), `CHANGELOG.md` |
 | foxcage (pin bump) | `scripts/install-foxcage.sh` header (update steps), `tests/foxcage.test.sh` pins, `README.md`, `CHANGELOG.md` |

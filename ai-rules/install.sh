@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Installs the shared AI dev environment for Cursor, Antigravity, Kiro, Claude Code.
+# Installs the shared AI dev environment for Cursor, Antigravity, Gemini CLI, Kiro, Claude Code.
 # Safe to re-run. Canonical kit: ~/dev/ai-rules (override: ./install.sh /path)
 set -euo pipefail
 
@@ -114,6 +114,43 @@ else
   echo "  skip ($CURSOR_SKILLS missing)"
 fi
 
+# Google AI tools (Gemini CLI + Antigravity): keep real skill dirs (never whole-dir
+# symlinks) so hub mirroring in sync-agent-skills.sh never writes back into the kit.
+echo "==> Google AI: Gemini CLI + Antigravity rules & skills"
+for _groot in "$HOME/.gemini/skills" "$HOME/.gemini/config/skills"; do
+  [[ -L "$_groot" ]] && rm -f "$_groot"
+  mkdir -p "$_groot"
+  link_skills "$_groot"
+done
+unset _groot
+ln -sfn "$TARGET/AGENTS.md" "$HOME/.gemini/AGENTS.md"
+ln -sfn "$TARGET/AGENTS.md" "$HOME/.gemini/GEMINI.md"
+ln -sfn "$TARGET/AGENTS.md" "$HOME/.gemini/config/AGENTS.md"
+ln -sfn "$TARGET/AGENTS.md" "$HOME/.gemini/config/GEMINI.md"
+
+KIT_FAILED=()
+kit_fail() { echo "  ✗ $*" >&2; KIT_FAILED+=("$*"); }
+
+echo "==> Gemini CLI settings (telemetry opt-out)"
+KIT_GEMINI="$TARGET/gemini-settings.json"
+USER_GEMINI="$HOME/.gemini/settings.json"
+if [[ ! -f "$USER_GEMINI" ]]; then
+  install -m 0600 "$KIT_GEMINI" "$USER_GEMINI"
+  echo "  wrote $USER_GEMINI"
+elif command -v jq >/dev/null 2>&1; then
+  TMP_GEMINI="$(mktemp)"
+  if jq -s '.[0] * .[1]' "$USER_GEMINI" "$KIT_GEMINI" > "$TMP_GEMINI"; then
+    mv "$TMP_GEMINI" "$USER_GEMINI"
+    echo "  merged telemetry opt-outs into $USER_GEMINI"
+  else
+    rm -f "$TMP_GEMINI"
+    kit_fail "failed to merge telemetry opt-outs into $USER_GEMINI"
+  fi
+  unset TMP_GEMINI
+else
+  kit_fail "jq missing: telemetry opt-outs not merged into $USER_GEMINI (sudo pacman -S jq)"
+fi
+
 echo "==> Claude Code settings (merge telemetry + no co-author)"
 mkdir -p "$HOME/.claude"
 KIT_CLAUDE="$TARGET/claude-settings.json"
@@ -141,8 +178,6 @@ echo "==> VS Code family telemetry (Cursor / Antigravity / Kiro / VSCodium)"
 TELEMETRY_KIT="$TARGET/vscode-family-telemetry.json"
 # Shared merge (also used by scripts/lib/telemetry.sh via this kit file).
 # A step that could not do its job is reported and fails the run at the end.
-KIT_FAILED=()
-kit_fail() { echo "  ✗ $*" >&2; KIT_FAILED+=("$*"); }
 
 # shellcheck source=lib/vscode-settings-merge.sh
 source "$TARGET/lib/vscode-settings-merge.sh"
@@ -178,6 +213,7 @@ while IFS= read -r spath; do
 done <<EOF
 ${XDG_CONFIG_HOME:-$HOME/.config}/Cursor/User/settings.json
 $HOME/.cursor/User/settings.json
+${XDG_CONFIG_HOME:-$HOME/.config}/Antigravity IDE/User/settings.json
 ${XDG_CONFIG_HOME:-$HOME/.config}/Antigravity/User/settings.json
 ${XDG_CONFIG_HOME:-$HOME/.config}/Kiro/User/settings.json
 ${XDG_CONFIG_HOME:-$HOME/.config}/Code/User/settings.json
@@ -232,7 +268,7 @@ cat <<EOF
 
 ==> Done. Day-to-day:
 
-  agentsync /path/to/project     # AGENTS.md + CLAUDE.md (@AGENTS.md) + Cursor pointer
+  agentsync /path/to/project     # AGENTS.md + CLAUDE.md/GEMINI.md (@AGENTS.md) + Cursor pointer
   # In chat: verify | double check | refactor | test | debug | optimize | explain | docs | security | commit | rephrase
 
 Edit rules only in: $TARGET

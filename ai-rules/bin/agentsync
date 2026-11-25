@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# agentsync: link shared AGENTS.md (+ Claude bridge) into a project
+# agentsync: link shared AGENTS.md (+ Claude/Gemini bridges) into a project
 # Installed to ~/.local/bin by ai-rules/install.sh
 set -euo pipefail
 
@@ -19,21 +19,27 @@ else
   exit 1
 fi
 
-# Claude Code bridge (first line @AGENTS.md includes shared rules)
-CLAUDE_MD="$DEST/CLAUDE.md"
-if [[ -L "$CLAUDE_MD" ]]; then
-  ln -sfn AGENTS.md "$CLAUDE_MD"
-  echo "linked $CLAUDE_MD -> AGENTS.md"
-elif [[ -f "$CLAUDE_MD" ]]; then
-  if head -1 "$CLAUDE_MD" | grep -qx '@AGENTS.md'; then
-    echo "CLAUDE.md already bridges @AGENTS.md"
+# Bridge files whose first line @AGENTS.md includes shared rules
+# (CLAUDE.md for Claude Code; GEMINI.md for Gemini CLI / Antigravity / Gemini Code Assist)
+link_bridge() {
+  local name="$1" path="$DEST/$1"
+  if [[ -L "$path" ]]; then
+    ln -sfn AGENTS.md "$path"
+    echo "linked $path -> AGENTS.md"
+  elif [[ -f "$path" ]]; then
+    if head -1 "$path" | grep -qx '@AGENTS.md'; then
+      echo "$name already bridges @AGENTS.md"
+    else
+      echo "WARN: $path exists; add first line: @AGENTS.md" >&2
+    fi
   else
-    echo "WARN: $CLAUDE_MD exists; add first line: @AGENTS.md" >&2
+    printf '%s\n' '@AGENTS.md' > "$path"
+    echo "wrote $path (@AGENTS.md)"
   fi
-else
-  printf '%s\n' '@AGENTS.md' > "$CLAUDE_MD"
-  echo "wrote $CLAUDE_MD (@AGENTS.md)"
-fi
+}
+
+link_bridge CLAUDE.md
+link_bridge GEMINI.md
 
 # Optional Cursor backstop
 if [[ -d "$DEST/.cursor" ]] || [[ -d "$DEST/.git" ]]; then

@@ -1,14 +1,16 @@
-# ai-rules: one config for Cursor, Antigravity, Kiro, and Claude Code
+# ai-rules: one config for Cursor, Antigravity, Gemini CLI, Kiro, and Claude Code
 
 ## Why this works
 
 * **`AGENTS.md`**: shared constitution (rules + command dictionary). Read by
-  Cursor, Antigravity, Kiro, and (via bridge) Claude Code.
-* **`skills/*/SKILL.md`**: Agent Skills for **Claude Code** and **Kiro**.
-  Cursor / Antigravity use the same procedures from AGENTS.md Commands when you
-  say `verify` / `double check` / etc. in chat.
+  Cursor, Antigravity (`agy`), Google AI agents (Gemini CLI / Gemini Code Assist /
+  Jules), Kiro, OpenCode, Kimi, and (via bridges) Claude Code.
+* **`skills/*/SKILL.md`**: Agent Skills for **Claude Code**, **Kiro**, **Gemini
+  CLI**, **Antigravity**, and **Cursor**. Agents also follow the same procedures
+  from `AGENTS.md` Commands when you say `verify` / `double check` / etc. in chat.
 * **`bin/agentsync`**: wire a project (`AGENTS.md`, `CLAUDE.md` → `@AGENTS.md`,
-  and `.cursor/rules` pointer when the project has `.git` or `.cursor`).
+  `GEMINI.md` → `@AGENTS.md`, and `.cursor/rules` pointer when the project has
+  `.git` or `.cursor`).
 * **`git-hooks/`**: global hooks via `core.hooksPath` (strip AI trailers,
   Conventional Commits, branch-name prefill, pre-push checks).
 
@@ -23,6 +25,7 @@ ai-rules/
 ├── cursor-mdc/00-agents-pointer.mdc
 ├── git-hooks/{commit-msg,prepare-commit-msg,pre-commit,pre-push}
 ├── claude-settings.json          # create/merge into ~/.claude/settings.json
+├── gemini-settings.json          # create/merge into ~/.gemini/settings.json
 ├── vscode-family-telemetry.json  # create/merge into VS Code family settings.json
 ├── install.sh
 └── README.md
@@ -54,14 +57,22 @@ ensured to be real directories first so mirroring the full `~/.agents/skills`
 hub across Claude, Cursor, OpenCode, Kimi, Gemini CLI, Antigravity, and Kiro
 never writes hub symlinks back into `~/dev/ai-rules/skills`.
 
+Google AI tools: links global `~/.gemini/{AGENTS,GEMINI}.md` and
+`~/.gemini/config/{AGENTS,GEMINI}.md` to `~/dev/ai-rules/AGENTS.md`, merges kit
+skill symlinks into `~/.gemini/skills` and `~/.gemini/config/skills` (keeping
+them real directories so hub mirroring never writes back into the kit), and
+creates or jq-merges `gemini-settings.json` (`privacy.usageStatisticsEnabled: false`,
+`telemetry.enabled: false`) into `~/.gemini/settings.json`.
+
 Claude settings: if `~/.claude/settings.json` is missing, copy the kit file;
 else jq-merge so kit wins on `includeCoAuthoredBy` and kit `env.*` keys, without
 removing user hooks/plugins/theme. VS Code family: create or jq-merge
 `vscode-family-telemetry.json` into common `User/settings.json` paths (Cursor,
-Antigravity, Kiro, Code, VSCodium, plus stow vscode settings when that path
-exists) via `lib/vscode-settings-merge.sh`, preserving symlinks (such as GNU
-Stow links) and stripping `cursor.general.*` keys from non-Cursor editors. Kiro
-CLI: `kiro-cli settings telemetry.enabled false` when `kiro-cli` is on PATH.
+Antigravity IDE / Antigravity, Kiro, Code, VSCodium, plus stow vscode settings
+when that path exists) via `lib/vscode-settings-merge.sh`, preserving symlinks
+(such as GNU Stow links) and stripping `cursor.general.*` keys from non-Cursor
+editors. Kiro CLI: `kiro-cli settings telemetry.enabled false` when `kiro-cli`
+is on PATH.
 
 Canonical live kit after install: **`~/dev/ai-rules`** (override install target
 with `./install.sh /path`). Edit there, or edit this repo's `ai-rules/` and
@@ -99,8 +110,10 @@ In any IDE / CLI chat:
 
 | Tool | Rules | Skills | Telemetry |
 |------|-------|--------|-----------|
-| Cursor GUI / `agent` | `AGENTS.md` + `.cursor/rules` pointer (via `agentsync`) | via Commands in AGENTS | create/merge vscode-family JSON |
-| Antigravity GUI / `agy` | `AGENTS.md` | via Commands in AGENTS | create/merge vscode-family JSON |
+| Cursor GUI / `agent` | `AGENTS.md` + `.cursor/rules` pointer (via `agentsync`) | `~/.cursor/skills` | create/merge vscode-family JSON |
+| Antigravity GUI / `agy` | `AGENTS.md` + `GEMINI.md` + `~/.gemini/config/{AGENTS,GEMINI}.md` | `~/.gemini/config/skills` | create/merge `Antigravity IDE` / `Antigravity` JSON + `~/.gemini/settings.json` |
+| Google Gemini CLI / `gemini` | `GEMINI.md` → `@AGENTS.md` + `~/.gemini/{AGENTS,GEMINI}.md` | `~/.gemini/skills` | create/merge `~/.gemini/settings.json` (`usageStatisticsEnabled`/`telemetry` off) |
+| Gemini Code Assist / Jules | `AGENTS.md` + `GEMINI.md` → `@AGENTS.md` | via Commands in AGENTS | IDE/host telemetry settings |
 | Kiro GUI / `kiro-cli` | `AGENTS.md` | `~/.kiro/skills` | `kiro-cli` telemetry off + JSON merge |
 | Claude CLI | `CLAUDE.md` → `@AGENTS.md` | `~/.claude/skills` | create/merge kit `env` + `includeCoAuthoredBy: false` |
 
@@ -136,5 +149,5 @@ In any IDE / CLI chat:
   `vscode-family-telemetry.json`.
 * `agentsync` prefers in-repo `./ai-rules/AGENTS.md` when present; otherwise
   links `$AI_RULES_HOME/AGENTS.md` (default `~/dev/ai-rules/AGENTS.md`).
-  For an existing `CLAUDE.md` that is not a symlink and does not start with
-  `@AGENTS.md`, it warns and does not overwrite.
+  For an existing `CLAUDE.md` or `GEMINI.md` that is not a symlink and does not
+  start with `@AGENTS.md`, it warns and does not overwrite.

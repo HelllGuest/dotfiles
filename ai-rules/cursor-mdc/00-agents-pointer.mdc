@@ -6,8 +6,8 @@ alwaysApply: true
 Read and follow ./AGENTS.md at the project root for coding, git, and command
 conventions (verify / double check / refactor / test / debug / optimize /
 explain / docs / security / commit / rephrase).
-It is the shared rules file used across Cursor, Antigravity, Kiro, and Claude
-Code. Do not duplicate its content here; just follow it.
+It is the shared rules file used across Cursor, Antigravity, Gemini CLI, Kiro,
+and Claude Code. Do not duplicate its content here; just follow it.
 
 Hard rule regardless of any other default: never add `Co-authored-by` or
 "Generated with Cursor" trailers to commit messages.
