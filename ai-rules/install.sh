@@ -137,56 +137,42 @@ link_skills "$HOME/.codex/skills"
 KIT_FAILED=()
 kit_fail() { echo "  ✗ $*" >&2; KIT_FAILED+=("$*"); }
 
+# Shared telemetry merge helpers (also sourced by scripts/lib/telemetry.sh).
+# shellcheck source=lib/vscode-settings-merge.sh
+source "$TARGET/lib/vscode-settings-merge.sh"
+
 echo "==> Gemini CLI settings (telemetry opt-out)"
 KIT_GEMINI="$TARGET/gemini-settings.json"
 USER_GEMINI="$HOME/.gemini/settings.json"
-if [[ ! -f "$USER_GEMINI" ]]; then
-  install -m 0600 "$KIT_GEMINI" "$USER_GEMINI"
+if [[ ! -s "$USER_GEMINI" ]]; then
+  gemini_merge_settings_telemetry "$USER_GEMINI" "$KIT_GEMINI"
   echo "  wrote $USER_GEMINI"
-elif command -v jq >/dev/null 2>&1; then
-  TMP_GEMINI="$(mktemp)"
-  if jq -s '.[0] * .[1]' "$USER_GEMINI" "$KIT_GEMINI" > "$TMP_GEMINI"; then
-    mv "$TMP_GEMINI" "$USER_GEMINI"
-    echo "  merged telemetry opt-outs into $USER_GEMINI"
-  else
-    rm -f "$TMP_GEMINI"
-    kit_fail "failed to merge telemetry opt-outs into $USER_GEMINI"
-  fi
-  unset TMP_GEMINI
-else
+elif ! command -v jq >/dev/null 2>&1; then
   kit_fail "jq missing: telemetry opt-outs not merged into $USER_GEMINI (sudo pacman -S jq)"
+elif gemini_merge_settings_telemetry "$USER_GEMINI" "$KIT_GEMINI"; then
+  echo "  merged telemetry opt-outs into $USER_GEMINI"
+else
+  kit_fail "failed to merge telemetry opt-outs into $USER_GEMINI"
 fi
 
 echo "==> Claude Code settings (merge telemetry + no co-author)"
 mkdir -p "$HOME/.claude"
 KIT_CLAUDE="$TARGET/claude-settings.json"
 USER_CLAUDE="$HOME/.claude/settings.json"
-if [[ ! -f "$USER_CLAUDE" ]]; then
-  cp "$KIT_CLAUDE" "$USER_CLAUDE"
+if [[ ! -s "$USER_CLAUDE" ]]; then
+  claude_merge_settings_telemetry "$USER_CLAUDE" "$KIT_CLAUDE"
   echo "  wrote $USER_CLAUDE"
-elif command -v jq >/dev/null 2>&1; then
-  TMP_MERGE="$(mktemp)"
-  # Kit wins on includeCoAuthoredBy + env.*; keep user's hooks/plugins/theme
-  jq -s '
-    .[0] as $user | .[1] as $kit |
-    $user * {
-      includeCoAuthoredBy: $kit.includeCoAuthoredBy,
-      env: (($user.env // {}) + ($kit.env // {}))
-    }
-  ' "$USER_CLAUDE" "$KIT_CLAUDE" > "$TMP_MERGE"
-  mv "$TMP_MERGE" "$USER_CLAUDE"
+elif ! command -v jq >/dev/null 2>&1; then
+  kit_fail "jq missing: telemetry/co-author flags not merged into $USER_CLAUDE (sudo pacman -S jq)"
+elif claude_merge_settings_telemetry "$USER_CLAUDE" "$KIT_CLAUDE"; then
   echo "  merged kit telemetry/co-author flags into $USER_CLAUDE"
 else
-  echo "  ! jq missing; install jq, or merge $KIT_CLAUDE by hand"
+  kit_fail "failed to merge kit telemetry/co-author flags into $USER_CLAUDE"
 fi
 
 echo "==> VS Code family telemetry (Cursor / Antigravity / Kiro / VSCodium)"
 TELEMETRY_KIT="$TARGET/vscode-family-telemetry.json"
-# Shared merge (also used by scripts/lib/telemetry.sh via this kit file).
 # A step that could not do its job is reported and fails the run at the end.
-
-# shellcheck source=lib/vscode-settings-merge.sh
-source "$TARGET/lib/vscode-settings-merge.sh"
 merge_vscode_settings() {
   local settings="$1"
   local label="$2"
@@ -216,15 +202,7 @@ while IFS= read -r spath; do
   [[ -d "$_user" || -d "$_ide" ]] || continue
   unset _user _ide
   merge_vscode_settings "$spath" "$spath"
-done <<EOF
-${XDG_CONFIG_HOME:-$HOME/.config}/Cursor/User/settings.json
-$HOME/.cursor/User/settings.json
-${XDG_CONFIG_HOME:-$HOME/.config}/Antigravity IDE/User/settings.json
-${XDG_CONFIG_HOME:-$HOME/.config}/Antigravity/User/settings.json
-${XDG_CONFIG_HOME:-$HOME/.config}/Kiro/User/settings.json
-${XDG_CONFIG_HOME:-$HOME/.config}/Code/User/settings.json
-${XDG_CONFIG_HOME:-$HOME/.config}/VSCodium/User/settings.json
-EOF
+done < <(vscode_settings_targets)
 
 # Optional: stow-managed VS Code / VSCodium settings if present in a checkout
 for STOW_SETTINGS in \
@@ -248,17 +226,12 @@ fi
 echo "==> agentsync helper -> ~/.local/bin"
 mkdir -p "$HOME/.local/bin"
 ln -sfn "$TARGET/bin/agentsync" "$HOME/.local/bin/agentsync"
-chmod +x "$TARGET/bin/agentsync"
 echo "  agentsync ready (ensure ~/.local/bin is on PATH)"
 
 echo "==> Global git hooks (strip + Conventional Commits + prefill + pre-commit + pre-push)"
 echo "  WARN: core.hooksPath replaces ALL repo .git/hooks (husky/pre-commit ignored)."
 echo "  Unset with: git config --global --unset core.hooksPath"
 git config --global core.hooksPath "$TARGET/git-hooks"
-chmod +x "$TARGET/git-hooks/commit-msg" \
-  "$TARGET/git-hooks/prepare-commit-msg" \
-  "$TARGET/git-hooks/pre-commit" \
-  "$TARGET/git-hooks/pre-push" 2>/dev/null || true
 echo "  git config --global core.hooksPath -> $TARGET/git-hooks"
 
 # Sync this repo's AGENTS bridge if we are installing from a git checkout

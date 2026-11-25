@@ -5,9 +5,11 @@
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 fail() { echo "FAIL: $*" >&2; exit 1; }
-for h in "$ROOT/ai-rules/git-hooks/pre-push" "$ROOT/ai-rules/git-hooks/pre-commit" "$ROOT/ai-rules/git-hooks/commit-msg"; do bash -n "$h" || fail "bash -n $h"; done
+for h in "$ROOT/ai-rules/git-hooks/pre-push" "$ROOT/ai-rules/git-hooks/pre-commit" "$ROOT/ai-rules/git-hooks/commit-msg" "$ROOT/ai-rules/git-hooks/prepare-commit-msg"; do bash -n "$h" || fail "bash -n $h"; done
 cmp -s "$ROOT/ai-rules/git-hooks/pre-push" "$ROOT/stow/git/.config/git/templates/hooks/pre-push" \
   || fail "template pre-push must match ai-rules/git-hooks/pre-push"
+cmp -s "$ROOT/ai-rules/git-hooks/prepare-commit-msg" "$ROOT/stow/git/.config/git/templates/hooks/prepare-commit-msg" \
+  || fail "template prepare-commit-msg must match ai-rules/git-hooks/prepare-commit-msg"
 T="$(mktemp -d)"; trap 'rm -rf -- "$T"' EXIT
 export GIT_CONFIG_GLOBAL="$T/gitconfig" GIT_CONFIG_NOSYSTEM=1 HOME="$T/home"
 mkdir -p "$T/bin" "$HOME"
@@ -64,5 +66,25 @@ bash "$ROOT/ai-rules/git-hooks/commit-msg" "$_cm" >/dev/null || fail "commit-msg
 [[ "$(cat "$_cm")" == $'feat(ai): wire gemini bridge\n\nGenerated with protoc 28.0' ]] \
   || fail "commit-msg strip mismatch: $(cat "$_cm")"
 unset -v _cm
+
+# prepare-commit-msg prepends branch prefix and preserves commit.verbose diff below scissors line.
+_pm_repo="$T/pm-repo"
+git init -q -b feat/NX-42-auth "$_pm_repo"
+_pm="$T/prepare.msg"
+cat >"$_pm" <<'MSG'
+
+# Please enter the commit message
+# ------------------------ >8 ------------------------
+# Do not modify or remove the line above.
+diff --git a/foo b/foo
++hello
+MSG
+(cd "$_pm_repo" && bash "$ROOT/ai-rules/git-hooks/prepare-commit-msg" "$_pm" "") \
+  || fail "prepare-commit-msg failed on verbose template"
+[[ "$(head -1 "$_pm")" == "feat(NX-42): auth" ]] \
+  || fail "prepare-commit-msg did not prepend branch prefix: $(head -1 "$_pm")"
+grep -q '^diff --git a/foo b/foo$' "$_pm" && grep -q '^+hello$' "$_pm" \
+  || fail "prepare-commit-msg dropped commit.verbose diff below scissors line: $(cat "$_pm")"
+unset -v _pm_repo _pm
 
 echo "PASS: git-hooks.test.sh"

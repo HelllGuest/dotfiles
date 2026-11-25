@@ -556,6 +556,9 @@ jq -e '.privacy.usageStatisticsEnabled == false and .telemetry.enabled == false'
   trap 'rm -rf "$_gt"' EXIT
   mkdir -p "$_gt/home/.config/Antigravity IDE/User" "$_gt/home/.gemini" "$_gt/src" "$_gt/proj" "$_gt/custom" "$_gt/oldskills"
   cp -r "$ROOT/ai-rules" "$_gt/src/"
+  # Existing ~/.claude/settings.json merges kit telemetry + skipWebFetchPreflight while keeping user keys.
+  mkdir -p "$_gt/home/.claude"
+  printf '{"theme":"solarized","env":{"KEEP":"1"}}\n' >"$_gt/home/.claude/settings.json"
   # Pre-seed a whole-dir symlink at ~/.gemini/skills to verify install.sh unwraps it.
   ln -s "$_gt/oldskills" "$_gt/home/.gemini/skills"
   printf '{"theme":"dark","mcpServers":{"x":{"command":"y"}}}\n' >"$_gt/home/.gemini/settings.json"
@@ -575,6 +578,10 @@ jq -e '.privacy.usageStatisticsEnabled == false and .telemetry.enabled == false'
     [[ -d "$_d" && ! -L "$_d" && -L "$_d/verify" ]] \
       || fail "agent skills dir must be a real dir with kit skill symlinks: $_d"
   done
+  # Claude existing settings merged with skipWebFetchPreflight + user keys preserved.
+  jq -e '.theme == "solarized" and .includeCoAuthoredBy == false and .skipWebFetchPreflight == true and .env.KEEP == "1"' \
+    "$_gt/home/.claude/settings.json" >/dev/null \
+    || fail "ai-rules/install.sh broke or dropped skipWebFetchPreflight in ~/.claude/settings.json"
   # Gemini telemetry merged without clobbering existing user keys; fresh install uses 0600.
   jq -e '.theme == "dark" and .mcpServers.x.command == "y" and .privacy.usageStatisticsEnabled == false and .telemetry.enabled == false' \
     "$_gt/home/.gemini/settings.json" >/dev/null \
@@ -599,6 +606,34 @@ jq -e '.privacy.usageStatisticsEnabled == false and .telemetry.enabled == false'
   _warn="$(AI_RULES_HOME="$_gt/kit" bash "$_gt/kit/bin/agentsync" "$_gt/custom" 2>&1)"
   grep -q 'WARN: .*GEMINI\.md exists' <<<"$_warn" && [[ "$(cat "$_gt/custom/GEMINI.md")" == "custom instructions" ]] \
     || fail "agentsync must warn and not overwrite custom GEMINI.md: $_warn"
+  # Edge cases: 0-byte settings, invalid JSON, and symlink preservation for Gemini/Claude helpers.
+  (
+    export REPO_ROOT="$ROOT" HOME="$_gt/edge" XDG_CONFIG_HOME="$_gt/edge/.config"
+    mkdir -p "$HOME/.claude" "$HOME/.gemini"
+    # shellcheck source=/dev/null
+    source "$ROOT/scripts/lib/telemetry.sh"
+    : > "$HOME/.claude/settings.json"
+    : > "$HOME/.gemini/settings.json"
+    telemetry_ensure_claude_env || fail "telemetry_ensure_claude_env failed on 0-byte file"
+    telemetry_ensure_gemini || fail "telemetry_ensure_gemini failed on 0-byte file"
+    jq -e '.includeCoAuthoredBy == false and .skipWebFetchPreflight == true' "$HOME/.claude/settings.json" >/dev/null \
+      || fail "0-byte ~/.claude/settings.json corrupted by telemetry_ensure_claude_env"
+    jq -e '.privacy.usageStatisticsEnabled == false and .telemetry.enabled == false' "$HOME/.gemini/settings.json" >/dev/null \
+      || fail "0-byte ~/.gemini/settings.json corrupted by telemetry_ensure_gemini"
+    # Symlink preservation
+    mv "$HOME/.gemini/settings.json" "$_gt/edge/real-gemini.json"
+    ln -s "$_gt/edge/real-gemini.json" "$HOME/.gemini/settings.json"
+    printf '{"theme":"dark"}\n' > "$_gt/edge/real-gemini.json"
+    telemetry_ensure_gemini || fail "telemetry_ensure_gemini failed on symlink"
+    [[ -L "$HOME/.gemini/settings.json" ]] || fail "telemetry_ensure_gemini replaced symlink"
+    jq -e '.theme == "dark" and .telemetry.enabled == false' "$HOME/.gemini/settings.json" >/dev/null \
+      || fail "telemetry_ensure_gemini symlink merge wrong"
+    # Invalid JSON rejected without corrupting file
+    printf '{broken\n' > "$HOME/.claude/settings.json"
+    ! telemetry_ensure_claude_env 2>/dev/null || fail "telemetry_ensure_claude_env must fail on invalid JSON"
+    [[ "$(cat "$HOME/.claude/settings.json")" == "{broken" ]] \
+      || fail "invalid ~/.claude/settings.json was overwritten"
+  )
 )
 
 # install-rtk.sh: SHA-256 pinned, rejects mismatch, installs under ~/.local/share/rtk

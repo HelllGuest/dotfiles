@@ -24,12 +24,18 @@ else
   exit 0
 fi
 
-CURRENT=$(grep -v '^#' "$COMMIT_MSG_FILE" | tr -d '[:space:]')
+# Verbose commits (commit.verbose) append the diff below a scissors line;
+# only the portion above it is the actual message.
+BODY=$(sed '/^# -\+ >8 -\+$/,$d' "$COMMIT_MSG_FILE")
+CURRENT=$(echo "$BODY" | grep -v '^#' | tr -d '[:space:]')
 if [[ -z "$CURRENT" ]]; then
-  COMMENTS=$(grep '^#' "$COMMIT_MSG_FILE" || true)
-  {
-    echo "${PREFIX}${SLUG}"
-    echo ""
-    echo "$COMMENTS"
-  } > "$COMMIT_MSG_FILE"
+  TMP="$(mktemp)"
+  if {
+    printf '%s\n\n' "${PREFIX}${SLUG}"
+    sed '/./,$!d' "$COMMIT_MSG_FILE"
+  } > "$TMP"; then
+    mv "$TMP" "$COMMIT_MSG_FILE"
+  else
+    rm -f "$TMP"
+  fi
 fi

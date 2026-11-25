@@ -3,10 +3,10 @@
 #
 # 1) Install/sync the shared ai-rules kit → ~/dev/ai-rules (Claude/Kiro skills + hooks)
 # 2) Hub at ~/.agents/skills: kit skills + keep existing (caveman, REA, Cloudflare, …)
-# 3) Mirror hub → Claude, Cursor, OpenCode, Kimi, Gemini CLI, Antigravity, and Kiro skill roots (symlinks)
+# 3) Mirror hub → Claude, Cursor, OpenCode, Kimi, Gemini CLI, Antigravity, Kiro, and Codex skill roots (symlinks)
 # 4) Sync global rules (AGENTS.md / CLAUDE.md / GEMINI.md) across agent roots
 #
-# Soft link (Claude/Cursor/OpenCode/Gemini/Antigravity/Kiro): skip real non-symlink dirs (vendor /
+# Soft link (Claude/Cursor/OpenCode/Gemini/Antigravity/Kiro/Codex): skip real non-symlink dirs (vendor /
 # caveman-owned installs under OpenCode).
 # Force link (Kimi only): replace real dirs with hub symlinks so stale
 # copies cannot shadow the hub.
@@ -68,7 +68,7 @@ link_skill() {
   return 0
 }
 
-# Replace real dirs/files with a symlink to the hub (OpenCode/Kimi only).
+# Replace real dirs/files with a symlink to the hub (Kimi only).
 force_link_skill() {
   local src="$1" dest="$2"
   if [[ -L "$dest" ]]; then
@@ -187,6 +187,7 @@ oc_path.write_text(merged)
 PY
 fi
 
+_skill_count() { find "$1" -mindepth 1 -maxdepth 1 | wc -l; }
 echo
-echo "agents=$(find "$AGENTS" -mindepth 1 -maxdepth 1 | wc -l) claude=$(find "$CLAUDE" -mindepth 1 -maxdepth 1 | wc -l) cursor=$(find "$CURSOR" -mindepth 1 -maxdepth 1 | wc -l) opencode=$(find "$OPENCODE" -mindepth 1 -maxdepth 1 | wc -l) kimi-agents=$(find "$KIMI_AGENTS" -mindepth 1 -maxdepth 1 | wc -l) kimi-code=$(find "$KIMI_CODE" -mindepth 1 -maxdepth 1 | wc -l) gemini=$(find "$GEMINI_SKILLS" -mindepth 1 -maxdepth 1 | wc -l) agy=$(find "$AGY_SKILLS" -mindepth 1 -maxdepth 1 | wc -l) kiro=$(find "$KIRO_SKILLS" -mindepth 1 -maxdepth 1 | wc -l) codex=$(find "$CODEX_SKILLS" -mindepth 1 -maxdepth 1 | wc -l)"
+echo "agents=$(_skill_count "$AGENTS") claude=$(_skill_count "$CLAUDE") cursor=$(_skill_count "$CURSOR") opencode=$(_skill_count "$OPENCODE") kimi-agents=$(_skill_count "$KIMI_AGENTS") kimi-code=$(_skill_count "$KIMI_CODE") gemini=$(_skill_count "$GEMINI_SKILLS") agy=$(_skill_count "$AGY_SKILLS") kiro=$(_skill_count "$KIRO_SKILLS") codex=$(_skill_count "$CODEX_SKILLS")"
 say "sync-agent-skills done"

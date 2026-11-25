@@ -68,36 +68,19 @@ check_agent_skill meson "bash scripts/install-ecosystem-skills.sh"
 check_agent_skill arch-linux-triage "bash scripts/install-ecosystem-skills.sh"
 check_agent_skill agent-browser "bash scripts/install-ecosystem-skills.sh"
 
-OPENCODE_SKILLS="${XDG_CONFIG_HOME:-$HOME/.config}/opencode/skills"
-KIMI_SKILLS="${KIMI_CODE_HOME:-$HOME/.kimi-code}/skills"
-GEMINI_SKILLS="${HOME}/.gemini/skills"
-AGY_SKILLS="${HOME}/.gemini/config/skills"
-CODEX_SKILLS="${HOME}/.codex/skills"
-if [[ -f "${OPENCODE_SKILLS}/caveman/SKILL.md" ]]; then
-    echo "✓ OpenCode skills (caveman)"
-else
-    echo "○ OpenCode skills missing (bash scripts/sync-agent-skills.sh)"
-fi
-if [[ -f "${KIMI_SKILLS}/caveman/SKILL.md" ]]; then
-    echo "✓ Kimi Code skills (caveman)"
-else
-    echo "○ Kimi Code skills missing (bash scripts/sync-agent-skills.sh)"
-fi
-if [[ -f "${GEMINI_SKILLS}/caveman/SKILL.md" ]]; then
-    echo "✓ Gemini CLI skills (caveman)"
-else
-    echo "○ Gemini CLI skills missing (bash scripts/sync-agent-skills.sh)"
-fi
-if [[ -f "${AGY_SKILLS}/caveman/SKILL.md" ]]; then
-    echo "✓ Antigravity skills (caveman)"
-else
-    echo "○ Antigravity skills missing (bash scripts/sync-agent-skills.sh)"
-fi
-if [[ -f "${CODEX_SKILLS}/caveman/SKILL.md" ]]; then
-    echo "✓ Codex skills (caveman)"
-else
-    echo "○ Codex skills missing (bash scripts/sync-agent-skills.sh)"
-fi
+check_skill_mirror() {
+    local label=$1 dir=$2
+    if [[ -f "${dir}/caveman/SKILL.md" ]]; then
+        echo "✓ ${label} (caveman)"
+    else
+        echo "○ ${label} missing (bash scripts/sync-agent-skills.sh)"
+    fi
+}
+check_skill_mirror "OpenCode skills"    "${XDG_CONFIG_HOME:-$HOME/.config}/opencode/skills"
+check_skill_mirror "Kimi Code skills"   "${KIMI_CODE_HOME:-$HOME/.kimi-code}/skills"
+check_skill_mirror "Gemini CLI skills"  "${HOME}/.gemini/skills"
+check_skill_mirror "Antigravity skills" "${HOME}/.gemini/config/skills"
+check_skill_mirror "Codex skills"       "${HOME}/.codex/skills"
 if command -v kimi >/dev/null 2>&1; then
     echo "✓ kimi CLI ($(kimi --version 2>/dev/null | head -1))"
 else

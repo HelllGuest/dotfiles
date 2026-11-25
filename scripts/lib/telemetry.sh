@@ -51,15 +51,7 @@ telemetry_merge_vscode_settings() {
 }
 
 telemetry_vscode_targets() {
-  cat <<EOF
-${XDG_CONFIG_HOME:-$HOME/.config}/Cursor/User/settings.json
-$HOME/.cursor/User/settings.json
-${XDG_CONFIG_HOME:-$HOME/.config}/Antigravity IDE/User/settings.json
-${XDG_CONFIG_HOME:-$HOME/.config}/Antigravity/User/settings.json
-${XDG_CONFIG_HOME:-$HOME/.config}/Kiro/User/settings.json
-${XDG_CONFIG_HOME:-$HOME/.config}/Code/User/settings.json
-${XDG_CONFIG_HOME:-$HOME/.config}/VSCodium/User/settings.json
-EOF
+  vscode_settings_targets
 }
 
 telemetry_ensure_flutter() {
@@ -114,48 +106,17 @@ telemetry_ensure_claude_env() {
   local kit="${REPO_ROOT:-}/ai-rules/claude-settings.json"
   [[ -f "$kit" ]] || return 0
   mkdir -p "${HOME}/.claude"
-  if [[ ! -f "$settings" ]]; then
-    cp "$kit" "$settings"
-    return 0
-  fi
-  command -v jq >/dev/null 2>&1 || return 0
-  local tmp
-  tmp="$(mktemp)"
-  if jq -s '
-    .[0] as $user | .[1] as $kit |
-    $user * {
-      includeCoAuthoredBy: $kit.includeCoAuthoredBy,
-      skipWebFetchPreflight: ($kit.skipWebFetchPreflight // $user.skipWebFetchPreflight),
-      env: (($user.env // {}) + ($kit.env // {}))
-    }
-  ' "$settings" "$kit" > "$tmp"; then
-    mv "$tmp" "$settings"
-  else
-    rm -f "$tmp"
-    return 1
-  fi
+  [[ ! -s "$settings" ]] || command -v jq >/dev/null 2>&1 || return 0
+  claude_merge_settings_telemetry "$settings" "$kit"
 }
 
 # Gemini CLI: usage stats off + OTel off (privacy.usageStatisticsEnabled / telemetry.enabled).
 telemetry_ensure_gemini() {
   local settings="${HOME}/.gemini/settings.json"
+  local kit="${REPO_ROOT:-}/ai-rules/gemini-settings.json"
   [[ -d "${HOME}/.gemini" ]] || return 0
   command -v jq >/dev/null 2>&1 || return 1
-  if [[ ! -f "$settings" ]]; then
-    printf '%s\n' '{"privacy":{"usageStatisticsEnabled":false},"telemetry":{"enabled":false}}' > "$settings"
-    return 0
-  fi
-  local tmp
-  tmp="$(mktemp)"
-  if jq '
-    .privacy = ((.privacy // {}) + {usageStatisticsEnabled: false})
-    | .telemetry = ((.telemetry // {}) + {enabled: false})
-  ' "$settings" > "$tmp"; then
-    mv "$tmp" "$settings"
-  else
-    rm -f "$tmp"
-    return 1
-  fi
+  gemini_merge_settings_telemetry "$settings" "$kit"
 }
 
 # OpenCode: no share, no autoupdate, OTel off (product has no master telemetry kill).
