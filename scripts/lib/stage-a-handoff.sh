@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
-# stage-a-handoff.sh — run canonical HelllGuest/t14s-arch-install Stage A
+# stage-a-handoff.sh — run canonical Stage A installer (t14s-arch-install/ in HelllGuest/dotfiles)
 #
 # Sourced by thin curl-able wrappers (arch-install{,-t14s,-p15}.sh).
-# Prefer a local checkout; else download install.sh (libs via T14S_BASE_URL).
+# Prefer the in-repo t14s-arch-install/ checkout; else download from GitHub (libs via T14S_BASE_URL).
 #
 # Env:
 #   HW_PROFILE            forced profile (t14s|p15); empty → canonical DMI detect
@@ -11,7 +11,7 @@
 #   T14S_REF              optional sha/branch/tag override (else resolve main once)
 #   T14S_BASE_URL         raw base (skips ref resolve when set)
 #   T14S_INSTALL_URL      full URL to install.sh
-#   STAGE_A_DOTFILES_ROOT path to this dotfiles repo (sibling lookup)
+#   STAGE_A_DOTFILES_ROOT path to this dotfiles repo (in-repo + sibling lookup)
 #   STAGE_A_DRY_PRINT=1   print resolution only (tests); do not exec
 
 # Resolve one commit for every raw.githubusercontent fetch (install + libs).
@@ -24,15 +24,15 @@ t14s_resolve_base_url() {
   local ref="${T14S_REF:-}"
   if [[ -z $ref ]]; then
     ref="$(curl -fsSL -H 'Accept: application/vnd.github.sha' \
-      https://api.github.com/repos/HelllGuest/t14s-arch-install/commits/main 2>/dev/null || true)"
+      https://api.github.com/repos/HelllGuest/dotfiles/commits/main 2>/dev/null || true)"
     ref="${ref//$'\n'/}"
     if [[ ! $ref =~ ^[0-9a-f]{40}$ ]]; then
-      printf 'ERR: could not resolve t14s-arch-install main SHA (set T14S_REF or T14S_BASE_URL)\n' >&2
+      printf 'ERR: could not resolve dotfiles main SHA (set T14S_REF or T14S_BASE_URL)\n' >&2
       return 1
     fi
     T14S_REF="$ref"
   fi
-  printf 'https://raw.githubusercontent.com/HelllGuest/t14s-arch-install/%s\n' "$ref"
+  printf 'https://raw.githubusercontent.com/HelllGuest/dotfiles/%s/t14s-arch-install\n' "$ref"
 }
 
 stage_a_handoff() {
@@ -59,9 +59,10 @@ stage_a_handoff() {
     exec bash "$cand" "$@"
   fi
 
-  # 2) Explicit dir, $HOME checkout, or sibling of this dotfiles tree
+  # 2) Explicit dir, in-repo t14s-arch-install/, $HOME checkout, or sibling
   for cand in \
     "${T14S_LOCAL:-}" \
+    "${STAGE_A_DOTFILES_ROOT:+$STAGE_A_DOTFILES_ROOT/t14s-arch-install}" \
     "${HOME:+$HOME/t14s-arch-install}" \
     "${STAGE_A_DOTFILES_ROOT:+$STAGE_A_DOTFILES_ROOT/../t14s-arch-install}"
   do

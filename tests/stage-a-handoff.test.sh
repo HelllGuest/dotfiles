@@ -31,10 +31,10 @@ grep -q 'stage_a_handoff t14s' "$ROOT/scripts/arch-install-t14s.sh" \
   || fail "arch-install-t14s must hand off with profile t14s"
 grep -q 'stage_a_handoff p15' "$ROOT/scripts/arch-install-p15.sh" \
   || fail "arch-install-p15 must hand off with profile p15"
-grep -q 'HelllGuest/t14s-arch-install' "$ROOT/scripts/arch-install-t14s.sh" \
-  || fail "arch-install-t14s must document canonical repo"
-grep -q 'HelllGuest/t14s-arch-install' "$ROOT/scripts/arch-install-p15.sh" \
-  || fail "arch-install-p15 must document canonical repo"
+grep -q 't14s-arch-install/install.sh' "$ROOT/scripts/arch-install-t14s.sh" \
+  || fail "arch-install-t14s must document canonical in-repo installer"
+grep -q 't14s-arch-install/install.sh' "$ROOT/scripts/arch-install-p15.sh" \
+  || fail "arch-install-p15 must document canonical in-repo installer"
 
 # Resolution: local checkout. Use a fixture so CI / hosts without a sibling
 # ~/t14s-arch-install still exercise the local path (no network).
@@ -85,6 +85,15 @@ out="$(
 )" || fail "dry handoff p15 failed"
 echo "$out" | grep -qx 'HW_PROFILE=p15' || fail "expected HW_PROFILE=p15: $out"
 
+# Default in-repo lookup (no T14S_LOCAL, no sibling): must resolve $ROOT/t14s-arch-install
+out="$(
+  STAGE_A_DRY_PRINT=1 STAGE_A_DOTFILES_ROOT="$ROOT" \
+    T14S_INSTALL_SH='' T14S_LOCAL='' HOME=/nonexistent \
+    stage_a_handoff t14s
+)" || fail "default in-repo handoff failed"
+echo "$out" | grep -qx "local:$ROOT/t14s-arch-install/install.sh" \
+  || fail "default handoff must resolve in-repo t14s-arch-install: $out"
+
 # Forced fetch: T14S_REF override (no network) → same commit for install URL
 out="$(
   STAGE_A_DRY_PRINT=1 \
@@ -94,32 +103,30 @@ out="$(
     T14S_REF=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa \
     stage_a_handoff t14s
 )" || fail "dry fetch handoff with T14S_REF failed"
-echo "$out" | grep -q '^fetch:https://raw.githubusercontent.com/HelllGuest/t14s-arch-install/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/install.sh' \
+echo "$out" | grep -q '^fetch:https://raw.githubusercontent.com/HelllGuest/dotfiles/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/t14s-arch-install/install.sh' \
   || fail "expected T14S_REF override in fetch URL: $out"
 grep -q 't14s_resolve_base_url' "$ROOT/scripts/lib/stage-a-handoff.sh" \
   || fail "stage-a-handoff must resolve main SHA via t14s_resolve_base_url"
 grep -q "application/vnd.github.sha" "$ROOT/scripts/lib/stage-a-handoff.sh" \
   || fail "stage-a-handoff must use GitHub commits API Accept: sha"
 
-# Canonical repo still owns hardware seeds (when sibling present)
-CANON="$ROOT/../t14s-arch-install"
-if [[ -f $CANON/install.sh && -f $CANON/lib/80-chroot-setup.sh ]]; then
-  # Chroot code = entry script + its stages (lib/chroot/, when split).
-  CANON_CHROOT=("$CANON/lib/80-chroot-setup.sh")
-  [[ -d $CANON/lib/chroot ]] && CANON_CHROOT+=("$CANON"/lib/chroot/*.sh)
-  grep -q 'amd_iommu=on' "${CANON_CHROOT[@]}" \
-    || fail "canonical Stage A missing amd_iommu"
-  grep -q 'nvidia_drm.modeset=1' "${CANON_CHROOT[@]}" \
-    || fail "canonical Stage A missing nvidia modeset"
-  grep -q 'thinkpad-charge-thresholds' "${CANON_CHROOT[@]}" \
-    || fail "canonical Stage A missing charge thresholds"
-  grep -q 'github-cli glab' "${CANON_CHROOT[@]}" \
-    || fail "canonical Stage A devtools must include github-cli glab"
-  grep -q 'btop fastfetch' "${CANON_CHROOT[@]}" \
-    || fail "canonical Stage A cli bundle must include btop fastfetch"
-else
-  echo "NOTE: skip canonical seed checks (no sibling t14s-arch-install)"
-fi
+# In-repo canonical Stage A owns hardware seeds
+CANON="$ROOT/t14s-arch-install"
+[[ -f $CANON/install.sh && -f $CANON/lib/80-chroot-setup.sh ]] \
+  || fail "missing in-repo Stage A tree at $CANON"
+# Chroot code = entry script + its stages (lib/chroot/, when split).
+CANON_CHROOT=("$CANON/lib/80-chroot-setup.sh")
+[[ -d $CANON/lib/chroot ]] && CANON_CHROOT+=("$CANON"/lib/chroot/*.sh)
+grep -q 'amd_iommu=on' "${CANON_CHROOT[@]}" \
+  || fail "canonical Stage A missing amd_iommu"
+grep -q 'nvidia_drm.modeset=1' "${CANON_CHROOT[@]}" \
+  || fail "canonical Stage A missing nvidia modeset"
+grep -q 'thinkpad-charge-thresholds' "${CANON_CHROOT[@]}" \
+  || fail "canonical Stage A missing charge thresholds"
+grep -q 'github-cli glab' "${CANON_CHROOT[@]}" \
+  || fail "canonical Stage A devtools must include github-cli glab"
+grep -q 'btop fastfetch' "${CANON_CHROOT[@]}" \
+  || fail "canonical Stage A cli bundle must include btop fastfetch"
 
 grep -q 'INSTALLER=' "$ROOT/scripts/arch-install-vmtest.sh" \
   || fail "arch-install-vmtest must support INSTALLER="

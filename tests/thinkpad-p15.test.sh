@@ -26,11 +26,11 @@ done
 
 INST="$ROOT/scripts/arch-install-p15.sh"
 
-# Thin handoff → canonical Stage A
+# Thin handoff → canonical in-repo Stage A
 grep -q 'stage_a_handoff p15' "$INST" \
   || fail "arch-install-p15 must hand off with profile p15"
-grep -q 'HelllGuest/t14s-arch-install' "$INST" \
-  || fail "arch-install-p15 must point at canonical public Stage A"
+grep -q 't14s-arch-install/install.sh' "$INST" \
+  || fail "arch-install-p15 must point at canonical Stage A installer"
 grep -qE 'cryptsetup|pacstrap' "$INST" \
   && fail "arch-install-p15 must not embed Stage A body" || true
 

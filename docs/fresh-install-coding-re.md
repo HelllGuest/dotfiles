@@ -12,7 +12,7 @@ Purpose-oriented guide for this repository on the **Lenovo ThinkPad P15 Gen 1**
 
 Automation:
 
-* Bare metal Stage A (canonical): [t14s-arch-install](https://github.com/HelllGuest/t14s-arch-install) (`HW_PROFILE=t14s|p15`)
+* Bare metal Stage A (canonical): [t14s-arch-install](../t14s-arch-install/README.md) (`HW_PROFILE=t14s|p15|generic`)
 * Thin wrappers (same installer): [`arch-install-t14s.sh`](../scripts/arch-install-t14s.sh) / [`arch-install-p15.sh`](../scripts/arch-install-p15.sh) / [`arch-install.sh`](../scripts/arch-install.sh)
 * VM rehearsal: [`arch-install-vmtest.sh`](../scripts/arch-install-vmtest.sh) (`INSTALLER=arch-install-p15.sh` or `arch-install-t14s.sh`)
 * After first GNOME login: [`../install.sh`](../install.sh)
@@ -126,10 +126,9 @@ On the machine, from the official Arch ISO as root:
 
 ```bash
 # Canonical (DMI / TUI picks HW_PROFILE):
-bash <(curl -fsSL https://raw.githubusercontent.com/HelllGuest/t14s-arch-install/main/install.sh)
+bash <(curl -fsSL https://raw.githubusercontent.com/HelllGuest/dotfiles/main/t14s-arch-install/install.sh)
 
-# Thin wrappers (same installer; pin profile). Raw URLs work only while this
-# repo is public (private: 404, use the t14s-arch-install URL above):
+# Thin wrappers (same installer; pin profile):
 bash <(curl -fsSL https://raw.githubusercontent.com/HelllGuest/dotfiles/main/scripts/arch-install-p15.sh)   # HW_PROFILE=p15
 bash <(curl -fsSL https://raw.githubusercontent.com/HelllGuest/dotfiles/main/scripts/arch-install-t14s.sh)  # HW_PROFILE=t14s
 ```
@@ -152,7 +151,6 @@ Verify Stage A (read-only; runs t14s-arch-install `tests/host-check.sh`, ~80
 checks; root-only ones too after `sudo -v`):
 
 ```bash
-git clone https://github.com/HelllGuest/t14s-arch-install ~/t14s-arch-install  # if not present
 sudo -v && bash ~/dotfiles/scripts/check.sh --stage-a
 ```
 

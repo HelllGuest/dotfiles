@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # arch-install-t14s.sh — thin Stage A handoff (ThinkPad T14s Gen 3 AMD)
 #
-# Canonical installer: https://github.com/HelllGuest/t14s-arch-install
+# Canonical installer: t14s-arch-install/install.sh (in HelllGuest/dotfiles)
 #   HW_PROFILE=t14s (21CQ/21CR, amd-ucode, amd_iommu/amd_pstate)
 #
 #   bash <(curl -fsSL https://raw.githubusercontent.com/HelllGuest/dotfiles/main/scripts/arch-install-t14s.sh)

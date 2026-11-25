@@ -26,7 +26,8 @@ RAM=${RAM:-4096}
 PORT=${PORT:-8000}
 T14S_PORT=${T14S_PORT:-$((PORT + 1))}
 ISO=${ISO:-}
-T14S_DIR="${T14S_LOCAL:-$DOTFILES_ROOT/../t14s-arch-install}"
+T14S_DIR="${T14S_LOCAL:-$DOTFILES_ROOT/t14s-arch-install}"
+[[ -d $T14S_DIR ]] || T14S_DIR="$DOTFILES_ROOT/../t14s-arch-install"
 [[ -d $T14S_DIR ]] && T14S_DIR="$(cd "$T14S_DIR" && pwd)" || T14S_DIR=""
 
 # 1. dependencies (qemu + OVMF firmware)

@@ -235,7 +235,7 @@ Layout stays flat on purpose: GNU Stow package roots, curl-able installers, and
 | [docs/hardened-arch-gnome.md](docs/hardened-arch-gnome.md) | Full Arch + GNOME guide — dual-host Stage A + firewalld |
 | [docs/fresh-install-coding-re.md](docs/fresh-install-coding-re.md) | Purpose stacks (coding / RE / malware lab); lab-re + Stage B configure |
 | [docs/SECURITY-AUDIT.md](docs/SECURITY-AUDIT.md) | Security audit of this repository (2026-11-16) |
-| [t14s-arch-install](https://github.com/HelllGuest/t14s-arch-install) | Preferred Stage A ISO installer (T14s 21CQ/21CR + P15 20SU) |
+| [t14s-arch-install/](t14s-arch-install/README.md) | Canonical Stage A ISO installer (T14s 21CQ/21CR, P15 20SU, generic x86_64) |
 | [gnome/keybindings.md](gnome/keybindings.md) | Shell aliases and useful shortcuts |
 
 ---
@@ -244,17 +244,15 @@ Layout stays flat on purpose: GNU Stow package roots, curl-able installers, and
 
 ### 0. Bare-metal Arch install (Stage A, from the ISO)
 
-**Canonical Stage A:** **[t14s-arch-install](https://github.com/HelllGuest/t14s-arch-install)**
-(`HW_PROFILE=t14s|p15`, TUI/DRYRUN/answers). Seeds **firewalld** (`nftables`,
+**Canonical Stage A:** **[t14s-arch-install/](t14s-arch-install/README.md)**
+(`HW_PROFILE=t14s|p15|generic`, TUI/DRYRUN/answers). Seeds **firewalld** (`nftables`,
 default zone `drop`); optional P15 `ollama-cuda` on `127.0.0.1:11434`.
 
 ```bash
-# Preferred (from Arch ISO, UEFI, root):
-bash <(curl -fsSL https://raw.githubusercontent.com/HelllGuest/t14s-arch-install/main/install.sh)
+# Direct Stage A installer (from Arch ISO, UEFI, root):
+bash <(curl -fsSL https://raw.githubusercontent.com/HelllGuest/dotfiles/main/t14s-arch-install/install.sh)
 
-# Thin URL-stable wrappers in this repo (hand off to the same installer).
-# These raw URLs only work while this repo is public; when it is private they
-# 404 — use the t14s-arch-install URL above:
+# Thin profile wrappers (hand off to the same in-repo installer):
 bash <(curl -fsSL https://raw.githubusercontent.com/HelllGuest/dotfiles/main/scripts/arch-install-t14s.sh)  # HW_PROFILE=t14s
 bash <(curl -fsSL https://raw.githubusercontent.com/HelllGuest/dotfiles/main/scripts/arch-install-p15.sh)   # HW_PROFILE=p15
 bash <(curl -fsSL https://raw.githubusercontent.com/HelllGuest/dotfiles/main/scripts/arch-install.sh)       # DMI detect
@@ -289,7 +287,7 @@ ThinkPad system configs (kernel cmdline templates, sleep, Wayland env, units) li
 
 **Stage A — from the Arch ISO (bare metal):**
 ```text
-# Canonical: HelllGuest/t14s-arch-install (HW_PROFILE=t14s|p15)
+# Canonical: t14s-arch-install/install.sh (HW_PROFILE=t14s|p15|generic)
 # Thin wrappers (scripts/arch-install{,-t14s,-p15}.sh) only hand off — no second body
 scripts/arch-install-vmtest.sh   # optional UEFI VM rehearsal (host disks untouched)
 scripts/arch-install-t14s.sh     # → HW_PROFILE=t14s
@@ -551,8 +549,8 @@ bash scripts/check.sh --stage-a  # Arch ISO install: runs t14s-arch-install
 bash scripts/check.sh --all      # both
 ```
 
-`--stage-a` looks for the installer checkout in `T14S_INSTALLER_DIR`, `~/t14s-arch-install`
-or next to this repo. Its FAILs count only on the T14s Gen 3 AMD (21CQ/21CR), the
+`--stage-a` uses the in-repo `t14s-arch-install/` directory first (override via
+`T14S_INSTALLER_DIR`, or fallback to `~/t14s-arch-install`). Its FAILs count only on the T14s Gen 3 AMD (21CQ/21CR), the
 hardware `host-check.sh` targets; on other hosts they are shown as informational.
 
 **Theme:** stock **Adwaita** (GTK + icons + empty User Themes name) via
@@ -758,7 +756,8 @@ systemctl is-active usbguard                 # active only after usbguard-setup
 systemctl is-active dnscrypt-proxy           # active only after dnscrypt-setup
 
 for t in ~/dotfiles/tests/*.test.sh; do bash "$t" || break; done   # KALI_TEST_NET=1 adds live Kali URL probe
-bash ~/t14s-arch-install/tests/smoke.test.sh   # if that repo is present
+bash ~/dotfiles/t14s-arch-install/tests/smoke.test.sh
+bash ~/dotfiles/t14s-arch-install/tests/host-check.test.sh
 ```
 
 ---
