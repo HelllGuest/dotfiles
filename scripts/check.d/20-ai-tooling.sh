@@ -4,7 +4,7 @@
 # AI CLIs, Headroom, agent skills, OpenCode/Kimi/Gemini/Antigravity, MCP configs.
 
 echo "--- AI tooling (optional) ---"
-for bin in claude cursor gemini agy headroom; do
+for bin in claude cursor gemini agy codex kiro-cli rtk headroom; do
     if command -v "$bin" >/dev/null 2>&1; then
         ver="$($bin --version 2>/dev/null | head -1 || true)"
         echo "✓ $bin is installed${ver:+ ($ver)}"
@@ -44,7 +44,13 @@ check_agent_skill caveman "bash scripts/install-caveman.sh"
 check_agent_skill ponytail "bash scripts/install-ponytail.sh"
 check_agent_skill android-compose-design "bash scripts/install-android-ui-skills.sh"
 check_agent_skill material-3 "bash scripts/install-android-ui-skills.sh"
+check_agent_skill android-cli "bash scripts/install-ecosystem-skills.sh"
+check_agent_skill gemini-api-dev "bash scripts/install-ecosystem-skills.sh"
+check_agent_skill unsafe-rust-review "bash scripts/install-ecosystem-skills.sh"
+check_agent_skill ai-systems-security "bash scripts/install-ecosystem-skills.sh"
 check_agent_skill reverse-engineer-anything "lab-re (or optional: bash scripts/install-rea.sh)"
+check_agent_skill dwarf-expert "bash scripts/install-re-skills.sh"
+check_agent_skill firebase-apk-scanner "bash scripts/install-re-skills.sh"
 check_agent_skill leanrea "bash scripts/install-re-skills.sh"
 check_agent_skill reverse-engineering "bash scripts/install-re-skills.sh"
 check_agent_skill android-reverse-engineering "bash scripts/install-re-skills.sh"
@@ -66,6 +72,7 @@ OPENCODE_SKILLS="${XDG_CONFIG_HOME:-$HOME/.config}/opencode/skills"
 KIMI_SKILLS="${KIMI_CODE_HOME:-$HOME/.kimi-code}/skills"
 GEMINI_SKILLS="${HOME}/.gemini/skills"
 AGY_SKILLS="${HOME}/.gemini/config/skills"
+CODEX_SKILLS="${HOME}/.codex/skills"
 if [[ -f "${OPENCODE_SKILLS}/caveman/SKILL.md" ]]; then
     echo "✓ OpenCode skills (caveman)"
 else
@@ -85,6 +92,11 @@ if [[ -f "${AGY_SKILLS}/caveman/SKILL.md" ]]; then
     echo "✓ Antigravity skills (caveman)"
 else
     echo "○ Antigravity skills missing (bash scripts/sync-agent-skills.sh)"
+fi
+if [[ -f "${CODEX_SKILLS}/caveman/SKILL.md" ]]; then
+    echo "✓ Codex skills (caveman)"
+else
+    echo "○ Codex skills missing (bash scripts/sync-agent-skills.sh)"
 fi
 if command -v kimi >/dev/null 2>&1; then
     echo "✓ kimi CLI ($(kimi --version 2>/dev/null | head -1))"

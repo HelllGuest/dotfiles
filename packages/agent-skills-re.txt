@@ -24,3 +24,6 @@ zhaoxuya520/reverse-skill:firmware-pentest,malware-analysis,mobile-reverse,windo
 
 # Memory forensics (Windows malware lab)
 wshobson/agents:memory-forensics
+
+# Trail of Bits: security audits, DWARF/binary, APK scanner, differential review (no blockchain)
+trailofbits/skills:audit-context-building,differential-review,dwarf-expert,entry-point-analyzer,firebase-apk-scanner,constant-time-analysis,burpsuite-project-parser,cvss-scoring

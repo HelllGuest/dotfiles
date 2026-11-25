@@ -9,7 +9,7 @@ msg_file="$1"
 sed -i.bak \
   -e '/^Co-authored-by:.*/Id' \
   -e '/^Generated[- ][Bb]y:.*/Id' \
-  -e '/^Generated with .*\(Claude\|Cursor\|Gemini\|Antigravity\|Jules\|Copilot\|OpenCode\|Kimi\|Kiro\|Google AI\)/Id' \
+  -e '/^Generated with .*\(Claude\|Cursor\|Gemini\|Antigravity\|Jules\|Codex\|Copilot\|OpenCode\|Kimi\|Kiro\|Google AI\)/Id' \
   -e '/🤖 Generated with/Id' \
   -e '/^Co-Authored-By:.*Claude.*/Id' \
   "$msg_file"

@@ -31,3 +31,15 @@ obra/superpowers:systematic-debugging,verification-before-completion,requesting-
 
 # PDF tooling + security docs + Playwright (python PDF / web)
 openai/skills:pdf,security-best-practices,playwright
+
+# Official Android dev (CLI, AGP 9, Compose perf, ANR, R8, profiler, Navigation 3)
+android/skills:android-cli,agp-9-upgrade,jetpack-compose-performance,anr-audit-and-fix,r8-analyzer,android-profiler,navigation-3
+
+# Official Google Gemini API / CLI / Live API
+google-gemini/gemini-skills
+
+# Official Google Rust unsafe review (excludes experimental/eval fixtures)
+google/rust-skills:unsafe-rust-review
+
+# Red Hat Product Security (MCP/agent auth, container hardening, injection, secrets)
+RedHatProductSecurity/prodsec-skills:ai-systems-security,agent-to-mcp-server-auth,container-hardening,dependency-vulnerability-audit,input-validation-injection,secrets-detection-patterns,secure-by-design

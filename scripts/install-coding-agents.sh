@@ -5,14 +5,20 @@
 # refreshes Caveman's OpenCode plugin when the caveman installer is available.
 #
 # Env:
-#   OPENCODE_NPM_SPEC     default opencode-ai@1.19.6
-#   KIMI_NPM_SPEC         default @moonshot-ai/kimi-code@2.7.2
-#   REA_AGENTS_VERSION    default 6.10.1 (MCP npx pin; match labs/lab-re)
-#   SKIP_CAVEMAN_OPENCODE=1  skip caveman --only opencode
-#   CAVEMAN_TAG           forwarded to install-caveman pins (default v4.2.0)
+#   OPENCODE_NPM_SPEC         default opencode-ai@1.19.6
+#   KIMI_NPM_SPEC             default @moonshot-ai/kimi-code@2.7.2
+#   INSTALL_GEMINI_CLI=1      opt-in: install pinned @google/gemini-cli
+#   GEMINI_NPM_SPEC           default @google/gemini-cli@0.71.1
+#   INSTALL_GEMINI_EXTENSIONS=1  opt-in: install official security + flutter Gemini CLI extensions
+#   INSTALL_CODEX_CLI=1       opt-in: install pinned @openai/codex
+#   CODEX_NPM_SPEC            default @openai/codex@0.172.0
+#   REA_AGENTS_VERSION        default 6.10.1 (MCP npx pin; match labs/lab-re)
+#   SKIP_CAVEMAN_OPENCODE=1   skip caveman --only opencode
+#   CAVEMAN_TAG               forwarded to install-caveman pins (default v4.2.0)
 #
 # Usage:
 #   bash scripts/install-coding-agents.sh
+#   INSTALL_GEMINI_CLI=1 INSTALL_CODEX_CLI=1 bash scripts/install-coding-agents.sh
 #   ONLY_CAVEMAN_OPENCODE=1 bash scripts/install-coding-agents.sh   # plugin refresh only
 
 set -euo pipefail
@@ -20,6 +26,8 @@ set -euo pipefail
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 OPENCODE_NPM_SPEC="${OPENCODE_NPM_SPEC:-opencode-ai@1.19.6}"
 KIMI_NPM_SPEC="${KIMI_NPM_SPEC:-@moonshot-ai/kimi-code@2.7.2}"
+GEMINI_NPM_SPEC="${GEMINI_NPM_SPEC:-@google/gemini-cli@0.71.1}"
+CODEX_NPM_SPEC="${CODEX_NPM_SPEC:-@openai/codex@0.172.0}"
 REA_AGENTS_VERSION="${REA_AGENTS_VERSION:-6.10.1}"
 OPENCODE_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/opencode"
 KIMI_CODE_HOME="${KIMI_CODE_HOME:-$HOME/.kimi-code}"
@@ -112,6 +120,21 @@ npm install -g --allow-scripts=opencode-ai "${OPENCODE_NPM_SPEC}" \
 say "npm install -g ${KIMI_NPM_SPEC}"
 npm install -g --allow-scripts=@moonshot-ai/kimi-code,node-pty "${KIMI_NPM_SPEC}" \
   || npm install -g "${KIMI_NPM_SPEC}"
+
+if [[ "${INSTALL_GEMINI_CLI:-0}" == "1" ]]; then
+  say "npm install -g ${GEMINI_NPM_SPEC}"
+  npm install -g "${GEMINI_NPM_SPEC}"
+  if [[ "${INSTALL_GEMINI_EXTENSIONS:-0}" == "1" ]] && command -v gemini >/dev/null 2>&1; then
+    say "installing official Gemini CLI extensions (security, flutter)"
+    gemini extensions install https://github.com/gemini-cli-extensions/security || warn "gemini security extension failed"
+    gemini extensions install https://github.com/gemini-cli-extensions/flutter.git --auto-update || warn "gemini flutter extension failed"
+  fi
+fi
+
+if [[ "${INSTALL_CODEX_CLI:-0}" == "1" ]]; then
+  say "npm install -g ${CODEX_NPM_SPEC}"
+  npm install -g "${CODEX_NPM_SPEC}"
+fi
 
 command -v opencode >/dev/null 2>&1 || warn "opencode not on PATH yet (add ~/.npm-global/bin)"
 command -v kimi >/dev/null 2>&1 || warn "kimi not on PATH yet (add ~/.npm-global/bin)"

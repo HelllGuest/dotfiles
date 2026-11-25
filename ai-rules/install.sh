@@ -128,6 +128,12 @@ ln -sfn "$TARGET/AGENTS.md" "$HOME/.gemini/GEMINI.md"
 ln -sfn "$TARGET/AGENTS.md" "$HOME/.gemini/config/AGENTS.md"
 ln -sfn "$TARGET/AGENTS.md" "$HOME/.gemini/config/GEMINI.md"
 
+echo "==> OpenAI Codex: rules & skills"
+[[ -L "$HOME/.codex/skills" ]] && rm -f "$HOME/.codex/skills"
+mkdir -p "$HOME/.codex/skills"
+ln -sfn "$TARGET/AGENTS.md" "$HOME/.codex/AGENTS.md"
+link_skills "$HOME/.codex/skills"
+
 KIT_FAILED=()
 kit_fail() { echo "  ✗ $*" >&2; KIT_FAILED+=("$*"); }
 

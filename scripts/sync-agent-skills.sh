@@ -30,6 +30,7 @@ KIMI_CODE="${KIMI_CODE_HOME:-$HOME/.kimi-code}/skills"
 GEMINI_SKILLS="${HOME}/.gemini/skills"
 AGY_SKILLS="${HOME}/.gemini/config/skills"
 KIRO_SKILLS="${HOME}/.kiro/skills"
+CODEX_SKILLS="${HOME}/.codex/skills"
 
 die() { echo "error: $*" >&2; exit 1; }
 say() { printf '>> %s\n' "$*"; }
@@ -38,14 +39,14 @@ say() { printf '>> %s\n' "$*"; }
 
 # Ensure skill roots are real dirs before install.sh runs so mirroring
 # hub skills never writes back into $AI_RULES_TARGET/skills.
-for _sroot in "$CLAUDE" "$KIRO_SKILLS" "$GEMINI_SKILLS" "$AGY_SKILLS"; do
+for _sroot in "$CLAUDE" "$KIRO_SKILLS" "$GEMINI_SKILLS" "$AGY_SKILLS" "$CODEX_SKILLS"; do
   if [[ -L "$_sroot" ]]; then
     rm -f "$_sroot"
   fi
 done
 unset _sroot
 mkdir -p "$AGENTS" "$CLAUDE" "$CURSOR" "$OPENCODE" "$KIMI_AGENTS" "$KIMI_CODE" \
-  "$GEMINI_SKILLS" "$AGY_SKILLS" "$KIRO_SKILLS"
+  "$GEMINI_SKILLS" "$AGY_SKILLS" "$KIRO_SKILLS" "$CODEX_SKILLS"
 
 say "ai-rules kit → $AI_RULES_TARGET"
 bash "$AI_RULES_SRC/install.sh" "$AI_RULES_TARGET"
@@ -108,14 +109,14 @@ for _host_skill in ghidra-cli-host obscura-host; do
 done
 unset _host_skill HOST_SKILL
 
-say "mirror $AGENTS → claude + cursor + opencode + kimi + gemini + antigravity + kiro"
+say "mirror $AGENTS → claude + cursor + opencode + kimi + gemini + antigravity + kiro + codex"
 shopt -s nullglob
 for skill_dir in "$AGENTS"/*/; do
   name="$(basename "$skill_dir")"
   # Resolve to absolute path for stable symlinks
   src="$(readlink -f "$skill_dir" 2>/dev/null || printf '%s' "$skill_dir")"
   [[ -d "$src" ]] || continue
-  for dest_root in "$CLAUDE" "$CURSOR" "$GEMINI_SKILLS" "$AGY_SKILLS" "$KIRO_SKILLS"; do
+  for dest_root in "$CLAUDE" "$CURSOR" "$GEMINI_SKILLS" "$AGY_SKILLS" "$KIRO_SKILLS" "$CODEX_SKILLS"; do
     dest="$dest_root/$name"
     if link_skill "$src" "$dest"; then
       echo "  $(basename "$(dirname "$dest_root")")-$(basename "$dest_root")/$name"
@@ -154,6 +155,7 @@ if [[ -f "${AI_RULES_TARGET}/AGENTS.md" ]]; then
   ln -sfn "${AI_RULES_TARGET}/AGENTS.md" "${HOME}/.gemini/GEMINI.md"
   ln -sfn "${AI_RULES_TARGET}/AGENTS.md" "${HOME}/.gemini/config/AGENTS.md"
   ln -sfn "${AI_RULES_TARGET}/AGENTS.md" "${HOME}/.gemini/config/GEMINI.md"
+  ln -sfn "${AI_RULES_TARGET}/AGENTS.md" "${HOME}/.codex/AGENTS.md"
   cp -a "${AI_RULES_TARGET}/AGENTS.md" "${KIMI_CODE_HOME:-$HOME/.kimi-code}/AGENTS.md"
   mkdir -p "${HOME}/.kimi"
   ln -sfn "${KIMI_CODE_HOME:-$HOME/.kimi-code}/AGENTS.md" "${HOME}/.kimi/AGENTS.md"
@@ -186,5 +188,5 @@ PY
 fi
 
 echo
-echo "agents=$(find "$AGENTS" -mindepth 1 -maxdepth 1 | wc -l) claude=$(find "$CLAUDE" -mindepth 1 -maxdepth 1 | wc -l) cursor=$(find "$CURSOR" -mindepth 1 -maxdepth 1 | wc -l) opencode=$(find "$OPENCODE" -mindepth 1 -maxdepth 1 | wc -l) kimi-agents=$(find "$KIMI_AGENTS" -mindepth 1 -maxdepth 1 | wc -l) kimi-code=$(find "$KIMI_CODE" -mindepth 1 -maxdepth 1 | wc -l) gemini=$(find "$GEMINI_SKILLS" -mindepth 1 -maxdepth 1 | wc -l) agy=$(find "$AGY_SKILLS" -mindepth 1 -maxdepth 1 | wc -l) kiro=$(find "$KIRO_SKILLS" -mindepth 1 -maxdepth 1 | wc -l)"
+echo "agents=$(find "$AGENTS" -mindepth 1 -maxdepth 1 | wc -l) claude=$(find "$CLAUDE" -mindepth 1 -maxdepth 1 | wc -l) cursor=$(find "$CURSOR" -mindepth 1 -maxdepth 1 | wc -l) opencode=$(find "$OPENCODE" -mindepth 1 -maxdepth 1 | wc -l) kimi-agents=$(find "$KIMI_AGENTS" -mindepth 1 -maxdepth 1 | wc -l) kimi-code=$(find "$KIMI_CODE" -mindepth 1 -maxdepth 1 | wc -l) gemini=$(find "$GEMINI_SKILLS" -mindepth 1 -maxdepth 1 | wc -l) agy=$(find "$AGY_SKILLS" -mindepth 1 -maxdepth 1 | wc -l) kiro=$(find "$KIRO_SKILLS" -mindepth 1 -maxdepth 1 | wc -l) codex=$(find "$CODEX_SKILLS" -mindepth 1 -maxdepth 1 | wc -l)"
 say "sync-agent-skills done"

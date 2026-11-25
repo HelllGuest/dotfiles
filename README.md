@@ -135,7 +135,7 @@ Claude Code CLI is optional (`○` in `check.sh` until installed): `npm install 
 
 **Cursor model proxy:** paste the Override OpenAI Base URL printed by `hr-cursor` into Cursor → Settings → Models (the IDE does not read shell env for model routing).
 
-**RTK:** Headroom 0.34+ no longer bundles [RTK](https://github.com/rtk-ai/rtk). Keep the binary under e.g. `~/.local/share/rtk/rtk` (symlink from `~/.local/bin/rtk`). Do **not** put it in `~/.headroom/bin`; `headroom wrap` / some `init` paths purge managed copies there. Telemetry stays off (`HEADROOM_TELEMETRY=off`, `--no-telemetry`).
+**RTK:** Headroom 0.34+ no longer bundles [RTK](https://github.com/rtk-ai/rtk). Install the SHA-256-pinned binary via `bash scripts/install-rtk.sh` (`~/.local/share/rtk/rtk` + symlink `~/.local/bin/rtk`). Do **not** put it in `~/.headroom/bin`; `headroom wrap` / some `init` paths purge managed copies there. Telemetry stays off (`HEADROOM_TELEMETRY=off`, `--no-telemetry`).
 
 Antigravity CLI (`agy`) and Kiro: point at `http://127.0.0.1:8787/v1` only if that tool accepts a custom OpenAI-compatible base URL.
 
@@ -700,8 +700,9 @@ We take a "quiet by default" approach:
 | Refresh stow inventory | `git add stow/…` then `bash scripts/list-stow-files.sh > all_stow_files.txt` (index only) |
 | Location sync | `vpn-location-sync` or Proton VPN panel → Sync spoofed location |
 | Optional st (suckless) | `bash scripts/build-st.sh` |
-| Agent skills sync | `bash scripts/sync-agent-skills.sh` (hub → Claude/Cursor/OpenCode/Kimi/Gemini/Antigravity/Kiro) |
-| OpenCode + Kimi | `bash scripts/install-coding-agents.sh` (pinned npm CLIs + MCP) |
+| Agent skills sync | `bash scripts/sync-agent-skills.sh` (hub → Claude/Cursor/OpenCode/Kimi/Gemini/Antigravity/Kiro/Codex) |
+| OpenCode + Kimi (+ opt-in Gemini/Codex) | `bash scripts/install-coding-agents.sh` (pinned npm CLIs + MCP; `INSTALL_GEMINI_CLI=1`, `INSTALL_GEMINI_EXTENSIONS=1`, `INSTALL_CODEX_CLI=1`) |
+| RTK CLI compressor | `bash scripts/install-rtk.sh` (SHA-256 pinned `rtk-ai/rtk` → `~/.local/share/rtk/rtk`) |
 | Ecosystem skills | `bash scripts/install-ecosystem-skills.sh` (`packages/agent-skills.txt`; optional `owner/repo:skill1,skill2`) |
 | Caveman (`/caveman`) | `bash scripts/install-caveman.sh` |
 | Ponytail (`/ponytail`) | `bash scripts/install-ponytail.sh` |

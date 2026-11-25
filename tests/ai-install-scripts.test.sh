@@ -539,8 +539,8 @@ grep -q '"$WANT_STAMP $(bin_hash)"' "$_gc" || fail "stamp must include the binar
 rm -rf "$_T"; unset -v _gc _pblk _br _o; unset -f _prun
 
 # sync-agent-skills + ai-rules/install.sh: prevent writing hub symlinks back into kit
-grep -q 'for _sroot in "\$CLAUDE" "\$KIRO_SKILLS" "\$GEMINI_SKILLS" "\$AGY_SKILLS"' "$ROOT/scripts/sync-agent-skills.sh" \
-  || fail "sync-agent-skills must replace whole-dir symlinks for claude/kiro/gemini/antigravity before install.sh"
+grep -q 'for _sroot in "\$CLAUDE" "\$KIRO_SKILLS" "\$GEMINI_SKILLS" "\$AGY_SKILLS" "\$CODEX_SKILLS"' "$ROOT/scripts/sync-agent-skills.sh" \
+  || fail "sync-agent-skills must replace whole-dir symlinks for claude/kiro/gemini/antigravity/codex before install.sh"
 grep -q '\-type l' "$ROOT/ai-rules/install.sh" \
   || fail "ai-rules/install.sh sync_kit_cp must clean up orphan symlinks (-type l)"
 
@@ -566,13 +566,14 @@ jq -e '.privacy.usageStatisticsEnabled == false and .telemetry.enabled == false'
     || fail "ai-rules/install.sh failed in isolated Google AI test"
   # Global rule symlinks + real skill dirs (never whole-dir symlink into kit)
   for _p in "$_gt/home/.gemini/AGENTS.md" "$_gt/home/.gemini/GEMINI.md" \
-      "$_gt/home/.gemini/config/AGENTS.md" "$_gt/home/.gemini/config/GEMINI.md"; do
+      "$_gt/home/.gemini/config/AGENTS.md" "$_gt/home/.gemini/config/GEMINI.md" \
+      "$_gt/home/.codex/AGENTS.md"; do
     [[ -L "$_p" && "$(readlink "$_p")" == "$_gt/kit/AGENTS.md" ]] \
-      || fail "missing or wrong Google AI global rule link: $_p"
+      || fail "missing or wrong agent global rule link: $_p"
   done
-  for _d in "$_gt/home/.gemini/skills" "$_gt/home/.gemini/config/skills"; do
+  for _d in "$_gt/home/.gemini/skills" "$_gt/home/.gemini/config/skills" "$_gt/home/.codex/skills"; do
     [[ -d "$_d" && ! -L "$_d" && -L "$_d/verify" ]] \
-      || fail "Google AI skills dir must be a real dir with kit skill symlinks: $_d"
+      || fail "agent skills dir must be a real dir with kit skill symlinks: $_d"
   done
   # Gemini telemetry merged without clobbering existing user keys; fresh install uses 0600.
   jq -e '.theme == "dark" and .mcpServers.x.command == "y" and .privacy.usageStatisticsEnabled == false and .telemetry.enabled == false' \
@@ -599,5 +600,44 @@ jq -e '.privacy.usageStatisticsEnabled == false and .telemetry.enabled == false'
   grep -q 'WARN: .*GEMINI\.md exists' <<<"$_warn" && [[ "$(cat "$_gt/custom/GEMINI.md")" == "custom instructions" ]] \
     || fail "agentsync must warn and not overwrite custom GEMINI.md: $_warn"
 )
+
+# install-rtk.sh: SHA-256 pinned, rejects mismatch, installs under ~/.local/share/rtk
+[[ -x "$ROOT/scripts/install-rtk.sh" ]] || fail "scripts/install-rtk.sh must be executable"
+bash -n "$ROOT/scripts/install-rtk.sh" || fail "bash -n install-rtk.sh"
+(
+  _rt="$(mktemp -d)"
+  trap 'rm -rf "$_rt"' EXIT
+  mkdir -p "$_rt/bin" "$_rt/pkg" "$_rt/home"
+  printf '#!/bin/sh\necho "rtk test"\n' >"$_rt/pkg/rtk"
+  chmod +x "$_rt/pkg/rtk"
+  tar -czf "$_rt/rtk.tar.gz" -C "$_rt/pkg" rtk
+  _sha="$(sha256sum "$_rt/rtk.tar.gz" | awk '{print $1}')"
+  cat >"$_rt/bin/curl" <<EOF
+#!/bin/sh
+out=""
+while [ \$# -gt 0 ]; do
+  [ "\$1" = -o ] && { out="\$2"; shift; }
+  shift
+done
+cp "$_rt/rtk.tar.gz" "\$out"
+EOF
+  chmod +x "$_rt/bin/curl"
+  if PATH="$_rt/bin:$PATH" HOME="$_rt/home" XDG_DATA_HOME="$_rt/home/.local/share" \
+    RTK_SHA256="$(printf '%064d' 0)" bash "$ROOT/scripts/install-rtk.sh" >/dev/null 2>&1; then
+    fail "install-rtk.sh must reject SHA-256 mismatch"
+  fi
+  PATH="$_rt/bin:$PATH" HOME="$_rt/home" XDG_DATA_HOME="$_rt/home/.local/share" \
+    RTK_SHA256="$_sha" bash "$ROOT/scripts/install-rtk.sh" >/dev/null \
+    || fail "install-rtk.sh failed with matching SHA-256"
+  [[ -L "$_rt/home/.local/bin/rtk" && -x "$_rt/home/.local/share/rtk/rtk" ]] \
+    || fail "install-rtk.sh must install ~/.local/share/rtk/rtk and link ~/.local/bin/rtk"
+)
+
+# New curated skills present in manifests
+for _p in 'android/skills:' 'google-gemini/gemini-skills' 'google/rust-skills:unsafe-rust-review' 'RedHatProductSecurity/prodsec-skills:'; do
+  grep -qF "$_p" "$ROOT/packages/agent-skills.txt" || fail "packages/agent-skills.txt missing $_p"
+done
+grep -qF 'trailofbits/skills:' "$ROOT/packages/agent-skills-re.txt" \
+  || fail "packages/agent-skills-re.txt missing trailofbits/skills"
 
 echo "PASS: ai-install-scripts.test.sh"

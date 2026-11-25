@@ -115,6 +115,7 @@ In any IDE / CLI chat:
 | Google Gemini CLI / `gemini` | `GEMINI.md` → `@AGENTS.md` + `~/.gemini/{AGENTS,GEMINI}.md` | `~/.gemini/skills` | create/merge `~/.gemini/settings.json` (`usageStatisticsEnabled`/`telemetry` off) |
 | Gemini Code Assist / Jules | `AGENTS.md` + `GEMINI.md` → `@AGENTS.md` | via Commands in AGENTS | IDE/host telemetry settings |
 | Kiro GUI / `kiro-cli` | `AGENTS.md` | `~/.kiro/skills` | `kiro-cli` telemetry off + JSON merge |
+| OpenAI Codex CLI / `codex` | `AGENTS.md` + `~/.codex/AGENTS.md` | `~/.codex/skills` | host env (`DO_NOT_TRACK` / `OTEL_SDK_DISABLED`) |
 | Claude CLI | `CLAUDE.md` → `@AGENTS.md` | `~/.claude/skills` | create/merge kit `env` + `includeCoAuthoredBy: false` |
 
 ## Notes
