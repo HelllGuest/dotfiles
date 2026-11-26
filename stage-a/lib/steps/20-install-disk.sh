@@ -1,4 +1,4 @@
-# 20-install-disk.sh — part of HelllGuest/t14s-arch-install
+# 20-install-disk.sh — part of HelllGuest/dotfiles (stage-a)
 # shellcheck shell=bash
 # Step 11/11 begins: log to file, release leftovers, write the partition table.
 # Sourced by install.sh at top level, in order: shares its globals, set -e

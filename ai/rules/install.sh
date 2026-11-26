@@ -205,15 +205,16 @@ while IFS= read -r spath; do
 done < <(vscode_settings_targets)
 
 # Optional: stow-managed VS Code / VSCodium settings if present in a checkout
+_dot_root="${DOTFILES_DIR:-$HOME/dotfiles}"
 for STOW_SETTINGS in \
-  "$HOME/dotfiles/stow/vscode/.config/Code/User/settings.json" \
-  "$HOME/dotfiles/stow/vscode/.config/VSCodium/User/settings.json"
+  "$_dot_root/stow/vscode/.config/Code/User/settings.json" \
+  "$_dot_root/stow/vscode/.config/VSCodium/User/settings.json"
 do
   if [[ -f "$STOW_SETTINGS" ]]; then
     merge_vscode_settings "$STOW_SETTINGS" "dotfiles stow $(basename "$(dirname "$(dirname "$(dirname "$STOW_SETTINGS")")")") settings"
   fi
 done
-unset STOW_SETTINGS
+unset STOW_SETTINGS _dot_root
 
 echo "==> Kiro CLI telemetry"
 if command -v kiro-cli >/dev/null 2>&1; then

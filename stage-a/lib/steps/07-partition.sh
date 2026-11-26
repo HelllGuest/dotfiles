@@ -1,4 +1,4 @@
-# 07-partition.sh — part of HelllGuest/t14s-arch-install
+# 07-partition.sh — part of HelllGuest/dotfiles (stage-a)
 # shellcheck shell=bash
 # Wizard step 5/11: partition strategy (AUTO / MANUAL, ESP handling).
 # Sourced by install.sh at top level, in order: shares its globals, set -e

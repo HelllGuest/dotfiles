@@ -1,4 +1,4 @@
-# 12-review.sh — part of HelllGuest/t14s-arch-install
+# 12-review.sh — part of HelllGuest/dotfiles (stage-a)
 # shellcheck shell=bash
 # Wizard step 10/11: review, answers save, DRYRUN exit. Nothing written before this.
 # Sourced by install.sh at top level, in order: shares its globals, set -e

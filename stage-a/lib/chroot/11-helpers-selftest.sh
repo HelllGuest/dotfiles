@@ -1,4 +1,4 @@
-# 11-helpers-selftest.sh — part of HelllGuest/t14s-arch-install
+# 11-helpers-selftest.sh — part of HelllGuest/dotfiles (stage-a)
 # shellcheck shell=bash
 # Chroot stage 92-95 %: helper scripts and t14s-selftest.
 # Sourced by 80-chroot-setup.sh inside arch-chroot, at top level and in

@@ -24,6 +24,10 @@
 
 set -euo pipefail
 
+REPO_ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
+# shellcheck source=../lib/jdk.sh
+source "$REPO_ROOT/ai/lib/jdk.sh"
+
 JADX_VER="0.8.0"
 JADX_SHA256="4b9a01c23845c123c217840182d2b5f2c26a7ca20dec3d08810b310fc80a2372"
 JADX_URL="https://github.com/1013503897/jadx-headless-mcp/releases/download/v${JADX_VER}/jadx-headless-mcp-${JADX_VER}-all.jar"
@@ -39,29 +43,10 @@ die() { echo "error: $*" >&2; exit 1; }
 say() { printf '>> %s\n' "$*"; }
 warn() { echo "warning: $*" >&2; }
 
-pick_jdk21() {
-  local best="" best_ver=0 cand ver
-  shopt -s nullglob
-  for cand in /usr/lib/jvm/java-*-openjdk; do
-    [[ -x "$cand/bin/javac" ]] || continue
-    ver="${cand##*/java-}"
-    ver="${ver%%-*}"
-    [[ "$ver" =~ ^[0-9]+$ ]] || continue
-    (( ver >= 21 )) || continue
-    if (( ver > best_ver )); then
-      best=$cand
-      best_ver=$ver
-    fi
-  done
-  shopt -u nullglob
-  [[ -n "$best" ]] || die "need full JDK >= 21 under /usr/lib/jvm (for Ghidra/REA)"
-  printf '%s\n' "$best"
-}
-
 command -v npm >/dev/null 2>&1 || die "npm not found (install fnm/node first)"
 command -v curl >/dev/null 2>&1 || die "curl not found"
 
-JAVA_HOME_JDK="$(pick_jdk21)"
+JAVA_HOME_JDK="$(pick_jdk21)" || die "need full JDK >= 21 under /usr/lib/jvm (for Ghidra/REA)"
 say "JDK for REA/Ghidra: $JAVA_HOME_JDK"
 
 say "npm install -g rea-agents@${REA_AGENTS_VERSION}"

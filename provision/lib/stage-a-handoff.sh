@@ -14,6 +14,17 @@
 #   STAGE_A_DOTFILES_ROOT                  path to this dotfiles repo (in-repo + sibling lookup)
 #   STAGE_A_DRY_PRINT=1                    print resolution only (tests); do not exec
 
+# Source canonical SHA/policy helper when in a local monorepo checkout.
+_handoff_policy=""
+if [[ -n ${BASH_SOURCE[0]:-} && -f ${BASH_SOURCE[0]} ]]; then
+  _handoff_policy="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." 2>/dev/null && pwd)/stage-a/lib/05-policy.sh"
+fi
+if [[ -n $_handoff_policy && -f $_handoff_policy ]]; then
+  # shellcheck source=../../stage-a/lib/05-policy.sh
+  source "$_handoff_policy"
+fi
+unset -v _handoff_policy
+
 # Resolve one commit for every raw.githubusercontent fetch (install + libs).
 # Call only on the remote path — local checkouts must stay offline.
 t14s_resolve_base_url() {
@@ -22,19 +33,26 @@ t14s_resolve_base_url() {
     printf '%s\n' "$base_override"
     return 0
   fi
+  local repo="${STAGE_A_REPO:-HelllGuest/dotfiles}"
+  local branch="${STAGE_A_BRANCH:-main}"
   local ref="${STAGE_A_REF:-${T14S_REF:-}}"
   if [[ -z $ref ]]; then
-    ref="$(curl -fsSL -H 'Accept: application/vnd.github.sha' \
-      https://api.github.com/repos/HelllGuest/dotfiles/commits/main 2>/dev/null || true)"
-    ref="${ref//$'\n'/}"
-    if [[ ! $ref =~ ^[0-9a-f]{40}$ ]]; then
-      printf 'ERR: could not resolve dotfiles main SHA (set STAGE_A_REF / T14S_REF or STAGE_A_BASE_URL)\n' >&2
-      return 1
+    if declare -F stage_a_resolve_main_sha >/dev/null 2>&1; then
+      ref="$(STAGE_A_REPO="$repo" STAGE_A_BRANCH="$branch" stage_a_resolve_main_sha)" || return 1
+    else
+      ref="$(curl -fsSL -H 'Accept: application/vnd.github.sha' \
+        "https://api.github.com/repos/${repo}/commits/${branch}" 2>/dev/null || true)"
+      ref="${ref//$'\n'/}"
+      if [[ ! $ref =~ ^[0-9a-f]{40}$ ]]; then
+        printf 'ERR: could not resolve %s %s SHA (set STAGE_A_REF / T14S_REF or STAGE_A_BASE_URL)\n' \
+          "$repo" "$branch" >&2
+        return 1
+      fi
     fi
     T14S_REF="$ref"
     STAGE_A_REF="$ref"
   fi
-  printf 'https://raw.githubusercontent.com/HelllGuest/dotfiles/%s/stage-a\n' "$ref"
+  printf 'https://raw.githubusercontent.com/%s/%s/stage-a\n' "$repo" "$ref"
 }
 
 stage_a_handoff() {

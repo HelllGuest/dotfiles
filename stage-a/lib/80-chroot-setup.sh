@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# 80-chroot-setup.sh — part of HelllGuest/t14s-arch-install
+# 80-chroot-setup.sh — part of HelllGuest/dotfiles (stage-a)
 # Runs inside arch-chroot. Expects env from Stage A.
 # shellcheck shell=bash
 set -euo pipefail

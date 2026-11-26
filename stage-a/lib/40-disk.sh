@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# 40-disk.sh — part of HelllGuest/t14s-arch-install
+# 40-disk.sh — part of HelllGuest/dotfiles (stage-a)
 # shellcheck shell=bash
 # LUKS/Btrfs helpers. Orchestrator calls these after disk selection.
 

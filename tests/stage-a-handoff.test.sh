@@ -220,4 +220,65 @@ grep -q 'T14S_BASE_URL=http://10.0.2.2' "$ROOT/provision/scripts/arch-install-vm
 grep -q 'failed to fetch' "$ROOT/scripts/arch-install-t14s.sh" \
   || fail "wrappers must fail clearly when handoff curl fails"
 
+# Cross-boundary parity: Stage A embedded ThinkPad fallbacks must stay byte-identical
+# to canonical system/ files and templates (prevents silent drift on pure-curl ISO installs).
+python3 - "$ROOT" <<'PY' || fail "Stage A vs system/ ThinkPad policy parity drift"
+from pathlib import Path
+import re, sys
+
+root = Path(sys.argv[1])
+chroot = (root / "stage-a/lib/chroot/03-initramfs-cmdline.sh").read_text()
+
+def extract_heredoc(call_prefix: str, rel: str) -> str:
+    pat = re.compile(
+        rf'^[ \t]*{re.escape(call_prefix)}\s+{re.escape(rel)}\b[^\n]*<<\'EOF\'\n(.*?)\nEOF$',
+        re.M | re.S,
+    )
+    m = pat.search(chroot)
+    assert m, f"missing fallback heredoc for {call_prefix} {rel}"
+    return m.group(1) + "\n"
+
+for rel in [
+    "etc/systemd/sleep.conf.d/s2idle.conf",
+    "etc/udev/rules.d/61-thinkpad-charge-limit.rules",
+    "etc/udev/rules.d/71-thinkpad-t14s-touchpad-wakeup.rules",
+    "etc/systemd/logind.conf.d/thinkpad-lid.conf",
+    "templates/thinkpad-charge-thresholds.conf",
+]:
+    want = (root / "system" / rel).read_text()
+    got = extract_heredoc("_sys_install", rel)
+    assert got == want, f"drift in {rel}:\n--- system\n{want}--- stage-a\n{got}"
+
+for rel in [
+    "templates/apply-charge-thresholds.sh.tmpl",
+    "templates/thinkpad-charge-thresholds.service.tmpl",
+]:
+    want = (root / "system" / rel).read_text()
+    got = extract_heredoc("_sys_render_tmpl", rel)
+    assert got == want, f"drift in {rel}:\n--- system\n{want}--- stage-a\n{got}"
+PY
+
+# DMI + charge policy single-source parity: stage-a/lib/05-policy.sh vs provision/lib/dmi.sh
+_pol_vals="$(bash -c 'source "$1"; printf "%s|%s|%s|%s" "$STAGE_A_DMI_T14S_RE" "$STAGE_A_DMI_P15_RE" "$CHARGE_START" "$CHARGE_END"' _ "$ROOT/stage-a/lib/05-policy.sh")"
+_dmi_vals="$(bash -c 'source "$1"; printf "%s|%s|%s|%s" "$STAGE_A_DMI_T14S_RE" "$STAGE_A_DMI_P15_RE" "$CHARGE_START" "$CHARGE_END"' _ "$ROOT/provision/lib/dmi.sh")"
+[[ $_pol_vals == "$_dmi_vals" ]] || fail "05-policy.sh and dmi.sh diverged: [$_pol_vals] vs [$_dmi_vals]"
+# Standalone dmi.sh fallback (copied without stage-a/) must still match 05-policy.sh
+_iso_dmi="$(mktemp -d)"
+cp "$ROOT/provision/lib/dmi.sh" "$_iso_dmi/dmi.sh"
+_iso_vals="$(bash -c 'source "$1"; printf "%s|%s|%s|%s" "$STAGE_A_DMI_T14S_RE" "$STAGE_A_DMI_P15_RE" "$CHARGE_START" "$CHARGE_END"' _ "$_iso_dmi/dmi.sh")"
+rm -rf -- "$_iso_dmi"
+[[ $_pol_vals == "$_iso_vals" ]] || fail "standalone dmi.sh fallback diverged from 05-policy.sh: [$_pol_vals] vs [$_iso_vals]"
+
+# GitHub SHA resolver parity across 05-policy.sh, stage-a/install.sh, shim, and handoff
+for _rf in \
+  "$ROOT/stage-a/lib/05-policy.sh" \
+  "$ROOT/stage-a/install.sh" \
+  "$ROOT/t14s-arch-install/install.sh" \
+  "$ROOT/provision/lib/stage-a-handoff.sh"
+do
+  grep -q 'application/vnd.github.sha' "$_rf" || fail "$_rf missing GitHub SHA Accept header"
+  grep -q '\[0-9a-f\]{40}' "$_rf" || fail "$_rf missing 40-hex SHA validation"
+done
+unset -v _pol_vals _dmi_vals _iso_dmi _iso_vals _rf
+
 echo "PASS: stage-a-handoff.test.sh"

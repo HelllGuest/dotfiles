@@ -38,11 +38,10 @@ if [[ $OVERLAY == 1 ]]; then
   say "created qcow2 overlay $BOOT_DISK (backing: $DISK)"
 fi
 
-ovmf_code=""; ovmf_vars_src=""
-for c in /usr/share/edk2/x64/OVMF_CODE.4m.fd /usr/share/edk2/x64/OVMF_CODE.fd; do
-  [[ -f $c ]] && { ovmf_code="$c"; ovmf_vars_src="${c/CODE/VARS}"; break; }
-done
-[[ -n $ovmf_code && -f $ovmf_vars_src ]] || die "need edk2-ovmf"
+# shellcheck source=../lib/vm-common.sh
+source "$REPO/provision/lib/vm-common.sh"
+vm_find_ovmf || die "need edk2-ovmf"
+ovmf_code="$OVMF_CODE"; ovmf_vars_src="$OVMF_VARS_SRC"
 # Keep the vars Stage A (t14s tests/vm-run.sh, same $WORK) wrote: they hold
 # the Linux Boot Manager entry. A fresh copy only when there are none.
 [[ -f $WORK/OVMF_VARS.fd ]] || cp "$ovmf_vars_src" "$WORK/OVMF_VARS.fd"

@@ -1,4 +1,4 @@
-# 09-fonts-gnome-defaults.sh — part of HelllGuest/t14s-arch-install
+# 09-fonts-gnome-defaults.sh — part of HelllGuest/dotfiles (stage-a)
 # shellcheck shell=bash
 # Chroot stage 72-78 %: fonts and GNOME/GDM dconf defaults.
 # Sourced by 80-chroot-setup.sh inside arch-chroot, at top level and in

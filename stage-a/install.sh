@@ -39,20 +39,24 @@ if [[ -z $T14S_LIB_DIR ]]; then
   fi
   unset -v _t14s_self
 fi
+STAGE_A_REPO="${STAGE_A_REPO:-HelllGuest/dotfiles}"
+STAGE_A_BRANCH="${STAGE_A_BRANCH:-main}"
 T14S_BASE_URL="${STAGE_A_BASE_URL:-${T14S_BASE_URL:-}}"
 T14S_REF="${STAGE_A_REF:-${T14S_REF:-}}"
 # Remote resolve only when libs must be fetched (local checkout stays offline).
+# Pre-lib bootstrap (cannot source 05-policy.sh until SHA is known); parity-tested against 05-policy.sh.
 if [[ -z $T14S_LIB_DIR && -z ${T14S_BASE_URL:-} ]]; then
   if [[ -z ${T14S_REF:-} ]]; then
     T14S_REF="$(curl -fsSL -H 'Accept: application/vnd.github.sha' \
-      https://api.github.com/repos/HelllGuest/dotfiles/commits/main 2>/dev/null || true)"
+      "https://api.github.com/repos/${STAGE_A_REPO}/commits/${STAGE_A_BRANCH}" 2>/dev/null || true)"
     T14S_REF="${T14S_REF//$'\n'/}"
     if [[ ! $T14S_REF =~ ^[0-9a-f]{40}$ ]]; then
-      printf 'ERR: could not resolve dotfiles main SHA (set STAGE_A_REF / T14S_REF or STAGE_A_BASE_URL)\n' >&2
+      printf 'ERR: could not resolve %s %s SHA (set STAGE_A_REF / T14S_REF or STAGE_A_BASE_URL)\n' \
+        "$STAGE_A_REPO" "$STAGE_A_BRANCH" >&2
       exit 1
     fi
   fi
-  T14S_BASE_URL="https://raw.githubusercontent.com/HelllGuest/dotfiles/${T14S_REF}/stage-a"
+  T14S_BASE_URL="https://raw.githubusercontent.com/${STAGE_A_REPO}/${T14S_REF}/stage-a"
 fi
 export T14S_REF="${T14S_REF:-}" T14S_BASE_URL="${T14S_BASE_URL:-}" T14S_LIB_DIR
 export STAGE_A_REF="$T14S_REF" STAGE_A_BASE_URL="$T14S_BASE_URL" STAGE_A_LIB_DIR="$T14S_LIB_DIR"
@@ -90,7 +94,7 @@ _load_lib() {
   source "$_LIB_PATH"
 }
 
-for _lib in 00-common.sh 10-ui.sh 11-ui-theme.sh 12-ui-screens.sh 13-ui-progress.sh \
+for _lib in 00-common.sh 05-policy.sh 10-ui.sh 11-ui-theme.sh 12-ui-screens.sh 13-ui-progress.sh \
             20-answers.sh 30-hardware.sh 40-disk.sh 50-packages.sh 70-firewall.sh; do
   _load_lib "$_lib"
 done

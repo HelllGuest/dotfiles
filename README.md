@@ -7,7 +7,7 @@ A clean, modular, and programmable dotfiles ecosystem optimized for **Arch Linux
 ## 🚀 Key Features
 
 - **Privacy Hardened:** Telemetry, usage reporting, and "phoning home" are disabled system-wide (GNOME, VS Code, .NET, etc.).
-- **ThinkPad Optimized:** Hostname or hardware-detected profiles (`thinkpad-p15.sh`, `thinkpad-t14s.sh`, or `laptop.sh`) with power-profiles-daemon (or tuned + `tuned-ppd` on hosts from `t14s-arch-install`), UKIs signed for Secure Boot (sbctl), and a tracked **s2idle** sleep pin (`mem_sleep_default=s2idle`; pair BIOS Sleep State with **Windows and Linux**, not **Linux**/S3 — see `docs/hardened-arch-gnome.md`). Firewall: **firewalld** (`nftables`, default `drop`). Stage B modules: `bash provision/scripts/configure.sh` (firewalld, labs, AI stack, terminal/CLI rice). Lab wrappers: `lab-triage` / `lab-re` / `lab-android` / `lab-web` / `lab-detonate` / `lab-mcp` (see `labs/scripts/labs-setup.sh`, `lab-detonate.sh`, `lab-mcp.sh`). Thermal is firmware-managed. Charge window **70–80** via `system/scripts/thinkpad-charge-thresholds.sh`.
+- **ThinkPad Optimized:** Hostname or hardware-detected profiles (`thinkpad-p15.sh`, `thinkpad-t14s.sh`, or `laptop.sh`) with power-profiles-daemon (or tuned + `tuned-ppd` on hosts from `stage-a/`), UKIs signed for Secure Boot (sbctl), and a tracked **s2idle** sleep pin (`mem_sleep_default=s2idle`; pair BIOS Sleep State with **Windows and Linux**, not **Linux**/S3 — see `docs/hardened-arch-gnome.md`). Firewall: **firewalld** (`nftables`, default `drop`). Stage B modules: `bash provision/scripts/configure.sh` (firewalld, labs, AI stack, terminal/CLI rice). Lab wrappers: `lab-triage` / `lab-re` / `lab-android` / `lab-web` / `lab-detonate` / `lab-mcp` (see `labs/scripts/labs-setup.sh`, `lab-detonate.sh`, `lab-mcp.sh`). Thermal is firmware-managed. Charge window **70–80** via `system/scripts/thinkpad-charge-thresholds.sh`.
 - **Elite-Tier Terminal:** Kitty (stock host colors; Gruvbox accents for `lab-*`) & Ghostty with shared Zsh/Bash configs, real-time autocomplete, and switchable Gruvbox / SecOps themes (`rice-theme`, `ff-preset`; stored as untracked local overrides) across Starship, Fastfetch, btop, Ghostty, and Alacritty.
 - **Neovim (Lazy.nvim):** A modular Lua configuration.
 
@@ -596,7 +596,7 @@ REA backends: use `lab-re` (JDK21/Ghidra/jadx/rizin + `rea-agents@6.10.1`). Opti
 > **existing** machine that still has tmpfs `/tmp`.
 
 ### 2. Config Only (No Root)
-Applies user-level symlinks only from `stow/` (first removes unmodified `/etc/skel` copies such as `.bashrc`, and the t14s-arch-install `~/.zshrc` / `starship.toml` seeds, that would block stow; lines appended to the seeded `.zshrc` move to `~/.zshrc.local`), then enables `tmp-semgrep-cleanup.timer`. Root-owned `/etc` trees live under `system/` (not `stow/`) and are installed by `install.sh` / `system/scripts/system-setup.sh`.
+Applies user-level symlinks only from `stow/` (first removes unmodified `/etc/skel` copies such as `.bashrc`, and the Stage A (`stage-a/`) `~/.zshrc` / `starship.toml` seeds, that would block stow; lines appended to the seeded `.zshrc` move to `~/.zshrc.local`), then enables `tmp-semgrep-cleanup.timer`. Root-owned `/etc` trees live under `system/` (not `stow/`) and are installed by `install.sh` / `system/scripts/system-setup.sh`.
 ```bash
 ./stow-only.sh
 ```

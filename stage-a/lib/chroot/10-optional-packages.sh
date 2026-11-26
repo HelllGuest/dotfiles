@@ -1,4 +1,4 @@
-# 10-optional-packages.sh — part of HelllGuest/t14s-arch-install
+# 10-optional-packages.sh — part of HelllGuest/dotfiles (stage-a)
 # shellcheck shell=bash
 # Chroot stage 78-92 %: optional packages (CLI, containers, virt, dev tools, AUR helper).
 # Sourced by 80-chroot-setup.sh inside arch-chroot, at top level and in

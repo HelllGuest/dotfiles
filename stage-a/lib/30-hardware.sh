@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# 30-hardware.sh — part of HelllGuest/t14s-arch-install
+# 30-hardware.sh — part of HelllGuest/dotfiles (stage-a)
 # shellcheck shell=bash
 # DMI / ThinkPad helpers (orchestration still does soft DMI gate).
 

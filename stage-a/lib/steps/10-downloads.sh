@@ -1,4 +1,4 @@
-# 10-downloads.sh — part of HelllGuest/t14s-arch-install
+# 10-downloads.sh — part of HelllGuest/dotfiles (stage-a)
 # shellcheck shell=bash
 # Wizard step 8/11: pacman parallel downloads, root filesystem, Btrfs compression, zram.
 # Sourced by install.sh at top level, in order: shares its globals, set -e

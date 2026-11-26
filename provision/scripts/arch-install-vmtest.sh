@@ -32,17 +32,14 @@ T14S_DIR="${STAGE_A_LOCAL:-${T14S_LOCAL:-$DOTFILES_ROOT/stage-a}}"
 [[ -d $T14S_DIR ]] && T14S_DIR="$(cd "$T14S_DIR" && pwd)" || T14S_DIR=""
 
 # 1. dependencies (qemu + OVMF firmware)
+# shellcheck source=../lib/vm-common.sh
+source "$DOTFILES_ROOT/provision/lib/vm-common.sh"
 need=()
 command -v qemu-system-x86_64 >/dev/null || need+=(qemu-full)
 QEMU_IMG=/usr/bin/qemu-img; [[ -x $QEMU_IMG ]] || QEMU_IMG=qemu-img
-ovmf_code=""; ovmf_vars_src=""
-for c in /usr/share/edk2/x64/OVMF_CODE.4m.fd /usr/share/edk2/x64/OVMF_CODE.fd \
-         /usr/share/OVMF/OVMF_CODE.4m.fd /usr/share/OVMF/x64/OVMF_CODE.4m.fd \
-         /usr/share/edk2-ovmf/x64/OVMF_CODE.fd; do
-  [[ -f $c ]] && { ovmf_code="$c"; ovmf_vars_src="${c/CODE/VARS}"; break; }
-done
-[[ -n $ovmf_code && -f $ovmf_vars_src ]] || need+=(edk2-ovmf)
+vm_find_ovmf || need+=(edk2-ovmf)
 if (( ${#need[@]} )); then die "install first:  sudo pacman -S --needed ${need[*]}"; fi
+ovmf_code="$OVMF_CODE"; ovmf_vars_src="$OVMF_VARS_SRC"
 say "qemu + OVMF found ($ovmf_code)"
 
 mkdir -p "$WORK"

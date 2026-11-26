@@ -1,5 +1,24 @@
 #!/usr/bin/env bash
 # Shared DMI helpers (sysfs first, no sudo).
+# Sources canonical DMI/charge constants from stage-a/lib/05-policy.sh when in-repo
+# (inline fallbacks keep isolated temp-dir tests working standalone).
+
+_dmi_policy=""
+if [[ -n ${BASH_SOURCE[0]:-} && -f ${BASH_SOURCE[0]} ]]; then
+  _dmi_policy="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." 2>/dev/null && pwd)/stage-a/lib/05-policy.sh"
+fi
+if [[ -n $_dmi_policy && -f $_dmi_policy ]]; then
+  # shellcheck source=../../stage-a/lib/05-policy.sh
+  source "$_dmi_policy"
+fi
+unset -v _dmi_policy
+
+STAGE_A_DMI_T14S_RE="${STAGE_A_DMI_T14S_RE:-(^|[[:space:]_/])21C[QR]([[:alnum:]_-]|$)}"
+STAGE_A_DMI_P15_RE="${STAGE_A_DMI_P15_RE:-ThinkPad[[:space:]]*P15|P15[[:space:]]+Gen|(^|[[:space:]_/])20SU([[:alnum:]_-]|$)}"
+# shellcheck disable=SC2034 # consumed by callers sourcing dmi.sh
+CHARGE_START="${CHARGE_START:-70}"
+# shellcheck disable=SC2034 # consumed by callers sourcing dmi.sh
+CHARGE_END="${CHARGE_END:-80}"
 
 dmi_field() {
   local f="$1"
@@ -19,10 +38,10 @@ dmi_label() {
 }
 
 is_thinkpad_p15() {
-  # Name/version match, or machine type 20SU* (same blob Stage A uses).
+  # Name/version match, or machine type 20SU* (same policy as Stage A).
   local blob
   blob="$(dmi_label) $(dmi_field product_sku) $(dmi_field product_name) $(dmi_field product_version)"
-  echo "$blob" | grep -qiE 'ThinkPad[[:space:]]*P15|P15[[:space:]]+Gen|(^|[[:space:]_/])20SU([[:alnum:]_-]|$)'
+  echo "$blob" | grep -qiE "$STAGE_A_DMI_P15_RE"
 }
 
 # T14s Gen 3 AMD only — machine type 21CQ / 21CR (MTM e.g. 21CRS1PU00).
@@ -30,7 +49,7 @@ is_thinkpad_p15() {
 is_thinkpad_t14s() {
   local blob
   blob="$(dmi_label) $(dmi_field product_sku) $(dmi_field product_name)"
-  echo "$blob" | grep -qiE '21CQ|21CR'
+  echo "$blob" | grep -qiE "$STAGE_A_DMI_T14S_RE"
 }
 
 is_laptop_chassis() {
@@ -50,4 +69,17 @@ has_nvidia_gpu() {
     [[ $(<"$dev/vendor") == 0x10de && $(<"$dev/class") == 0x03* ]] && return 0
   done
   return 1
+}
+
+# Install a root-owned udev rule if missing/changed, reload udev, optionally trigger a subsystem.
+install_udev_rule() {
+  local src=$1 dst=$2 trigger_subsys=${3:-}
+  [[ -f $src ]] || return 0
+  if [[ ! -f $dst ]] || ! cmp -s "$src" "$dst"; then
+    sudo install -D -m 0644 -o root -g root "$src" "$dst" || true
+    sudo udevadm control --reload-rules 2>/dev/null || true
+    if [[ -n $trigger_subsys ]]; then
+      sudo udevadm trigger --subsystem-match="$trigger_subsys" 2>/dev/null || true
+    fi
+  fi
 }

@@ -1,4 +1,4 @@
-# 06-disk.sh — part of HelllGuest/t14s-arch-install
+# 06-disk.sh — part of HelllGuest/dotfiles (stage-a)
 # shellcheck shell=bash
 # Wizard step 4/11: target disk.
 # Sourced by install.sh at top level, in order: shares its globals, set -e

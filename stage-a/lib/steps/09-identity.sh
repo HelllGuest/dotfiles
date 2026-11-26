@@ -1,4 +1,4 @@
-# 09-identity.sh — part of HelllGuest/t14s-arch-install
+# 09-identity.sh — part of HelllGuest/dotfiles (stage-a)
 # shellcheck shell=bash
 # Wizard step 7/11: hostname, user, passwords, locale, timezone, keymap.
 # Sourced by install.sh at top level, in order: shares its globals, set -e

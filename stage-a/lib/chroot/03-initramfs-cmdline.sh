@@ -1,4 +1,4 @@
-# 03-initramfs-cmdline.sh — part of HelllGuest/t14s-arch-install
+# 03-initramfs-cmdline.sh — part of HelllGuest/dotfiles (stage-a)
 # shellcheck shell=bash
 # Chroot stage 6-8 %: mkinitcpio hooks, kernel cmdline, ThinkPad charge thresholds.
 # Sourced by 80-chroot-setup.sh inside arch-chroot, at top level and in
@@ -71,10 +71,51 @@ fi
 printf '%s\n' "$_cmdline" > /etc/kernel/cmdline
 unset -v _cmdline
 
+# Canonical hardware policy (CHARGE_START / CHARGE_END) + monorepo system/ source.
+[[ -f /root/t14s-lib/05-policy.sh ]] && source /root/t14s-lib/05-policy.sh
+CHARGE_START="${CHARGE_START:-70}"
+CHARGE_END="${CHARGE_END:-80}"
+_SYS_SRC=/root/t14s-lib/system
+
+# Install canonical system/ file when deployed from monorepo, else embedded curl fallback.
+_sys_install() {
+  local rel=$1 dst=$2 mode=${3:-0644}
+  mkdir -p "$(dirname "$dst")"
+  if [[ -f $_SYS_SRC/$rel ]]; then
+    install -m "$mode" "$_SYS_SRC/$rel" "$dst"
+  else
+    cat >"$dst"
+    chmod "$mode" "$dst"
+  fi
+}
+
+# Render system/templates/*.tmpl (or stdin fallback) replacing @@START@@/@@END@@/@@APPLY@@.
+_sys_render_tmpl() {
+  local rel=$1 dst=$2 mode=${3:-0644}
+  local apply=/usr/local/lib/thinkpad/apply-charge-thresholds.sh line
+  mkdir -p "$(dirname "$dst")"
+  : >"$dst"
+  if [[ -f $_SYS_SRC/$rel ]]; then
+    while IFS= read -r line || [[ -n $line ]]; do
+      line=${line//@@START@@/$CHARGE_START}
+      line=${line//@@END@@/$CHARGE_END}
+      line=${line//@@APPLY@@/$apply}
+      printf '%s\n' "$line" >>"$dst"
+    done <"$_SYS_SRC/$rel"
+  else
+    while IFS= read -r line || [[ -n $line ]]; do
+      line=${line//@@START@@/$CHARGE_START}
+      line=${line//@@END@@/$CHARGE_END}
+      line=${line//@@APPLY@@/$apply}
+      printf '%s\n' "$line" >>"$dst"
+    done
+  fi
+  chmod "$mode" "$dst"
+}
+
 # systemd sleep: enforce s2idle on ThinkPad profiles (generic leaves platform default).
 if [[ ${HW_PROFILE:-t14s} != generic ]]; then
-  mkdir -p /etc/systemd/sleep.conf.d
-  cat > /etc/systemd/sleep.conf.d/s2idle.conf <<'EOF'
+  _sys_install etc/systemd/sleep.conf.d/s2idle.conf /etc/systemd/sleep.conf.d/s2idle.conf 0644 <<'EOF'
 [Sleep]
 SuspendState=mem
 MemorySleepMode=s2idle
@@ -82,41 +123,59 @@ HibernateMode=shutdown
 EOF
 fi
 
-# Charge window 70–80, touchpad s2idle wakeup disable, lid policy — skipped on VM / SKIP_THINKPAD_HW.
+# Charge window, touchpad s2idle wakeup disable, lid policy — skipped on VM / SKIP_THINKPAD_HW.
 mkdir -p /etc/tmpfiles.d /usr/local/lib/thinkpad /etc/udev/rules.d /etc/systemd/logind.conf.d
 if ! yn_on "${SKIP_THINKPAD_HW}"; then
-cat > /etc/tmpfiles.d/thinkpad-charge-thresholds.conf <<'EOF'
+_sys_install templates/thinkpad-charge-thresholds.conf /etc/tmpfiles.d/thinkpad-charge-thresholds.conf 0644 <<'EOF'
 # ThinkPad charge thresholds 70–80 (PPD host; no TLP).
-# Best-effort at boot; see thinkpad-charge-thresholds.service if BAT* appears late.
+# Canonical BAT0 template for bare-metal installer scripts/arch-install-t14s.sh
+# (generic arch-install.sh does not seed charge). Live hosts: prefer
+# system/scripts/thinkpad-charge-thresholds.sh (discovers all BAT*, refreshes this path,
+# and installs thinkpad-charge-thresholds.service +
+# /usr/local/lib/thinkpad/apply-charge-thresholds.sh for late BAT* sysfs).
+# Keep installer heredocs in sync with this file (tests/thinkpad-t14s.test.sh).
 w /sys/class/power_supply/BAT0/charge_control_start_threshold - - - - 70
 w /sys/class/power_supply/BAT0/charge_control_end_threshold - - - - 80
 EOF
-cat > /etc/udev/rules.d/61-thinkpad-charge-limit.rules <<'EOF'
+if [[ $CHARGE_START != 70 || $CHARGE_END != 80 ]]; then
+  sed -i -e "s/charge_control_start_threshold - - - - 70/charge_control_start_threshold - - - - ${CHARGE_START}/" \
+         -e "s/charge_control_end_threshold - - - - 80/charge_control_end_threshold - - - - ${CHARGE_END}/" \
+    /etc/tmpfiles.d/thinkpad-charge-thresholds.conf
+fi
+_sys_install etc/udev/rules.d/61-thinkpad-charge-limit.rules /etc/udev/rules.d/61-thinkpad-charge-limit.rules 0644 <<'EOF'
 # UPower 1.90+ / GNOME Preserve Battery Health:
 # 60-upower-battery.rules only imports CHARGE_LIMIT from hwdb if
 # charge_control_start_threshold already exists when BAT0 is added (races
 # thinkpad_acpi) and defaults to 75,80. Explicitly export CHARGE_LIMIT=70,80
-# on BAT* so upowerd writes 70-80 instead of clobbering start_threshold to 0.
+# on BAT* so upowerd writes 70–80 instead of clobbering start_threshold to 0.
 ACTION!="remove", SUBSYSTEM=="power_supply", KERNEL=="BAT*", ENV{CHARGE_LIMIT}="70,80"
 EOF
-cat > /etc/udev/rules.d/71-thinkpad-t14s-touchpad-wakeup.rules <<'EOF'
+if [[ $CHARGE_START != 70 || $CHARGE_END != 80 ]]; then
+  sed -i "s/ENV{CHARGE_LIMIT}=\"70,80\"/ENV{CHARGE_LIMIT}=\"${CHARGE_START},${CHARGE_END}\"/" \
+    /etc/udev/rules.d/61-thinkpad-charge-limit.rules
+fi
+_sys_install etc/udev/rules.d/71-thinkpad-t14s-touchpad-wakeup.rules /etc/udev/rules.d/71-thinkpad-t14s-touchpad-wakeup.rules 0644 <<'EOF'
 # ThinkPad T14s Gen 3 AMD (21CQ/21CR): disable I2C touchpad wakeup from s2idle.
 # Prevents spurious wakeups when the lid flexes in transit (ArchWiki T14s Gen 3 AMD).
 # Matches both Elan (i2c-ELAN0678:00) and Synaptics (i2c-SYNA8018:00) SKUs.
 ACTION=="add|change", SUBSYSTEM=="i2c", KERNEL=="i2c-ELAN0678:*|i2c-SYNA8018:*", ATTR{power/wakeup}="disabled"
 EOF
-cat > /etc/systemd/logind.conf.d/thinkpad-lid.conf <<'EOF'
+_sys_install etc/systemd/logind.conf.d/thinkpad-lid.conf /etc/systemd/logind.conf.d/thinkpad-lid.conf 0644 <<'EOF'
 [Login]
 # Battery / unknown: suspend on lid. On charger: stay awake (GNOME mirrors this).
 HandleLidSwitch=suspend
 HandleLidSwitchExternalPower=ignore
 HandleLidSwitchDocked=ignore
 EOF
-cat > /usr/local/lib/thinkpad/apply-charge-thresholds.sh <<'EOF'
+_sys_render_tmpl templates/apply-charge-thresholds.sh.tmpl /usr/local/lib/thinkpad/apply-charge-thresholds.sh 0755 <<'EOF'
 #!/usr/bin/env bash
-# Wait for thinkpad_acpi BAT* charge_control_*, then apply 70–80. Exit 0 if absent (VM).
+# Wait for thinkpad_acpi BAT* charge_control_*, then apply @@START@@-@@END@@.
+# Exit 0 if absent (VM / no battery sysfs).
+# Canonical template: system/templates/apply-charge-thresholds.sh.tmpl
+# Rendered by thinkpad-charge-thresholds.sh; keep machine Stage A installers in sync (tests).
 set -euo pipefail
-START=70 END=80
+START=@@START@@
+END=@@END@@
 for _ in $(seq 1 60); do
   shopt -s nullglob
   found=(/sys/class/power_supply/BAT*/charge_control_end_threshold)
@@ -137,17 +196,16 @@ done
 shopt -u nullglob
 exit 0
 EOF
-chmod 755 /usr/local/lib/thinkpad/apply-charge-thresholds.sh
-cat > /etc/systemd/system/thinkpad-charge-thresholds.service <<'EOF'
+_sys_render_tmpl templates/thinkpad-charge-thresholds.service.tmpl /etc/systemd/system/thinkpad-charge-thresholds.service 0644 <<'EOF'
 [Unit]
-Description=ThinkPad battery charge thresholds (70-80)
-Documentation=file:///usr/local/lib/thinkpad/apply-charge-thresholds.sh
+Description=ThinkPad battery charge thresholds (@@START@@-@@END@@)
+Documentation=file://@@APPLY@@
 After=multi-user.target
 # Do not use ConditionPathExists*: BAT* may appear after early boot.
 
 [Service]
 Type=oneshot
-ExecStart=/usr/local/lib/thinkpad/apply-charge-thresholds.sh
+ExecStart=@@APPLY@@
 RemainAfterExit=yes
 
 [Install]
@@ -157,3 +215,5 @@ systemctl enable thinkpad-charge-thresholds.service
 else
   say "SKIP_THINKPAD_HW — charge thresholds not installed"
 fi
+unset -v _SYS_SRC
+unset -f _sys_install _sys_render_tmpl

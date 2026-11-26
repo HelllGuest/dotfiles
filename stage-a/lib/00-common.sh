@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# 00-common.sh — part of HelllGuest/t14s-arch-install
+# 00-common.sh — part of HelllGuest/dotfiles (stage-a)
 # shellcheck shell=bash
 
 # ── ui helpers ──────────────────────────────────────────────

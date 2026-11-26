@@ -30,10 +30,16 @@ command -v qemu-system-x86_64 >/dev/null || die "need qemu-system-x86_64"
 [[ $VM_BOOTSTRAP =~ ^tests/[A-Za-z0-9._-]+\.sh$ && -x $ROOT/$VM_BOOTSTRAP ]] || die "missing or invalid VM_BOOTSTRAP $VM_BOOTSTRAP"
 
 ovmf_code=""; ovmf_vars_src=""
-for c in /usr/share/edk2/x64/OVMF_CODE.4m.fd /usr/share/edk2/x64/OVMF_CODE.fd \
-         /usr/share/OVMF/OVMF_CODE.4m.fd; do
-  [[ -f $c ]] && { ovmf_code="$c"; ovmf_vars_src="${c/CODE/VARS}"; break; }
-done
+if [[ -f $ROOT/../provision/lib/vm-common.sh ]]; then
+  # shellcheck source=../../provision/lib/vm-common.sh
+  source "$ROOT/../provision/lib/vm-common.sh"
+  vm_find_ovmf && { ovmf_code="$OVMF_CODE"; ovmf_vars_src="$OVMF_VARS_SRC"; }
+else
+  for c in /usr/share/edk2/x64/OVMF_CODE.4m.fd /usr/share/edk2/x64/OVMF_CODE.fd \
+           /usr/share/OVMF/OVMF_CODE.4m.fd; do
+    [[ -f $c ]] && { ovmf_code="$c"; ovmf_vars_src="${c/CODE/VARS}"; break; }
+  done
+fi
 [[ -n $ovmf_code && -f $ovmf_vars_src ]] || die "need edk2-ovmf (OVMF_CODE + VARS)"
 
 mkdir -p "$WORK"

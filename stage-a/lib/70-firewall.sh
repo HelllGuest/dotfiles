@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# 70-firewall.sh — part of HelllGuest/t14s-arch-install
+# 70-firewall.sh — part of HelllGuest/dotfiles (stage-a)
 # shellcheck shell=bash
 
 # firewalld (nftables). Default zone: drop (deny inbound). Not "public".

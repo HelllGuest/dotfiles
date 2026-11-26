@@ -85,23 +85,8 @@ if [[ "${ONLY_CAVEMAN_OPENCODE:-0}" == "1" ]]; then
   exit 0
 fi
 
-pick_jdk21() {
-  local best="" best_ver=0 cand ver
-  shopt -s nullglob
-  for cand in /usr/lib/jvm/java-*-openjdk; do
-    [[ -x "$cand/bin/javac" ]] || continue
-    ver="${cand##*/java-}"
-    ver="${ver%%-*}"
-    [[ "$ver" =~ ^[0-9]+$ ]] || continue
-    (( ver >= 21 )) || continue
-    if (( ver > best_ver )); then
-      best=$cand
-      best_ver=$ver
-    fi
-  done
-  shopt -u nullglob
-  printf '%s\n' "$best"
-}
+# shellcheck source=../lib/jdk.sh
+source "$REPO_ROOT/ai/lib/jdk.sh"
 
 command -v npm >/dev/null 2>&1 || die "npm required (fnm install 22 first)"
 export PATH="${HOME}/.opencode/bin:${HOME}/.npm-global/bin:${HOME}/.local/bin:${PATH}"
@@ -139,7 +124,7 @@ fi
 command -v opencode >/dev/null 2>&1 || warn "opencode not on PATH yet (add ~/.npm-global/bin)"
 command -v kimi >/dev/null 2>&1 || warn "kimi not on PATH yet (add ~/.npm-global/bin)"
 
-JAVA_HOME_JDK="$(pick_jdk21)"
+JAVA_HOME_JDK="$(pick_jdk21 || true)"
 [[ -n "$JAVA_HOME_JDK" ]] || JAVA_HOME_JDK="/usr/lib/jvm/java-21-openjdk"
 
 mkdir -p "${OPENCODE_DIR}/skills" "${KIMI_CODE_HOME}/skills" \

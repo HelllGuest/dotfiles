@@ -11,6 +11,14 @@
 # Exit: 0 = no FAIL, 1 = at least one FAIL.  WARN = worth a look, not fatal.
 set -uo pipefail
 
+# Source canonical charge window constants when run from stage-a/ checkout.
+_hc_policy="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." 2>/dev/null && pwd)/lib/05-policy.sh"
+# shellcheck source=../lib/05-policy.sh
+[[ -f $_hc_policy ]] && source "$_hc_policy"
+unset -v _hc_policy
+CHARGE_START="${CHARGE_START:-70}"
+CHARGE_END="${CHARGE_END:-80}"
+
 pass=0 fail=0 warn=0 skip=0
 if [[ -t 1 ]]; then G=$'\e[32m' R=$'\e[31m' Y=$'\e[33m' D=$'\e[2m' B=$'\e[1m' N=$'\e[0m'; else G='' R='' Y='' D='' B='' N=''; fi
 PASS() { printf '%sPASS%s %s\n' "$G" "$N" "$*"; pass=$((pass + 1)); }
@@ -266,15 +274,15 @@ else
   bat=/sys/class/power_supply/BAT0
   if [[ -r $bat/charge_control_start_threshold ]]; then
     s=$(read1 "$bat/charge_control_start_threshold") e=$(read1 "$bat/charge_control_end_threshold")
-    [[ $s == 70 ]] && PASS "charge start threshold 70" || FAIL "charge start threshold is $s, expected 70 (UPower reset? see 61-thinkpad-charge-limit.rules)"
-    [[ $e == 80 ]] && PASS "charge end threshold 80" || FAIL "charge end threshold is $e, expected 80"
+    [[ $s == "$CHARGE_START" ]] && PASS "charge start threshold $CHARGE_START" || FAIL "charge start threshold is $s, expected $CHARGE_START (UPower reset? see 61-thinkpad-charge-limit.rules)"
+    [[ $e == "$CHARGE_END" ]] && PASS "charge end threshold $CHARGE_END" || FAIL "charge end threshold is $e, expected $CHARGE_END"
   else SKIP "no BAT0 charge_control thresholds"; fi
   check "thinkpad-charge-thresholds.service enabled" systemctl is-enabled --quiet thinkpad-charge-thresholds.service
   check "charge apply script present" test -x /usr/local/lib/thinkpad/apply-charge-thresholds.sh
   check "tmpfiles charge thresholds present" test -f /etc/tmpfiles.d/thinkpad-charge-thresholds.conf
   if [[ -r /etc/udev/rules.d/61-thinkpad-charge-limit.rules ]] \
-    && grep -q 'ENV{CHARGE_LIMIT}="70,80"' /etc/udev/rules.d/61-thinkpad-charge-limit.rules; then
-    PASS "udev CHARGE_LIMIT=70,80 for UPower"
+    && grep -q "ENV{CHARGE_LIMIT}=\"${CHARGE_START},${CHARGE_END}\"" /etc/udev/rules.d/61-thinkpad-charge-limit.rules; then
+    PASS "udev CHARGE_LIMIT=${CHARGE_START},${CHARGE_END} for UPower"
   else FAIL "61-thinkpad-charge-limit.rules missing (UPower can reset start threshold to 0)"; fi
   tp_found=0
   while IFS= read -r w; do

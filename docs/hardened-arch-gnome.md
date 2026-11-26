@@ -975,7 +975,7 @@ Optional power diagnostics:
 pacman -S powertop
 ```
 
-**Power stack note:** this system uses **power-profiles-daemon (PPD)**, or on hosts from `t14s-arch-install` **tuned + `tuned-ppd`** (same GNOME power menu API; see the T14s notes below). Nothing else manages power.
+**Power stack note:** this system uses **power-profiles-daemon (PPD)**, or on hosts from `stage-a/` **tuned + `tuned-ppd`** (same GNOME power menu API; see the T14s notes below). Nothing else manages power.
 
 * **TLP is *not* used** — it conflicts with PPD (`PLATFORM_PROFILE.../CPU_ENERGY_PERF_POLICY... not set because power-profiles-daemon is running`). Do not install `tlp`/`tlp-rdw`.
 * **thermald is *not* used** — it self-exits on these ThinkPads (`[dytc_lapmode] present: Thermald can't run on this platform`); thermal is firmware-managed (Intel DPTF on P15 / AMD DYTC on T14s). Leave it uninstalled/disabled.
@@ -1003,7 +1003,7 @@ so UPower 1.90+ / GNOME Preserve Battery Health does not reset
 **T14s Gen 3 AMD (21CQ/21CR)** extras (installer + `profiles/thinkpad-t14s.sh`):
 
 * Cmdline: `amd_iommu=on` `amd_pstate=active` (strip any `intel_iommu` / `i915.*` leftovers; rebuild UKI)
-* Power: PPD by default; if the host came from `t14s-arch-install` with
+* Power: PPD by default; if the host came from `stage-a/` with
   tuned, `tuned` + `tuned-ppd` (same GNOME power menu API) replace PPD —
   `./install.sh` then skips `power-profiles-daemon` and the profile enables tuned
 * GPU / Wi-Fi / FP packages: `packages/thinkpad-t14s.txt` (`mesa` + `vulkan-radeon` + `libva-utils` + `wireless-regdb` + `fprintd`; VA-API via `LIBVA_DRIVER_NAME=radeonsi` in `.shell-exports`, `/etc/environment.d/99-wayland.conf`, and GDM override)
@@ -1638,7 +1638,7 @@ cd ~/dotfiles
   `usbguard-setup.sh` / `dnscrypt-setup.sh` —
   [howto](../README.md#how-to-ops--privacy-kits).
 
-Config-only (no package install; skips `zram`, `system`, and `gdm`; removes unmodified `/etc/skel` copies and the t14s-arch-install `~/.zshrc` / `starship.toml` seeds that block stow, then enables `tmp-semgrep-cleanup.timer`):
+Config-only (no package install; skips `zram`, `system`, and `gdm`; removes unmodified `/etc/skel` copies and the Stage A (`stage-a/`) `~/.zshrc` / `starship.toml` seeds that block stow, then enables `tmp-semgrep-cleanup.timer`):
 
 ```bash
 ./stow-only.sh

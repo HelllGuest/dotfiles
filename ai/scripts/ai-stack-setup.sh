@@ -39,15 +39,17 @@ if [[ -f "$REPO_ROOT/stow/continue/.continue/config.yaml" ]]; then
 fi
 
 # OpenCode local ollama models on P15 (merge so prior MCP/plugin config is kept)
+OLLAMA_ADDR="${OLLAMA_HOST:-127.0.0.1:11434}"
+HR_PORT="${HEADROOM_PORT:-8787}"
 if is_thinkpad_p15; then
   OC_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/opencode"
   mkdir -p "$OC_DIR"
   OC_JSON="$OC_DIR/opencode.json"
-  python3 - "$OC_JSON" <<'PY'
+  python3 - "$OC_JSON" "$OLLAMA_ADDR" <<'PY'
 import json, sys
 from pathlib import Path
 
-path = Path(sys.argv[1])
+path, ollama_addr = Path(sys.argv[1]), sys.argv[2]
 data = {}
 if path.is_file():
     try:
@@ -64,7 +66,7 @@ if not isinstance(provider, dict):
     data["provider"] = provider
 provider.setdefault("ollama", {
     "npm": "@ai-sdk/openai-compatible",
-    "options": {"baseURL": "http://127.0.0.1:11434/v1"},
+    "options": {"baseURL": f"http://{ollama_addr}/v1"},
     "models": {
         "qwen2.5-coder:3b": {"name": "qwen2.5-coder:3b"},
         "qwen3.5:4b": {"name": "qwen3.5:4b"},
@@ -75,17 +77,17 @@ print(f"→ Merged local ollama provider into {path}")
 PY
 fi
 
-# Hardened Headroom user unit bind 127.0.0.1:8787 (optional enable)
+# Hardened Headroom user unit bind 127.0.0.1:$HR_PORT (optional enable)
 UNIT_DIR="${HOME}/.config/systemd/user"
 mkdir -p "$UNIT_DIR"
 cat >"$UNIT_DIR/hr-proxy.service" <<EOF
 [Unit]
-Description=Headroom proxy (127.0.0.1:8787)
+Description=Headroom proxy (127.0.0.1:${HR_PORT})
 After=network-online.target
 
 [Service]
 Type=simple
-ExecStart=%h/.local/bin/headroom proxy --host 127.0.0.1 --port 8787
+ExecStart=%h/.local/bin/headroom proxy --host 127.0.0.1 --port ${HR_PORT}
 Restart=on-failure
 Environment=HEADROOM_TELEMETRY=off
 

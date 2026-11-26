@@ -40,16 +40,10 @@ command -v boltctl  >/dev/null 2>&1 && sudo systemctl enable --now bolt || true
 command -v fwupdmgr >/dev/null 2>&1 && sudo fwupdmgr refresh || true
 
 # 2.5 Battery longevity: thinkpad_acpi charge window 70–80 (UPower rule + thresholds)
-CHARGE_UDEV_SRC="$REPO_ROOT/system/etc/udev/rules.d/61-thinkpad-charge-limit.rules"
-CHARGE_UDEV_DST="/etc/udev/rules.d/61-thinkpad-charge-limit.rules"
-if [[ -f "$CHARGE_UDEV_SRC" ]]; then
-    if [[ ! -f "$CHARGE_UDEV_DST" ]] || ! cmp -s "$CHARGE_UDEV_SRC" "$CHARGE_UDEV_DST"; then
-        sudo install -D -m 0644 -o root -g root "$CHARGE_UDEV_SRC" "$CHARGE_UDEV_DST" || true
-        sudo udevadm control --reload-rules 2>/dev/null || true
-        sudo udevadm trigger --subsystem-match=power_supply 2>/dev/null || true
-    fi
-fi
-unset CHARGE_UDEV_SRC CHARGE_UDEV_DST
+install_udev_rule \
+    "$REPO_ROOT/system/etc/udev/rules.d/61-thinkpad-charge-limit.rules" \
+    "/etc/udev/rules.d/61-thinkpad-charge-limit.rules" \
+    power_supply
 if [[ -f "$REPO_ROOT/system/scripts/thinkpad-charge-thresholds.sh" ]]; then
     echo "Setting ThinkPad charge thresholds 70–80..."
     bash "$REPO_ROOT/system/scripts/thinkpad-charge-thresholds.sh" || true

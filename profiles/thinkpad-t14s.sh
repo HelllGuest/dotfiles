@@ -49,16 +49,10 @@ fi
 # Battery longevity: thinkpad_acpi charge window (sysfs resets each boot)
 # Install 61-thinkpad-charge-limit.rules first so UPower's Preserve Battery Health
 # exports CHARGE_LIMIT=70,80 on BAT* instead of resetting start_threshold to 0.
-CHARGE_UDEV_SRC="$REPO_ROOT/system/etc/udev/rules.d/61-thinkpad-charge-limit.rules"
-CHARGE_UDEV_DST="/etc/udev/rules.d/61-thinkpad-charge-limit.rules"
-if [[ -f "$CHARGE_UDEV_SRC" ]]; then
-  if [[ ! -f "$CHARGE_UDEV_DST" ]] || ! cmp -s "$CHARGE_UDEV_SRC" "$CHARGE_UDEV_DST"; then
-    sudo install -D -m 0644 -o root -g root "$CHARGE_UDEV_SRC" "$CHARGE_UDEV_DST" || true
-    sudo udevadm control --reload-rules 2>/dev/null || true
-    sudo udevadm trigger --subsystem-match=power_supply 2>/dev/null || true
-  fi
-fi
-unset CHARGE_UDEV_SRC CHARGE_UDEV_DST
+install_udev_rule \
+  "$REPO_ROOT/system/etc/udev/rules.d/61-thinkpad-charge-limit.rules" \
+  "/etc/udev/rules.d/61-thinkpad-charge-limit.rules" \
+  power_supply
 if [[ -f "$REPO_ROOT/system/scripts/thinkpad-charge-thresholds.sh" ]]; then
   echo "Setting ThinkPad charge thresholds 70–80..."
   bash "$REPO_ROOT/system/scripts/thinkpad-charge-thresholds.sh" || true
@@ -156,15 +150,9 @@ echo "Enabling fstrim.timer..."
 sudo systemctl enable --now fstrim.timer || true
 
 # Disable I2C touchpad wakeup from s2idle (prevents spurious wakeups in transit)
-TP_WAKE_RULE_SRC="$REPO_ROOT/system/etc/udev/rules.d/71-thinkpad-t14s-touchpad-wakeup.rules"
-TP_WAKE_RULE_DST="/etc/udev/rules.d/71-thinkpad-t14s-touchpad-wakeup.rules"
-if [[ -f "$TP_WAKE_RULE_SRC" ]]; then
-  if [[ ! -f "$TP_WAKE_RULE_DST" ]] || ! cmp -s "$TP_WAKE_RULE_SRC" "$TP_WAKE_RULE_DST"; then
-    echo "Installing $TP_WAKE_RULE_DST..."
-    sudo install -D -m 0644 -o root -g root "$TP_WAKE_RULE_SRC" "$TP_WAKE_RULE_DST" || true
-    sudo udevadm control --reload-rules 2>/dev/null || true
-  fi
-fi
+install_udev_rule \
+  "$REPO_ROOT/system/etc/udev/rules.d/71-thinkpad-t14s-touchpad-wakeup.rules" \
+  "/etc/udev/rules.d/71-thinkpad-t14s-touchpad-wakeup.rules"
 for _tp_wake in /sys/bus/i2c/devices/i2c-ELAN0678:*/power/wakeup /sys/bus/i2c/devices/i2c-SYNA8018:*/power/wakeup; do
   [[ -f "$_tp_wake" ]] || continue
   if [[ "$(cat "$_tp_wake" 2>/dev/null)" == "enabled" ]]; then
@@ -172,7 +160,7 @@ for _tp_wake in /sys/bus/i2c/devices/i2c-ELAN0678:*/power/wakeup /sys/bus/i2c/de
     echo disabled | sudo tee "$_tp_wake" >/dev/null || true
   fi
 done
-unset _tp_wake TP_WAKE_RULE_SRC TP_WAKE_RULE_DST
+unset _tp_wake
 
 # Legacy touchpad udev/inhibit cleanup (if present)
 if [ -f "$REPO_ROOT/desktop/scripts/cleanup-input-overrides.sh" ]; then

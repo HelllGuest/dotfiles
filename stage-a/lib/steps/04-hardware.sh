@@ -1,4 +1,4 @@
-# 04-hardware.sh — part of HelllGuest/t14s-arch-install
+# 04-hardware.sh — part of HelllGuest/dotfiles (stage-a)
 # shellcheck shell=bash
 # Wizard step 2/11: DMI check and hardware profile (T14s / P15 / Generic x86_64).
 # Runs after 03-answers.sh so HW_PROFILE from T14S_ANSWERS is honored and normalized.
@@ -14,9 +14,9 @@ _dmi="$({ cat "$_dmi_dir/product_family" "$_dmi_dir/product_version" \
 unset -v _dmi_dir
 HW_PROFILE="${HW_PROFILE:-}"
 if [[ -z $HW_PROFILE ]]; then
-  if echo "$_dmi" | grep -qiE '(^|[[:space:]_/])21C[QR]([[:alnum:]_-]|$)'; then
+  if dmi_matches_t14s "$_dmi"; then
     HW_PROFILE=t14s
-  elif echo "$_dmi" | grep -qiE '(^|[[:space:]_/])20SU([[:alnum:]_-]|$)'; then
+  elif dmi_matches_p15 "$_dmi"; then
     HW_PROFILE=p15
   fi
 fi

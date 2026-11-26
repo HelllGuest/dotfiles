@@ -1,4 +1,4 @@
-# 01-preflight.sh — part of HelllGuest/t14s-arch-install
+# 01-preflight.sh — part of HelllGuest/dotfiles (stage-a)
 # shellcheck shell=bash
 # Preflight checks (root, UEFI, ISO, network, NTP) and TUI backend.
 # Sourced by install.sh at top level, in order: shares its globals, set -e

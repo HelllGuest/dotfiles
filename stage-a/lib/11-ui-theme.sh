@@ -1,4 +1,4 @@
-# 11-ui-theme.sh — part of HelllGuest/t14s-arch-install
+# 11-ui-theme.sh — part of HelllGuest/dotfiles (stage-a)
 # shellcheck shell=bash
 # TUI colours: whiptail NEWT_COLORS palettes and per-severity dialogrc files.
 

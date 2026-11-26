@@ -1,4 +1,4 @@
-# 11-extras.sh — part of HelllGuest/t14s-arch-install
+# 11-extras.sh — part of HelllGuest/dotfiles (stage-a)
 # shellcheck shell=bash
 # Wizard step 9/11: extras checklists, reflector country, post-install hook.
 # Sourced by install.sh at top level, in order: shares its globals, set -e

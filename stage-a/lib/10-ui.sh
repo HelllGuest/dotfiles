@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# 10-ui.sh — part of HelllGuest/t14s-arch-install
+# 10-ui.sh — part of HelllGuest/dotfiles (stage-a)
 # shellcheck shell=bash
 # TUI core: screen geometry, dialog/whiptail wrapper, console log level, die/on_exit,
 # backend selection. Theme: 11-ui-theme.sh; screens: 12-ui-screens.sh; progress: 13-ui-progress.sh.

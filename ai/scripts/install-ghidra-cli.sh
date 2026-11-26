@@ -29,26 +29,10 @@ if [[ ! -x "$GHIDRA_INSTALL_DIR/support/analyzeHeadless" ]]; then
 fi
 
 # Newest full JDK >= 21 (javac present). Avoid Android's JAVA_HOME=17.
-pick_jdk() {
-    local best="" best_ver=0 cand ver
-    shopt -s nullglob
-    for cand in /usr/lib/jvm/java-*-openjdk; do
-        [[ -x "$cand/bin/javac" ]] || continue
-        ver="${cand##*/java-}"
-        ver="${ver%%-*}"
-        [[ "$ver" =~ ^[0-9]+$ ]] || continue
-        (( ver >= 21 )) || continue
-        if (( ver > best_ver )); then
-            best=$cand
-            best_ver=$ver
-        fi
-    done
-    shopt -u nullglob
-    [[ -n "$best" ]] || die "no JDK >= 21 with javac under /usr/lib/jvm"
-    printf '%s\n' "$best"
-}
+# shellcheck source=../lib/jdk.sh
+source "$REPO_ROOT/ai/lib/jdk.sh"
 
-JAVA_HOME_JDK="$(pick_jdk)"
+JAVA_HOME_JDK="$(pick_jdk21)" || die "no JDK >= 21 with javac under /usr/lib/jvm"
 
 export PATH="${HOME}/.cargo/bin:${PATH}"
 

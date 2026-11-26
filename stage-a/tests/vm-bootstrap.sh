@@ -48,10 +48,10 @@ SKIP_REFLECTOR=Y
 CLEAN_ESP_ARCH=Y
 INSTALL_SELFTEST=Y
 EOF
-cat >/tmp/t14s-pass.env <<'EOF'
-LUKS_PASS=vmtest-luks-pass-change-me
-USER_PASS=vmtest-user-pass-change-me
-ROOT_PASS=vmtest-root-pass-change-me
+cat >/tmp/t14s-pass.env <<EOF
+LUKS_PASS=${T14S_VM_LUKS_PASS:-vmtest-luks-pass-change-me}
+USER_PASS=${T14S_VM_USER_PASS:-vmtest-user-pass-change-me}
+ROOT_PASS=${T14S_VM_ROOT_PASS:-vmtest-root-pass-change-me}
 EOF
 # Full desktop rehearsal: T14S_VM_DESKTOP=Y (default minimal, no GNOME).
 if [[ ${T14S_VM_DESKTOP:-N} == Y ]]; then

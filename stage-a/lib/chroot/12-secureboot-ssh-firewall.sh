@@ -1,4 +1,4 @@
-# 12-secureboot-ssh-firewall.sh — part of HelllGuest/t14s-arch-install
+# 12-secureboot-ssh-firewall.sh — part of HelllGuest/dotfiles (stage-a)
 # shellcheck shell=bash
 # Chroot stage 95-100 %: Secure Boot keys and signing, sshd, fail2ban, firewalld.
 # Sourced by 80-chroot-setup.sh inside arch-chroot, at top level and in

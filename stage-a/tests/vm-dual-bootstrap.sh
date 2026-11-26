@@ -9,7 +9,7 @@ set -uo pipefail
 {
 exec </dev/null
 BASE="http://10.0.2.2:${T14S_VM_PORT:-8000}"
-D=/dev/vda
+D="${T14S_VM_DISK:-/dev/vda}"
 exec > >(tee -a /tmp/dual.log) 2>&1
 v() { if "$@"; then echo "DUALCHK PASS: ${CHK}"; else echo "DUALCHK FAIL: ${CHK}"; FAILS=$((FAILS+1)); fi; }
 FAILS=0
@@ -73,10 +73,11 @@ SKIP_REFLECTOR=Y
 CLEAN_ESP_ARCH=Y
 INSTALL_SELFTEST=Y
 A
-cat >/tmp/t14s-pass.env <<'P'
-LUKS_PASS=vmtest-luks-pass-change-me
-USER_PASS=vmtest-user-pass-change-me
-ROOT_PASS=vmtest-root-pass-change-me
+_luks_pass="${T14S_VM_LUKS_PASS:-vmtest-luks-pass-change-me}"
+cat >/tmp/t14s-pass.env <<P
+LUKS_PASS=${_luks_pass}
+USER_PASS=${T14S_VM_USER_PASS:-vmtest-user-pass-change-me}
+ROOT_PASS=${T14S_VM_ROOT_PASS:-vmtest-root-pass-change-me}
 P
 chmod 600 /tmp/t14s-answers.env /tmp/t14s-pass.env
 export T14S_BASE_URL="$BASE" T14S_UI=plain T14S_NONINTERACTIVE=1 T14S_I_WILL_ERASE=1 \
@@ -126,7 +127,7 @@ CHK="old loader.conf kept as .pre-arch.bak"; v grep -q 'timeout 9' /m/loader/loa
 echo "--- ESP free: $(df -h /m | awk 'NR==2{print $4" of "$2}')"; ls -la /m/EFI/Linux; cat /m/loader/loader.conf
 umount /m
 CHK="root re-encrypted (new LUKS2 UUID)"; v bash -c '[ "$(cryptsetup luksUUID '${D}5')" != "$(cat /tmp/olduuid)" ] && cryptsetup isLuks --type luks2 '${D}5
-CHK="new LUKS opens with new passphrase only"; v bash -c "printf vmtest-luks-pass-change-me | cryptsetup open --test-passphrase ${D}5 - && ! printf old-arch-pass | cryptsetup open --test-passphrase ${D}5 - 2>/dev/null"
+CHK="new LUKS opens with new passphrase only"; v bash -c 'printf %s "$1" | cryptsetup open --test-passphrase "$2" - && ! printf old-arch-pass | cryptsetup open --test-passphrase "$2" - 2>/dev/null' _ "$_luks_pass" "${D}5"
 efibootmgr -v | grep -iE 'windows|linux|boot0' | head
 CHK="NVRAM Windows Boot Manager entry kept"; v bash -c 'efibootmgr | grep -q "Windows Boot Manager"'
 ESP_UUID=$(lsblk -dno PARTUUID ${D}1)

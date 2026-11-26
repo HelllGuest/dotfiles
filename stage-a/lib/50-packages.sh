@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# 50-packages.sh — part of HelllGuest/t14s-arch-install
+# 50-packages.sh — part of HelllGuest/dotfiles (stage-a)
 # shellcheck shell=bash
 
 # Package list assembly, prefetch and pacman_tune. pacstrap itself runs in

@@ -6,18 +6,18 @@
 #                CHARGE_SKIP_SYSTEMCTL=1, CHARGE_TMPL_DIR, CHARGE_FORCE_SEED=1.
 set -euo pipefail
 
+_SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+_REPO_ROOT="$(cd "$_SCRIPT_DIR/../.." && pwd)"
+# shellcheck source=../../provision/lib/dmi.sh
+source "$_REPO_ROOT/provision/lib/dmi.sh"
+
 START="${CHARGE_START:-70}"
 END="${CHARGE_END:-80}"
 CONF="${CHARGE_TMPFILES:-/etc/tmpfiles.d/thinkpad-charge-thresholds.conf}"
 APPLY="${CHARGE_APPLY_SCRIPT:-/usr/local/lib/thinkpad/apply-charge-thresholds.sh}"
 UNIT="${CHARGE_SERVICE_UNIT:-/etc/systemd/system/thinkpad-charge-thresholds.service}"
 PSY="${POWER_SUPPLY_ROOT:-/sys/class/power_supply}"
-_SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-_REPO_ROOT="$(cd "$_SCRIPT_DIR/../.." && pwd)"
 TMPL_DIR="${CHARGE_TMPL_DIR:-$_REPO_ROOT/system/templates}"
-
-# shellcheck source=../../provision/lib/dmi.sh
-source "$_REPO_ROOT/provision/lib/dmi.sh"
 
 say() { printf '==> %s\n' "$*"; }
 warn() { printf 'warning: %s\n' "$*" >&2; }

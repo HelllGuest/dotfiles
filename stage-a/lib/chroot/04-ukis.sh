@@ -1,4 +1,4 @@
-# 04-ukis.sh — part of HelllGuest/t14s-arch-install
+# 04-ukis.sh — part of HelllGuest/dotfiles (stage-a)
 # shellcheck shell=bash
 # Chroot stage 8-24 %: unified kernel images on the ESP.
 # Sourced by 80-chroot-setup.sh inside arch-chroot, at top level and in

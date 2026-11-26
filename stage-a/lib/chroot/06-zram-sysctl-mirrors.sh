@@ -1,4 +1,4 @@
-# 06-zram-sysctl-mirrors.sh — part of HelllGuest/t14s-arch-install
+# 06-zram-sysctl-mirrors.sh — part of HelllGuest/dotfiles (stage-a)
 # shellcheck shell=bash
 # Chroot stage 27-30 %: zram, sysctl hardening, reflector config.
 # Sourced by 80-chroot-setup.sh inside arch-chroot, at top level and in

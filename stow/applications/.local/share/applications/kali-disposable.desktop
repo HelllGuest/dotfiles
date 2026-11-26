@@ -2,7 +2,7 @@
 Type=Application
 Name=Kali Disposable
 Comment=Disposable Kali VM (libvirt NAT / macvtap)
-Exec=bash -lc "cd ~/dotfiles && bash labs/scripts/kali-disposable.sh start --nat"
+Exec=bash -lc "cd \\${DOTFILES_DIR:-~/dotfiles} && bash labs/scripts/kali-disposable.sh start --nat"
 Icon=utilities-terminal
 Terminal=true
 Categories=System;Security;

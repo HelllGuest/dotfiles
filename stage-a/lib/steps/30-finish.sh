@@ -1,4 +1,4 @@
-# 30-finish.sh — part of HelllGuest/t14s-arch-install
+# 30-finish.sh — part of HelllGuest/dotfiles (stage-a)
 # shellcheck shell=bash
 # Finish: final summary (with any install warnings), unmount.
 # Sourced by install.sh at top level, in order: shares its globals, set -e

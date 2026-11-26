@@ -1,4 +1,4 @@
-# 03-answers.sh — part of HelllGuest/t14s-arch-install
+# 03-answers.sh — part of HelllGuest/dotfiles (stage-a)
 # shellcheck shell=bash
 # Answers file (T14S_ANSWERS): load known keys before hardware detection; saved again before install.
 # Sourced by install.sh at top level, in order: shares its globals, set -e

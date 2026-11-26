@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# 20-answers.sh — part of HelllGuest/t14s-arch-install
+# 20-answers.sh — part of HelllGuest/dotfiles (stage-a)
 # shellcheck shell=bash
 
 answers_load() {

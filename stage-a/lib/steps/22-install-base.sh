@@ -1,4 +1,4 @@
-# 22-install-base.sh — part of HelllGuest/t14s-arch-install
+# 22-install-base.sh — part of HelllGuest/dotfiles (stage-a)
 # shellcheck shell=bash
 # Mirrors, package prefetch, pacstrap.
 # Sourced by install.sh at top level, in order: shares its globals, set -e

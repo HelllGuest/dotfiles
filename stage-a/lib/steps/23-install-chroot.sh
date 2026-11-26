@@ -1,4 +1,4 @@
-# 23-install-chroot.sh — part of HelllGuest/t14s-arch-install
+# 23-install-chroot.sh — part of HelllGuest/dotfiles (stage-a)
 # shellcheck shell=bash
 # Deploy and run the chroot setup (UKIs, users, services, desktop), write the
 # firmware boot entry, collect install warnings, run the optional post-install hook.
@@ -21,8 +21,28 @@ _deploy_lib() {
   fi
   [[ -s /mnt/root/t14s-lib/$f ]] || die "deployed lib/$f is missing or empty"
 }
+_deploy_lib 05-policy.sh
 _deploy_lib 70-firewall.sh
 _deploy_lib 80-chroot-setup.sh
+# When running from a monorepo checkout, deploy canonical system/ ThinkPad files
+# into /mnt/root/t14s-lib/system/ so chroot installs from the single source of truth
+# (pure curl ISO falls back to byte-identical embedded heredocs in 03-initramfs-cmdline.sh).
+if [[ -n ${T14S_LIB_DIR:-} && -d $T14S_LIB_DIR/../../system ]]; then
+  _sys_src="$(cd "$T14S_LIB_DIR/../../system" && pwd)"
+  for _sf in \
+    etc/systemd/sleep.conf.d/s2idle.conf \
+    etc/udev/rules.d/61-thinkpad-charge-limit.rules \
+    etc/udev/rules.d/71-thinkpad-t14s-touchpad-wakeup.rules \
+    etc/systemd/logind.conf.d/thinkpad-lid.conf \
+    templates/thinkpad-charge-thresholds.conf \
+    templates/apply-charge-thresholds.sh.tmpl \
+    templates/thinkpad-charge-thresholds.service.tmpl; do
+    if [[ -f $_sys_src/$_sf ]]; then
+      install -D -m 0644 "$_sys_src/$_sf" "/mnt/root/t14s-lib/system/$_sf"
+    fi
+  done
+  unset -v _sys_src _sf
+fi
 # Chroot stages, run in this order by 80-chroot-setup.sh (lib/chroot/).
 for _cs in \
     01-base-config.sh 02-users.sh 03-initramfs-cmdline.sh 04-ukis.sh \
@@ -87,6 +107,7 @@ if ! run_gauge "chroot config (UKIs, users, optional GNOME)" 0 100 \
     INSTALL_SELFTEST="$INSTALL_SELFTEST" CLEAN_ESP_ARCH="$CLEAN_ESP_ARCH" \
     ZRAM_SIZE="$ZRAM_SIZE" REFLECTOR_COUNTRY="$REFLECTOR_COUNTRY" \
     SKIP_THINKPAD_HW="$SKIP_THINKPAD_HW" \
+    CHARGE_START="${CHARGE_START:-70}" CHARGE_END="${CHARGE_END:-80}" \
     HW_PROFILE="$HW_PROFILE" INSTALL_OLLAMA="$INSTALL_OLLAMA" \
     ENCRYPT_ROOT="$ENCRYPT_ROOT" ROOT_UUID="${ROOT_UUID:-}" ROOT_FS="${ROOT_FS:-btrfs}" \
     INSTALL_VM_GUEST="$INSTALL_VM_GUEST" VM_SERIAL_CONSOLE="$VM_SERIAL_CONSOLE" \

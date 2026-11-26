@@ -246,6 +246,10 @@ grep -qE '^check .*\|' <<<"$_stbody" \
 unset -v _stbody
 grep -q 'thinkpad-charge-thresholds.conf' "$INSTALL_SH" \
   || fail "must install charge threshold tmpfiles"
+grep -q 'CHARGE_START="\${CHARGE_START:-70}"' "$INSTALL_SH" \
+  || fail "05-policy.sh must default CHARGE_START to 70"
+grep -q 'CHARGE_END="\${CHARGE_END:-80}"' "$INSTALL_SH" \
+  || fail "05-policy.sh must default CHARGE_END to 80"
 grep -q 'charge_control_start_threshold - - - - 70' "$INSTALL_SH" \
   || fail "charge tmpfiles must set start 70"
 grep -q 'charge_control_end_threshold - - - - 80' "$INSTALL_SH" \
@@ -2162,8 +2166,8 @@ _hw_vm="$(NONINTERACTIVE=0 HW_PROFILE="" T14S_DMI_DIR="$_dmi_tmp" bash -c '
   set -euo pipefail; ui_step() { :; }; ok() { :; }; warn() { :; }; die() { exit 9; }
   ui_radio() { echo "RADIO_CALLED" >&2; exit 8; }
   detect_vm_hypervisor() { echo kvm; }; detect_cpu_vendor() { echo amd; }; detect_gpu_vendors() { echo ""; }
-  source "$1"; printf "%s\n" "$HW_PROFILE"
-' _ "$ROOT/lib/steps/04-hardware.sh")"
+  source "$2"; source "$1"; printf "%s\n" "$HW_PROFILE"
+' _ "$ROOT/lib/steps/04-hardware.sh" "$ROOT/lib/05-policy.sh")"
 [[ $_hw_vm == generic ]] || fail "04-hardware.sh must auto-select generic on VM without ui_radio (got: $_hw_vm)"
 rm -rf "$_dmi_tmp"; unset -v _dmi_tmp _hw_vm
 

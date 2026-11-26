@@ -1,4 +1,4 @@
-# 02-users.sh — part of HelllGuest/t14s-arch-install
+# 02-users.sh — part of HelllGuest/dotfiles (stage-a)
 # shellcheck shell=bash
 # Chroot stage 4-6 %: users, passwords, sudo (secrets file removed here).
 # Sourced by 80-chroot-setup.sh inside arch-chroot, at top level and in

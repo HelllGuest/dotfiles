@@ -1,4 +1,4 @@
-# 05-systemd-boot.sh — part of HelllGuest/t14s-arch-install
+# 05-systemd-boot.sh — part of HelllGuest/dotfiles (stage-a)
 # shellcheck shell=bash
 # Chroot stage 24-27 %: systemd-boot and loader.conf.
 # Sourced by 80-chroot-setup.sh inside arch-chroot, at top level and in

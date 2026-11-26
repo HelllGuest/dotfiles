@@ -92,7 +92,7 @@ mode wipes the whole disk.
 6. After first boot: Stage A½ below, then `sudo -v && bash scripts/check.sh --all`
    (the Stage A part fails if no firmware entry loads systemd-boot from this ESP).
 
-Rehearsed in a VM with t14s-arch-install
+Rehearsed in a VM with `stage-a/`
 `VM_BOOTSTRAP=tests/vm-dual-bootstrap.sh bash tests/vm-run.sh`.
 
 Existing install booting only through the `BOOTX64.EFI` fallback (stale

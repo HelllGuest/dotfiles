@@ -1,4 +1,4 @@
-# 08-luks.sh — part of HelllGuest/t14s-arch-install
+# 08-luks.sh — part of HelllGuest/dotfiles (stage-a)
 # shellcheck shell=bash
 # Wizard step 6/11: LUKS passphrase and optional mapper wipe.
 # Sourced by install.sh at top level, in order: shares its globals, set -e

@@ -1,4 +1,4 @@
-# 05-profile.sh — part of HelllGuest/t14s-arch-install
+# 05-profile.sh — part of HelllGuest/dotfiles (stage-a)
 # shellcheck shell=bash
 # Wizard step 3/11: install profile preset (feeds checklist defaults).
 # Sourced by install.sh at top level, in order: shares its globals, set -e

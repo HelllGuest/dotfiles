@@ -1,4 +1,4 @@
-# 13-ui-progress.sh — part of HelllGuest/t14s-arch-install
+# 13-ui-progress.sh — part of HelllGuest/dotfiles (stage-a)
 # shellcheck shell=bash
 # Install-phase logging and live progress (progress box, gauge, plain stream).
 

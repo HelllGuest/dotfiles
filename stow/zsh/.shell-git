@@ -29,5 +29,6 @@ fi
 
 # Dotfiles repo helper
 dot() {
-    git --git-dir="$HOME/dotfiles/.git" --work-tree="$HOME/dotfiles" "$@"
+    local d="${DOTFILES_DIR:-$HOME/dotfiles}"
+    git --git-dir="$d/.git" --work-tree="$d" "$@"
 }

@@ -1,4 +1,4 @@
-# 12-ui-screens.sh — part of HelllGuest/t14s-arch-install
+# 12-ui-screens.sh — part of HelllGuest/dotfiles (stage-a)
 # shellcheck shell=bash
 # TUI screens: plain prompts, message/yes-no/input boxes, menus, radio lists, checklists.
 

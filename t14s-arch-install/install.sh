@@ -26,6 +26,8 @@ fi
 unset -v _shim_self
 
 # 2) Remote curl (Arch ISO): pin main SHA once, then fetch stage-a/install.sh.
+STAGE_A_REPO="${STAGE_A_REPO:-HelllGuest/dotfiles}"
+STAGE_A_BRANCH="${STAGE_A_BRANCH:-main}"
 _base="${STAGE_A_BASE_URL:-${T14S_BASE_URL:-}}"
 _ref="${STAGE_A_REF:-${T14S_REF:-}}"
 if [[ -n $_base ]]; then
@@ -37,14 +39,15 @@ if [[ -n $_base ]]; then
 else
   if [[ -z $_ref ]]; then
     _ref="$(curl -fsSL -H 'Accept: application/vnd.github.sha' \
-      https://api.github.com/repos/HelllGuest/dotfiles/commits/main 2>/dev/null || true)"
+      "https://api.github.com/repos/${STAGE_A_REPO}/commits/${STAGE_A_BRANCH}" 2>/dev/null || true)"
     _ref="${_ref//$'\n'/}"
     if [[ ! $_ref =~ ^[0-9a-f]{40}$ ]]; then
-      printf 'ERR: could not resolve dotfiles main SHA (set STAGE_A_REF / T14S_REF or STAGE_A_BASE_URL)\n' >&2
+      printf 'ERR: could not resolve %s %s SHA (set STAGE_A_REF / T14S_REF or STAGE_A_BASE_URL)\n' \
+        "$STAGE_A_REPO" "$STAGE_A_BRANCH" >&2
       exit 1
     fi
   fi
-  _base="https://raw.githubusercontent.com/HelllGuest/dotfiles/${_ref}/stage-a"
+  _base="https://raw.githubusercontent.com/${STAGE_A_REPO}/${_ref}/stage-a"
 fi
 export STAGE_A_REF="$_ref" T14S_REF="$_ref"
 export STAGE_A_BASE_URL="$_base" T14S_BASE_URL="$_base"

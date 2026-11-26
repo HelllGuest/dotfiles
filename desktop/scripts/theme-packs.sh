@@ -29,6 +29,12 @@ ICONS_DIR="$DATA_HOME/icons"
 THEMES_DIR="$DATA_HOME/themes"
 LEGACY_THEMES_DIR="$HOME/.themes"
 
+URL_WHITESUR_CURSORS="https://github.com/vinceliuice/WhiteSur-cursors.git"
+URL_MACTAHOE_ICONS="https://github.com/vinceliuice/MacTahoe-icon-theme.git"
+URL_COLLOID_ICONS="https://github.com/vinceliuice/Colloid-icon-theme.git"
+URL_MOREWAITA="https://github.com/somepaulo/MoreWaita.git"
+URL_MARBLE_SHELL="https://github.com/imarkoff/Marble-shell-theme.git"
+
 ALL_PACKS=(
     mactahoe
     kayozxo-tahoe
@@ -389,7 +395,7 @@ install_pack() {
             local gtk_dir="$THEME_PACKS_DIR/mactahoe/MacTahoe-gtk-theme"
             local icon_dir="$THEME_PACKS_DIR/shared/MacTahoe-icon-theme"
             clone_or_update "https://github.com/vinceliuice/MacTahoe-gtk-theme.git" "$gtk_dir"
-            clone_or_update "https://github.com/vinceliuice/MacTahoe-icon-theme.git" "$icon_dir"
+            clone_or_update "$URL_MACTAHOE_ICONS" "$icon_dir"
             act_in "$gtk_dir" bash ./install.sh -c "$OPT_COLOR" -l
             if (( OPT_FLATPAK )); then
                 act_in "$gtk_dir" bash ./tweaks.sh -F
@@ -420,8 +426,8 @@ install_pack() {
             local icon_dir="$THEME_PACKS_DIR/shared/MacTahoe-icon-theme"
             local cur_dir="$THEME_PACKS_DIR/shared/WhiteSur-cursors"
             clone_or_update "https://github.com/kayozxo/GNOME-macOS-Tahoe.git" "$theme_dir"
-            clone_or_update "https://github.com/vinceliuice/MacTahoe-icon-theme.git" "$icon_dir"
-            clone_or_update "https://github.com/vinceliuice/WhiteSur-cursors.git" "$cur_dir"
+            clone_or_update "$URL_MACTAHOE_ICONS" "$icon_dir"
+            clone_or_update "$URL_WHITESUR_CURSORS" "$cur_dir"
             local mode_flag="-d"
             [[ $OPT_COLOR == light ]] && mode_flag="-l"
             act_in "$theme_dir" bash ./install.sh "$mode_flag" -la
@@ -456,7 +462,7 @@ install_pack() {
             local cur_dir="$THEME_PACKS_DIR/shared/WhiteSur-cursors"
             clone_or_update "https://github.com/vinceliuice/WhiteSur-gtk-theme.git" "$gtk_dir"
             clone_or_update "https://github.com/vinceliuice/WhiteSur-icon-theme.git" "$icon_dir"
-            clone_or_update "https://github.com/vinceliuice/WhiteSur-cursors.git" "$cur_dir"
+            clone_or_update "$URL_WHITESUR_CURSORS" "$cur_dir"
             act_in "$gtk_dir" bash ./install.sh -c "$OPT_COLOR" -l
             if (( OPT_FLATPAK )); then
                 act_in "$gtk_dir" bash ./tweaks.sh -F
@@ -487,7 +493,7 @@ install_pack() {
             local gtk_dir="$THEME_PACKS_DIR/colloid/Colloid-gtk-theme"
             local icon_dir="$THEME_PACKS_DIR/shared/Colloid-icon-theme"
             clone_or_update "https://github.com/vinceliuice/Colloid-gtk-theme.git" "$gtk_dir"
-            clone_or_update "https://github.com/vinceliuice/Colloid-icon-theme.git" "$icon_dir"
+            clone_or_update "$URL_COLLOID_ICONS" "$icon_dir"
             local args=(-c "$OPT_COLOR" -l)
             if [[ -n ${COLLOID_TWEAKS:-} ]]; then
                 args+=(--tweaks "$COLLOID_TWEAKS")
@@ -512,7 +518,7 @@ install_pack() {
             local gtk_dir="$THEME_PACKS_DIR/graphite/Graphite-gtk-theme"
             local icon_dir="$THEME_PACKS_DIR/shared/Colloid-icon-theme"
             clone_or_update "https://github.com/vinceliuice/Graphite-gtk-theme.git" "$gtk_dir"
-            clone_or_update "https://github.com/vinceliuice/Colloid-icon-theme.git" "$icon_dir"
+            clone_or_update "$URL_COLLOID_ICONS" "$icon_dir"
             act_in "$gtk_dir" bash ./install.sh -c "$OPT_COLOR" -l
             if (( OPT_GDM )); then
                 warn_gdm_gresource
@@ -568,7 +574,7 @@ install_pack() {
             clone_or_update "https://github.com/daniruiz/flat-remix-gnome.git" "$shell_dir"
             clone_or_update "https://github.com/daniruiz/flat-remix-gtk.git" "$gtk_dir"
             clone_or_update "https://github.com/daniruiz/flat-remix.git" "$icon_dir"
-            clone_or_update "https://github.com/vinceliuice/WhiteSur-cursors.git" "$cur_dir"
+            clone_or_update "$URL_WHITESUR_CURSORS" "$cur_dir"
             act_in "$shell_dir" make
             act mkdir -p "$THEMES_DIR" "$ICONS_DIR"
             if (( OPT_GDM )); then
@@ -616,7 +622,7 @@ install_pack() {
             local icon_dir="$THEME_PACKS_DIR/shared/MoreWaita"
             clone_or_update "https://github.com/SakibShahariar/material-gnome-theme.git" "$theme_dir"
             clone_or_update "https://github.com/SakibShahariar/material-bibata-cursor.git" "$cur_dir"
-            clone_or_update "https://github.com/somepaulo/MoreWaita.git" "$icon_dir"
+            clone_or_update "$URL_MOREWAITA" "$icon_dir"
             local args=(--force)
             if (( OPT_FLATPAK )); then
                 args+=(--flatpak)
@@ -654,9 +660,9 @@ install_pack() {
             local shell_dir="$THEME_PACKS_DIR/shared/Marble-shell-theme"
             local icon_dir="$THEME_PACKS_DIR/shared/MoreWaita"
             local cur_dir="$THEME_PACKS_DIR/shared/WhiteSur-cursors"
-            clone_or_update "https://github.com/imarkoff/Marble-shell-theme.git" "$shell_dir"
-            clone_or_update "https://github.com/somepaulo/MoreWaita.git" "$icon_dir"
-            clone_or_update "https://github.com/vinceliuice/WhiteSur-cursors.git" "$cur_dir"
+            clone_or_update "$URL_MARBLE_SHELL" "$shell_dir"
+            clone_or_update "$URL_MOREWAITA" "$icon_dir"
+            clone_or_update "$URL_WHITESUR_CURSORS" "$cur_dir"
             act_in "$shell_dir" python3 install.py --blue --filled --mode "$OPT_COLOR"
             if (( OPT_GDM )); then
                 warn_gdm_gresource
@@ -680,9 +686,9 @@ install_pack() {
             local shell_dir="$THEME_PACKS_DIR/shared/Marble-shell-theme"
             local icon_dir="$THEME_PACKS_DIR/modular-gruvbox/gruvbox-plus-icon-pack"
             local cur_dir="$THEME_PACKS_DIR/shared/WhiteSur-cursors"
-            clone_or_update "https://github.com/imarkoff/Marble-shell-theme.git" "$shell_dir"
+            clone_or_update "$URL_MARBLE_SHELL" "$shell_dir"
             clone_or_update "https://github.com/SylEleuth/gruvbox-plus-icon-pack.git" "$icon_dir"
-            clone_or_update "https://github.com/vinceliuice/WhiteSur-cursors.git" "$cur_dir"
+            clone_or_update "$URL_WHITESUR_CURSORS" "$cur_dir"
             act_in "$shell_dir" python3 install.py --yellow --filled --mode "$OPT_COLOR"
             if (( OPT_GDM )); then
                 warn_gdm_gresource

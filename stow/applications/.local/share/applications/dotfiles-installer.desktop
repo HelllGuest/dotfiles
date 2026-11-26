@@ -2,7 +2,7 @@
 Type=Application
 Name=Dotfiles Installer
 Comment=Selective TUI/GUI installer for dotfiles
-Exec=bash -lc "cd ~/dotfiles && INSTALL_PAUSE=1 ./install.sh --gui"
+Exec=bash -lc "cd \\${DOTFILES_DIR:-~/dotfiles} && INSTALL_PAUSE=1 ./install.sh --gui"
 Icon=system-software-install
 Terminal=true
 Categories=System;

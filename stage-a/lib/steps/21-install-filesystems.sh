@@ -1,4 +1,4 @@
-# 21-install-filesystems.sh — part of HelllGuest/t14s-arch-install
+# 21-install-filesystems.sh — part of HelllGuest/dotfiles (stage-a)
 # shellcheck shell=bash
 # LUKS2 format, root filesystem (btrfs/ext4/xfs), mounts.
 # Sourced by install.sh at top level, in order: shares its globals, set -e

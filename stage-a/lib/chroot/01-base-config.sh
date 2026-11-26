@@ -1,4 +1,4 @@
-# 01-base-config.sh — part of HelllGuest/t14s-arch-install
+# 01-base-config.sh — part of HelllGuest/dotfiles (stage-a)
 # shellcheck shell=bash
 # Chroot stage 0-4 %: locale, time, hostname, pacman, pacman cache trim.
 # Sourced by 80-chroot-setup.sh inside arch-chroot, at top level and in
