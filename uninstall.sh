@@ -53,9 +53,9 @@ uninstall_list_sections() {
     cat <<'EOF'
 units     Disable dotfiles user systemd units (tmp-semgrep-cleanup, hr-proxy) [default]
 stow      Unstow $HOME symlinks from stow/ (safe fallback if stow missing) [default]
-ai        Remove ai-rules/agent skill symlinks & kit core.hooksPath [default]
+ai        Remove AI kit/hub symlinks, unmodified rule copies, stock CLAUDE.md; unset kit core.hooksPath [default]
 browsers  Remove repo-deployed browser policies & tagged user.js/overrides [opt-in]
-location  Remove vpn-location-sync, GeoClue drop-in, NM dispatcher, polkit [opt-in]
+location  Remove vpn-location-sync, /etc/geolocation{,.local}, GeoClue drop-in, NM dispatcher, polkit [opt-in]
 system    Remove managed /etc files (system/, zram/, gdm drop-ins, charge) [opt-in]
 EOF
 }

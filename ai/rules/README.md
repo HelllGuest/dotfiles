@@ -85,7 +85,8 @@ re-run `install.sh` to publish. `agentsync` resolves the kit via
 # After editing this tree (or ~/dev/ai-rules), publish + refresh IDE skills:
 ./install.sh
 agentsync ~/Projects/my-app    # or: agentsync .   inside a repo
-# Unlink kit/hub symlinks and unset kit core.hooksPath (keeps ~/dev/ai-rules):
+# Unlink kit/hub symlinks, unmodified rule copies, stock CLAUDE.md; unset kit
+# core.hooksPath (keeps ~/dev/ai-rules):
 ~/dotfiles/uninstall.sh --only ai
 ```
 
@@ -119,7 +120,7 @@ In any IDE / CLI chat:
 | Kiro GUI / `kiro-cli` | `AGENTS.md` | `~/.kiro/skills` | `kiro-cli` telemetry off + JSON merge |
 | OpenAI Codex CLI / `codex` | `AGENTS.md` + `~/.codex/AGENTS.md` | `~/.codex/skills` | host env (`DO_NOT_TRACK` / `OTEL_SDK_DISABLED`) |
 | OpenCode | `AGENTS.md` + `~/.config/opencode/AGENTS.md` (via `sync-agent-skills.sh`) | `~/.config/opencode/skills` | `share: disabled` + host env |
-| Kimi Code / `kimi` | `AGENTS.md` + `~/.kimi-code/AGENTS.md` (via `sync-agent-skills.sh`) | `~/.kimi-code/skills` + `~/.config/agents/skills` | `KIMI_DISABLE_TELEMETRY` + host env |
+| Kimi Code / `kimi` | `AGENTS.md` + `~/.kimi-code/AGENTS.md` + `~/.kimi/AGENTS.md` symlink (via `sync-agent-skills.sh`) | `~/.kimi-code/skills` + `~/.config/agents/skills` | `KIMI_DISABLE_TELEMETRY` + host env |
 | Claude CLI | `CLAUDE.md` → `@AGENTS.md` | `~/.claude/skills` | create/merge kit `env` + `includeCoAuthoredBy: false` |
 
 ## Notes
