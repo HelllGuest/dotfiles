@@ -565,7 +565,15 @@ On apply it clears leftover Orchis greeter bits (`theme-sync.service`, Orchis us
 theme copy, `~/.config/gtk-4.0` Orchis links) and hints if old `orchis-theme` /
 `tela-icon-theme` / `bibata-cursor-theme-bin` packages remain. `check.sh`
 verifies Adwaita keys only. Opt out: `SKIP_THEME=1`. GNOME Tweaks and Extension
-Manager are installed from `pacman.txt`.
+Manager are installed from `pacman.txt`. Optional third-party GNOME theme packs
+(MacTahoe, GNOME-macOS-Tahoe, WhiteSur, Colloid, Graphite, Fluent, Flat Remix,
+Material-Gnome, GNOME 51-safe modular Adwaita/Gruvbox stacks, and standalone GDM
+tools `gse-gdm` / `gdm-settings`) can be installed or uninstalled with
+`bash desktop/scripts/theme-packs.sh --gui` (`make themes-gui`, `make themes`, or
+the `Dotfiles Theme Packs` app launcher, which expects the repo at `~/dotfiles`);
+GDM/Firefox/Flatpak tweaks are opt-in and uninstalling reverts to stock Adwaita. On GNOME 51, `Flat Remix` tracks ~49
+and `Colloid`/`Graphite` bucket recent Shell as `48-0`; prefer `modular-*` with
+`gse-gdm` when GDM styling matters.
 
 **Command-finished notifications:** kitty (`notify_on_cmd_finish`), Ghostty
 (`notify-on-command-finish`) and GNOME Console (via `vte.sh`) notify natively when
@@ -697,7 +705,8 @@ We take a "quiet by default" approach:
 
 | Task | Command |
 |------|---------|
-| Task runner (`Makefile`) | `make help` (`make ci`, `make test`, `make check`, `make drift`, `make fix`, `make uninstall-dry`, `make uninstall`, `make update-full`, `make vm-b`, `make vm-clean`) |
+| Task runner (`Makefile`) | `make help` (`make ci`, `make test`, `make check`, `make drift`, `make fix`, `make themes`, `make themes-gui`, `make uninstall-dry`, `make uninstall`, `make update-full`, `make vm-b`, `make vm-clean`) |
+| GNOME theme packs (opt-in) | `bash desktop/scripts/theme-packs.sh [--gui\|--install PACK\|--uninstall PACK\|--list]` (`make themes-gui` / `make themes`) |
 | Uninstall | `./uninstall.sh [--dry-run\|--all\|--only …\|--yes]` (`make uninstall-dry` / `make uninstall`) |
 | Full update | `bash provision/scripts/post-update.sh --full` (or `sudo pacman -Syu && ./install.sh && bash provision/scripts/post-update.sh`) |
 | Minimal package install | `./install.sh --minimal` (or `MINIMAL_PACKAGES=1` / `SKIP_AI_IDES=1` / `SKIP_MOBILE_DEV=1` / `SKIP_RE_TOOLS=1`) |

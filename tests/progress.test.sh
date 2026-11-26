@@ -87,6 +87,7 @@ for _m in labs-setup lab-detonate; do
   printf '#!/bin/sh\necho %s >>"%s/ran"\n' "$_m" "$CT" >"$CT/labs/scripts/$_m.sh"
 done
 printf '#!/bin/sh\necho rice-setup >>"%s/ran"\n' "$CT" >"$CT/desktop/scripts/rice-setup.sh"
+printf '#!/bin/sh\necho theme-packs >>"%s/ran"\n' "$CT" >"$CT/desktop/scripts/theme-packs.sh"
 unset -v _m
 # The menu tests need script(1) that passes end of input on to the pty
 # (util-linux 2.35+); otherwise they would hang until the timeout.
@@ -133,6 +134,9 @@ if cfg_run '' CONFIGURE_UI=plain; then
   cfg_run '1\nNONE\n3\n' CONFIGURE_UI=plain
   [[ $cfg_rc == 0 && -z $cfg_ran && $cfg_out == *'No modules ran.'* ]] \
     || fail "empty selection must say so (rc=$cfg_rc ran=[$cfg_ran])"
+  cfg_run '1\nSETUP_THEMES\n3\n' CONFIGURE_UI=plain
+  [[ $cfg_rc == 0 && $cfg_ran == theme-packs ]] \
+    || fail "selecting SETUP_THEMES must run theme-packs (rc=$cfg_rc ran=[$cfg_ran])"
   cfg_run '1\nSETUP_OLLAMA\n3\n' CONFIGURE_UI=plain
   if [[ $cfg_out == *'not a P15'* ]]; then
     [[ $cfg_rc == 0 && -z $cfg_ran && $cfg_out == *'No modules ran.'* ]] \

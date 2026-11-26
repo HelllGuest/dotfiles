@@ -1,5 +1,5 @@
 .PHONY: help ci lint lint-docs test test-stage-a check check-all drift fix \
-	update update-full uninstall uninstall-dry vm-a vm-b vm-clean secrets-init secrets-unlock
+	update update-full themes themes-gui uninstall uninstall-dry vm-a vm-b vm-clean secrets-init secrets-unlock
 
 SHELL := /usr/bin/env bash
 .SHELLFLAGS := -euo pipefail -c
@@ -64,6 +64,12 @@ update: ## Run standard post-update maintenance
 
 update-full: ## Run full system + AI skills + health check update
 	@bash provision/scripts/post-update.sh --full
+
+themes: ## Open GNOME theme packs manager (TUI/plain)
+	@bash desktop/scripts/theme-packs.sh
+
+themes-gui: ## Open GNOME theme packs manager (zenity GUI)
+	@bash desktop/scripts/theme-packs.sh --gui
 
 uninstall-dry: ## Preview user-level uninstall without modifying files
 	@bash ./uninstall.sh --dry-run

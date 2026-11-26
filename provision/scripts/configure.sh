@@ -74,7 +74,8 @@ run_modules_batch() {
     SETUP_LABS "Labs lab-triage/re/android/web (+ capture)" off \
     SETUP_DETONATE "Detonation VMs + INetSim/PolarProxy" off \
     SETUP_AI "AI MCP / Headroom / Continue / Ponytail" off \
-    SETUP_RICE "Terminal/CLI rice (Gruvbox/SecOps) + notify" off
+    SETUP_RICE "Terminal/CLI rice (Gruvbox/SecOps) + notify" off \
+    SETUP_THEMES "GNOME theme packs manager (install/uninstall)" off
   )" || return 1
 
   CONFIGURE_STEP=0
@@ -86,6 +87,7 @@ run_modules_batch() {
   selected SETUP_DETONATE && CONFIGURE_STEPS=$((CONFIGURE_STEPS + 1))
   selected SETUP_AI && CONFIGURE_STEPS=$((CONFIGURE_STEPS + 1))
   selected SETUP_RICE && CONFIGURE_STEPS=$((CONFIGURE_STEPS + 1))
+  selected SETUP_THEMES && CONFIGURE_STEPS=$((CONFIGURE_STEPS + 1))
   (( CONFIGURE_STEPS < 1 )) && CONFIGURE_STEPS=1
 
   if selected SETUP_FIREWALLD; then
@@ -112,6 +114,9 @@ run_modules_batch() {
   fi
   if selected SETUP_RICE; then
     run_mod rice bash "$REPO_ROOT/desktop/scripts/rice-setup.sh"
+  fi
+  if selected SETUP_THEMES; then
+    run_mod themes env THEME_UI="$UI" bash "$REPO_ROOT/desktop/scripts/theme-packs.sh"
   fi
   return 0
 }
