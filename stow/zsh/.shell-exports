@@ -140,12 +140,21 @@ else
 fi
 unset _telemetry_env
 
-# Headroom proxy defaults (shared by zsh and bash; override via ~/.zshrc.local / ~/.bashrc.local)
-export HEADROOM_HOST="${HEADROOM_HOST:-127.0.0.1}"
-export HEADROOM_PORT="${HEADROOM_PORT:-8787}"
-export HEADROOM_MODE="${HEADROOM_MODE:-token}"
-export HEADROOM_BACKEND="${HEADROOM_BACKEND:-anthropic}"
-export HEADROOM_TELEMETRY="${HEADROOM_TELEMETRY:-off}"
-export ANTHROPIC_BASE_URL="${ANTHROPIC_BASE_URL:-http://${HEADROOM_HOST}:${HEADROOM_PORT}}"
-export ENABLE_TOOL_SEARCH="${ENABLE_TOOL_SEARCH:-true}"
-export OPENAI_BASE_URL="${OPENAI_BASE_URL:-http://${HEADROOM_HOST}:${HEADROOM_PORT}/v1}"
+# Headroom proxy defaults (shared by zsh and bash; override HEADROOM_* or *_BASE_URL in ~/.zshrc.local / ~/.bashrc.local)
+_headroom_apply_env() {
+  export HEADROOM_HOST="${HEADROOM_HOST:-127.0.0.1}"
+  export HEADROOM_PORT="${HEADROOM_PORT:-8787}"
+  export HEADROOM_MODE="${HEADROOM_MODE:-token}"
+  export HEADROOM_BACKEND="${HEADROOM_BACKEND:-anthropic}"
+  export HEADROOM_TELEMETRY="${HEADROOM_TELEMETRY:-off}"
+  export ENABLE_TOOL_SEARCH="${ENABLE_TOOL_SEARCH:-true}"
+  if [[ -z ${ANTHROPIC_BASE_URL:-} || ${ANTHROPIC_BASE_URL} == "${_HEADROOM_AUTO_ANTHROPIC:-}" ]]; then
+    _HEADROOM_AUTO_ANTHROPIC="http://${HEADROOM_HOST}:${HEADROOM_PORT}"
+    export ANTHROPIC_BASE_URL="$_HEADROOM_AUTO_ANTHROPIC"
+  fi
+  if [[ -z ${OPENAI_BASE_URL:-} || ${OPENAI_BASE_URL} == "${_HEADROOM_AUTO_OPENAI:-}" ]]; then
+    _HEADROOM_AUTO_OPENAI="http://${HEADROOM_HOST}:${HEADROOM_PORT}/v1"
+    export OPENAI_BASE_URL="$_HEADROOM_AUTO_OPENAI"
+  fi
+}
+_headroom_apply_env

@@ -37,6 +37,14 @@ if [[ -n $_base ]]; then
     _base="${_base%/t14s-arch-install}/stage-a"
   fi
 else
+  if [[ ! $STAGE_A_REPO =~ ^[A-Za-z0-9._-]+/[A-Za-z0-9._-]+$ ]]; then
+    printf 'ERR: invalid STAGE_A_REPO=%s\n' "$STAGE_A_REPO" >&2
+    exit 1
+  fi
+  if [[ ! $STAGE_A_BRANCH =~ ^[A-Za-z0-9._/-]+$ || $STAGE_A_BRANCH == *..* ]]; then
+    printf 'ERR: invalid STAGE_A_BRANCH=%s\n' "$STAGE_A_BRANCH" >&2
+    exit 1
+  fi
   if [[ -z $_ref ]]; then
     _ref="$(curl -fsSL -H 'Accept: application/vnd.github.sha' \
       "https://api.github.com/repos/${STAGE_A_REPO}/commits/${STAGE_A_BRANCH}" 2>/dev/null || true)"

@@ -5,15 +5,19 @@
 # Populate OVMF_CODE and OVMF_VARS_SRC from standard Arch/Debian edk2 locations.
 vm_find_ovmf() {
   local c
+  local -a paths=(
+    /usr/share/edk2/x64/OVMF_CODE.4m.fd
+    /usr/share/edk2/x64/OVMF_CODE.fd
+    /usr/share/OVMF/OVMF_CODE.4m.fd
+    /usr/share/OVMF/x64/OVMF_CODE.4m.fd
+    /usr/share/edk2-ovmf/x64/OVMF_CODE.fd
+  )
+  if [[ -n ${VM_OVMF_PATHS:-} ]]; then
+    IFS=: read -r -a paths <<<"$VM_OVMF_PATHS"
+  fi
   OVMF_CODE=""
   OVMF_VARS_SRC=""
-  for c in \
-    /usr/share/edk2/x64/OVMF_CODE.4m.fd \
-    /usr/share/edk2/x64/OVMF_CODE.fd \
-    /usr/share/OVMF/OVMF_CODE.4m.fd \
-    /usr/share/OVMF/x64/OVMF_CODE.4m.fd \
-    /usr/share/edk2-ovmf/x64/OVMF_CODE.fd
-  do
+  for c in "${paths[@]}"; do
     if [[ -f $c && -f ${c/CODE/VARS} ]]; then
       # shellcheck disable=SC2034 # consumed by sourcing callers
       OVMF_CODE="$c"

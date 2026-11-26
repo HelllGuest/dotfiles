@@ -75,6 +75,11 @@ unset -v _cmdline
 [[ -f /root/t14s-lib/05-policy.sh ]] && source /root/t14s-lib/05-policy.sh
 CHARGE_START="${CHARGE_START:-70}"
 CHARGE_END="${CHARGE_END:-80}"
+if ! [[ $CHARGE_START =~ ^[0-9]+$ && $CHARGE_END =~ ^[0-9]+$ ]] \
+  || (( CHARGE_START < 0 || CHARGE_START > 99 || CHARGE_END < 1 || CHARGE_END > 100 || CHARGE_START >= CHARGE_END )); then
+  echo "ERROR: invalid CHARGE_START/CHARGE_END (${CHARGE_START}/${CHARGE_END}; need 0 <= START < END <= 100)" >&2
+  exit 1
+fi
 _SYS_SRC=/root/t14s-lib/system
 
 # Install canonical system/ file when deployed from monorepo, else embedded curl fallback.

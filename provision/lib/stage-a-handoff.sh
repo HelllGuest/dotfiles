@@ -35,6 +35,14 @@ t14s_resolve_base_url() {
   fi
   local repo="${STAGE_A_REPO:-HelllGuest/dotfiles}"
   local branch="${STAGE_A_BRANCH:-main}"
+  if [[ ! $repo =~ ^[A-Za-z0-9._-]+/[A-Za-z0-9._-]+$ ]]; then
+    printf 'ERR: invalid STAGE_A_REPO=%s\n' "$repo" >&2
+    return 1
+  fi
+  if [[ ! $branch =~ ^[A-Za-z0-9._/-]+$ || $branch == *..* ]]; then
+    printf 'ERR: invalid STAGE_A_BRANCH=%s\n' "$branch" >&2
+    return 1
+  fi
   local ref="${STAGE_A_REF:-${T14S_REF:-}}"
   if [[ -z $ref ]]; then
     if declare -F stage_a_resolve_main_sha >/dev/null 2>&1; then

@@ -2,7 +2,7 @@
 Type=Application
 Name=Dotfiles Theme Packs
 Comment=Install or uninstall GNOME theme packs (Shell, GTK, Icons, Cursors, GDM)
-Exec=bash -lc "cd \\${DOTFILES_DIR:-~/dotfiles} && bash desktop/scripts/theme-packs.sh --gui"
+Exec=bash -lc "cd \\"\\${DOTFILES_DIR:-\\$HOME/dotfiles}\\" && bash desktop/scripts/theme-packs.sh --gui"
 Icon=preferences-desktop-theme
 Terminal=true
 Categories=Settings;DesktopSettings;

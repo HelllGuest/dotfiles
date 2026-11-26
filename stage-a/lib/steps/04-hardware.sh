@@ -16,7 +16,7 @@ HW_PROFILE="${HW_PROFILE:-}"
 if [[ -z $HW_PROFILE ]]; then
   if dmi_matches_t14s "$_dmi"; then
     HW_PROFILE=t14s
-  elif dmi_matches_p15 "$_dmi"; then
+  elif dmi_matches_p15_gen1 "$_dmi"; then
     HW_PROFILE=p15
   fi
 fi

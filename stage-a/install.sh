@@ -46,6 +46,14 @@ T14S_REF="${STAGE_A_REF:-${T14S_REF:-}}"
 # Remote resolve only when libs must be fetched (local checkout stays offline).
 # Pre-lib bootstrap (cannot source 05-policy.sh until SHA is known); parity-tested against 05-policy.sh.
 if [[ -z $T14S_LIB_DIR && -z ${T14S_BASE_URL:-} ]]; then
+  if [[ ! $STAGE_A_REPO =~ ^[A-Za-z0-9._-]+/[A-Za-z0-9._-]+$ ]]; then
+    printf 'ERR: invalid STAGE_A_REPO=%s\n' "$STAGE_A_REPO" >&2
+    exit 1
+  fi
+  if [[ ! $STAGE_A_BRANCH =~ ^[A-Za-z0-9._/-]+$ || $STAGE_A_BRANCH == *..* ]]; then
+    printf 'ERR: invalid STAGE_A_BRANCH=%s\n' "$STAGE_A_BRANCH" >&2
+    exit 1
+  fi
   if [[ -z ${T14S_REF:-} ]]; then
     T14S_REF="$(curl -fsSL -H 'Accept: application/vnd.github.sha' \
       "https://api.github.com/repos/${STAGE_A_REPO}/commits/${STAGE_A_BRANCH}" 2>/dev/null || true)"

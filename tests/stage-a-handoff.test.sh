@@ -269,7 +269,7 @@ _iso_vals="$(bash -c 'source "$1"; printf "%s|%s|%s|%s" "$STAGE_A_DMI_T14S_RE" "
 rm -rf -- "$_iso_dmi"
 [[ $_pol_vals == "$_iso_vals" ]] || fail "standalone dmi.sh fallback diverged from 05-policy.sh: [$_pol_vals] vs [$_iso_vals]"
 
-# GitHub SHA resolver parity across 05-policy.sh, stage-a/install.sh, shim, and handoff
+# GitHub SHA resolver parity + behavioral validation (stubbed curl)
 for _rf in \
   "$ROOT/stage-a/lib/05-policy.sh" \
   "$ROOT/stage-a/install.sh" \
@@ -279,6 +279,118 @@ do
   grep -q 'application/vnd.github.sha' "$_rf" || fail "$_rf missing GitHub SHA Accept header"
   grep -q '\[0-9a-f\]{40}' "$_rf" || fail "$_rf missing 40-hex SHA validation"
 done
-unset -v _pol_vals _dmi_vals _iso_dmi _iso_vals _rf
+
+_UT="$(mktemp -d)"
+trap 'rm -rf -- "$T14S_FIXTURE_ROOT" "$_UT"' EXIT
+
+# 1) stage_a_resolve_main_sha + invalid STAGE_A_REPO / STAGE_A_BRANCH rejection
+mkdir -p "$_UT/bin"
+cat >"$_UT/bin/curl" <<'STUB'
+#!/usr/bin/env bash
+printf '%s\n' "1234567890abcdef1234567890abcdef12345678"
+STUB
+chmod +x "$_UT/bin/curl"
+_sha="$(PATH="$_UT/bin:$PATH" bash -c 'source "$1"; stage_a_resolve_main_sha' _ "$ROOT/stage-a/lib/05-policy.sh")" \
+  || fail "stage_a_resolve_main_sha valid stub failed"
+[[ $_sha == 1234567890abcdef1234567890abcdef12345678 ]] || fail "unexpected sha: $_sha"
+if PATH="$_UT/bin:$PATH" STAGE_A_REPO="../evil/repo" bash -c 'source "$1"; stage_a_resolve_main_sha' _ "$ROOT/stage-a/lib/05-policy.sh" >/dev/null 2>&1; then
+  fail "invalid STAGE_A_REPO must be rejected"
+fi
+if PATH="$_UT/bin:$PATH" STAGE_A_BRANCH="main/../../x" bash -c 'source "$1"; stage_a_resolve_main_sha' _ "$ROOT/stage-a/lib/05-policy.sh" >/dev/null 2>&1; then
+  fail "invalid STAGE_A_BRANCH must be rejected"
+fi
+
+# 2) dmi_matches_p15_gen1 matches 20SU only (does not silently widen to P15 Gen 2 20YQ)
+bash -c 'source "$1"; dmi_matches_p15_gen1 "20SUS0R700" && ! dmi_matches_p15_gen1 "ThinkPad P15 Gen 2i 20YQ0001US"' \
+  _ "$ROOT/stage-a/lib/05-policy.sh" || fail "dmi_matches_p15_gen1 must match 20SU only"
+
+# 3) ai/lib/jdk.sh pick_jdk21 (skips 17 + JRE without javac, picks highest >= 21, fails when empty)
+mkdir -p "$_UT/jvm/java-17-openjdk/bin" "$_UT/jvm/java-21-openjdk/bin" \
+         "$_UT/jvm/java-25-openjdk/bin" "$_UT/jvm/java-26-openjdk/bin" "$_UT/jvm-empty"
+printf '#!/bin/sh\n' >"$_UT/jvm/java-17-openjdk/bin/javac"
+printf '#!/bin/sh\n' >"$_UT/jvm/java-21-openjdk/bin/javac"
+printf '#!/bin/sh\n' >"$_UT/jvm/java-25-openjdk/bin/javac"
+chmod +x "$_UT/jvm/java-17-openjdk/bin/javac" "$_UT/jvm/java-21-openjdk/bin/javac" "$_UT/jvm/java-25-openjdk/bin/javac"
+# java-26 intentionally lacks javac (JRE only)
+_jdk="$(JDK_JVM_DIR="$_UT/jvm" bash -c 'source "$1"; pick_jdk21' _ "$ROOT/ai/lib/jdk.sh")" \
+  || fail "pick_jdk21 failed on fixture"
+[[ $_jdk == "$_UT/jvm/java-25-openjdk" ]] || fail "pick_jdk21 must pick highest full JDK >= 21 (got: $_jdk)"
+if JDK_JVM_DIR="$_UT/jvm-empty" bash -c 'source "$1"; pick_jdk21' _ "$ROOT/ai/lib/jdk.sh" >/dev/null 2>&1; then
+  fail "pick_jdk21 must return non-zero when no JDK >= 21 exists"
+fi
+
+# 4) provision/lib/vm-common.sh vm_find_ovmf
+mkdir -p "$_UT/ovmf"
+: >"$_UT/ovmf/OVMF_CODE.4m.fd"
+: >"$_UT/ovmf/OVMF_VARS.4m.fd"
+_ovmf="$(VM_OVMF_PATHS="/nonexistent/OVMF_CODE.fd:$_UT/ovmf/OVMF_CODE.4m.fd" \
+  bash -c 'source "$1"; vm_find_ovmf && printf "%s|%s" "$OVMF_CODE" "$OVMF_VARS_SRC"' _ "$ROOT/provision/lib/vm-common.sh")" \
+  || fail "vm_find_ovmf failed on fixture"
+[[ $_ovmf == "$_UT/ovmf/OVMF_CODE.4m.fd|$_UT/ovmf/OVMF_VARS.4m.fd" ]] || fail "vm_find_ovmf mismatch: $_ovmf"
+if VM_OVMF_PATHS="/nonexistent/OVMF_CODE.fd" bash -c 'source "$1"; vm_find_ovmf' _ "$ROOT/provision/lib/vm-common.sh"; then
+  fail "vm_find_ovmf must fail when no OVMF pair exists"
+fi
+
+# 5) provision/lib/dmi.sh install_udev_rule (installs + reloads + triggers; skips when unchanged)
+mkdir -p "$_UT/udev-bin" "$_UT/udev-dst"
+cat >"$_UT/udev-bin/sudo" <<'STUB'
+#!/usr/bin/env bash
+printf '%s\n' "$*" >>"$UDEV_LOG"
+case "$1" in
+  install)
+    src="${*: -2:1}" dst="${*: -1:1}"
+    mkdir -p "$(dirname "$dst")"
+    cp "$src" "$dst"
+    ;;
+esac
+STUB
+chmod +x "$_UT/udev-bin/sudo"
+printf 'ACTION!="remove", ENV{CHARGE_LIMIT}="70,80"\n' >"$_UT/rule.rules"
+UDEV_LOG="$_UT/udev.log" PATH="$_UT/udev-bin:$PATH" \
+  bash -c 'source "$1"; install_udev_rule "$2" "$3" power_supply; install_udev_rule "$2" "$3" power_supply' \
+  _ "$ROOT/provision/lib/dmi.sh" "$_UT/rule.rules" "$_UT/udev-dst/61.rules" \
+  || fail "install_udev_rule failed"
+[[ $(grep -c 'udevadm control --reload-rules' "$_UT/udev.log") -eq 1 ]] \
+  || fail "install_udev_rule must reload once and skip identical second run: $(cat "$_UT/udev.log")"
+grep -q 'udevadm trigger --subsystem-match=power_supply' "$_UT/udev.log" \
+  || fail "install_udev_rule must trigger requested subsystem"
+
+# 6) 03-initramfs-cmdline.sh charge window validation + custom CHARGE_START/END (monorepo + fallback)
+if CHARGE_START="70/evil" CHARGE_END="80" bash -c '
+  source "$1"
+  stage_a_validate_charge_window "$CHARGE_START" "$CHARGE_END"
+' _ "$ROOT/stage-a/lib/05-policy.sh"; then
+  fail "stage_a_validate_charge_window must reject non-integer CHARGE_START"
+fi
+if CHARGE_START=85 CHARGE_END=80 bash -c '
+  source "$1"
+  stage_a_validate_charge_window "$CHARGE_START" "$CHARGE_END"
+' _ "$ROOT/stage-a/lib/05-policy.sh"; then
+  fail "stage_a_validate_charge_window must reject START >= END"
+fi
+
+# 7) Headroom env in .shell-exports recomputes URLs when HEADROOM_PORT is overridden in .bashrc.local
+mkdir -p "$_UT/home"
+cp "$ROOT/stow/zsh/.shell-exports" "$_UT/home/.shell-exports"
+printf 'export HEADROOM_PORT=9999\n' >"$_UT/home/.bashrc.local"
+_hr="$(env -i HOME="$_UT/home" PATH="$PATH" bash -c '
+  source "$HOME/.shell-exports"
+  source "$HOME/.bashrc.local"
+  _headroom_apply_env
+  printf "%s|%s" "$ANTHROPIC_BASE_URL" "$OPENAI_BASE_URL"
+')"
+[[ $_hr == "http://127.0.0.1:9999|http://127.0.0.1:9999/v1" ]] \
+  || fail ".bashrc.local HEADROOM_PORT override must update Headroom URLs (got: $_hr)"
+printf 'export HEADROOM_PORT=9999\nexport ANTHROPIC_BASE_URL="https://custom.local"\n' >"$_UT/home/.bashrc.local"
+_hr2="$(env -i HOME="$_UT/home" PATH="$PATH" bash -c '
+  source "$HOME/.shell-exports"
+  source "$HOME/.bashrc.local"
+  _headroom_apply_env
+  printf "%s|%s" "$ANTHROPIC_BASE_URL" "$OPENAI_BASE_URL"
+')"
+[[ $_hr2 == "https://custom.local|http://127.0.0.1:9999/v1" ]] \
+  || fail "explicit ANTHROPIC_BASE_URL in .bashrc.local must be preserved (got: $_hr2)"
+
+unset -v _pol_vals _dmi_vals _iso_dmi _iso_vals _rf _sha _jdk _ovmf _hr _hr2
 
 echo "PASS: stage-a-handoff.test.sh"

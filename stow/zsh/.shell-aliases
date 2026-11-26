@@ -103,25 +103,21 @@ fi
 _has zoxide && alias j='cd'
 
 # ── Disposable Kali (libvirt overlay) ───────────────────────
-_dot_dir="${DOTFILES_DIR:-$HOME/dotfiles}"
-if [[ -f $_dot_dir/labs/scripts/kali-disposable.sh ]]; then
-  _kali_sh="$_dot_dir/labs/scripts/kali-disposable.sh"
-  alias kali="bash $_kali_sh"
+if [[ -f "${DOTFILES_DIR:-$HOME/dotfiles}/labs/scripts/kali-disposable.sh" ]]; then
+  alias kali='bash "${DOTFILES_DIR:-$HOME/dotfiles}/labs/scripts/kali-disposable.sh"'
   # Default start is isolated (no guest WAN) for sample work; use kali-up-nat for updates.
-  alias kali-up="bash $_kali_sh start --isolated"
-  alias kali-up-nat="bash $_kali_sh start --nat"
-  alias kali-up-lan="bash $_kali_sh start --lan"
-  alias kali-lan="bash $_kali_sh attach-lan"
-  alias kali-lan-check="bash $_kali_sh lan-check"
-  alias kali-wipe="bash $_kali_sh wipe"
-  alias kali-stop="bash $_kali_sh stop"
-  alias kali-st="bash $_kali_sh status"
-  unset _kali_sh
+  alias kali-up='bash "${DOTFILES_DIR:-$HOME/dotfiles}/labs/scripts/kali-disposable.sh" start --isolated'
+  alias kali-up-nat='bash "${DOTFILES_DIR:-$HOME/dotfiles}/labs/scripts/kali-disposable.sh" start --nat'
+  alias kali-up-lan='bash "${DOTFILES_DIR:-$HOME/dotfiles}/labs/scripts/kali-disposable.sh" start --lan'
+  alias kali-lan='bash "${DOTFILES_DIR:-$HOME/dotfiles}/labs/scripts/kali-disposable.sh" attach-lan'
+  alias kali-lan-check='bash "${DOTFILES_DIR:-$HOME/dotfiles}/labs/scripts/kali-disposable.sh" lan-check'
+  alias kali-wipe='bash "${DOTFILES_DIR:-$HOME/dotfiles}/labs/scripts/kali-disposable.sh" wipe'
+  alias kali-stop='bash "${DOTFILES_DIR:-$HOME/dotfiles}/labs/scripts/kali-disposable.sh" stop'
+  alias kali-st='bash "${DOTFILES_DIR:-$HOME/dotfiles}/labs/scripts/kali-disposable.sh" status'
 fi
 
 # ── Misc ────────────────────────────────────────────────────
 alias cl='clear'
 alias q='exit'
 alias reload='exec "$SHELL" -l'
-alias dotfiles="git -C $_dot_dir"
-unset _dot_dir
+alias dotfiles='git -C "${DOTFILES_DIR:-$HOME/dotfiles}"'

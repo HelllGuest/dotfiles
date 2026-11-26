@@ -138,3 +138,5 @@ if [ -f ~/.config/secrets/env ]; then
     source ~/.config/secrets/env
 fi
 [[ -f ~/.bashrc.local ]] && source ~/.bashrc.local
+declare -F _headroom_apply_env >/dev/null 2>&1 && { _headroom_apply_env; unset -f _headroom_apply_env; }
+unset _HEADROOM_AUTO_ANTHROPIC _HEADROOM_AUTO_OPENAI

@@ -4,9 +4,10 @@
 # shellcheck shell=bash
 
 pick_jdk21() {
+  local jvm_root="${JDK_JVM_DIR:-/usr/lib/jvm}"
   local best="" best_ver=0 cand ver
   shopt -s nullglob
-  for cand in /usr/lib/jvm/java-*-openjdk; do
+  for cand in "$jvm_root"/java-*-openjdk; do
     [[ -x "$cand/bin/javac" ]] || continue
     ver="${cand##*/java-}"
     ver="${ver%%-*}"
