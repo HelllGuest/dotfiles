@@ -40,12 +40,12 @@ declared_native="$(
                  "$REPO_ROOT"/packages/thinkpad-t14s.txt "$REPO_ROOT"/packages/re-extra.txt; do
             if [[ -f $f ]]; then list_entries "$f"; fi
         done
-        if [[ -f $REPO_ROOT/t14s-arch-install/lib/50-packages.sh ]]; then
+        if [[ -f $REPO_ROOT/stage-a/lib/50-packages.sh ]]; then
             (
                 yn_on() { [[ ${1:-N} == Y ]]; }
                 die() { exit 1; }
                 # shellcheck source=/dev/null
-                source "$REPO_ROOT/t14s-arch-install/lib/50-packages.sh"
+                source "$REPO_ROOT/stage-a/lib/50-packages.sh"
                 UCODE=amd-ucode INSTALL_BLUETOOTH=Y INSTALL_LINUX_HARDENED=Y t14s_base_packages
                 printf '%s\n' "${BASE_PKGS[@]}" intel-ucode e2fsprogs xfsprogs
             )

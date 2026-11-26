@@ -31,13 +31,13 @@ This guide prioritizes:
 * developer workflows
 
 > **Automated Stage A:** canonical in-repo installer
-> [t14s-arch-install](../t14s-arch-install/README.md)
+> [stage-a/](../stage-a/README.md)
 > (`HW_PROFILE=t14s` for 21CQ/21CR, `HW_PROFILE=p15` for 20SU Optimus, or generic x86_64). Dotfiles
 > [`arch-install-t14s.sh`](../scripts/arch-install-t14s.sh) /
 > [`arch-install-p15.sh`](../scripts/arch-install-p15.sh) /
 > [`arch-install.sh`](../scripts/arch-install.sh) are thin handoffs only.
 > ```bash
-> bash <(curl -fsSL https://raw.githubusercontent.com/HelllGuest/dotfiles/main/t14s-arch-install/install.sh)
+> bash <(curl -fsSL https://raw.githubusercontent.com/HelllGuest/dotfiles/main/stage-a/install.sh)
 > # or: …/dotfiles/main/scripts/arch-install-t14s.sh  # HW_PROFILE=t14s
 > # or: …/dotfiles/main/scripts/arch-install-p15.sh   # HW_PROFILE=p15
 > ```

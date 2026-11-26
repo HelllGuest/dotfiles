@@ -5,13 +5,13 @@
 #                                    first-boot Flatpaks, t14s-selftest) + dotfiles
 #                                    (Stage B). Default; ./install.sh runs this.
 #   bash scripts/check.sh --stage-a  Arch ISO install (Stage A): runs
-#                                    t14s-arch-install tests/host-check.sh
+#                                    stage-a/tests/host-check.sh
 #                                    (also as root when sudo is cached)
 #   bash scripts/check.sh --all      both Stage A and Stage B
 #   bash scripts/check.sh --drift    package & stow symlink drift (scripts/drift.sh)
 #   bash scripts/check.sh --fix      run safe idempotent fixes, then re-run --post
 #
-#   T14S_INSTALLER_DIR  t14s-arch-install dir (default: in-repo t14s-arch-install/)
+#   STAGE_A_DIR / T14S_INSTALLER_DIR  Stage A dir (default: in-repo stage-a/)
 #
 # Exit 1 when any ✗ fails; ○ is a hint only.
 
@@ -68,7 +68,10 @@ is_stage_a_host() { [[ -f /etc/makepkg.conf.d/t14s.conf ]]; }
 # in one place and follow installer changes.
 find_host_check() {
     local d
-    for d in "${T14S_INSTALLER_DIR:-}" "$REPO_ROOT/t14s-arch-install" "$HOME/t14s-arch-install" "$REPO_ROOT/../t14s-arch-install"; do
+    for d in "${STAGE_A_DIR:-${T14S_INSTALLER_DIR:-}}" \
+        "$REPO_ROOT/stage-a" "$REPO_ROOT/t14s-arch-install" \
+        "$HOME/stage-a" "$HOME/t14s-arch-install" \
+        "$REPO_ROOT/../stage-a" "$REPO_ROOT/../t14s-arch-install"; do
         [[ -n $d && -f $d/tests/host-check.sh ]] && { printf '%s\n' "$d/tests/host-check.sh"; return 0; }
     done
     return 1
@@ -77,7 +80,7 @@ stage_a_check() {
     echo "--- Stage A (Arch ISO install) ---"
     local hc rc rc_root=0 strict=1
     if ! hc="$(find_host_check)"; then
-        check_fail "t14s-arch-install not found — expected $REPO_ROOT/t14s-arch-install (or set T14S_INSTALLER_DIR)"
+        check_fail "stage-a not found — expected $REPO_ROOT/stage-a (or set STAGE_A_DIR / T14S_INSTALLER_DIR)"
         return
     fi
     is_stage_a_host || echo "○ /etc/makepkg.conf.d/t14s.conf missing: this host was probably not installed by t14s-arch-install"

@@ -1095,8 +1095,8 @@ grep -q 'EFI system partition size' "$INSTALL_SH" || fail "ESP size must be sele
 grep -q 'lsblk_rows "\$_disk" TYPE PATH' "$INSTALL_SH" || fail "partition list must filter to type=part"
 grep -q 'root_mb < 8192' "$INSTALL_SH" || fail "must warn on tiny root"
 
-grep -q 'HelllGuest/dotfiles/main/t14s-arch-install/install.sh' "$INSTALL_SH" \
-  || fail "curl URL must point at dotfiles/t14s-arch-install"
+grep -q 'HelllGuest/dotfiles/main/stage-a/install.sh' "$INSTALL_SH" \
+  || fail "curl URL must point at dotfiles/stage-a"
 grep -E 'Flatpak/Podman|Podman userns' "$INSTALL_SH" \
   && fail "banner must not claim Podman" || true
 

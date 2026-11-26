@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # arch-install.sh — thin Stage A handoff (DMI auto-detect t14s|p15|generic)
 #
-# Canonical installer: t14s-arch-install/install.sh (in HelllGuest/dotfiles)
+# Canonical installer: stage-a/install.sh (in HelllGuest/dotfiles)
 # Leaves HW_PROFILE unset so the modular installer picks t14s (21CQ/21CR),
 # p15 (20SU), or generic x86_64 from DMI (or prompts). Override: HW_PROFILE=t14s|p15|generic.
 #

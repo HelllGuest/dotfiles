@@ -11,7 +11,7 @@ for f in install.sh stow-only.sh; do
 done
 # The seeds must match what the installer writes (checked when a checkout exists).
 # The chroot code is the entry script plus its stages (lib/chroot/, when split).
-INST_DIR="${T14S_INSTALLER_DIR:-$HOME/t14s-arch-install}"
+INST_DIR="${STAGE_A_DIR:-${T14S_INSTALLER_DIR:-$ROOT/stage-a}}"
 INST=("$INST_DIR/lib/80-chroot-setup.sh")
 [[ -d $INST_DIR/lib/chroot ]] && INST+=("$INST_DIR"/lib/chroot/*.sh)
 if [[ -f ${INST[0]} ]]; then

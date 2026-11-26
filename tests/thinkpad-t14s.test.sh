@@ -26,10 +26,10 @@ done
 [[ -x "$ROOT/system/scripts/thinkpad-charge-thresholds.sh" ]] \
   || fail "thinkpad-charge-thresholds.sh not executable"
 
-# Stage A is thin handoff → in-repo t14s-arch-install (HW_PROFILE=t14s)
+# Stage A is thin handoff → in-repo stage-a/ (HW_PROFILE=t14s)
 grep -q 'stage_a_handoff t14s' "$ROOT/scripts/arch-install-t14s.sh" \
   || fail "arch-install-t14s must hand off with profile t14s"
-grep -q 't14s-arch-install/install.sh' "$ROOT/scripts/arch-install-t14s.sh" \
+grep -q 'stage-a/install.sh' "$ROOT/scripts/arch-install-t14s.sh" \
   || fail "arch-install-t14s must point at canonical Stage A installer"
 grep -q '^fastfetch$' "$ROOT/packages/pacman.txt" || fail "pacman.txt must include fastfetch"
 grep -q '^btop$' "$ROOT/packages/pacman.txt" || fail "pacman.txt must include btop"

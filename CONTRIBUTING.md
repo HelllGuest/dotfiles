@@ -52,9 +52,9 @@ Thank you for helping improve this setup. Follow these guidelines to keep the re
 - If no hostname match, `provision/scripts/detect-profile.sh` picks from DMI product strings + chassis type: `thinkpad-p15`, `thinkpad-t14s`, or `laptop` (no desktop/NVIDIA-only profile; no `lspci` in detect-profile).
 - `install.sh` installs `packages/pacman.txt` first, then `apply-profile.sh` sources **exactly one** profile (NVIDIA/Optimus packages must exist before `thinkpad-p15` enables services / rebuilds UKIs). Optimus setup is inside `profiles/thinkpad-p15.sh` (`has_nvidia_gpu` in `provision/lib/dmi.sh`). There is no `nvidia.sh`.
 - `profiles/laptop.sh` delegates to `thinkpad-t14s.sh` when DMI type is **21CQ/21CR** (`is_thinkpad_t14s`; other T14s gens do not match); otherwise it applies the general laptop fallback.
-- Bare-metal Stage A is **only** in-repo [t14s-arch-install/](t14s-arch-install/README.md) (`HW_PROFILE=t14s|p15|generic`). Dotfiles `scripts/arch-install{,-t14s,-p15}.sh` are thin handoffs via `provision/lib/stage-a-handoff.sh` (prefers in-repo `t14s-arch-install/`, remote fetches from `HelllGuest/dotfiles`). Do not re-embed LUKS/pacstrap bodies in `scripts/`.
+- Bare-metal Stage A is **only** in-repo [stage-a/](stage-a/README.md) (`HW_PROFILE=t14s|p15|generic`; legacy `t14s-arch-install/install.sh` is a curl/local compatibility shim). Dotfiles `scripts/arch-install{,-t14s,-p15}.sh` are thin handoffs via `provision/lib/stage-a-handoff.sh` (prefers in-repo `stage-a/`, remote fetches from `HelllGuest/dotfiles`). Do not re-embed LUKS/pacstrap bodies in `scripts/`.
 - After Stage A: `./install.sh` → `profiles/thinkpad-t14s.sh` / `thinkpad-p15.sh` refresh charge thresholds (`system/scripts/thinkpad-charge-thresholds.sh`) and machine packages. VM: `INSTALLER=arch-install-t14s.sh` or `arch-install-p15.sh provision/scripts/arch-install-vmtest.sh`.
-- Stage A identity validators live in `t14s-arch-install/lib/00-common.sh` (test fixtures `LOCALE_FILES` / `KEYMAP_DIR` need `T14S_IDENTITY_OVERRIDES=1`).
+- Stage A identity validators live in `stage-a/lib/00-common.sh` (test fixtures `LOCALE_FILES` / `KEYMAP_DIR` need `T14S_IDENTITY_OVERRIDES=1`).
 - Machine profiles own `/etc/kernel/cmdline` (e.g. `thinkpad-p15.sh` writes `/etc/modprobe.d/nvidia.conf`, appends `nvidia_drm.modeset=1` and `rd.driver.blacklist=nouveau`, then rebuilds UKIs). UKI rebuilds go through `mkinitcpio -P`; sbctl's mkinitcpio post hook signs each rebuilt UKI. A live `/proc/cmdline` without those flags means reboot (or UKI rebuild) was skipped.
 - `system/etc/systemd/system/virbr0-up.service` starts the libvirt `default` network then brings `virbr0` up (boot race fix). `system-setup.sh` enables it when the unit file changes; `labs/scripts/kali-disposable.sh setup` also installs/enables it.
 
@@ -123,7 +123,7 @@ Thank you for helping improve this setup. Follow these guidelines to keep the re
 ## Scripts
 
 - All executable scripts across repo root (`install.sh`, `stow-only.sh`, `uninstall.sh`), `scripts/`, `provision/scripts/`, `system/scripts/`, `ai/scripts/`, `desktop/scripts/`, `security/scripts/`, `labs/scripts/`, `builds/scripts/`, and `tests/` must be executable (`chmod +x`). `bash -n` and `ShellCheck` (`-x -S warning -s bash`) run across all subsystem directories in CI (`make lint`).
-- Tests: `tests/*.test.sh` and `t14s-arch-install/tests/{host-check,smoke}.test.sh` (+ Stage A ShellCheck), all run by CI (`make test` / `make ci`). `bash tests/system-setup.test.sh` runs `system/scripts/system-setup.sh` against a fake root (`SYSTEM_ROOT`), no sudo.
+- Tests: `tests/*.test.sh` and `stage-a/tests/{host-check,smoke}.test.sh` (+ Stage A ShellCheck), all run by CI (`make test` / `make ci`). `bash tests/system-setup.test.sh` runs `system/scripts/system-setup.sh` against a fake root (`SYSTEM_ROOT`), no sudo.
 - Markdown: `bash scripts/lint-docs.sh` (header spacing + tables). CI runs it; keep it out of `validate-configs.sh`.
 - Use `$HOME`-relative paths or repo-root detection — avoid hardcoding usernames.
 - Prefer `set -e` for install scripts. In `install.sh` wrap steps in `run_step` and prerequisites in `need_cmd`; never `|| echo "…skipped"` / `|| true` a step (`tests/install-completeness.test.sh` enforces it).
@@ -148,7 +148,7 @@ Thank you for helping improve this setup. Follow these guidelines to keep the re
 | Security & networking | `security/` | `security/scripts/{privacy-hardener,browser-hardening,firewalld-lab-zones,firewalld-tailscale,location-setup,vpn-location-sync,proton-connectivity-check,proton-seed-serverlist,network-dns-setup,dnscrypt-setup,usbguard-setup,ops-hygiene,secrets-bootstrap}.sh` + `security/{browsers,lib}/` |
 | Labs & VMs | `labs/` | `labs/scripts/{labs-setup,lab-detonate,lab-mcp,kali-disposable,kali-lan-host-prep}.sh` + `labs/{lab-*,mcp-host.example.json,lib}/` |
 | Local builds | `builds/` | `builds/scripts/build-st.sh` + `builds/st/` |
-| Diagnostics & Stage A handoffs | `scripts/` | `scripts/{check,drift,validate-configs,lint-docs,list-stow-files,minimal-stow}.sh`, `scripts/check.d/*.sh`, thin curl-able Stage A handoffs `scripts/arch-install{,-t14s,-p15}.sh` (canonical Stage A: `t14s-arch-install/`) |
+| Diagnostics & Stage A handoffs | `scripts/` | `scripts/{check,drift,validate-configs,lint-docs,list-stow-files,minimal-stow}.sh`, `scripts/check.d/*.sh`, thin curl-able Stage A handoffs `scripts/arch-install{,-t14s,-p15}.sh` (canonical Stage A: `stage-a/`, shim: `t14s-arch-install/install.sh`) |
 
 ---
 

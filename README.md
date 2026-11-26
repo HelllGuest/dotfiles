@@ -216,7 +216,8 @@ dotfiles/
 ├── packages/            # Package manifests (pacman.txt, flatpak.txt, aur.txt, agent-skills*.txt, …)
 ├── profiles/            # Machine profiles (thinkpad-p15, thinkpad-t14s, laptop, p15)
 ├── scripts/             # Diagnostics & curl-able entrypoints (check.sh + check.d/, drift.sh, validate-configs.sh, lint-docs.sh, list-stow-files.sh, minimal-stow.sh, arch-install*.sh)
-├── t14s-arch-install/   # Canonical Stage A Arch ISO installer (install.sh, lib/, tests/)
+├── stage-a/             # Canonical Stage A Arch ISO installer (install.sh, lib/, tests/)
+├── t14s-arch-install/   # Compatibility curl/local shim → stage-a/install.sh
 ├── docs/                # hardened-arch-gnome.md, fresh-install-coding-re.md, SECURITY-AUDIT.md
 ├── tests/               # Smoke & unit tests (*.test.sh, CI)
 └── .github/             # CI (stow inventory, bash -n, ShellCheck, tests/, Stage A tests, markdownlint)
@@ -236,7 +237,7 @@ Domain ownership keeps `stow/` strictly for deployable `$HOME` packages, isolate
 | [docs/hardened-arch-gnome.md](docs/hardened-arch-gnome.md) | Full Arch + GNOME guide — dual-host Stage A + firewalld |
 | [docs/fresh-install-coding-re.md](docs/fresh-install-coding-re.md) | Purpose stacks (coding / RE / malware lab); lab-re + Stage B configure |
 | [docs/SECURITY-AUDIT.md](docs/SECURITY-AUDIT.md) | Security audit of this repository (2026-11-16) |
-| [t14s-arch-install/](t14s-arch-install/README.md) | Canonical Stage A ISO installer (T14s 21CQ/21CR, P15 20SU, generic x86_64) |
+| [stage-a/](stage-a/README.md) | Canonical Stage A ISO installer (T14s 21CQ/21CR, P15 20SU, generic x86_64) |
 | [desktop/gnome/keybindings.md](desktop/gnome/keybindings.md) | Shell aliases and useful shortcuts |
 
 ---
@@ -245,13 +246,16 @@ Domain ownership keeps `stow/` strictly for deployable `$HOME` packages, isolate
 
 ### 0. Bare-metal Arch install (Stage A, from the ISO)
 
-**Canonical Stage A:** **[t14s-arch-install/](t14s-arch-install/README.md)**
+**Canonical Stage A:** **[stage-a/](stage-a/README.md)**
 (`HW_PROFILE=t14s|p15|generic`, TUI/DRYRUN/answers). Seeds **firewalld** (`nftables`,
 default zone `drop`); optional P15 `ollama-cuda` on `127.0.0.1:11434`.
 
 ```bash
 # Direct Stage A installer (from Arch ISO, UEFI, root):
-bash <(curl -fsSL https://raw.githubusercontent.com/HelllGuest/dotfiles/main/t14s-arch-install/install.sh)
+bash <(curl -fsSL https://raw.githubusercontent.com/HelllGuest/dotfiles/main/stage-a/install.sh)
+
+# Legacy curl URL (compatibility shim → stage-a/install.sh):
+# bash <(curl -fsSL https://raw.githubusercontent.com/HelllGuest/dotfiles/main/t14s-arch-install/install.sh)
 
 # Thin profile wrappers (hand off to the same in-repo installer):
 bash <(curl -fsSL https://raw.githubusercontent.com/HelllGuest/dotfiles/main/scripts/arch-install-t14s.sh)  # HW_PROFILE=t14s
@@ -282,13 +286,13 @@ On an interactive TTY, `./install.sh` opens a **TUI menu** (`dialog` / `whiptail
 
 Machine profiles run in `./install.sh` via `provision/scripts/apply-profile.sh` **after** `packages/pacman.txt` (exactly one profile): `profiles/$(hostname).sh` if it exists, otherwise `provision/scripts/detect-profile.sh` (ThinkPad P15 → `thinkpad-p15`, ThinkPad T14s Gen 3 AMD 21CQ/21CR → `thinkpad-t14s`, other ThinkPads/laptop chassis → `laptop`). Pacman first so Optimus/NVIDIA packages exist before `thinkpad-p15` enables services and rebuilds UKIs (GPU packages in `packages/pacman.txt`: the Intel packages are skipped on the AMD T14s, and the NVIDIA packages (`nvidia-open-dkms`, `nvidia-prime`, `nvidia-utils`, `egl-wayland`) are installed only when `has_nvidia_gpu` finds an NVIDIA display device on PCI, so the T14s, VMs and other laptops skip the NVIDIA stack and its DKMS builds). There is no `nvidia.sh`; Optimus setup is inside `profiles/thinkpad-p15.sh`.
 
-ThinkPad system configs (kernel cmdline templates, sleep, Wayland env, units) live in `system/` and are installed by `system/scripts/system-setup.sh` as **root-owned regular files**, never stow symlinks (re-run it after editing `system/`). Why, and how the cmdline UUID is handled: [hardened guide — `system/` files](docs/hardened-arch-gnome.md#kernel-cmdline--system-files-installed-not-stowed). On **T14s Gen 3 AMD**, check `cat /sys/power/mem_sleep`, `lscpu | grep -i ryzen`, `grep -E 'amd_iommu|amd_pstate' /proc/cmdline`, and charge thresholds under `/sys/class/power_supply/BAT*/charge_control_*_threshold`. On **P15**, verify Optimus/`prime-run` after reboot (`lspci -nnk -d 10de:`, charge 70–80). Installer + profile pull `mesa` / `vulkan-radeon` / `fprintd` (libva via mesa) on AMD; P15 Stage A (`arch-install-p15.sh` or `t14s-arch-install` `HW_PROFILE=p15`) seeds NVIDIA Optimus + optional ollama-cuda, and `profiles/thinkpad-p15.sh` refreshes it.
+ThinkPad system configs (kernel cmdline templates, sleep, Wayland env, units) live in `system/` and are installed by `system/scripts/system-setup.sh` as **root-owned regular files**, never stow symlinks (re-run it after editing `system/`). Why, and how the cmdline UUID is handled: [hardened guide — `system/` files](docs/hardened-arch-gnome.md#kernel-cmdline--system-files-installed-not-stowed). On **T14s Gen 3 AMD**, check `cat /sys/power/mem_sleep`, `lscpu | grep -i ryzen`, `grep -E 'amd_iommu|amd_pstate' /proc/cmdline`, and charge thresholds under `/sys/class/power_supply/BAT*/charge_control_*_threshold`. On **P15**, verify Optimus/`prime-run` after reboot (`lspci -nnk -d 10de:`, charge 70–80). Installer + profile pull `mesa` / `vulkan-radeon` / `fprintd` (libva via mesa) on AMD; P15 Stage A (`arch-install-p15.sh` or `stage-a/install.sh` `HW_PROFILE=p15`) seeds NVIDIA Optimus + optional ollama-cuda, and `profiles/thinkpad-p15.sh` refreshes it.
 
 #### Script execution order (fresh machine)
 
 **Stage A — from the Arch ISO (bare metal):**
 ```text
-# Canonical: t14s-arch-install/install.sh (HW_PROFILE=t14s|p15|generic)
+# Canonical: stage-a/install.sh (HW_PROFILE=t14s|p15|generic)
 # Thin wrappers (scripts/arch-install{,-t14s,-p15}.sh) only hand off — no second body
 provision/scripts/arch-install-vmtest.sh   # optional UEFI VM rehearsal (host disks untouched)
 scripts/arch-install-t14s.sh     # → HW_PROFILE=t14s
@@ -435,7 +439,7 @@ ss -ulpn | grep '192.168.200.1:53'            # empty until INetSim runs (no lib
 
 #### How to: Stage B on a Stage A qcow2
 
-Needs `~/arch-vmtest/test-disk.qcow2` from `t14s-arch-install` `tests/vm-run.sh`,
+Needs `~/arch-vmtest/test-disk.qcow2` from `stage-a/tests/vm-run.sh`,
 KVM, and edk2 OVMF. Host mounts this repo read-only via 9p.
 
 ```bash
@@ -446,7 +450,7 @@ bash provision/scripts/vm-stageb-run.sh
 
 Stage B always installs the GNOME stack from `pacman.txt`, so a Stage A run
 without a desktop (`DESKTOP=N`) still ends with GNOME; there is no supported
-no-desktop Stage B. Use `T14S_VM_DESKTOP=Y` (t14s-arch-install `tests/vm-run.sh`)
+no-desktop Stage B. Use `T14S_VM_DESKTOP=Y` (`stage-a/tests/vm-run.sh`)
 to rehearse the GNOME Stage A path as well.
 
 Guest (`vm-stageb-guest.sh`): `CONFIGURE_UI=plain` + empty checklist line →
@@ -545,15 +549,15 @@ listed extension that is not installed.
 bash scripts/check.sh            # --post (default, what ./install.sh runs): Stage A
                                  # follow-ups (Secure Boot, sbctl signatures, first-boot
                                  # Flatpaks, t14s-selftest) + everything Stage B sets up
-bash scripts/check.sh --stage-a  # Arch ISO install: runs t14s-arch-install
-                                 # tests/host-check.sh (~80 checks), as root too if sudo is cached
+bash scripts/check.sh --stage-a  # Arch ISO install: runs stage-a/tests/host-check.sh
+                                 # (~80 checks), as root too if sudo is cached
 bash scripts/check.sh --all      # both Stage A and Stage B
 bash scripts/check.sh --drift    # package (pacman/AUR/Flatpak) & stow symlink drift
 bash scripts/check.sh --fix      # safe idempotent fixes (stow, agentsync, browser/GNOME/tailscale), then --post
 ```
 
-`--stage-a` uses the in-repo `t14s-arch-install/` directory (override via
-`T14S_INSTALLER_DIR`). Its FAILs count only on the T14s Gen 3 AMD (21CQ/21CR), the
+`--stage-a` uses the in-repo `stage-a/` directory (override via
+`STAGE_A_DIR` / `T14S_INSTALLER_DIR`). Its FAILs count only on the T14s Gen 3 AMD (21CQ/21CR), the
 hardware `host-check.sh` targets; on other hosts they are shown as informational.
 
 **Theme:** stock **Adwaita** (GTK + icons + empty User Themes name) via
@@ -717,7 +721,7 @@ We take a "quiet by default" approach:
 | USB allowlist | `bash security/scripts/usbguard-setup.sh` (generates rules from plugged devices, then enables) |
 | Encrypted DNS | `bash security/scripts/dnscrypt-setup.sh` (dnscrypt-proxy → 127.0.0.1; NM global DNS pins 127.0.0.1; tailnet names → MagicDNS) |
 | Health check / drift / fix | `~/dotfiles/scripts/check.sh [--post\|--stage-a\|--all\|--drift\|--fix]` |
-| Docs lint | `~/dotfiles/scripts/lint-docs.sh` (CI also runs this + secret scan + `all_stow_files.txt` + `bash -n` + `ShellCheck` + `tests/*.test.sh` + `t14s-arch-install/tests/` + Arch container smoke) |
+| Docs lint | `~/dotfiles/scripts/lint-docs.sh` (CI also runs this + secret scan + `all_stow_files.txt` + `bash -n` + `ShellCheck` + `tests/*.test.sh` + `stage-a/tests/` + Arch container smoke) |
 | System files (`system/`) | `bash system/scripts/system-setup.sh` |
 | Refresh stow inventory | `git add stow/…` then `bash scripts/list-stow-files.sh > all_stow_files.txt` (index only) |
 | Location sync | `vpn-location-sync` or Proton VPN panel → Sync spoofed location |
@@ -780,8 +784,8 @@ systemctl is-active usbguard                 # active only after usbguard-setup
 systemctl is-active dnscrypt-proxy           # active only after dnscrypt-setup
 
 for t in ~/dotfiles/tests/*.test.sh; do bash "$t" || break; done   # KALI_TEST_NET=1 adds live Kali URL probe
-bash ~/dotfiles/t14s-arch-install/tests/smoke.test.sh
-bash ~/dotfiles/t14s-arch-install/tests/host-check.test.sh
+bash ~/dotfiles/stage-a/tests/smoke.test.sh
+bash ~/dotfiles/stage-a/tests/host-check.test.sh
 ```
 
 ---

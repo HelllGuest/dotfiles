@@ -1,4 +1,4 @@
-# t14s-arch-install
+# stage-a (formerly t14s-arch-install)
 
 Hardened **Arch Linux** Stage A installer for:
 
@@ -189,8 +189,9 @@ Free-form: `T14S_EXTRA_PKGS='pkg1 pkg2'` or the “more packages” prompt.
 ## Run (from the Arch ISO)
 
 ```bash
-bash <(curl -fsSL https://raw.githubusercontent.com/HelllGuest/dotfiles/main/t14s-arch-install/install.sh)
+bash <(curl -fsSL https://raw.githubusercontent.com/HelllGuest/dotfiles/main/stage-a/install.sh)
 ```
+*(Legacy URL `.../t14s-arch-install/install.sh` remains as a compatibility shim.)*
 
 Prefer `bash <(curl …)` so menus keep a real TTY.
 UI order: **`dialog`** → `whiptail` → plain. Override: `T14S_UI=dialog|whiptail|plain` (any other value falls back to plain).
@@ -402,7 +403,7 @@ journalctl -u t14s-flatpak-apps -f   # if INSTALL_FLATPAK_APPS=Y: browsers/VPN i
 
 # Full read-only verification (~80 checks: cmdline, LUKS/Btrfs, AppArmor/firewalld,
 # sysctl, charge/touchpad/lid, VA-API, GDM, makepkg, services). Exit 1 on FAIL.
-curl -fsSLO https://raw.githubusercontent.com/HelllGuest/dotfiles/main/t14s-arch-install/tests/host-check.sh
+curl -fsSLO https://raw.githubusercontent.com/HelllGuest/dotfiles/main/stage-a/tests/host-check.sh
 bash host-check.sh          # as your desktop user
 sudo bash host-check.sh     # adds /boot UKIs, LUKS PBKDF, sbctl, snapper
 # With the dotfiles checkout (Stage B): same host-check plus post-install checks

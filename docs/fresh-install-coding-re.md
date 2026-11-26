@@ -12,7 +12,7 @@ Purpose-oriented guide for this repository on the **Lenovo ThinkPad P15 Gen 1**
 
 Automation:
 
-* Bare metal Stage A (canonical): [t14s-arch-install](../t14s-arch-install/README.md) (`HW_PROFILE=t14s|p15|generic`)
+* Bare metal Stage A (canonical): [stage-a/](../stage-a/README.md) (`HW_PROFILE=t14s|p15|generic`)
 * Thin wrappers (same installer): [`arch-install-t14s.sh`](../scripts/arch-install-t14s.sh) / [`arch-install-p15.sh`](../scripts/arch-install-p15.sh) / [`arch-install.sh`](../scripts/arch-install.sh)
 * VM rehearsal: [`arch-install-vmtest.sh`](../provision/scripts/arch-install-vmtest.sh) (`INSTALLER=arch-install-p15.sh` or `arch-install-t14s.sh`)
 * After first GNOME login: [`../install.sh`](../install.sh)
@@ -41,7 +41,7 @@ covers AMD/NVIDIA/Intel when those modules are present. Details:
 | CPU | Comet Lake-H, **x86-64-v3** | Ryzen 7 PRO 6850U (Zen 3+), **x86-64-v3** |
 | GPU | Intel UHD + NVIDIA Quadro (Optimus / `prime-run`) | Radeon 680M (`amdgpu`, `LIBVA_DRIVER_NAME=radeonsi`) |
 | Fingerprint | Synaptics `06cb:00bd` (palm rest) | Goodix `27c6:6594` (power button) |
-| Installer | `t14s-arch-install` `HW_PROFILE=p15` (or thin `arch-install-p15.sh`) | `HW_PROFILE=t14s` (or thin `arch-install-t14s.sh`) |
+| Installer | `stage-a/install.sh` `HW_PROFILE=p15` (or thin `arch-install-p15.sh`) | `HW_PROFILE=t14s` (or thin `arch-install-t14s.sh`) |
 | OS target | Arch rolling, `linux-lts` primary / `linux-hardened` fallback UKIs | same |
 | CPU builds | `GOAMD64=v3`, `RUSTFLAGS=-C target-cpu=x86-64-v3` (see README) | same |
 
@@ -126,7 +126,7 @@ On the machine, from the official Arch ISO as root:
 
 ```bash
 # Canonical (DMI / TUI picks HW_PROFILE):
-bash <(curl -fsSL https://raw.githubusercontent.com/HelllGuest/dotfiles/main/t14s-arch-install/install.sh)
+bash <(curl -fsSL https://raw.githubusercontent.com/HelllGuest/dotfiles/main/stage-a/install.sh)
 
 # Thin wrappers (same installer; pin profile):
 bash <(curl -fsSL https://raw.githubusercontent.com/HelllGuest/dotfiles/main/scripts/arch-install-p15.sh)   # HW_PROFILE=p15
@@ -147,7 +147,7 @@ Then remove the ISO, reboot, and log into GNOME.
 4. BIOS → Secure Boot → Enabled.
 5. `sbctl status && sbctl verify`.
 
-Verify Stage A (read-only; runs t14s-arch-install `tests/host-check.sh`, ~80
+Verify Stage A (read-only; runs `stage-a/tests/host-check.sh`, ~80
 checks; root-only ones too after `sudo -v`):
 
 ```bash
@@ -491,7 +491,7 @@ Same order as Stages 0 → A → A½ → B (matches README):
 
 ```text
 BIOS (SB off, VT-x/d on; Sleep = Windows and Linux for s2idle)
-  → Arch ISO → t14s-arch-install (or thin arch-install-*.sh wrappers; AUTO wipe, or MANUAL + reuse EFI)
+  → Arch ISO → stage-a/install.sh (or thin arch-install-*.sh wrappers; AUTO wipe, or MANUAL + reuse EFI)
   → reboot → GNOME login
   → optional: sbctl enroll-keys -m → enable SB in BIOS → sbctl verify
   → clone dotfiles → ./install.sh (installs system/ via system-setup.sh) → exec zsh

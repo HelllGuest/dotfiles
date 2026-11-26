@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # arch-install-vmtest.sh — dry-run Stage A in a UEFI qemu VM (no real disks).
 #
-# Serves local scripts/ and (if present) a sibling t14s-arch-install checkout so
+# Serves local scripts/ and in-repo stage-a/ (or sibling checkout) so
 # the guest rehearses YOUR tree, not GitHub main.
 #
 #   ~/dotfiles/provision/scripts/arch-install-vmtest.sh
@@ -9,7 +9,7 @@
 #
 # Env: INSTALLER, WORK, DISK_SIZE, RAM, PORT (scripts, default 8000),
 #      T14S_PORT (canonical tree, default PORT+1), ISO, FRESH=1,
-#      T14S_LOCAL (override path to t14s-arch-install)
+#      STAGE_A_LOCAL / T14S_LOCAL (override path to stage-a/)
 set -euo pipefail
 say(){ printf '\e[1;34m>>\e[0m %s\n' "$*"; }
 die(){ printf '\e[1;31mERR\e[0m %s\n' "$*" >&2; exit 1; }
@@ -26,7 +26,8 @@ RAM=${RAM:-4096}
 PORT=${PORT:-8000}
 T14S_PORT=${T14S_PORT:-$((PORT + 1))}
 ISO=${ISO:-}
-T14S_DIR="${T14S_LOCAL:-$DOTFILES_ROOT/t14s-arch-install}"
+T14S_DIR="${STAGE_A_LOCAL:-${T14S_LOCAL:-$DOTFILES_ROOT/stage-a}}"
+[[ -d $T14S_DIR ]] || T14S_DIR="$DOTFILES_ROOT/../stage-a"
 [[ -d $T14S_DIR ]] || T14S_DIR="$DOTFILES_ROOT/../t14s-arch-install"
 [[ -d $T14S_DIR ]] && T14S_DIR="$(cd "$T14S_DIR" && pwd)" || T14S_DIR=""
 
@@ -74,7 +75,7 @@ cp -f "$ovmf_vars_src" "$WORK/OVMF_VARS.fd"
 
 # 4. serve local trees (guest → 10.0.2.2)
 #    PORT     → repo root  (scripts/arch-install*.sh + provision/lib/stage-a-handoff.sh)
-#    T14S_PORT → t14s-arch-install/ (install.sh + lib/, whole tree) when present
+#    T14S_PORT → stage-a/ (install.sh + lib/, whole tree) when present
 ( cd "$DOTFILES_ROOT" && exec python3 -m http.server "$PORT" --bind 127.0.0.1 ) &>/dev/null &
 HTTP_PID=$!
 T14S_HTTP_PID=""
@@ -83,7 +84,7 @@ if [[ -n $T14S_DIR && -f $T14S_DIR/install.sh ]]; then
   T14S_HTTP_PID=$!
   say "serving local Stage A from $T14S_DIR on :$T14S_PORT"
 else
-  say "no local t14s-arch-install — guest resolves GitHub main→SHA (or T14S_REF)"
+  say "no local stage-a/ — guest resolves GitHub main→SHA (or STAGE_A_REF / T14S_REF)"
 fi
 trap 'kill "$HTTP_PID" ${T14S_HTTP_PID:-} 2>/dev/null || true' EXIT
 sleep 1
@@ -97,7 +98,7 @@ cat <<EOF
 
   ┌─ VM smoke test (local trees) ───────────────────────────────┐
    Serves dotfiles repo at http://10.0.2.2:${PORT}/
-   $([ -n "$T14S_HTTP_PID" ] && echo "Serves t14s-arch-install at http://10.0.2.2:${T14S_PORT}/" || echo "No local t14s-arch-install — pinned GitHub fetch")
+   $([ -n "$T14S_HTTP_PID" ] && echo "Serves stage-a/ at http://10.0.2.2:${T14S_PORT}/" || echo "No local stage-a/ — pinned GitHub fetch")
    Active INSTALLER=${INSTALLER}
 
    Inside the Arch ISO root shell:

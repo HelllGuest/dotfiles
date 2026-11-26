@@ -106,13 +106,21 @@ out="$(run T14S_INSTALLER_DIR="$T/inst")" || fail "non-T14s host-check FAIL must
 [[ $out == *"informational"* ]] || fail "non-T14s must say informational: $out"
 
 rc=0; out="$(run T14S_INSTALLER_DIR="$T/nowhere")" || rc=$?
-[[ $rc -eq 1 && $out == *"t14s-arch-install not found"* && $out == *"T14S_INSTALLER_DIR"* ]] \
-  || fail "missing installer dir must fail with T14S_INSTALLER_DIR hint (rc=$rc): $out"
+[[ $rc -eq 1 && $out == *"stage-a not found"* && $out == *"STAGE_A_DIR"* ]] \
+  || fail "missing installer dir must fail with STAGE_A_DIR hint (rc=$rc): $out"
 
-# Default in-repo t14s-arch-install/ resolution (no T14S_INSTALLER_DIR needed)
-mkdir -p "$T/repo/t14s-arch-install/tests"
-printf '#!/bin/bash\necho "INREPO HOSTCHECK ran"\nexit 0\n' >"$T/repo/t14s-arch-install/tests/host-check.sh"
-out="$(run)" || fail "in-repo t14s-arch-install host-check must pass without T14S_INSTALLER_DIR: $out"
+# STAGE_A_DIR alias (pass + missing)
+dmi 21CRS1PU00
+hc_exit 0
+out="$(run STAGE_A_DIR="$T/inst")" || fail "STAGE_A_DIR pass failed: $out"
+[[ $out == *"HOSTCHECK ran"* && $out == *"✓ Stage A host-check passed"* ]] || fail "STAGE_A_DIR pass output: $out"
+rc=0; out="$(run STAGE_A_DIR="$T/nowhere")" || rc=$?
+[[ $rc -eq 1 && $out == *"stage-a not found"* ]] || fail "STAGE_A_DIR missing must fail (rc=$rc): $out"
+
+# Default in-repo stage-a/ resolution (no STAGE_A_DIR / T14S_INSTALLER_DIR needed)
+mkdir -p "$T/repo/stage-a/tests"
+printf '#!/bin/bash\necho "INREPO HOSTCHECK ran"\nexit 0\n' >"$T/repo/stage-a/tests/host-check.sh"
+out="$(run)" || fail "in-repo stage-a host-check must pass without STAGE_A_DIR: $out"
 [[ $out == *"INREPO HOSTCHECK ran"* && $out == *"✓ Stage A host-check passed"* ]] \
   || fail "in-repo host-check output mismatch: $out"
 

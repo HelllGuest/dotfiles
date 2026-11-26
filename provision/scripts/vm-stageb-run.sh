@@ -23,7 +23,7 @@ GUEST_USER=${GUEST_USER:-t14svm}
 say(){ printf '\e[1;34m>>\e[0m %s\n' "$*"; }
 die(){ printf '\e[1;31mERR\e[0m %s\n' "$*" >&2; exit 1; }
 
-[[ -f $DISK ]] || die "missing disk $DISK (run t14s-arch-install tests/vm-run.sh first)"
+[[ -f $DISK ]] || die "missing disk $DISK (run stage-a/tests/vm-run.sh first)"
 [[ -f $REPO/install.sh ]] || die "missing $REPO/install.sh"
 [[ -x $REPO/provision/scripts/vm-stageb-guest.sh ]] || die "missing vm-stageb-guest.sh"
 command -v qemu-system-x86_64 >/dev/null || die "need qemu"

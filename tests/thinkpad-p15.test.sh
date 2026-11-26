@@ -28,7 +28,7 @@ INST="$ROOT/scripts/arch-install-p15.sh"
 # Thin handoff → canonical in-repo Stage A
 grep -q 'stage_a_handoff p15' "$INST" \
   || fail "arch-install-p15 must hand off with profile p15"
-grep -q 't14s-arch-install/install.sh' "$INST" \
+grep -q 'stage-a/install.sh' "$INST" \
   || fail "arch-install-p15 must point at canonical Stage A installer"
 grep -qE 'cryptsetup|pacstrap' "$INST" \
   && fail "arch-install-p15 must not embed Stage A body" || true
@@ -105,8 +105,8 @@ is_thinkpad_p15 && fail "T14s 21CR must NOT match is_thinkpad_p15" || true
 [[ "$(bash "$ROOT/provision/scripts/detect-profile.sh")" != thinkpad-p15 ]] \
   || fail "detect-profile must not return thinkpad-p15 for T14s"
 
-# Canonical sibling owns Optimus seeds when present
-CANON="$ROOT/../t14s-arch-install"
+# Canonical in-repo Stage A owns Optimus seeds
+CANON="$ROOT/stage-a"
 if [[ -f $CANON/lib/80-chroot-setup.sh ]]; then
   # Chroot code = entry script + its stages (lib/chroot/, when split).
   CANON_CHROOT=("$CANON/lib/80-chroot-setup.sh")

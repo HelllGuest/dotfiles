@@ -1,54 +1,60 @@
 #!/usr/bin/env bash
-# stage-a-handoff.sh — run canonical Stage A installer (t14s-arch-install/ in HelllGuest/dotfiles)
+# stage-a-handoff.sh — run canonical Stage A installer (stage-a/ in HelllGuest/dotfiles)
 #
 # Sourced by thin curl-able wrappers (arch-install{,-t14s,-p15}.sh).
-# Prefer the in-repo t14s-arch-install/ checkout; else download from GitHub (libs via T14S_BASE_URL).
+# Prefer the in-repo stage-a/ checkout; else download from GitHub (libs via STAGE_A_BASE_URL / T14S_BASE_URL).
 #
-# Env:
-#   HW_PROFILE            forced profile (t14s|p15); empty → canonical DMI detect
-#   T14S_INSTALL_SH       explicit path to install.sh
-#   T14S_LOCAL            directory containing install.sh + lib/
-#   T14S_REF              optional sha/branch/tag override (else resolve main once)
-#   T14S_BASE_URL         raw base (skips ref resolve when set)
-#   T14S_INSTALL_URL      full URL to install.sh
-#   STAGE_A_DOTFILES_ROOT path to this dotfiles repo (in-repo + sibling lookup)
-#   STAGE_A_DRY_PRINT=1   print resolution only (tests); do not exec
+# Env (STAGE_A_* preferred; legacy T14S_* aliases honored):
+#   HW_PROFILE                    forced profile (t14s|p15); empty → canonical DMI detect
+#   STAGE_A_INSTALL_SH / T14S_INSTALL_SH   explicit path to install.sh
+#   STAGE_A_LOCAL / T14S_LOCAL             directory containing install.sh + lib/
+#   STAGE_A_REF / T14S_REF                 optional sha/branch/tag override (else resolve main once)
+#   STAGE_A_BASE_URL / T14S_BASE_URL       raw base (skips ref resolve when set)
+#   STAGE_A_INSTALL_URL / T14S_INSTALL_URL full URL to install.sh
+#   STAGE_A_DOTFILES_ROOT                  path to this dotfiles repo (in-repo + sibling lookup)
+#   STAGE_A_DRY_PRINT=1                    print resolution only (tests); do not exec
 
 # Resolve one commit for every raw.githubusercontent fetch (install + libs).
 # Call only on the remote path — local checkouts must stay offline.
 t14s_resolve_base_url() {
-  if [[ -n ${T14S_BASE_URL:-} ]]; then
-    printf '%s\n' "$T14S_BASE_URL"
+  local base_override="${STAGE_A_BASE_URL:-${T14S_BASE_URL:-}}"
+  if [[ -n $base_override ]]; then
+    printf '%s\n' "$base_override"
     return 0
   fi
-  local ref="${T14S_REF:-}"
+  local ref="${STAGE_A_REF:-${T14S_REF:-}}"
   if [[ -z $ref ]]; then
     ref="$(curl -fsSL -H 'Accept: application/vnd.github.sha' \
       https://api.github.com/repos/HelllGuest/dotfiles/commits/main 2>/dev/null || true)"
     ref="${ref//$'\n'/}"
     if [[ ! $ref =~ ^[0-9a-f]{40}$ ]]; then
-      printf 'ERR: could not resolve dotfiles main SHA (set T14S_REF or T14S_BASE_URL)\n' >&2
+      printf 'ERR: could not resolve dotfiles main SHA (set STAGE_A_REF / T14S_REF or STAGE_A_BASE_URL)\n' >&2
       return 1
     fi
     T14S_REF="$ref"
+    STAGE_A_REF="$ref"
   fi
-  printf 'https://raw.githubusercontent.com/HelllGuest/dotfiles/%s/t14s-arch-install\n' "$ref"
+  printf 'https://raw.githubusercontent.com/HelllGuest/dotfiles/%s/stage-a\n' "$ref"
 }
 
 stage_a_handoff() {
   local profile="${1:-}"
   shift || true
   local base url tmp cand libdir
+  local explicit_sh="${STAGE_A_INSTALL_SH:-${T14S_INSTALL_SH:-}}"
+  local explicit_dir="${STAGE_A_LOCAL:-${T14S_LOCAL:-}}"
 
   if [[ -n $profile ]]; then
     export HW_PROFILE="$profile"
   fi
 
   # 1) Explicit file
-  if [[ -n ${T14S_INSTALL_SH:-} && -f $T14S_INSTALL_SH ]]; then
-    cand="$(cd "$(dirname "$T14S_INSTALL_SH")" && pwd)/install.sh"
+  if [[ -n $explicit_sh && -f $explicit_sh ]]; then
+    cand="$(cd "$(dirname "$explicit_sh")" && pwd)/install.sh"
     libdir="$(dirname "$cand")/lib"
-    [[ -d $libdir ]] && export T14S_LIB_DIR="$libdir"
+    if [[ -d $libdir ]]; then
+      export STAGE_A_LIB_DIR="$libdir" T14S_LIB_DIR="$libdir"
+    fi
     if [[ ${STAGE_A_DRY_PRINT:-0} == 1 ]]; then
       printf 'local:%s\nHW_PROFILE=%s\nT14S_LIB_DIR=%s\n' \
         "$cand" "${HW_PROFILE:-}" "${T14S_LIB_DIR:-}"
@@ -59,17 +65,19 @@ stage_a_handoff() {
     exec bash "$cand" "$@"
   fi
 
-  # 2) Explicit dir, in-repo t14s-arch-install/, $HOME checkout, or sibling
+  # 2) Explicit dir, in-repo stage-a/, $HOME checkout, or sibling (skip shim dir without lib/)
   for cand in \
-    "${T14S_LOCAL:-}" \
-    "${STAGE_A_DOTFILES_ROOT:+$STAGE_A_DOTFILES_ROOT/t14s-arch-install}" \
+    "$explicit_dir" \
+    "${STAGE_A_DOTFILES_ROOT:+$STAGE_A_DOTFILES_ROOT/stage-a}" \
+    "${HOME:+$HOME/stage-a}" \
     "${HOME:+$HOME/t14s-arch-install}" \
+    "${STAGE_A_DOTFILES_ROOT:+$STAGE_A_DOTFILES_ROOT/../stage-a}" \
     "${STAGE_A_DOTFILES_ROOT:+$STAGE_A_DOTFILES_ROOT/../t14s-arch-install}"
   do
-    [[ -n $cand && -f $cand/install.sh ]] || continue
+    [[ -n $cand && -f $cand/install.sh && -d $cand/lib ]] || continue
     cand="$(cd "$cand" && pwd)"
     libdir="$cand/lib"
-    [[ -d $libdir ]] && export T14S_LIB_DIR="$libdir"
+    export STAGE_A_LIB_DIR="$libdir" T14S_LIB_DIR="$libdir"
     if [[ ${STAGE_A_DRY_PRINT:-0} == 1 ]]; then
       printf 'local:%s\nHW_PROFILE=%s\nT14S_LIB_DIR=%s\n' \
         "$cand/install.sh" "${HW_PROFILE:-}" "${T14S_LIB_DIR:-}"
@@ -80,11 +88,12 @@ stage_a_handoff() {
     exec bash "$cand/install.sh" "$@"
   done
 
-  # 3) Remote: resolve one SHA (or use T14S_BASE_URL / T14S_REF) then fetch
+  # 3) Remote: resolve one SHA (or use STAGE_A_BASE_URL / T14S_BASE_URL / *_REF) then fetch
   base="$(t14s_resolve_base_url)" || exit 1
-  url="${T14S_INSTALL_URL:-$base/install.sh}"
-  export T14S_BASE_URL="$base"
-  export T14S_REF="${T14S_REF:-}"
+  url="${STAGE_A_INSTALL_URL:-${T14S_INSTALL_URL:-$base/install.sh}}"
+  local _resolved_ref="${STAGE_A_REF:-${T14S_REF:-}}"
+  export STAGE_A_BASE_URL="$base" T14S_BASE_URL="$base"
+  export STAGE_A_REF="$_resolved_ref" T14S_REF="$_resolved_ref"
 
   if [[ ${STAGE_A_DRY_PRINT:-0} == 1 ]]; then
     printf 'fetch:%s\nHW_PROFILE=%s\nT14S_BASE_URL=%s\nT14S_REF=%s\n' \

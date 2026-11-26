@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # arch-install-p15.sh — thin Stage A handoff (ThinkPad P15 Gen 1 Optimus)
 #
-# Canonical installer: t14s-arch-install/install.sh (in HelllGuest/dotfiles)
+# Canonical installer: stage-a/install.sh (in HelllGuest/dotfiles)
 #   HW_PROFILE=p15 (20SU, intel-ucode, nvidia modeset, optional ollama)
 #
 #   bash <(curl -fsSL https://raw.githubusercontent.com/HelllGuest/dotfiles/main/scripts/arch-install-p15.sh)

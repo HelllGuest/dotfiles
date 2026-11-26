@@ -124,7 +124,7 @@ system/etc/geolocation.local
 stow/ghostty/.config/ghostty/theme.local.conf
 stow/alacritty/.config/alacritty/theme.local.toml
 
-# Local VM rehearsal artifacts (t14s-arch-install/tests/vm-run.sh, provision/scripts/vm-stageb-run.sh)
+# Local VM rehearsal artifacts (stage-a/tests/vm-run.sh, provision/scripts/vm-stageb-run.sh)
 *.iso
 *.qcow2
 *.img
