@@ -12,7 +12,6 @@ for f in \
   "$ROOT/profiles/thinkpad-t14s.sh" \
   "$ROOT/scripts/thinkpad-charge-thresholds.sh" \
   "$ROOT/scripts/lib/dmi.sh" \
-  "$ROOT/scripts/lib/install-identity.sh" \
   "$ROOT/scripts/lib/thinkpad-charge-thresholds.conf" \
   "$ROOT/packages/thinkpad-t14s.txt" \
   "$ROOT/scripts/detect-profile.sh"
@@ -45,77 +44,6 @@ grep -qE '"btop"|"htop"' "$ROOT/scripts/check.sh" "$ROOT"/scripts/check.d/*.sh \
   || fail "check.sh must require btop and htop"
 grep -qE '(^|[[:space:]_/])20SU' "$ROOT/scripts/lib/dmi.sh" \
   || fail "is_thinkpad_p15 must match 20SU (Stage A parity)"
-# Identity validators live in install-identity.sh (Stage A owns its own copy)
-IDLIB="$ROOT/scripts/lib/install-identity.sh"
-[[ -f $IDLIB ]] || fail "missing $IDLIB"
-# shellcheck source=scripts/lib/install-identity.sh
-source "$IDLIB"
-valid_hostname thinkpad-t14s || fail "hostname thinkpad-t14s should pass"
-valid_hostname a || fail "hostname a should pass"
-valid_hostname -bad && fail "hostname -bad should fail" || true
-valid_hostname bad- && fail "hostname bad- should fail" || true
-valid_hostname 'bad..host' && fail "hostname bad..host should fail" || true
-valid_username root && fail "username root should fail" || true
-valid_username bin && fail "username bin should fail" || true
-valid_username nobody && fail "username nobody should fail" || true
-for _g in wheel audio video users; do
-  if getent group "$_g" >/dev/null 2>&1; then
-    valid_username "$_g" && fail "username $_g (group) should fail" || true
-  fi
-done
-_long40='aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'
-valid_username "$_long40" && fail "username len 40 should fail" || true
-_fresh="t14sid$$"
-valid_username "$_fresh" || fail "username $_fresh should pass"
-valid_timezone America/New_York || fail "timezone America/New_York should pass"
-valid_timezone UTC || fail "timezone UTC should pass"
-valid_timezone '../../../etc/passwd' && fail "timezone path traversal should fail" || true
-valid_timezone zone.tab && fail "timezone zone.tab should fail" || true
-valid_timezone America && fail "timezone America (dir) should fail" || true
-if [[ -f /usr/share/zoneinfo/leapseconds ]]; then
-  valid_timezone leapseconds && fail "timezone leapseconds should fail (not TZif)" || true
-fi
-valid_timezone Factory && fail "timezone Factory should fail" || true
-if [[ -f /usr/share/zoneinfo/posixrules ]]; then
-  valid_timezone posixrules && fail "timezone posixrules should fail" || true
-fi
-# Locale/keymap: fixture overrides (gated) so ubuntu-latest CI does not need host maps.
-mkdir -p "$TMP/id/keymaps" "$TMP/id/bin"
-printf '%s\n' 'en_US.UTF-8 UTF-8' '#de_DE.UTF-8 UTF-8' >"$TMP/id/locales"
-: >"$TMP/id/keymaps/us.map.gz"
-IDENTITY_OVERRIDES=1 LOCALE_FILES="$TMP/id/locales" valid_locale en_US.UTF-8 \
-  || fail "locale en_US.UTF-8 should pass (fixture)"
-IDENTITY_OVERRIDES=1 LOCALE_FILES="$TMP/id/locales" valid_locale de_DE.UTF-8 \
-  || fail "locale de_DE.UTF-8 (commented) should pass (fixture)"
-IDENTITY_OVERRIDES=1 LOCALE_FILES="$TMP/id/locales" valid_locale NotA_Locale \
-  && fail "locale NotA_Locale should fail" || true
-IDENTITY_OVERRIDES=1 KEYMAP_DIR="$TMP/id/keymaps" valid_keymap us \
-  || fail "keymap us should pass (fixture)"
-IDENTITY_OVERRIDES=1 KEYMAP_DIR="$TMP/id/keymaps" valid_keymap not-a-real-keymap-zz \
-  && fail "keymap bogus should fail" || true
-IDENTITY_OVERRIDES=1 KEYMAP_DIR="$TMP/id/keymaps" valid_keymap '*' \
-  && fail "keymap glob * should fail" || true
-IDENTITY_OVERRIDES=1 KEYMAP_DIR="$TMP/id/keymaps" valid_keymap 'u?' \
-  && fail "keymap glob u? should fail" || true
-IDENTITY_OVERRIDES=1 KEYMAP_DIR="$TMP/id/keymaps" valid_keymap '[a-z]*' \
-  && fail "keymap glob [a-z]* should fail" || true
-# localectl path: fixed-string match (u. must not regex-match us;
-# ... must not regex-match three-letter names like dvo)
-cat >"$TMP/id/bin/localectl" <<'EOF'
-#!/bin/sh
-[ "$1" = list-keymaps ] || exit 1
-printf '%s\n' us uk dvo
-EOF
-chmod +x "$TMP/id/bin/localectl"
-# shellcheck disable=SC2016  # intentional single-quoted bash -c body
-env -u KEYMAP_DIR PATH="$TMP/id/bin:/usr/bin:/bin" bash -c '
-  source "$0"
-  valid_keymap us || exit 11
-  valid_keymap dvo || exit 14
-  valid_keymap u. && exit 12
-  valid_keymap "..." && exit 13
-  exit 0
-' "$IDLIB" || fail "stub localectl: us/dvo pass / u. and ... must fail (grep -F)"
 
 # Profile repairs generic-install Intel leftovers
 grep -q 'intel_iommu=' "$ROOT/profiles/thinkpad-t14s.sh" \

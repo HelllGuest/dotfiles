@@ -8,7 +8,9 @@ grep -qx 'bootvine' "$ROOT/packages/pacman.txt" || fail "pacman.txt must include
 ! grep -q 'bootvine' "$ROOT/packages/aur.txt" || fail "aur.txt must not build bootvine-git (official package exists)"
 # The initrd hook would put bootvine in front of the LUKS prompt; keep it out.
 # (check.sh / check.d only detect it in /etc/mkinitcpio.conf, so they are excluded.)
-! grep -rn --exclude-dir=.git --exclude-dir=check.d --exclude=bootvine.test.sh --exclude=CHANGELOG.md --exclude=README.md \
+! grep -rn --exclude-dir=.git --exclude-dir=check.d \
+    --exclude-dir=logs --exclude-dir=History --exclude-dir=Cache --exclude-dir='Code Cache' --exclude-dir=GPUCache \
+    --exclude=bootvine.test.sh --exclude=CHANGELOG.md --exclude=README.md \
     --exclude=check.sh \
     -e 'HOOKS=.*sd-bootvine' -e 'install --initrd' "$ROOT" \
   || fail "repo must not add the sd-bootvine initrd hook"

@@ -38,10 +38,6 @@ TELEMETRY_CURSOR_KEYS=("${VSCODE_TELEMETRY_CURSOR_KEYS[@]}")
 telemetry_is_cursor_settings_path() { vscode_is_cursor_settings_path "$@"; }
 telemetry_keys_for_settings_path() { vscode_telemetry_keys_for_path "$@"; }
 
-telemetry_env_d_ok() {
-  [[ -f "$TELEMETRY_ENV_D" ]]
-}
-
 # Merge only telemetry-related keys into settings.json (jq required).
 # Non-Cursor targets: also delete leftover cursor.general.* keys.
 telemetry_merge_vscode_settings() {

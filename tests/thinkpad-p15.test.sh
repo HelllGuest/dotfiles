@@ -11,7 +11,6 @@ for f in \
   "$ROOT/scripts/arch-install-p15.sh" \
   "$ROOT/profiles/thinkpad-p15.sh" \
   "$ROOT/scripts/lib/dmi.sh" \
-  "$ROOT/scripts/lib/install-identity.sh" \
   "$ROOT/scripts/lib/thinkpad-charge-thresholds.conf" \
   "$ROOT/scripts/lib/stage-a-handoff.sh" \
   "$ROOT/scripts/detect-profile.sh"

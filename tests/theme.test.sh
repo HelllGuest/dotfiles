@@ -18,7 +18,8 @@ for p in sassc imagemagick python-pillow; do
   ! list pacman.txt | grep -qx "$p" || fail "$p was Aura-only — remove from pacman.txt"
 done
 [[ ! -e $ROOT/scripts/gdm-shell-theme.sh ]] || fail "gdm-shell-theme.sh must be removed"
-_old="$(grep -rlI -e 'Orchis' -e 'Tela-blue' -e 'Bibata' -e 'gdm-shell-theme' \
+_old="$(grep -rlI --exclude-dir=logs --exclude-dir=History --exclude-dir=Cache --exclude-dir='Code Cache' --exclude-dir=GPUCache \
+  -e 'Orchis' -e 'Tela-blue' -e 'Bibata' -e 'gdm-shell-theme' \
   "$ROOT/gnome" "$ROOT/stow" "$ROOT/scripts" "$ROOT/install.sh" "$ROOT/packages" 2>/dev/null \
   | grep -v '/scripts/theme-setup.sh$' || true)"
 [[ -z $_old ]] || fail "old theme still referenced in: $_old"
@@ -233,7 +234,7 @@ run_ts >/dev/null 2>&1 || fail "theme-setup.sh must be re-runnable"
 grep -q "reset org.gnome.desktop.interface gtk-theme" "$T/gsettings.log" || fail "re-run must still reset gtk-theme"
 
 # --check failures
-rc=0; out="$(GTK_THEME_GET= run_ts --check)" || rc=$?
+rc=0; out="$(GTK_THEME_GET='' run_ts --check)" || rc=$?
 [[ $rc -eq 2 && $out == *'could not read gtk-theme'* ]] \
   || fail "--check empty gtk-theme must be not-applied (rc=2), not broken (rc=$rc): $out"
 rc=0; out="$(GTK_THEME_GET=Aura-Glass run_ts --check)" || rc=$?
