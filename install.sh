@@ -589,7 +589,7 @@ if [ -f "desktop/scripts/gdm-setup.sh" ]; then
     run_step "GDM setup" bash desktop/scripts/gdm-setup.sh
 fi
 
-# 3.2a Theme: stock Adwaita (no Aura Glass). Cleans leftover greeter hooks once.
+# 3.2a Theme: stock Adwaita. Cleans leftover greeter hooks once.
 # Needs a GNOME login session. Opt out: SKIP_THEME=1 (headless VM).
 if [ "${SKIP_THEME:-0}" = 1 ]; then
     echo "Skipping theme setup (SKIP_THEME=1)."

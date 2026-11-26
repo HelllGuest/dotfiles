@@ -557,17 +557,17 @@ bash scripts/check.sh --fix      # safe idempotent fixes (stow, agentsync, brows
 hardware `host-check.sh` targets; on other hosts they are shown as informational.
 
 **Theme:** stock **Adwaita** (GTK + icons + empty User Themes name) via
-`desktop/scripts/theme-setup.sh`. It does **not** install Aura Glass. Extension UUIDs
-stay in `desktop/gnome/dconf/user.conf` (Blur My Shell, Status Tray, Tiling Assistant,
+`desktop/scripts/theme-setup.sh`. Extension UUIDs stay in
+`desktop/gnome/dconf/user.conf` (Blur My Shell, Status Tray, Tiling Assistant,
 and the rest). `desktop/gnome/dconf/*.conf` leave gtk-theme / icon / cursor and the
 extension look trees unset; `backup-gsettings.sh` drops those from snapshots.
-On apply it purges leftovers: Orchis/Tela/Bibata greeter hooks
-(`theme-sync.service`, user theme copy, `~/.config/gtk-4.0` Orchis links),
-Aura Glass (`uninstall.sh -y --gdm` when present,
-`/etc/dconf/db/gdm.d/90-aura-glass`, Flatpak GTK/icon overrides, Colloid icons,
-helper extension, GTK css/settings overrides). `check.sh` verifies Adwaita. Opt
-out: `SKIP_THEME=1`. GNOME Tweaks and Extension Manager are installed from
-`pacman.txt`.
+On apply it clears leftover Orchis greeter bits (`theme-sync.service`, Orchis user
+theme copy, `~/.config/gtk-4.0` Orchis links) and hints if old `orchis-theme` /
+`tela-icon-theme` / `bibata-cursor-theme-bin` packages remain. It does **not**
+scrub a former Aura Glass install (themes, Colloid icons, `90-aura-glass` GDM
+dconf, helper extension); remove those by hand if still present. `check.sh`
+verifies Adwaita keys only. Opt out: `SKIP_THEME=1`. GNOME Tweaks and Extension
+Manager are installed from `pacman.txt`.
 
 **Command-finished notifications:** kitty (`notify_on_cmd_finish`), Ghostty
 (`notify-on-command-finish`) and GNOME Console (via `vte.sh`) notify natively when
@@ -592,7 +592,7 @@ Applies user-level symlinks only from `stow/` (first removes unmodified `/etc/sk
 ```
 
 ### 2b. Uninstall
-Safely removes dotfiles symlinks, user systemd units, and AI kit symlinks without deleting installed packages, GNOME `dconf` user settings, or personal data (`~/.ssh`, `~/.gnupg`, `~/.gitconfig`, browser profiles, secrets). Privileged `/etc` layers (`browsers`, `location`, `system`) are opt-in via `--all` or `--only`; non-interactive runs require `--yes` (`-y`) or `--dry-run` (`-n`).
+Safely removes dotfiles symlinks, user systemd units, and AI kit/hub links (unmodified rule copies + stock `~/.claude/CLAUDE.md` stub; unsets kit `core.hooksPath`) without deleting installed packages, GNOME `dconf` user settings, or personal data (`~/.ssh`, `~/.gnupg`, `~/.gitconfig`, browser profiles, secrets). Privileged `/etc` layers (`browsers`, `location`, `system`) are opt-in via `--all` or `--only`; non-interactive runs require `--yes` (`-y`) or `--dry-run` (`-n`).
 ```bash
 ./uninstall.sh --list                      # list all sections (default vs opt-in)
 ./uninstall.sh --dry-run                   # preview default user-level uninstall (units, stow, ai)

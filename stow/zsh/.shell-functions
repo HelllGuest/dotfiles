@@ -366,7 +366,7 @@ lab-mcp() {
 # Alacritty load a gitignored theme.local.* link to one of their themes/.
 _rice_state() { printf '%s' "${XDG_STATE_HOME:-$HOME/.local/state}/dotfiles/theme"; }
 # _rice_get <key>: saved name only if plain and still present in the stowed configs
-# (drops stale aura_glass / deleted presets so sed never points at missing files).
+# (drops deleted presets so sed never points at missing files).
 _rice_get() {
     local key=$1 v st cfg
     st=$(_rice_state)
@@ -390,7 +390,7 @@ _rice_get() {
     esac
     printf '%s' "$v"
 }
-# Drop broken theme.local.* links (e.g. themes/aura-glass.* after that file was removed).
+# Drop broken theme.local.* links (target file removed after a preset rename).
 _rice_drop_stale_theme_locals() {
     local cfg="${XDG_CONFIG_HOME:-$HOME/.config}" link
     for link in "$cfg/ghostty/theme.local.conf" "$cfg/alacritty/theme.local.toml"; do

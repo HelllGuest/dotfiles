@@ -133,9 +133,10 @@ issues; stow inventory unchanged. No host configuration was changed during the
 audit, no secrets were printed, and no destructive host commands ran.
 
 > **Snapshot drift (post-audit):** 23 `tests/*.test.sh` as of 2026-11-22 (added
-> `tests/hardening-scripts.test.sh`). `gdm-shell-theme.sh` / greeter hook removed
-> with Aura → stock Adwaita (`theme-setup.sh`). `virbr-malware` bridge now sets
-> `zone="lab-malware"`. Supply-chain and script hardening: `install-ponytail.sh`
+> `tests/hardening-scripts.test.sh`). `gdm-shell-theme.sh` and its greeter hook
+> are gone; desktop look is stock Adwaita via `theme-setup.sh`. `virbr-malware`
+> bridge now sets `zone="lab-malware"`. Supply-chain and script hardening:
+> `install-ponytail.sh`
 > commit-pinned (`PONYTAIL_COMMIT`; local Gemini install), `install-photogimp.sh`
 > and all 11 EGO zips in `fetch-gnome-extensions.sh` SHA-256 pinned,
 > `rebuild-v3.sh` parses `validpgpkeys` statically (no `source ./PKGBUILD`),

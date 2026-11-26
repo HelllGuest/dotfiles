@@ -79,7 +79,7 @@ Thank you for helping improve this setup. Follow these guidelines to keep the re
 ### GNOME (`desktop/gnome/`)
 
 - Export live settings: `./desktop/scripts/backup-gsettings.sh` (overwrites `desktop/gnome/dconf/user.conf`; re-asserts the lock-screen, autorun and privacy keys after the dump, so add new hardening keys to its `ENFORCED` table)
-- Theme is stock Adwaita via `desktop/scripts/theme-setup.sh` (no Aura Glass; purges Aura/Orchis leftovers). Do not add `gtk-theme` / `icon-theme` / `cursor-theme` / `cursor-size` or the `user-theme` / `blur-my-shell` trees to `user.conf`, `extensions.conf` or `system/gdm/…/00-login-screen` (`backup-gsettings.sh` drops them; `tests/theme.test.sh` enforces it). Keep the Full-pack UUIDs in `desktop/gnome/extensions.txt` and `user.conf` `enabled-extensions`; fetch via `desktop/scripts/fetch-gnome-extensions.sh`.
+- Theme is stock Adwaita via `desktop/scripts/theme-setup.sh` (Orchis greeter scrub only; no Aura Glass purge). Do not add `gtk-theme` / `icon-theme` / `cursor-theme` / `cursor-size` or the `user-theme` / `blur-my-shell` trees to `user.conf`, `extensions.conf` or `system/gdm/…/00-login-screen` (`backup-gsettings.sh` drops them; `tests/theme.test.sh` enforces it). Keep the Full-pack UUIDs in `desktop/gnome/extensions.txt` and `user.conf` `enabled-extensions`; fetch via `desktop/scripts/fetch-gnome-extensions.sh`.
 - Primary terminal is kitty (`Super+Return`, `xdg-terminals.list`, `x-scheme-handler/terminal` via `gnome-console-setup.sh`).
 - Avoid machine-specific paths unless intentionally updating the reference snapshot.
 - Do **not** commit touchpad/mouse/keyboard overrides unless deliberately changing from stock GNOME defaults; session setup resets peripherals via `desktop/scripts/reset-input-defaults.sh`.

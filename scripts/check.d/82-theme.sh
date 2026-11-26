@@ -1,7 +1,7 @@
 # 82-theme.sh — sourced by scripts/check.sh at top level, in name order:
 # shares check_fail/CHECK_FAILED, MODE and REPO_ROOT with the other checks.
 # shellcheck shell=bash
-# Stock Adwaita via theme-setup.sh --check; no Aura Glass, no leftover GDM theme hook.
+# Stock Adwaita via theme-setup.sh --check; no leftover GDM theme hook.
 
 _theme_rc=0
 _theme_out="$(bash "$REPO_ROOT/desktop/scripts/theme-setup.sh" --check 2>&1)" || _theme_rc=$?
