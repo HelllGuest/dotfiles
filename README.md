@@ -563,9 +563,7 @@ and the rest). `desktop/gnome/dconf/*.conf` leave gtk-theme / icon / cursor and 
 extension look trees unset; `backup-gsettings.sh` drops those from snapshots.
 On apply it clears leftover Orchis greeter bits (`theme-sync.service`, Orchis user
 theme copy, `~/.config/gtk-4.0` Orchis links) and hints if old `orchis-theme` /
-`tela-icon-theme` / `bibata-cursor-theme-bin` packages remain. It does **not**
-scrub a former Aura Glass install (themes, Colloid icons, `90-aura-glass` GDM
-dconf, helper extension); remove those by hand if still present. `check.sh`
+`tela-icon-theme` / `bibata-cursor-theme-bin` packages remain. `check.sh`
 verifies Adwaita keys only. Opt out: `SKIP_THEME=1`. GNOME Tweaks and Extension
 Manager are installed from `pacman.txt`.
 

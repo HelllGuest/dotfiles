@@ -463,7 +463,6 @@ for p in toml_files:
     if p.name == "starship.toml":
         for pal in ("gruvbox_dark", "secops"):
             assert pal in data["palettes"], f"starship missing palette {pal}"
-        assert "aura_glass" not in data.get("palettes", {}), "starship must not keep aura_glass"
 PY
 for _bt in gruvbox_dark secops; do
   _bf="$ROOT/stow/btop/.config/btop/themes/${_bt}.theme"
@@ -474,17 +473,9 @@ for _bt in gruvbox_dark secops; do
   ! grep -vE '^[[:space:]]*(#|$|theme\[[a-z0-9_]+\]="#[0-9a-fA-F]{6}")' "$_bf" | grep -q . \
     || fail "btop theme $_bt has malformed line"
 done
-[[ ! -e $ROOT/stow/btop/.config/btop/themes/aura_glass.theme ]] \
-  || fail "btop aura_glass theme must be removed"
-[[ ! -e $ROOT/stow/alacritty/.config/alacritty/themes/aura-glass.toml ]] \
-  || fail "alacritty aura-glass theme must be removed"
-[[ ! -e $ROOT/stow/fastfetch/.config/fastfetch/aura-glass.jsonc ]] \
-  || fail "fastfetch aura-glass preset must be removed"
 for _gt in gruvbox secops; do
   [[ -f "$ROOT/stow/ghostty/.config/ghostty/themes/${_gt}.conf" ]] || fail "missing ghostty theme $_gt"
 done
-[[ ! -e $ROOT/stow/ghostty/.config/ghostty/themes/aura-glass.conf ]] \
-  || fail "ghostty aura-glass theme must be removed"
 # Active defaults must match one of their shipped templates (no silent drift).
 _match_any() {
   local def=$1 f; shift
@@ -546,7 +537,6 @@ grep -qx 'save_config_on_exit = false' "$ROOT/stow/btop/.config/btop/btop.conf" 
     _fl="$(_rs 'ff-preset')"
     grep -qx gruvbox <<<"$_fl" && grep -qx minimal <<<"$_fl" && grep -qx secops <<<"$_fl" \
       || fail "$_sh: ff-preset list missing presets: $_fl"
-    ! grep -qx aura-glass <<<"$_fl" || fail "$_sh: ff-preset must not list aura-glass"
     _rs 'ff-preset use minimal >/dev/null'
     [[ "$(cat "$_st/fastfetch")" == minimal ]] || fail "$_sh: ff-preset use must save the preset name"
     : >"$RICE_LOG"; _rs 'ff'
@@ -587,22 +577,22 @@ grep -qx 'save_config_on_exit = false' "$ROOT/stow/btop/.config/btop/btop.conf" 
     printf "x'/;e id;#\n" >"$_st/starship"
     _sc="$(_rs 'printf %s "${STARSHIP_CONFIG:-}"')"
     [[ -z $_sc ]] || fail "$_sh: an invalid saved palette must be ignored (got $_sc)"
-    # Stale Aura palette / theme names must be dropped (files no longer ship).
-    printf 'aura_glass\n' >"$_st/starship"
-    printf 'aura_glass\n' >"$_st/btop"
-    printf 'aura-glass\n' >"$_st/fastfetch"
+    # Stale palette / theme names must be dropped (files do not exist).
+    printf 'nonexistent_theme\n' >"$_st/starship"
+    printf 'nonexistent_theme\n' >"$_st/btop"
+    printf 'nonexistent-theme\n' >"$_st/fastfetch"
     _sc="$(_rs 'printf %s "${STARSHIP_CONFIG:-}"')"
-    [[ -z $_sc ]] || fail "$_sh: stale aura_glass starship state must be ignored (got $_sc)"
-    [[ ! -e $_st/starship ]] || fail "$_sh: stale aura_glass starship state file must be removed"
+    [[ -z $_sc ]] || fail "$_sh: stale starship state must be ignored (got $_sc)"
+    [[ ! -e $_st/starship ]] || fail "$_sh: stale starship state file must be removed"
     : >"$RICE_LOG"; _rs 'btop'
-    grep -qx 'btop ' "$RICE_LOG" || fail "$_sh: stale aura_glass btop state must fall back to repo config: $(cat "$RICE_LOG")"
-    [[ ! -e $_st/btop ]] || fail "$_sh: stale aura_glass btop state file must be removed"
+    grep -qx 'btop ' "$RICE_LOG" || fail "$_sh: stale btop state must fall back to repo config: $(cat "$RICE_LOG")"
+    [[ ! -e $_st/btop ]] || fail "$_sh: stale btop state file must be removed"
     : >"$RICE_LOG"; _rs 'ff'
-    grep -qx 'fastfetch ' "$RICE_LOG" || fail "$_sh: stale aura-glass fastfetch state must fall back: $(cat "$RICE_LOG")"
-    [[ ! -e $_st/fastfetch ]] || fail "$_sh: stale aura-glass fastfetch state file must be removed"
-    # Broken theme.local.* links to deleted aura-glass themes must be removed at shell start.
-    ln -sfn themes/aura-glass.conf "$_rt/cfg/ghostty/theme.local.conf"
-    ln -sfn themes/aura-glass.toml "$_rt/cfg/alacritty/theme.local.toml"
+    grep -qx 'fastfetch ' "$RICE_LOG" || fail "$_sh: stale fastfetch state must fall back: $(cat "$RICE_LOG")"
+    [[ ! -e $_st/fastfetch ]] || fail "$_sh: stale fastfetch state file must be removed"
+    # Broken theme.local.* links to missing themes must be removed at shell start.
+    ln -sfn themes/nonexistent.conf "$_rt/cfg/ghostty/theme.local.conf"
+    ln -sfn themes/nonexistent.toml "$_rt/cfg/alacritty/theme.local.toml"
     _rs ':'
     [[ ! -e $_rt/cfg/ghostty/theme.local.conf && ! -L $_rt/cfg/ghostty/theme.local.conf ]] \
       || fail "$_sh: dangling ghostty theme.local.conf must be removed"

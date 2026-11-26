@@ -23,8 +23,6 @@ _old="$(git -C "$ROOT" grep -lI \
   -- desktop stow scripts install.sh packages 2>/dev/null \
   | grep -v '^desktop/scripts/theme-setup.sh$' || true)"
 [[ -z $_old ]] || fail "old theme still referenced in: $_old"
-! grep -qiE 'aura-glass|Aura Glass|AURA_|Colloid' "$TS" \
-  || fail "theme-setup.sh must not reference Aura Glass"
 grep -q 'Adwaita' "$TS" || fail "theme-setup.sh must apply Adwaita"
 
 # --- Full pack is fetched + listed -------------------------------------------
@@ -35,7 +33,6 @@ for u in blur-my-shell@aunetx custom-osd@neuromorph status-tray@keithvassallo.co
          copyous@boerdereinar.dev wiggly@mojarch restartto@tiagoporsch.github.io; do
   grep -qx "$u" "$EXT" || fail "extensions.txt must list $u"
 done
-! grep -qiE 'aura-glass' "$EXT" || fail "extensions.txt must not list Aura helper"
 
 # --- repo dconf ---------------------------------------------------------------
 U="$ROOT/desktop/gnome/dconf/user.conf"; G="$ROOT/system/gdm/etc/dconf/db/gdm.d/00-login-screen"
@@ -48,7 +45,6 @@ for s in user-theme blur-my-shell; do
     || fail "repo dconf must not carry the $s tree"
 done
 _en="$(grep '^enabled-extensions=' "$U")"
-! grep -qiE 'aura-glass' <<<"$_en" || fail "user.conf must not enable Aura helper"
 for u in user-theme@gnome-shell-extensions.gcampax.github.com \
          blur-my-shell@aunetx custom-osd@neuromorph status-tray@keithvassallo.com \
          tiling-assistant@leleat-on-github hotedge@jonathan.jdoda.ca kiwimenu@kemma \
@@ -160,8 +156,6 @@ grep -qE "gsettings (reset|set) org.gnome.shell.extensions.user-theme name" "$T/
   || fail "must reset/clear user-theme name"
 ! grep -q "color-scheme\|accent-color" "$T/gsettings.log" \
   || fail "must not reset color-scheme/accent-color (user.conf owns them): $(cat "$T/gsettings.log")"
-! grep -qiE 'aura-glass|Aura Glass|AURA_|Colloid' "$T/out" \
-  || fail "run must not mention Aura Glass: $(cat "$T/out")"
 run_ts --check >/dev/null || fail "--check must pass right after setup"
 
 : >"$T/sudo.log"; : >"$T/gsettings.log"

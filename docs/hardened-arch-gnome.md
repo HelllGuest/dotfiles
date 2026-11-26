@@ -1616,7 +1616,7 @@ cd ~/dotfiles
 
 * Install packages from `packages/pacman.txt` (kernels, shells, terminals, CLI tools; skips Intel GPU packages on ThinkPad T14s Gen 3 AMD; installs the NVIDIA stack only when an NVIDIA display device is on PCI; skips `power-profiles-daemon` when `tuned-ppd` is present and `rust` when `rustup` is present; replaces an AUR `bootvine-git` left by older dotfiles with the official `bootvine`)
 * Enable the `bootvine` boot screen (`bootvine.service` + `bootvine-shutdown.service`; no `sd-bootvine` initrd hook, so the LUKS prompt is unchanged)
-* Apply stock Adwaita for the session (`desktop/scripts/theme-setup.sh`; Orchis greeter scrub only, no Aura Glass purge; extensions stay as configured in dconf)
+* Apply stock Adwaita for the session (`desktop/scripts/theme-setup.sh`; Orchis greeter scrub only; extensions stay as configured in dconf)
 * Record every failed step and exit 1 at the end (no silent skips; only explicit `SKIP_*=1` opt-outs or menu/`--only`/`--skip` section selection skip); `check.sh` fails on missing packages, empty dock icons and dead shortcuts
 * Apply **after** `pacman.txt` exactly one machine profile via `provision/scripts/apply-profile.sh`: `profiles/$(hostname).sh` if present, otherwise `provision/scripts/detect-profile.sh` (`thinkpad-p15`, `thinkpad-t14s`, or `laptop`). Optimus/NVIDIA setup is inside `thinkpad-p15.sh` (no `nvidia.sh`).
 * Install Flatpaks from `packages/flatpak.txt`, then fonts, then stow `$HOME` and install `system/` via `system/scripts/system-setup.sh` (includes `/etc/makepkg.conf.d/zz-x86-64-v3.conf`), **then** AUR from `packages/aur.txt` (bootstraps `paru` after the v3 makepkg drop-in)
