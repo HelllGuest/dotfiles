@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # agentsync: link shared AGENTS.md (+ Claude/Gemini bridges) into a project
-# Installed to ~/.local/bin by ai-rules/install.sh
+# Installed to ~/.local/bin by ai/rules/install.sh
 set -euo pipefail
 
 TARGET="${AI_RULES_HOME:-$HOME/dev/ai-rules}"

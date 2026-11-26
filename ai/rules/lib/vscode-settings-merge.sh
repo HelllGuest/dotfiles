@@ -1,6 +1,6 @@
 # shellcheck shell=bash
-# ai-rules/lib/vscode-settings-merge.sh — single merge for AI & VS Code-family telemetry JSON
-# Used by security/lib/telemetry.sh and ai-rules/install.sh (kit-portable).
+# ai/rules/lib/vscode-settings-merge.sh — single merge for AI & VS Code-family telemetry JSON
+# Used by security/lib/telemetry.sh and ai/rules/install.sh (kit-portable).
 
 VSCODE_TELEMETRY_FAMILY_KEYS=(
   telemetry.telemetryLevel

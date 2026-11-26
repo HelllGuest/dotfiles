@@ -4,7 +4,7 @@ This file is the single source of truth for how any AI coding agent (Cursor,
 Antigravity / `agy`, Gemini CLI / Gemini Code Assist / Jules, Kiro, Claude Code,
 Codex, OpenCode, Kimi, or anything else that reads AGENTS.md) should behave in
 this repository. Projects usually link it from the kit (`~/dev/ai-rules/AGENTS.md`
-or `./ai-rules/AGENTS.md`). Edit the kit copy, not a per-project fork.
+or `./ai/rules/AGENTS.md`). Edit the kit copy, not a per-project fork.
 
 For Claude Code: also keep a project `CLAUDE.md` whose first line is
 `@AGENTS.md` (or symlink `CLAUDE.md` → `AGENTS.md`). Claude prefers
@@ -13,7 +13,7 @@ For Claude Code: also keep a project `CLAUDE.md` whose first line is
 For Google AI tools / agents / CLI (Gemini CLI, Antigravity / `agy`, Gemini Code
 Assist): keep a project `GEMINI.md` whose first line is `@AGENTS.md` (or symlink
 `GEMINI.md` → `AGENTS.md`), and link global rules at `~/.gemini/{AGENTS,GEMINI}.md`
-and `~/.gemini/config/{AGENTS,GEMINI}.md` (`agentsync` and `ai-rules/install.sh`
+and `~/.gemini/config/{AGENTS,GEMINI}.md` (`agentsync` and `ai/rules/install.sh`
 handle both).
 
 ## Code quality

@@ -122,7 +122,7 @@ Thank you for helping improve this setup. Follow these guidelines to keep the re
 
 ## Scripts
 
-- All executable scripts across `scripts/`, `provision/scripts/`, `system/scripts/`, `ai/scripts/`, `desktop/scripts/`, `security/scripts/`, `labs/scripts/`, `builds/scripts/`, and `tests/` must be executable (`chmod +x`). `bash -n` and `ShellCheck` (`-x -S warning -s bash`) run across all subsystem directories in CI (`make lint`).
+- All executable scripts across repo root (`install.sh`, `stow-only.sh`, `uninstall.sh`), `scripts/`, `provision/scripts/`, `system/scripts/`, `ai/scripts/`, `desktop/scripts/`, `security/scripts/`, `labs/scripts/`, `builds/scripts/`, and `tests/` must be executable (`chmod +x`). `bash -n` and `ShellCheck` (`-x -S warning -s bash`) run across all subsystem directories in CI (`make lint`).
 - Tests: `tests/*.test.sh` and `t14s-arch-install/tests/{host-check,smoke}.test.sh` (+ Stage A ShellCheck), all run by CI (`make test` / `make ci`). `bash tests/system-setup.test.sh` runs `system/scripts/system-setup.sh` against a fake root (`SYSTEM_ROOT`), no sudo.
 - Markdown: `bash scripts/lint-docs.sh` (header spacing + tables). CI runs it; keep it out of `validate-configs.sh`.
 - Use `$HOME`-relative paths or repo-root detection — avoid hardcoding usernames.
@@ -141,7 +141,7 @@ Thank you for helping improve this setup. Follow these guidelines to keep the re
 
 | Subsystem | Path | Scripts & modules |
 |-----------|------|-------------------|
-| Orchestration | repo root & `provision/` | `install.sh`, `stow-only.sh`, `provision/scripts/{configure,apply-profile,detect-profile,install-flatpaks,install-aur,bootstrap-aur,install-fonts,install-photogimp,install-foxcage,install-re-extras,post-update,p15-dotfiles-preflight,arch-install-vmtest,vm-stageb-run,vm-stageb-guest}.sh` |
+| Orchestration | repo root & `provision/` | `install.sh`, `stow-only.sh`, `uninstall.sh`, `provision/scripts/{configure,apply-profile,detect-profile,install-flatpaks,install-aur,bootstrap-aur,install-fonts,install-photogimp,install-foxcage,install-re-extras,post-update,p15-dotfiles-preflight,arch-install-vmtest,vm-stageb-run,vm-stageb-guest}.sh` |
 | System | `system/` | `system/scripts/{system-setup,zram-setup,tmp-to-disk,fingerprint-setup,rebuild-v3,thinkpad-charge-thresholds,thinkpad-health}.sh` + `system/{etc,gdm/etc,zram/etc,templates}/` |
 | AI tooling | `ai/` | `ai/scripts/{sync-agent-skills,headroom-setup,install-headroom,install-rtk,ai-stack-setup,ollama-setup,agent-run,install-coding-agents,install-caveman,install-ponytail,install-android-ui-skills,install-ecosystem-skills,install-re-skills,install-rea,install-ghidra-cli,install-obscura}.sh` + `ai/{rules,skills,lib}/` |
 | Desktop | `desktop/` | `desktop/scripts/{gnome-session-setup,gnome-console-setup,install-extensions,fetch-gnome-extensions,install-dash2dock,rice-setup,theme-setup,gdm-setup,backup-gsettings,restore-gsettings,reset-input-defaults,cleanup-input-overrides,git-setup,nvim-setup}.sh` + `desktop/{gnome,lib}/` |

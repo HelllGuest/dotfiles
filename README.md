@@ -196,7 +196,8 @@ Optional older **Crampack** presets (not in this repo):
 dotfiles/
 ├── install.sh           # Top-level Stage B orchestrator (TUI/GUI menu + selective sections)
 ├── stow-only.sh         # No-root $HOME stow entrypoint
-├── Makefile             # Task runner (make ci, test, lint, check, drift, fix, vm-b)
+├── uninstall.sh         # Safe selective uninstaller (default: user units/stow/ai; --all for /etc)
+├── Makefile             # Task runner (make ci, test, lint, check, drift, fix, uninstall, vm-b)
 ├── stow/                # Pure deployable $HOME GNU Stow packages only
 │   ├── bash/ zsh/       # shells; shared .shell-* under zsh/
 │   ├── containers/      # rootless Podman containers.conf + storage.conf
@@ -590,6 +591,16 @@ Applies user-level symlinks only from `stow/` (first removes unmodified `/etc/sk
 ./stow-only.sh
 ```
 
+### 2b. Uninstall
+Safely removes dotfiles symlinks, user systemd units, and AI kit symlinks without deleting installed packages, GNOME `dconf` user settings, or personal data (`~/.ssh`, `~/.gnupg`, `~/.gitconfig`, browser profiles, secrets). Privileged `/etc` layers (`browsers`, `location`, `system`) are opt-in via `--all` or `--only`; non-interactive runs require `--yes` (`-y`) or `--dry-run` (`-n`).
+```bash
+./uninstall.sh --list                      # list all sections (default vs opt-in)
+./uninstall.sh --dry-run                   # preview default user-level uninstall (units, stow, ai)
+./uninstall.sh                             # interactive user-level uninstall (no sudo)
+./uninstall.sh --all --dry-run             # preview full uninstall incl. browsers, location, system
+./uninstall.sh --only stow,ai --yes        # non-interactive selective uninstall (or --skip ...)
+```
+
 ### 3. zram config
 Do **not** `stow -t / zram` (a symlink into `$HOME` breaks at early boot). `install.sh` runs `system/scripts/zram-setup.sh`, which copies a real file to `/etc/systemd/zram-generator.conf`. Re-run that script to refresh.
 
@@ -688,7 +699,8 @@ We take a "quiet by default" approach:
 
 | Task | Command |
 |------|---------|
-| Task runner (`Makefile`) | `make help` (`make ci`, `make test`, `make check`, `make drift`, `make fix`, `make update-full`, `make vm-b`, `make vm-clean`) |
+| Task runner (`Makefile`) | `make help` (`make ci`, `make test`, `make check`, `make drift`, `make fix`, `make uninstall-dry`, `make uninstall`, `make update-full`, `make vm-b`, `make vm-clean`) |
+| Uninstall | `./uninstall.sh [--dry-run\|--all\|--only …\|--yes]` (`make uninstall-dry` / `make uninstall`) |
 | Full update | `bash provision/scripts/post-update.sh --full` (or `sudo pacman -Syu && ./install.sh && bash provision/scripts/post-update.sh`) |
 | Minimal package install | `./install.sh --minimal` (or `MINIMAL_PACKAGES=1` / `SKIP_AI_IDES=1` / `SKIP_MOBILE_DEV=1` / `SKIP_RE_TOOLS=1`) |
 | Encrypted local overrides | `bash security/scripts/secrets-bootstrap.sh init\|lock\|unlock\|status` (`~/.config/dotfiles/local.env`, `age` or OpenSSL PBKDF2) |

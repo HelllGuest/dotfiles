@@ -1,5 +1,5 @@
 .PHONY: help ci lint lint-docs test test-stage-a check check-all drift fix \
-	update update-full vm-a vm-b vm-clean secrets-init secrets-unlock
+	update update-full uninstall uninstall-dry vm-a vm-b vm-clean secrets-init secrets-unlock
 
 SHELL := /usr/bin/env bash
 .SHELLFLAGS := -euo pipefail -c
@@ -18,10 +18,10 @@ ci: lint test test-stage-a lint-docs ## Run full local CI (exact mirror of .gith
 
 lint: ## Run bash -n and ShellCheck on all scripts
 	@while IFS= read -r -d '' f; do bash -n "$$f"; done < <(find scripts system ai desktop security provision builds labs -type f -name '*.sh' -print0)
-	@bash -n install.sh stow-only.sh
+	@bash -n install.sh stow-only.sh uninstall.sh
 	@while IFS= read -r -d '' f; do bash -n "$$f"; done < <(find profiles -type f -name '*.sh' -print0 2>/dev/null || true)
 	@shellcheck -x -S warning -s bash \
-		install.sh stow-only.sh \
+		install.sh stow-only.sh uninstall.sh \
 		scripts/*.sh scripts/check.d/*.sh \
 		provision/scripts/*.sh provision/lib/*.sh \
 		system/scripts/*.sh \
@@ -64,6 +64,12 @@ update: ## Run standard post-update maintenance
 
 update-full: ## Run full system + AI skills + health check update
 	@bash provision/scripts/post-update.sh --full
+
+uninstall-dry: ## Preview user-level uninstall without modifying files
+	@bash ./uninstall.sh --dry-run
+
+uninstall: ## Uninstall user-level dotfiles (units, stow, AI symlinks)
+	@bash ./uninstall.sh
 
 vm-a: ## Run bare-disk Stage A VM install (ISO=... FRESH=1)
 	@bash t14s-arch-install/tests/vm-run.sh
