@@ -71,12 +71,27 @@ echo "=== starting installer ==="
 # Optional host pacman cache (9p ro from vm-run.sh): speeds up prefetch + pacstrap.
 # Mount outside /mnt so mounting the target root on /mnt never shadows it.
 if [[ ${T14S_VM_PKGCACHE:-0} == 1 ]]; then
-  mkdir -p /run/t14s-pkgcache
-  if mount -t 9p -o trans=virtio,version=9p2000.L,ro pkgcache /run/t14s-pkgcache 2>/dev/null; then
+  mkdir -p /run/t14s-pkgcache-raw /run/t14s-pkgcache
+  if mount -t 9p -o trans=virtio,version=9p2000.L,ro pkgcache /run/t14s-pkgcache-raw 2>/dev/null; then
+    # Filter host-0600 files: QEMU 9p allows stat() but returns EACCES on open().
+    _ok=()
+    for _p in /run/t14s-pkgcache-raw/*; do
+      [[ -f $_p ]] || continue
+      if { : <"$_p"; } 2>/dev/null; then _ok+=("$_p"); fi
+    done
+    if (( ${#_ok[@]} )); then
+      printf '%s\0' "${_ok[@]}" | xargs -0 -r ln -s -t /run/t14s-pkgcache
+    fi
+    for _p in /run/t14s-pkgcache/*.pkg.tar.*; do
+      [[ -e $_p && $_p != *.sig ]] || continue
+      if [[ -e "/run/t14s-pkgcache-raw/${_p##*/}.sig" && ! -e "${_p}.sig" ]]; then
+        rm -f "$_p"
+      fi
+    done
     export EXTRA_PACMAN_CACHEDIR=/run/t14s-pkgcache
     # Keep writable target cache first so pacman writes missing packages there, then checks ro host cache.
     sed -i '/^\[options\]/a CacheDir = /mnt/var/cache/pacman/pkg/\nCacheDir = /run/t14s-pkgcache/' /etc/pacman.conf
-    echo "=== mounted host pkgcache at /run/t14s-pkgcache (ro) ==="
+    echo "=== mounted host pkgcache at /run/t14s-pkgcache (ro, ${#_ok[@]} readable files) ==="
   fi
 fi
 set +e

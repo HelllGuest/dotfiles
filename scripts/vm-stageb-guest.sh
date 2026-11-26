@@ -38,6 +38,10 @@ echo "→ tree ready at $DEST ($(du -sh . | awk '{print $1}'))"
 SUDOERS_DROP=/etc/sudoers.d/t14s-vm-stageb
 GUEST_NAME="$(id -un)"
 stageb_sudoers_rm() {
+  sudo sed -i '\|^CacheDir = /run/stageb-pkgcache/$|d' /etc/pacman.conf 2>/dev/null || true
+  sudo rm -rf /run/stageb-pkgcache 2>/dev/null || true
+  sudo umount /run/stageb-pkgcache-raw 2>/dev/null || true
+  sudo rmdir /run/stageb-pkgcache-raw 2>/dev/null || true
   sudo rm -f "$SUDOERS_DROP" 2>/dev/null || true
 }
 # Drop leftovers from a prior killed run before installing a fresh one.
@@ -46,6 +50,33 @@ printf '%s\n' "$PASS" | sudo -S -p '' bash -c \
   "printf '%s ALL=(ALL) NOPASSWD: ALL\n' '$GUEST_NAME' >'$SUDOERS_DROP' && chmod 440 '$SUDOERS_DROP'"
 trap 'stageb_sudoers_rm' EXIT
 sudo -n true || { echo "FAIL: sudo -n still blocked"; echo DOTFILES_STAGEB_RESULT=FAIL; exit 1; }
+
+# Optional host pacman cache (9p ro from vm-stageb-run.sh): speeds up pacman -Syu.
+if [[ ${STAGEB_VM_PKGCACHE:-0} == 1 ]]; then
+  sudo mkdir -p /run/stageb-pkgcache-raw /run/stageb-pkgcache
+  if sudo mount -t 9p -o trans=virtio,version=9p2000.L,ro pkgcache /run/stageb-pkgcache-raw 2>/dev/null; then
+    # Filter host-0600 files: QEMU 9p allows stat() but returns EACCES on open().
+    sudo bash -euo pipefail -c '
+      ok=()
+      for p in /run/stageb-pkgcache-raw/*; do
+        [[ -f $p ]] || continue
+        if { : <"$p"; } 2>/dev/null; then ok+=("$p"); fi
+      done
+      if (( ${#ok[@]} )); then
+        printf "%s\0" "${ok[@]}" | xargs -0 -r ln -s -t /run/stageb-pkgcache
+      fi
+      for p in /run/stageb-pkgcache/*.pkg.tar.*; do
+        [[ -e $p && $p != *.sig ]] || continue
+        if [[ -e "/run/stageb-pkgcache-raw/${p##*/}.sig" && ! -e "${p}.sig" ]]; then
+          rm -f "$p"
+        fi
+      done
+      echo "=== mounted host pkgcache at /run/stageb-pkgcache (ro, ${#ok[@]} readable files) ==="
+    '
+    sudo sed -i '\|^CacheDir = /run/stageb-pkgcache/$|d' /etc/pacman.conf
+    sudo sed -i '/^\[options\]/a CacheDir = /var/cache/pacman/pkg/\nCacheDir = /run/stageb-pkgcache/' /etc/pacman.conf
+  fi
+fi
 
 echo "=== configure.sh (defaults: SETUP_FIREWALLD) ==="
 # plain UI: empty line keeps checklist defaults (SETUP_FIREWALLD on)

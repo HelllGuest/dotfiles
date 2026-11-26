@@ -51,6 +51,15 @@ cleanup() {
 }
 trap cleanup EXIT
 
+HOST_PKGCACHE=${HOST_PKGCACHE:-/var/cache/pacman/pkg}
+virtfs_extra=()
+use_pkgcache=0
+if [[ $HOST_PKGCACHE != none && -d $HOST_PKGCACHE && -r $HOST_PKGCACHE ]]; then
+  virtfs_extra=(-virtfs "local,path=${HOST_PKGCACHE},mount_tag=pkgcache,security_model=none,readonly=on")
+  use_pkgcache=1
+  say "host pkgcache: $HOST_PKGCACHE (9p ro)"
+fi
+
 say "booting $DISK (9p:$REPO) as $GUEST_USER"
 qemu-system-x86_64 \
   -enable-kvm -cpu host -m "$RAM" -smp "$SMP" -machine q35 \
@@ -60,6 +69,7 @@ qemu-system-x86_64 \
   -netdev user,id=n0,hostfwd=tcp:127.0.0.1:${SSH_PORT:-2222}-:22 \
   -device virtio-net,netdev=n0 \
   -virtfs local,path="$REPO",mount_tag=dotfiles,security_model=none,readonly=on \
+  "${virtfs_extra[@]}" \
   -display none \
   -serial pipe:"$PIPE" \
   -monitor none \
@@ -105,6 +115,8 @@ say "logging in as $GUEST_USER"
   printf 'export DOTFILES_USER_PASS=%q\r' "$GUEST_PASS"
   sleep 1
   printf 'export DOTFILES_SRC=/mnt/dotfiles\r'
+  sleep 1
+  printf 'export STAGEB_VM_PKGCACHE=%s\r' "$use_pkgcache"
   sleep 1
   printf 'printf %%s\\\\n %q | sudo -S mkdir -p /mnt/dotfiles\r' "$GUEST_PASS"
   sleep 2

@@ -83,11 +83,25 @@ export T14S_BASE_URL="$BASE" T14S_UI=plain T14S_NONINTERACTIVE=1 T14S_I_WILL_ERA
   T14S_ANSWERS=/tmp/t14s-answers.env T14S_PASS_FILE=/tmp/t14s-pass.env T14S_ANSWERS_OUT=/tmp/t14s-answers.out
 echo "=== starting installer (MANUAL, reuse ESP) ==="
 if [[ ${T14S_VM_PKGCACHE:-0} == 1 ]]; then
-  mkdir -p /run/t14s-pkgcache
-  if mount -t 9p -o trans=virtio,version=9p2000.L,ro pkgcache /run/t14s-pkgcache 2>/dev/null; then
+  mkdir -p /run/t14s-pkgcache-raw /run/t14s-pkgcache
+  if mount -t 9p -o trans=virtio,version=9p2000.L,ro pkgcache /run/t14s-pkgcache-raw 2>/dev/null; then
+    _ok=()
+    for _p in /run/t14s-pkgcache-raw/*; do
+      [[ -f $_p ]] || continue
+      if { : <"$_p"; } 2>/dev/null; then _ok+=("$_p"); fi
+    done
+    if (( ${#_ok[@]} )); then
+      printf '%s\0' "${_ok[@]}" | xargs -0 -r ln -s -t /run/t14s-pkgcache
+    fi
+    for _p in /run/t14s-pkgcache/*.pkg.tar.*; do
+      [[ -e $_p && $_p != *.sig ]] || continue
+      if [[ -e "/run/t14s-pkgcache-raw/${_p##*/}.sig" && ! -e "${_p}.sig" ]]; then
+        rm -f "$_p"
+      fi
+    done
     export EXTRA_PACMAN_CACHEDIR=/run/t14s-pkgcache
     sed -i '/^\[options\]/a CacheDir = /mnt/var/cache/pacman/pkg/\nCacheDir = /run/t14s-pkgcache/' /etc/pacman.conf
-    echo "=== mounted host pkgcache at /run/t14s-pkgcache (ro) ==="
+    echo "=== mounted host pkgcache at /run/t14s-pkgcache (ro, ${#_ok[@]} readable files) ==="
   fi
 fi
 bash <(curl -fsSL "$BASE/install.sh"); rc=$?
