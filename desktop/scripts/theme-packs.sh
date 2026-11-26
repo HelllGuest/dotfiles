@@ -281,6 +281,9 @@ confirm_action() {
 
 record_state() {
     local pack=$1 eff_gdm=$2 eff_ff=$3 eff_fp=$4
+    if [[ $(state_val "$pack" gdm || echo 0) == 1 ]]; then eff_gdm=1; fi
+    if [[ $(state_val "$pack" firefox || echo 0) == 1 ]]; then eff_ff=1; fi
+    if [[ $(state_val "$pack" flatpak || echo 0) == 1 ]]; then eff_fp=1; fi
     if (( DRY_RUN )); then
         printf '[dry-run] write state %s/%s (color=%s gdm=%d firefox=%d flatpak=%d)\n' \
             "$STATE_DIR" "$pack" "$OPT_COLOR" "$eff_gdm" "$eff_ff" "$eff_fp"
@@ -356,6 +359,7 @@ install_vinceliuice_cursors() {
 install_adw_gtk_pkg() {
     if command -v pacman >/dev/null 2>&1; then
         if ! pacman -Q adw-gtk-theme >/dev/null 2>&1; then
+            confirm_action "privileged install of adw-gtk-theme via pacman" || return 1
             act sudo pacman -S --needed --noconfirm adw-gtk-theme
         fi
     else
@@ -646,13 +650,13 @@ install_pack() {
             need_cmd git git || return 1
             need_cmd python3 python || return 1
             if (( OPT_GDM )); then need_cmd glib-compile-resources glib2 || return 1; fi
+            install_adw_gtk_pkg || return 1
             local shell_dir="$THEME_PACKS_DIR/shared/Marble-shell-theme"
             local icon_dir="$THEME_PACKS_DIR/shared/MoreWaita"
             local cur_dir="$THEME_PACKS_DIR/shared/WhiteSur-cursors"
             clone_or_update "https://github.com/imarkoff/Marble-shell-theme.git" "$shell_dir"
             clone_or_update "https://github.com/somepaulo/MoreWaita.git" "$icon_dir"
             clone_or_update "https://github.com/vinceliuice/WhiteSur-cursors.git" "$cur_dir"
-            install_adw_gtk_pkg
             act_in "$shell_dir" python3 install.py --blue --filled --mode "$OPT_COLOR"
             if (( OPT_GDM )); then
                 warn_gdm_gresource
@@ -672,13 +676,13 @@ install_pack() {
             need_cmd git git || return 1
             need_cmd python3 python || return 1
             if (( OPT_GDM )); then need_cmd glib-compile-resources glib2 || return 1; fi
+            install_adw_gtk_pkg || return 1
             local shell_dir="$THEME_PACKS_DIR/shared/Marble-shell-theme"
             local icon_dir="$THEME_PACKS_DIR/modular-gruvbox/gruvbox-plus-icon-pack"
             local cur_dir="$THEME_PACKS_DIR/shared/WhiteSur-cursors"
             clone_or_update "https://github.com/imarkoff/Marble-shell-theme.git" "$shell_dir"
             clone_or_update "https://github.com/SylEleuth/gruvbox-plus-icon-pack.git" "$icon_dir"
             clone_or_update "https://github.com/vinceliuice/WhiteSur-cursors.git" "$cur_dir"
-            install_adw_gtk_pkg
             act_in "$shell_dir" python3 install.py --yellow --filled --mode "$OPT_COLOR"
             if (( OPT_GDM )); then
                 warn_gdm_gresource
@@ -926,6 +930,9 @@ uninstall_pack() {
             if ! any_other_pack_uses morewaita "$pack"; then
                 act rm -rf -- "$ICONS_DIR/MoreWaita" "$icon_dir"
             fi
+            if (( had_fp )); then
+                echo "○ material-gnome --flatpak added user Flatpak filesystem overrides; review $DATA_HOME/flatpak/overrides/global to clean unused entries"
+            fi
             remove_gtk4_overrides "Material-Gnome"
             act rm -rf -- "$THEME_PACKS_DIR/material-gnome"
             ;;
@@ -1016,16 +1023,19 @@ uninstall_pack() {
 
 uninstall_all() {
     confirm_action "uninstall of all managed theme packs" || return 1
-    local found=0 p
+    local found=0 p rc=0
     local _prev_yes=$ASSUME_YES
     ASSUME_YES=1
     for p in "${ALL_PACKS[@]}"; do
         if pack_installed "$p"; then
             found=1
-            uninstall_pack "$p"
+            uninstall_pack "$p" || { rc=$?; break; }
         fi
     done
     ASSUME_YES=$_prev_yes
+    if (( rc != 0 )); then
+        return "$rc"
+    fi
     if (( ! found )); then
         echo "No managed theme packs installed."
         if have_session_bus && [[ -f $REPO_ROOT/desktop/scripts/theme-setup.sh ]]; then

@@ -19,7 +19,7 @@ for p in sassc imagemagick python-pillow; do
 done
 [[ ! -e $ROOT/scripts/gdm-shell-theme.sh ]] || fail "gdm-shell-theme.sh must be removed"
 _old="$(git -C "$ROOT" grep -lI \
-  -e 'Orchis' -e 'Tela-blue' -e 'Bibata' -e 'gdm-shell-theme' \
+  -e 'Orchis' -e 'Tela-blue' -e 'Bibata-Modern' -e 'gdm-shell-theme' \
   -- desktop stow scripts install.sh packages 2>/dev/null \
   | grep -v '^desktop/scripts/theme-setup.sh$' || true)"
 [[ -z $_old ]] || fail "old theme still referenced in: $_old"

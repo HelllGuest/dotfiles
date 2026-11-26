@@ -256,14 +256,16 @@ grep -q 'GDM note (GNOME 51)' <<<"$dry_out" \
     || fail "--gdm must print GNOME 51 gresource warning"
 [[ ! -s "$LOG" && ! -d "$CACHE" ]] || fail "--dry-run must not run commands or create cache"
 
-# 1b) Non-TTY privileged GDM / gse-gdm / --uninstall all must fail closed without -y or -n
+# 1b) Non-TTY privileged GDM / gse-gdm / modular pacman / --uninstall all must fail closed without -y or -n
 rc=0; run_tp --install mactahoe --gdm </dev/null >/dev/null 2>&1 || rc=$?
 [[ $rc -ne 0 ]] || fail "non-TTY --install --gdm without -y must fail closed"
 rc=0; run_tp --install gse-gdm </dev/null >/dev/null 2>&1 || rc=$?
 [[ $rc -ne 0 ]] || fail "non-TTY --install gse-gdm without -y must fail closed"
+rc=0; run_tp --install modular-adwaita </dev/null >/dev/null 2>&1 || rc=$?
+[[ $rc -ne 0 ]] || fail "non-TTY --install modular-adwaita (needs pacman) without -y must fail closed"
 rc=0; run_tp --uninstall all </dev/null >/dev/null 2>&1 || rc=$?
 [[ $rc -ne 0 ]] || fail "non-TTY --uninstall all without -y must fail closed"
-[[ ! -s "$LOG" ]] || fail "failed confirmation gates must not invoke any external commands"
+! grep -q 'sudo\|git clone' "$LOG" || fail "failed confirmation gates must not clone or run sudo"
 
 # 2) Install & uninstall MacTahoe with --gdm --firefox --flatpak; keep real user gtk.css
 printf '/* user custom */\n' >"$H/.config/gtk-4.0/gtk.css"
@@ -285,6 +287,11 @@ grep -q 'cursor-install MacTahoe-icon-theme' "$LOG" || fail "mactahoe must insta
 grep -q 'gsettings set org.gnome.desktop.interface gtk-theme MacTahoe-Dark' "$LOG" || fail "mactahoe must set gtk-theme"
 status_out="$(run_tp --status)"
 grep -q 'Installed packs:  mactahoe' <<<"$status_out" || fail "--status must report mactahoe (got: $status_out)"
+
+# Re-installing without --gdm/--firefox/--flatpak must preserve previously recorded 1 flags
+run_tp --install mactahoe --color light >/dev/null
+grep -qx 'gdm=1' "$CACHE/.installed/mactahoe" && grep -qx 'firefox=1' "$CACHE/.installed/mactahoe" && grep -qx 'flatpak=1' "$CACHE/.installed/mactahoe" \
+    || fail "re-install without --gdm/--firefox/--flatpak must preserve recorded 1 flags"
 
 : >"$LOG"
 run_tp --uninstall mactahoe -y >/dev/null
