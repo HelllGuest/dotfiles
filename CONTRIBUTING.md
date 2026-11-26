@@ -52,9 +52,9 @@ Thank you for helping improve this setup. Follow these guidelines to keep the re
 - If no hostname match, `scripts/detect-profile.sh` picks from DMI product strings + chassis type: `thinkpad-p15`, `thinkpad-t14s`, or `laptop` (no desktop/NVIDIA-only profile; no `lspci` in detect-profile).
 - `install.sh` installs `packages/pacman.txt` first, then `apply-profile.sh` sources **exactly one** profile (NVIDIA/Optimus packages must exist before `thinkpad-p15` enables services / rebuilds UKIs). Optimus setup is inside `profiles/thinkpad-p15.sh` (`has_nvidia_gpu` in `scripts/lib/dmi.sh`). There is no `nvidia.sh`.
 - `profiles/laptop.sh` delegates to `thinkpad-t14s.sh` when DMI type is **21CQ/21CR** (`is_thinkpad_t14s`; other T14s gens do not match); otherwise it applies the general laptop fallback.
-- Bare-metal Stage A is **only** [t14s-arch-install](https://github.com/HelllGuest/t14s-arch-install) (`HW_PROFILE=t14s|p15`). Dotfiles `scripts/arch-install{,-t14s,-p15}.sh` are thin handoffs via `scripts/lib/stage-a-handoff.sh` (local checkout or GitHub fetch). Do not re-embed LUKS/pacstrap bodies here.
+- Bare-metal Stage A is **only** in-repo [t14s-arch-install/](t14s-arch-install/README.md) (`HW_PROFILE=t14s|p15|generic`). Dotfiles `scripts/arch-install{,-t14s,-p15}.sh` are thin handoffs via `scripts/lib/stage-a-handoff.sh` (prefers in-repo `t14s-arch-install/`, remote fetches from `HelllGuest/dotfiles`). Do not re-embed LUKS/pacstrap bodies in `scripts/`.
 - After Stage A: `./install.sh` → `profiles/thinkpad-t14s.sh` / `thinkpad-p15.sh` refresh charge thresholds (`scripts/thinkpad-charge-thresholds.sh`) and machine packages. VM: `INSTALLER=arch-install-t14s.sh` or `arch-install-p15.sh scripts/arch-install-vmtest.sh`.
-- Identity helpers for Stage B tooling: `scripts/lib/install-identity.sh`. Stage A identity lives in the public installer. Test fixtures `LOCALE_FILES` / `KEYMAP_DIR` need `IDENTITY_OVERRIDES=1`.
+- Stage A identity validators live in `t14s-arch-install/lib/00-common.sh` (test fixtures `LOCALE_FILES` / `KEYMAP_DIR` need `T14S_IDENTITY_OVERRIDES=1`).
 - Machine profiles own `/etc/kernel/cmdline` (e.g. `thinkpad-p15.sh` writes `/etc/modprobe.d/nvidia.conf`, appends `nvidia_drm.modeset=1` and `rd.driver.blacklist=nouveau`, then rebuilds UKIs). UKI rebuilds go through `mkinitcpio -P`; sbctl's mkinitcpio post hook signs each rebuilt UKI. A live `/proc/cmdline` without those flags means reboot (or UKI rebuild) was skipped.
 - `stow/system/etc/systemd/system/virbr0-up.service` starts the libvirt `default` network then brings `virbr0` up (boot race fix). `system-setup.sh` enables it when the unit file changes; `scripts/kali-disposable.sh setup` also installs/enables it.
 
@@ -108,7 +108,7 @@ Thank you for helping improve this setup. Follow these guidelines to keep the re
 | fzf / shell exports | `README.md`, `gnome/keybindings.md`, `CHANGELOG.md` |
 | fnm / Node version pins | `README.md`, `CHANGELOG.md`, troubleshooting table |
 | Headroom / AI agents / skills | `README.md` (Headroom / Maintenance), `docs/fresh-install-coding-re.md`, `ai-rules/` (`AGENTS.md`, `skills/*/SKILL.md`, then `ai-rules/install.sh`), `CHANGELOG.md` |
-| Shared agent constitution | Edit `ai-rules/AGENTS.md` (repo kit); run `ai-rules/install.sh` to publish `~/dev/ai-rules` and refresh Claude/Kiro/Cursor/Gemini/Antigravity skill links and rules |
+| Shared agent constitution | Edit `ai-rules/AGENTS.md` (repo kit); run `ai-rules/install.sh` to publish `~/dev/ai-rules` and refresh Claude/Kiro/Cursor/Gemini/Antigravity/Codex skill links and rules |
 | Privacy / telemetry / browsers | `README.md` (Privacy + Flatpaks), `CONTRIBUTING.md` (packages), `docs/hardened-arch-gnome.md` (Phase 27), `stow/privacy`, `scripts/lib/telemetry.sh`, `CHANGELOG.md` |
 | PhotoGIMP / GIMP (pin bump) | `scripts/install-photogimp.sh` (`PHOTO_URL` + `PHOTO_SHA256`), `README.md` (PhotoGIMP section), `CHANGELOG.md` |
 | foxcage (pin bump) | `scripts/install-foxcage.sh` header (update steps), `tests/foxcage.test.sh` pins, `README.md`, `CHANGELOG.md` |
@@ -123,14 +123,14 @@ Thank you for helping improve this setup. Follow these guidelines to keep the re
 ## Scripts
 
 - All scripts in `scripts/` and `tests/` must be executable (`chmod +x`). `bash -n`
-  on `scripts/**/*.sh`, `install.sh`, `stow-only.sh`, `profiles/*.sh`, and `labs/**/*.sh` runs in CI.
-- Tests: `tests/*.test.sh`, run by CI. `bash tests/system-setup.test.sh` runs
+  on `scripts/**/*.sh`, `install.sh`, `stow-only.sh`, `profiles/*.sh`, and `labs/**/*.sh` plus `ShellCheck` (`-x -S warning -s bash`) run in CI.
+- Tests: `tests/*.test.sh` and `t14s-arch-install/tests/{host-check,smoke}.test.sh` (+ Stage A ShellCheck), all run by CI. `bash tests/system-setup.test.sh` runs
   `system-setup.sh` against a fake root (`SYSTEM_ROOT`), no sudo.
 - Markdown: `bash scripts/lint-docs.sh` (header spacing + tables). CI runs it;
   keep it out of `validate-configs.sh`.
 - Use `$HOME`-relative paths or repo-root detection — avoid hardcoding usernames.
 - Prefer `set -e` for install scripts. In `install.sh` wrap steps in `run_step` and prerequisites in `need_cmd`; never `|| echo "…skipped"` / `|| true` a step (tests/install-completeness.test.sh enforces it).
-- Shared helpers and templates live in `scripts/lib/` (`dmi.sh`, `install-identity.sh`, `browsers.sh`, `telemetry.sh`, `agent-skills.sh`, `input.sh`, `lab-workdir.sh` (shared lab `/work` guard), `pkg-lists.sh` (package-list parsing shared by `install.sh`, installers and `check.sh`), `progress.sh` (step bars for `install.sh` / `configure.sh`), `rust-toolchain.sh` (`ensure_rust_toolchain` for `rustup` hosts), `skel.sh`, `ui-menu.sh` (shared TUI/GUI/plain menus for `install.sh` / `configure.sh`), `thinkpad-charge-thresholds.conf`, `apply-charge-thresholds.sh.tmpl`, `thinkpad-charge-thresholds.service.tmpl`). VS Code settings telemetry merge lives once in `ai-rules/lib/vscode-settings-merge.sh` (sourced by `telemetry.sh` + `ai-rules/install.sh`).
+- Shared helpers and templates live in `scripts/lib/` (`dmi.sh`, `browsers.sh`, `telemetry.sh`, `agent-skills.sh`, `input.sh`, `lab-workdir.sh` (shared lab `/work` guard), `pkg-lists.sh` (package-list parsing shared by `install.sh`, installers and `check.sh`), `progress.sh` (step bars for `install.sh` / `configure.sh`), `rust-toolchain.sh` (`ensure_rust_toolchain` for `rustup` hosts), `skel.sh`, `ui-menu.sh` (shared TUI/GUI/plain menus for `install.sh` / `configure.sh`), `thinkpad-charge-thresholds.conf`, `apply-charge-thresholds.sh.tmpl`, `thinkpad-charge-thresholds.service.tmpl`). AI and VS Code-family telemetry JSON merges (VS Code family, Gemini CLI, Claude Code + target list) live once in `ai-rules/lib/vscode-settings-merge.sh` (sourced by `telemetry.sh` + `ai-rules/install.sh`).
   Prefer sourcing those over copying snippets.
 - Health checks: `scripts/check.sh` holds the modes (`--post` / `--stage-a` / `--all`), `check_fail`
   and the Stage A helpers; each area lives in `scripts/check.d/NN-area.sh`, sourced at top level in
@@ -141,7 +141,7 @@ Thank you for helping improve this setup. Follow these guidelines to keep the re
 
 | Role | Scripts |
 |------|---------|
-| Bootstrap | `install.sh` (TUI/GUI menu + selective sections), `configure.sh` (Stage B TUI/GUI via `lib/ui-menu.sh`), `vm-stageb-run.sh` / `vm-stageb-guest.sh`, `stow-only.sh`, `minimal-stow.sh`, thin Stage A handoffs `arch-install{,-t14s,-p15}.sh` + `lib/stage-a-handoff.sh` (canonical: t14s-arch-install), `arch-install-vmtest.sh`, `p15-dotfiles-preflight.sh`, `apply-profile.sh`, `detect-profile.sh` |
+| Bootstrap | `install.sh` (TUI/GUI menu + selective sections), `configure.sh` (Stage B TUI/GUI via `lib/ui-menu.sh`), `vm-stageb-run.sh` / `vm-stageb-guest.sh`, `stow-only.sh`, `minimal-stow.sh`, thin Stage A handoffs `arch-install{,-t14s,-p15}.sh` + `lib/stage-a-handoff.sh` (canonical: in-repo `t14s-arch-install/`), `arch-install-vmtest.sh`, `p15-dotfiles-preflight.sh`, `apply-profile.sh`, `detect-profile.sh` |
 | Containers / VM / labs | `agent-run.sh` (hardened rootless Podman; `stow/containers`, whose `storage.conf` sets `fuse-overlayfs` as `mount_program` for linux-hardened), `kali-disposable.sh`, `kali-lan-host-prep.sh`, `labs-setup.sh`, `lab-detonate.sh`, `lab-mcp.sh`, `lib/lab-malware-zone.sh` (iface + `192.168.200.0/24` → `lab-malware`) |
 | Packages | `install-flatpaks.sh`, `install-aur.sh`, `bootstrap-aur.sh`, `install-fonts.sh` |
 | GNOME / desktop | `gnome-session-setup.sh`, `install-extensions.sh`, `fetch-gnome-extensions.sh` (SHA-256 pinned EGO zips + `--only`), `install-dash2dock.sh` (wrapper), `gnome-console-setup.sh`, `rice-setup.sh`, `theme-setup.sh` (stock Adwaita), `gdm-setup.sh`, `backup-gsettings.sh`, `restore-gsettings.sh`, `reset-input-defaults.sh`, `cleanup-input-overrides.sh` |

@@ -13,8 +13,8 @@ auto-detected from DMI (or set in answers; defaults to `generic` on unrecognized
 (`nftables`, default zone `drop`; UFW masked if present). Optional ports:
 `FW_SYNCTHING` / `FW_KDECONNECT` (firewalld port allows).
 Optional **`ollama-cuda`** / **`ollama`** (P15 and generic profiles) binds `127.0.0.1:11434`.
-Stage B (labs / AI / rice / firewalld zones) lives in the sibling local
-`~/dotfiles` tree (`configure.sh` / `install.sh`).
+Stage B (labs / AI / rice / firewalld zones) lives in the parent
+`dotfiles` repository ([../README.md](../README.md): `scripts/configure.sh` / `install.sh`).
 
 UX ideas adapted from [archfi](https://github.com/MatMoul/archfi) and
 [archdi-pkg](https://github.com/MatMoul/archdi-pkg). Not ported: i18n packs,
@@ -413,61 +413,14 @@ sudo less /var/log/t14s-install.log  # full installer log
 
 ### Stage B (dotfiles)
 
-On the installed host, open your local `~/dotfiles` checkout (sibling repo), then
-either the modular TUI or full bootstrap. Canonical howtos live in that repo’s
-README (`configure.sh`, firewalld/`lab-malware`, VM harness, git-setup, GNOME
-extension fetch).
+After first boot, run Stage B from the parent `~/dotfiles` repository (`./install.sh` for interactive TUI/GUI/full bootstrap, or `bash scripts/configure.sh` for modular labs/AI/rice/firewalld). Canonical howtos live in [../README.md](../README.md):
 
-#### How to: `configure.sh` TUI
+* [Stage B bootstrap & `configure.sh`](../README.md#how-to-configuresh-stage-b-tui)
+* [firewalld lab zones (`lab-malware`)](../README.md#how-to-firewalld-lab-zones--lab-malware)
+* [Stage B on a Stage A qcow2 (`vm-stageb-run.sh`)](../README.md#how-to-stage-b-on-a-stage-a-qcow2)
+* [Live health checklist](../README.md#live-health-checklist-non-destructive)
 
-Backend: dialog → whiptail → plain. Force with `CONFIGURE_UI=plain` on serial /
-CI / no TTY. Modules **fail-fast** (one failure stops the run).
-
-```bash
-cd ~/dotfiles
-bash scripts/configure.sh
-CONFIGURE_UI=plain bash scripts/configure.sh   # headless / serial
-```
-
-| Tag | Default | Notes |
-|-----|---------|-------|
-| `SETUP_FIREWALLD` | on | `virbr0`→`libvirt`; `virbr-malware`→`lab-malware` (iface + `192.168.200.0/24`; DROP) |
-| `APPLY_PROFILE` | off | hostname / DMI profile |
-| `SETUP_OLLAMA` | on if `HW_PROFILE`/DMI is P15 `20SU` | skipped on T14s with a message |
-| `SETUP_LABS` | off | `lab-triage` / `lab-re` / `lab-android` / `lab-web` |
-| `SETUP_DETONATE` | off | INetSim/PolarProxy + disposable VMs |
-| `SETUP_AI` | off | Headroom/`hr-*`, Ponytail, Continue FIM (not Caveman) |
-| `SETUP_RICE` | off | Gruvbox + privacy notifications |
-
-```bash
-# or full Stage B (Caveman + Ponytail complementary hooks):
-./install.sh
-# Optional: fold configure modules into install (fails hard on module error):
-# CONFIGURE=1 ./install.sh
-# CONFIGURE=1 CONFIGURE_UI=plain ./install.sh   # serial / no TTY
-
-# If virbr-malware still shows under libvirt/block (pre-lab-malware hosts):
-bash scripts/firewalld-lab-zones.sh
-sudo firewall-cmd --get-active-zones
-sudo firewall-cmd --permanent --zone=lab-malware --list-all
-# expect: iface virbr-malware + source 192.168.200.0/24; target DROP
-```
-
-#### How to: Stage B on the Stage A qcow2
-
-After `bash tests/vm-run.sh` leaves `~/arch-vmtest/test-disk.qcow2`, from the
-dotfiles tree:
-
-```bash
-bash ~/dotfiles/scripts/vm-stageb-run.sh
-# RESULT=PASS | PASS_HEADLESS | FAIL  (PASS_HEADLESS = headless desktop=N bluetooth/pipewire-only selftest)
-```
-
-Lab wrappers after SETUP_LABS: `lab-triage` / `lab-re` / `lab-android` / `lab-web` /
-`lab-detonate` / `lab-mcp`. REA backends live in `lab-re` (`rea-agents@6.10.1`).
-Live verify checklist: `~/dotfiles/README.md` → Maintenance → Live health checklist.
-
-Same notes (plus any install warnings) land in `/root/t14s-post-install.txt`.
+Same post-install notes (plus any install warnings) land in `/root/t14s-post-install.txt`.
 
 * **Flatpak apps (if `INSTALL_FLATPAK_APPS=Y`):** `t14s-flatpak-apps.timer` starts
   `t14s-flatpak-apps.service` 1 min after boot (after `network-online.target`),
@@ -615,6 +568,7 @@ Headless NONINTERACTIVE install into a blank virtio disk (needs kvm + OVMF):
 FRESH=1 bash tests/vm-run.sh
 # serves this tree on :8765, boots Arch ISO, serial-drives tests/vm-bootstrap.sh
 # (minimal preset, ENABLE_SSHD=Y). Log: ~/arch-vmtest/qemu-serial.log
+# Auto-mounts readable host /var/cache/pacman/pkg over 9p ro (HOST_PKGCACHE=none to disable)
 T14S_VM_DESKTOP=Y FRESH=1 bash tests/vm-run.sh   # same, with the GNOME desktop
 # dual-boot reinstall: shared ESP with (synthetic) Windows files, old Arch LUKS and
 # a stale firmware entry; MANUAL reuse; checks Windows untouched + firmware entry
@@ -719,7 +673,7 @@ T14S_NONINTERACTIVE=1 T14S_I_WILL_ERASE=1 \
   T14S_ANSWERS=… T14S_PASS_FILE=… bash install.sh
 ```
 
-GitHub Actions: smoke + shellcheck on push. Smoke includes a
+GitHub Actions ([../.github/workflows/ci.yml](../.github/workflows/ci.yml)): smoke + host-check + shellcheck on push. Smoke includes a
 `T14S_DRYRUN=1` NONINTERACTIVE run against a whole-disk block device
 (no TTY; no writes past the DRYRUN exit; keymap via
 `T14S_IDENTITY_OVERRIDES` + `KEYMAP_DIR` fixture on Ubuntu runners).

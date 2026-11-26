@@ -1,12 +1,12 @@
-# ai-rules: one config for Cursor, Antigravity, Gemini CLI, Kiro, and Claude Code
+# ai-rules: one config for Cursor, Antigravity, Gemini CLI, Kiro, Codex, and Claude Code
 
 ## Why this works
 
 * **`AGENTS.md`**: shared constitution (rules + command dictionary). Read by
   Cursor, Antigravity (`agy`), Google AI agents (Gemini CLI / Gemini Code Assist /
-  Jules), Kiro, OpenCode, Kimi, and (via bridges) Claude Code.
+  Jules), Kiro, OpenAI Codex, OpenCode, Kimi, and (via bridges) Claude Code.
 * **`skills/*/SKILL.md`**: Agent Skills for **Claude Code**, **Kiro**, **Gemini
-  CLI**, **Antigravity**, and **Cursor**. Agents also follow the same procedures
+  CLI**, **Antigravity**, **OpenAI Codex**, and **Cursor**. Agents also follow the same procedures
   from `AGENTS.md` Commands when you say `verify` / `double check` / etc. in chat.
 * **`bin/agentsync`**: wire a project (`AGENTS.md`, `CLAUDE.md` → `@AGENTS.md`,
   `GEMINI.md` → `@AGENTS.md`, and `.cursor/rules` pointer when the project has
@@ -51,28 +51,28 @@ kit `skills/` dir; if it is already a symlink, retarget it; if it is a real
 directory, add per-skill symlinks (existing non-symlink entries such as
 `find-skills` / `caveman` are left alone). Cursor's mixed
 `~/.cursor/skills` tree gets the kit skill names force-retargeted to
-`~/dev/ai-rules/skills/<name>` (other third-party skills stay). When run via
-`scripts/sync-agent-skills.sh`, `~/.claude/skills` and `~/.kiro/skills` are
+`~/dev/ai-rules/skills/<name>` (other third-party skills stay). When run via `scripts/sync-agent-skills.sh`, `~/.claude/skills`, `~/.kiro/skills`,
+`~/.gemini/skills`, `~/.gemini/config/skills`, and `~/.codex/skills` are
 ensured to be real directories first so mirroring the full `~/.agents/skills`
-hub across Claude, Cursor, OpenCode, Kimi, Gemini CLI, Antigravity, and Kiro
-never writes hub symlinks back into `~/dev/ai-rules/skills`.
+hub across Claude, Cursor, OpenCode, Kimi, Gemini CLI, Antigravity, Kiro, and
+Codex never writes hub symlinks back into `~/dev/ai-rules/skills`.
 
-Google AI tools: links global `~/.gemini/{AGENTS,GEMINI}.md` and
-`~/.gemini/config/{AGENTS,GEMINI}.md` to `~/dev/ai-rules/AGENTS.md`, merges kit
-skill symlinks into `~/.gemini/skills` and `~/.gemini/config/skills` (keeping
-them real directories so hub mirroring never writes back into the kit), and
-creates or jq-merges `gemini-settings.json` (`privacy.usageStatisticsEnabled: false`,
-`telemetry.enabled: false`) into `~/.gemini/settings.json`.
-
-Claude settings: if `~/.claude/settings.json` is missing, copy the kit file;
-else jq-merge so kit wins on `includeCoAuthoredBy` and kit `env.*` keys, without
-removing user hooks/plugins/theme. VS Code family: create or jq-merge
-`vscode-family-telemetry.json` into common `User/settings.json` paths (Cursor,
-Antigravity IDE / Antigravity, Kiro, Code, VSCodium, plus stow vscode settings
-when that path exists) via `lib/vscode-settings-merge.sh`, preserving symlinks
-(such as GNU Stow links) and stripping `cursor.general.*` keys from non-Cursor
-editors. Kiro CLI: `kiro-cli settings telemetry.enabled false` when `kiro-cli`
-is on PATH.
+Google AI tools & Codex: links global `~/.gemini/{AGENTS,GEMINI}.md`,
+`~/.gemini/config/{AGENTS,GEMINI}.md`, and `~/.codex/AGENTS.md` to
+`~/dev/ai-rules/AGENTS.md`, merges kit skill symlinks into real skill dirs, and
+merges telemetry settings through shared `lib/vscode-settings-merge.sh`
+(single source of truth also sourced by `scripts/lib/telemetry.sh`):
+`gemini-settings.json` (`privacy.usageStatisticsEnabled: false`,
+`telemetry.enabled: false`, mode `0600`) into `~/.gemini/settings.json`,
+`claude-settings.json` (`includeCoAuthoredBy`, `skipWebFetchPreflight`, kit
+`env.*`, mode `0600`, preserving user hooks/plugins/theme) into
+`~/.claude/settings.json`, and `vscode-family-telemetry.json` into VS Code-family
+`User/settings.json` paths (Cursor, Antigravity IDE / Antigravity, Kiro, Code,
+VSCodium, plus stow vscode settings when present; strips `cursor.general.*` from
+non-Cursor editors). All three merges preserve symlinks, skip no-op rewrites,
+handle missing/0-byte files cleanly, and fail closed via `kit_fail` when `jq` is
+missing on an existing file. Kiro CLI: `kiro-cli settings telemetry.enabled
+false` when `kiro-cli` is on PATH.
 
 Canonical live kit after install: **`~/dev/ai-rules`** (override install target
 with `./install.sh /path`). Edit there, or edit this repo's `ai-rules/` and

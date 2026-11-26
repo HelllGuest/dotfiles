@@ -141,7 +141,9 @@ audit, no secrets were printed, and no destructive host commands ran.
 > `rebuild-v3.sh` parses `validpgpkeys` statically (no `source ./PKGBUILD`),
 > `minimal-stow.sh` refuses to overwrite real files, `tmp-to-disk.sh` derives the
 > btrfs root via `findmnt` with an `EXIT` unmount trap, and `vpn-location-sync.sh`
-> writes a neutral `0.0` placeholder on lookup failure.
+> writes a neutral `0.0` placeholder on lookup failure. As of 2026-11-25,
+> `t14s-arch-install/` is merged into this monorepo and CI runs ShellCheck plus
+> the Stage A test suite (`host-check.test.sh` and `smoke.test.sh`).
 
 ## Actions for the operator
 

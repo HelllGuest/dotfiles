@@ -475,7 +475,9 @@ arch-chroot /mnt
 
 # PHASE 7 — SYSTEM CONFIGURATION
 
-# Timezone
+Configure timezone, locale, hostname, and the initial admin user inside the chroot.
+
+## Timezone
 
 ```bash
 ln -sf /usr/share/zoneinfo/Europe/Dublin /etc/localtime
@@ -1620,7 +1622,7 @@ cd ~/dotfiles
 * Install Flatpaks from `packages/flatpak.txt`, then fonts, then stow `$HOME` and install `system/` via `scripts/system-setup.sh` (includes `/etc/makepkg.conf.d/zz-x86-64-v3.conf`), **then** AUR from `packages/aur.txt` (bootstraps `paru` after the v3 makepkg drop-in)
 * Materialize `zram-generator.conf` via `scripts/zram-setup.sh` (skips stowing `zram` / `gdm`)
 * Apply GNOME session dconf (`gnome/dconf/user.conf`), Console dconf + `kitty.desktop` for `x-scheme-handler/terminal`, EGO fetch + extensions, location spoofing, and stock input defaults (`scripts/reset-input-defaults.sh` + `scripts/cleanup-input-overrides.sh`)
-* Configure GDM, Git, Neovim; `sync-agent-skills.sh` **before** Headroom MCP (`scripts/headroom-setup.sh`); then AI coding/RE agents + plugins + skills (`install-coding-agents.sh`, `install-caveman.sh`, `install-ponytail.sh`, `install-android-ui-skills.sh`, `install-ghidra-cli.sh`, `install-obscura.sh`, `install-re-skills.sh`, `install-ecosystem-skills.sh`; REA via `lab-re`), PhotoGIMP, and foxcage (`install-foxcage.sh`, Firefox in rootless Podman when `podman` exists).
+* Configure GDM, Git, Neovim; `sync-agent-skills.sh` **before** Headroom MCP (`scripts/headroom-setup.sh`); then AI coding/RE agents + plugins + skills (`install-coding-agents.sh`, `install-caveman.sh`, `install-ponytail.sh`, `install-android-ui-skills.sh`, `install-ghidra-cli.sh`, `install-obscura.sh`, `install-re-skills.sh`, `install-ecosystem-skills.sh`; optional `install-rtk.sh`; REA via `lab-re`), PhotoGIMP, and foxcage (`install-foxcage.sh`, Firefox in rootless Podman when `podman` exists).
 * Stage B modular TUI/GUI: `bash scripts/configure.sh` (`dialog`/`whiptail`/`zenity`/`plain`;
   `--gui` or `CONFIGURE_UI=…`; shared with `./install.sh` via `scripts/lib/ui-menu.sh`;
   fail-fast; `SETUP_FIREWALLD` on by default; `SETUP_OLLAMA` on only for P15;

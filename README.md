@@ -215,8 +215,9 @@ dotfiles/
 ├── docs/            # hardened-arch-gnome.md, fresh-install-coding-re.md, SECURITY-AUDIT.md
 ├── builds/          # Optional local PKGBUILDs (e.g. builds/st)
 ├── skills/          # Host skills (ghidra-cli-host, obscura-host)
+├── t14s-arch-install/ # Canonical Stage A Arch ISO installer (install.sh, lib/, tests/)
 ├── ai-rules/        # Shared AGENTS.md kit + git hooks
-└── .github/         # CI (stow inventory, bash -n, tests/, markdownlint)
+└── .github/         # CI (stow inventory, bash -n, ShellCheck, tests/, Stage A tests, markdownlint)
 ```
 
 Layout stays flat on purpose: GNU Stow package roots, curl-able installers, and
@@ -549,8 +550,8 @@ bash scripts/check.sh --stage-a  # Arch ISO install: runs t14s-arch-install
 bash scripts/check.sh --all      # both
 ```
 
-`--stage-a` uses the in-repo `t14s-arch-install/` directory first (override via
-`T14S_INSTALLER_DIR`, or fallback to `~/t14s-arch-install`). Its FAILs count only on the T14s Gen 3 AMD (21CQ/21CR), the
+`--stage-a` uses the in-repo `t14s-arch-install/` directory (override via
+`T14S_INSTALLER_DIR`). Its FAILs count only on the T14s Gen 3 AMD (21CQ/21CR), the
 hardware `host-check.sh` targets; on other hosts they are shown as informational.
 
 **Theme:** stock **Adwaita** (GTK + icons + empty User Themes name) via
@@ -600,7 +601,7 @@ Key runtime dependencies (`scripts/check.sh` asserts binaries, shell tools, syml
 
 **Shell tools** (also asserted): `atuin`, `fzf`, `fd`, `ripgrep` (`rg`), `bat`, `eza`, `zoxide`, `direnv`, `git-delta` (`delta`). `fnm` (Node) and `rclone` are in `pacman.txt` but optional for `check.sh`.
 
-**AI:** `./install.sh` installs the full stack: Headroom (`hr-claude` / `hr-cursor` / `hr-opencode` / `hr-agy` / `hr-proxy`), OpenCode + Kimi, Caveman `v4.2.0` (SHA-256) + Ponytail `v5.3.3` (`PONYTAIL_COMMIT` SHA), Continue FIM config, Obscura CDP/MCP, ecosystem + RE skills, hub sync; on P15 also `ollama-setup.sh` (CUDA + qwen pulls; `SKIP_OLLAMA=1` opts out). `configure.sh` `SETUP_AI` runs `ai-stack-setup.sh` (Headroom/Ponytail/Continue; **not** Caveman). Modular re-run: `bash scripts/ai-stack-setup.sh`
+**AI:** `./install.sh` installs the full stack: Headroom (`hr-claude` / `hr-cursor` / `hr-opencode` / `hr-agy` / `hr-proxy`), OpenCode + Kimi (opt-in pinned Gemini CLI / Codex via `install-coding-agents.sh`), Caveman `v4.2.0` (SHA-256) + Ponytail `v5.3.3` (`PONYTAIL_COMMIT` SHA), Continue FIM config, Obscura CDP/MCP, ecosystem + curated official + RE skills, and hub sync across Claude, Cursor, OpenCode, Kimi, Gemini CLI, Antigravity, Kiro, and Codex; on P15 also `ollama-setup.sh` (CUDA + qwen pulls; `SKIP_OLLAMA=1` opts out). Optional SHA-256-pinned RTK CLI compressor: `bash scripts/install-rtk.sh`. `configure.sh` `SETUP_AI` runs `ai-stack-setup.sh` (Headroom/Ponytail/Continue; **not** Caveman). Modular re-run: `bash scripts/ai-stack-setup.sh`
 
 **Graphics (optional):** `gimp` + PhotoGIMP via `scripts/install-photogimp.sh`
 
@@ -693,7 +694,7 @@ We take a "quiet by default" approach:
 | USB allowlist | `bash scripts/usbguard-setup.sh` (generates rules from plugged devices, then enables) |
 | Encrypted DNS | `bash scripts/dnscrypt-setup.sh` (dnscrypt-proxy → 127.0.0.1; NM global DNS pins 127.0.0.1; tailnet names → MagicDNS) |
 | Health check | `~/dotfiles/scripts/check.sh` |
-| Docs lint | `~/dotfiles/scripts/lint-docs.sh` (CI also runs this + `all_stow_files.txt` + `bash -n` + `tests/*.test.sh`) |
+| Docs lint | `~/dotfiles/scripts/lint-docs.sh` (CI also runs this + `all_stow_files.txt` + `bash -n` + `ShellCheck` + `tests/*.test.sh` + `t14s-arch-install/tests/`) |
 | System files (`stow/system/`) | `bash scripts/system-setup.sh` |
 | Refresh stow inventory | `git add stow/…` then `bash scripts/list-stow-files.sh > all_stow_files.txt` (index only) |
 | Location sync | `vpn-location-sync` or Proton VPN panel → Sync spoofed location |

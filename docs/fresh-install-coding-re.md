@@ -171,19 +171,7 @@ bash scripts/configure.sh                # dialog → whiptail → plain
 # CONFIGURE_UI=plain bash scripts/configure.sh   # serial / CI / no TTY
 ```
 
-Checklist tags (fail-fast on module error):
-
-| Tag | Default | Effect |
-|-----|---------|--------|
-| `SETUP_FIREWALLD` | on | drop + `libvirt`/`virbr0` + `lab-malware` (iface + `192.168.200.0/24`) |
-| `APPLY_PROFILE` | off | re-run machine profile |
-| `SETUP_OLLAMA` | on **only on P15** | `ollama-setup.sh` → `127.0.0.1:11434` |
-| `SETUP_LABS` | off | build/pull lab images; shell wrappers |
-| `SETUP_DETONATE` | off | `lab-detonate.sh setup` |
-| `SETUP_AI` | off | Headroom/`hr-*`, Ponytail, Continue FIM (not Caveman) |
-| `SETUP_RICE` | off | Gruvbox / SecOps rice + `show-in-lock-screen false` |
-
-Full howto: [README — configure.sh](../README.md#how-to-configuresh-stage-b-tui).
+Module checklist tags, defaults, and fail-fast rules: [README — configure.sh](../README.md#how-to-configuresh-stage-b-tui).
 
 Firewall / malware net: [README — firewalld lab zones](../README.md#how-to-firewalld-lab-zones--lab-malware)
 (`bash scripts/firewalld-lab-zones.sh`; bridge `zone="lab-malware"`). Ops kits /
@@ -245,7 +233,7 @@ See [Verify sleep](hardened-arch-gnome.md#verify-sleep-s2idle).
 | Editors | Neovim (Lazy), VSCodium (`vscodium-bin`), Cursor / Antigravity (AUR) |
 | Languages | fnm Node 22, rust, `python-pipx`, `flutter-bin`, jdk-openjdk (+ JDK 17 for Android) |
 | Mobile | Flatpak Android Studio; `ANDROID_HOME` in `.shell-exports`; alias `as` |
-| AI stack | `sync-agent-skills` then Headroom + `hr-*` / optional `hr-proxy.service`, OpenCode + Kimi (`install-coding-agents.sh`), Caveman + Ponytail (complementary; `./install.sh` both, SETUP_AI = Ponytail), Continue FIM→ollama (P15), Obscura, `ai-stack-setup.sh` |
+| AI stack | `sync-agent-skills` (hub → Claude/Cursor/OpenCode/Kimi/Gemini/Antigravity/Kiro/Codex), Headroom + `hr-*` / optional `hr-proxy.service`, RTK (`install-rtk.sh`), OpenCode + Kimi (+ opt-in Gemini/Codex via `install-coding-agents.sh`), Caveman + Ponytail, curated official + RE skills, Continue FIM→ollama (P15), Obscura, `ai-stack-setup.sh` |
 | Labs | `lab-triage` / `lab-re` / `lab-android` / `lab-web` / `lab-detonate` / `lab-mcp` via `firewalld-lab-zones.sh` then `labs-setup.sh` (`cd` into a project for `/work`; app-grid launches default to `/srv/lab/out`, see [README](../README.md)) |
 | Local builds | x86-64-v3 makepkg drop-in; `bash scripts/rebuild-v3.sh` after big upgrades |
 
@@ -407,20 +395,8 @@ if you accept licensing and risk.
 ### Disposable Kali
 
 Immutable qcow2 base + ephemeral session overlay. `wipe` deletes the overlay
-and undefines the domain; base stays clean. Script:
-`scripts/kali-disposable.sh`. Shell aliases (after stow / `reload`):
-
-| Alias | Action |
-|-------|--------|
-| `kali` | Pass-through to the script (`kali setup`, `kali status`, …) |
-| `kali-up` | `start --isolated` — new overlay, **no guest WAN** (samples) |
-| `kali-up-nat` | `start --nat` — guest DHCP + internet (apt / cloud-init) |
-| `kali-up-lan` | `start --lan` — NAT + physical ethernet (`enp0s31f6` macvtap → guest eth1) |
-| `kali-lan` | `attach-lan` — add physical LAN NIC to a running guest |
-| `kali-lan-check` | `lan-check` — verify host RJ45 clean + guest eth1 → LAN gateway (`KALI_LAN_PROBE`) |
-| `kali-wipe` | Destroy domain + delete overlay |
-| `kali-stop` | Power off; keep overlay |
-| `kali-st` | Status |
+and undefines the domain; base stays clean. Script: `scripts/kali-disposable.sh`.
+Full shell alias table (`kali`, `kali-up`, `kali-up-nat`, `kali-up-lan`, `kali-lan`, `kali-lan-check`, `kali-wipe`, `kali-stop`, `kali-st`): [gnome/keybindings.md](../gnome/keybindings.md#disposable-kali).
 
 ```bash
 bash scripts/kali-disposable.sh setup    # once: libvirt pkgs + download base + virbr0/libvirt zone
@@ -442,8 +418,6 @@ guest eth1 gets DHCP on the LAN **without** gateway/DNS/routes (NAT eth0 is
 the only default). Verify with `kali lan-check` (`KALI_LAN_PROBE` overrides the
 default `192.168.8.1` gateway ping target). Public DNS on eth0. Cable
 required for eth1; NAT works without one.
-
-Also listed in [gnome/keybindings.md](../gnome/keybindings.md#disposable-kali).
 
 Base: `/var/lib/libvirt/images/kali-disposable/kali-base.qcow2` (system qemu
 cannot read `$HOME`). Each `start` rebuilds `kali-session.qcow2` unless
@@ -522,7 +496,7 @@ BIOS (SB off, VT-x/d on; Sleep = Windows and Linux for s2idle)
   → optional: sbctl enroll-keys -m → enable SB in BIOS → sbctl verify
   → clone dotfiles → ./install.sh (installs stow/system/ via system-setup.sh) → exec zsh
   → thinkpad-health.sh → reboot
-  → coding extras if needed: docker + go
+  → coding extras if needed: go (Podman is already primary)
   → RE: ghidra doctor + ghidra-gui; optional jadx / rz-cutter / …
   → malware: libvirtd + isolated VM only (never host detonation)
 ```
