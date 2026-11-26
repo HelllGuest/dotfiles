@@ -23,8 +23,8 @@ fi
 
 T="$(mktemp -d)"
 trap 'rm -rf "$T"' EXIT
-# shellcheck source=scripts/lib/skel.sh
-source "$ROOT/scripts/lib/skel.sh"
+# shellcheck source=provision/lib/skel.sh
+source "$ROOT/provision/lib/skel.sh"
 STOW="$T/stow"
 mkdir -p "$STOW/zsh" "$STOW/starship/.config"
 : >"$STOW/zsh/.zshrc"; : >"$STOW/starship/.config/starship.toml"

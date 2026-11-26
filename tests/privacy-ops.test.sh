@@ -10,30 +10,30 @@ for pkg in pacman-contrib mat2 perl-image-exiftool bleachbit usbguard dnscrypt-p
 done
 
 for f in ops-hygiene.sh usbguard-setup.sh dnscrypt-setup.sh network-dns-setup.sh; do
-  [[ -f $ROOT/scripts/$f ]] || fail "missing scripts/$f"
-  bash -n "$ROOT/scripts/$f" || fail "bash -n scripts/$f"
+  [[ -f $ROOT/security/scripts/$f ]] || fail "missing security/scripts/$f"
+  bash -n "$ROOT/security/scripts/$f" || fail "bash -n security/scripts/$f"
 done
 
 grep -q 'ops-hygiene.sh' "$ROOT/install.sh" \
   || fail "install.sh must call ops-hygiene.sh"
-grep -q 'ops-hygiene.sh' "$ROOT/scripts/post-update.sh" \
+grep -q 'ops-hygiene.sh' "$ROOT/provision/scripts/post-update.sh" \
   || fail "post-update.sh must call ops-hygiene.sh"
-grep -q 'PRIMARY_DNS6' "$ROOT/scripts/network-dns-setup.sh" \
+grep -q 'PRIMARY_DNS6' "$ROOT/security/scripts/network-dns-setup.sh" \
   || fail "network-dns-setup.sh must honor PRIMARY_DNS6"
-grep -q 'sudo usbguard generate-policy' "$ROOT/scripts/usbguard-setup.sh" \
+grep -q 'sudo usbguard generate-policy' "$ROOT/security/scripts/usbguard-setup.sh" \
   || fail "usbguard-setup must sudo generate-policy before enable"
-grep -q 'list-devices && sudo usbguard allow-device' "$ROOT/scripts/usbguard-setup.sh" \
+grep -q 'list-devices && sudo usbguard allow-device' "$ROOT/security/scripts/usbguard-setup.sh" \
   || fail "usbguard hint: list-devices then allow-device -p (not list-devices -p)"
-! grep -q 'list-devices -p' "$ROOT/scripts/usbguard-setup.sh" \
+! grep -q 'list-devices -p' "$ROOT/security/scripts/usbguard-setup.sh" \
   || fail "usbguard list-devices does not take -p"
 grep -q "listen_addresses = \\['127.0.0.1:53', '\\[::1\\]:53'\\]" \
-  "$ROOT/scripts/dnscrypt-setup.sh" \
+  "$ROOT/security/scripts/dnscrypt-setup.sh" \
   || fail "dnscrypt-setup must listen on 127.0.0.1 and ::1"
-grep -q 'PRIMARY_DNS6=::1' "$ROOT/scripts/dnscrypt-setup.sh" \
+grep -q 'PRIMARY_DNS6=::1' "$ROOT/security/scripts/dnscrypt-setup.sh" \
   || fail "dnscrypt-setup must point NM ipv6 at ::1"
 
 # dnscrypt: NM global DNS so networks joined later cannot fall back to DHCP DNS.
-_fn="$(awk '/^install_nm_global_dns\(\) \{/{f=1} f; f&&/^}$/{exit}' "$ROOT/scripts/dnscrypt-setup.sh")"
+_fn="$(awk '/^install_nm_global_dns\(\) \{/{f=1} f; f&&/^}$/{exit}' "$ROOT/security/scripts/dnscrypt-setup.sh")"
 [[ -n $_fn ]] || fail "dnscrypt-setup must define install_nm_global_dns"
 _r="$(mktemp -d)"
 bash -c "$_fn"$'\n''install_nm_global_dns "$1"' _ "$_r" || fail "install_nm_global_dns failed"
@@ -42,7 +42,7 @@ grep -qx '\[global-dns-domain-\*\]' "$_c" && grep -qx 'servers=127.0.0.1,::1' "$
   || fail "NM global DNS must point every connection at dnscrypt: $(cat "$_c" 2>/dev/null)"
 [[ $(stat -c %a "$_c") == 644 ]] || fail "NM global DNS conf must be 0644"
 rm -rf -- "$_r"
-grep -q 'install_nm_global_dns "" "\$_ts"' "$ROOT/scripts/dnscrypt-setup.sh" || fail "dnscrypt-setup must install NM global DNS"
+grep -q 'install_nm_global_dns "" "\$_ts"' "$ROOT/security/scripts/dnscrypt-setup.sh" || fail "dnscrypt-setup must install NM global DNS"
 # Tailscale: the MagicDNS suffix keeps resolving via 100.100.100.100; a bogus
 # suffix (config injection attempt) is ignored.
 _nm() { bash -c 'warn(){ echo "WARN $*" >&2; }; '"$_fn"$'\n''install_nm_global_dns "$1" "$2"' _ "$1" "$2" 2>/dev/null; }
@@ -62,7 +62,7 @@ rm -rf -- "$_r"; unset -f _nm
 unset -v _fn _r _c
 
 # GNOME: no notification content on the lock screen; no media autorun.
-_uc="$ROOT/gnome/dconf/user.conf"
+_uc="$ROOT/desktop/gnome/dconf/user.conf"
 python3 - "$_uc" <<'PY' || fail "GNOME lock-screen notifications / autorun hardening missing"
 import configparser, sys
 c = configparser.ConfigParser(strict=False, interpolation=None); c.read(sys.argv[1])
@@ -96,7 +96,7 @@ command='kitty -e sh -c "a:b; c=d"'
 DUMP
 STUB
 chmod +x "$_T/bin/dconf"
-PATH="$_T/bin:$PATH" GSETTINGS_OUT="$_T/user.conf" bash "$ROOT/scripts/backup-gsettings.sh" >/dev/null \
+PATH="$_T/bin:$PATH" GSETTINGS_OUT="$_T/user.conf" bash "$ROOT/desktop/scripts/backup-gsettings.sh" >/dev/null \
   || fail "backup-gsettings failed"
 for _kv in show-in-lock-screen=false autorun-never=true remember-recent-files=false \
     report-technical-problems=false send-software-usage-stats=false; do
@@ -108,7 +108,7 @@ grep -qxF "picture-uri='file:///usr/share/backgrounds/a.png'" "$_T/user.conf" \
   || fail "backup-gsettings must preserve other keys verbatim: $(cat "$_T/user.conf")"
 grep -q 'night-light-last-coordinates' "$_T/user.conf" && fail "backup-gsettings must not export the night-light geolocation"
 grep -qx 'night-light-enabled=true' "$_T/user.conf" || fail "backup-gsettings dropped other night-light keys"
-grep -rq 'night-light-last-coordinates' "$ROOT/gnome/dconf/" && fail "tracked dconf must not contain night-light-last-coordinates"
+grep -rq 'night-light-last-coordinates' "$ROOT/desktop/gnome/dconf/" && fail "tracked dconf must not contain night-light-last-coordinates"
 rm -rf -- "$_T"; unset -v _T _kv
 
 echo "PASS: privacy-ops.test.sh"

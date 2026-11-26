@@ -61,8 +61,8 @@ grep -q 'bootvine enable failed' <<<"$out" && grep -qx 'FAILED=1' <<<"$out" \
 # metadata, so pacman -S bootvine would abort the whole pacman.txt transaction.
 pkgblk="$(awk '/^if \[ -f "packages\/pacman.txt" \]; then$/{f=1} f; f&&/^fi$/{exit}' "$ROOT/install.sh")"
 [[ -n $pkgblk ]] || fail "install.sh pacman.txt block not found"
-mkdir -p "$T/pk/bin" "$T/pk/repo/packages" "$T/pk/repo/scripts/lib"
-cp "$ROOT/scripts/lib/pkg-lists.sh" "$ROOT/scripts/lib/dmi.sh" "$T/pk/repo/scripts/lib/"
+mkdir -p "$T/pk/bin" "$T/pk/repo/packages" "$T/pk/repo/provision/lib"
+cp "$ROOT/provision/lib/pkg-lists.sh" "$ROOT/provision/lib/dmi.sh" "$T/pk/repo/provision/lib/"
 printf '%s\n' bash bootvine zsh >"$T/pk/repo/packages/pacman.txt"
 cat >"$T/pk/bin/sudo" <<'STUB'
 #!/bin/sh

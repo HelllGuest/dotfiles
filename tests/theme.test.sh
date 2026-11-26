@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Theme: stock Adwaita (scripts/theme-setup.sh), old Orchis/Tela/Bibata gone,
+# Theme: stock Adwaita (desktop/scripts/theme-setup.sh), old Orchis/Tela/Bibata gone,
 # Full-pack UUIDs in extensions.txt, repo dconf leaves gtk-theme / blur trees alone.
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
@@ -7,8 +7,8 @@ fail() { echo "FAIL: $*" >&2; exit 1; }
 T="$(mktemp -d)"
 trap 'rm -rf "$T"' EXIT
 list() { sed -e 's/#.*//' -e 's/[[:space:]]//g' -e '/^$/d' "$ROOT/packages/$1"; }
-TS="$ROOT/scripts/theme-setup.sh"
-EXT="$ROOT/gnome/extensions.txt"
+TS="$ROOT/desktop/scripts/theme-setup.sh"
+EXT="$ROOT/desktop/gnome/extensions.txt"
 
 # --- old theme gone everywhere ------------------------------------------------
 for p in orchis-theme tela-icon-theme bibata-cursor-theme-bin gnome-shell-extension-appindicator; do
@@ -18,17 +18,17 @@ for p in sassc imagemagick python-pillow; do
   ! list pacman.txt | grep -qx "$p" || fail "$p was Aura-only — remove from pacman.txt"
 done
 [[ ! -e $ROOT/scripts/gdm-shell-theme.sh ]] || fail "gdm-shell-theme.sh must be removed"
-_old="$(grep -rlI --exclude-dir=logs --exclude-dir=History --exclude-dir=Cache --exclude-dir='Code Cache' --exclude-dir=GPUCache \
+_old="$(git -C "$ROOT" grep -lI \
   -e 'Orchis' -e 'Tela-blue' -e 'Bibata' -e 'gdm-shell-theme' \
-  "$ROOT/gnome" "$ROOT/stow" "$ROOT/scripts" "$ROOT/install.sh" "$ROOT/packages" 2>/dev/null \
-  | grep -v '/scripts/theme-setup.sh$' || true)"
+  -- desktop stow scripts install.sh packages 2>/dev/null \
+  | grep -v '^desktop/scripts/theme-setup.sh$' || true)"
 [[ -z $_old ]] || fail "old theme still referenced in: $_old"
 ! grep -q 'AURA_GLASS_COMMIT\|aura-glass.git\|install.sh --full' "$TS" \
   || fail "theme-setup.sh must not install Aura Glass"
 grep -q 'Adwaita' "$TS" || fail "theme-setup.sh must apply Adwaita"
 
 # --- Full pack is fetched + listed (not Aura-built) ---------------------------
-grep -q 'install_ego_zip "blur-my-shell@aunetx"' "$ROOT/scripts/fetch-gnome-extensions.sh" \
+grep -q 'install_ego_zip "blur-my-shell@aunetx"' "$ROOT/desktop/scripts/fetch-gnome-extensions.sh" \
   || fail "fetch-gnome-extensions must fetch Blur My Shell from EGO"
 for u in blur-my-shell@aunetx custom-osd@neuromorph status-tray@keithvassallo.com \
          tiling-assistant@leleat-on-github hotedge@jonathan.jdoda.ca kiwimenu@kemma \
@@ -39,13 +39,13 @@ done
   || fail "extensions.txt must not list the Aura helper"
 
 # --- repo dconf ---------------------------------------------------------------
-U="$ROOT/gnome/dconf/user.conf"; G="$ROOT/stow/gdm/etc/dconf/db/gdm.d/00-login-screen"
+U="$ROOT/desktop/gnome/dconf/user.conf"; G="$ROOT/system/gdm/etc/dconf/db/gdm.d/00-login-screen"
 for k in gtk-theme icon-theme cursor-theme cursor-size; do
   ! grep -q "^$k=" "$U" || fail "user.conf must not set $k (theme-setup / defaults own it)"
   ! grep -q "^$k=" "$G" || fail "GDM greeter must not set $k"
 done
 for s in user-theme blur-my-shell; do
-  ! grep -q "^\[org/gnome/shell/extensions/$s" "$U" "$ROOT/gnome/dconf/extensions.conf" \
+  ! grep -q "^\[org/gnome/shell/extensions/$s" "$U" "$ROOT/desktop/gnome/dconf/extensions.conf" \
     || fail "repo dconf must not carry the $s tree"
 done
 _en="$(grep '^enabled-extensions=' "$U")"
@@ -61,7 +61,7 @@ for u in appindicatorsupport@rgcjonas.gmail.com gnome-clipboard@b00f.github.io; 
   [[ $_en != *"'$u'"* ]] || fail "user.conf must not enable $u"
   ! grep -qx "$u" "$EXT" || fail "extensions.txt must not list $u"
 done
-grep -q 'run_step "Theme setup" bash scripts/theme-setup.sh' "$ROOT/install.sh" || fail "install.sh must run theme-setup.sh"
+grep -q 'run_step "Theme setup" bash desktop/scripts/theme-setup.sh' "$ROOT/install.sh" || fail "install.sh must run theme-setup.sh"
 
 # backup-gsettings.sh keeps theme keys and look trees out of snapshots.
 mkdir -p "$T/bbin"
@@ -86,7 +86,7 @@ kept=true
 D
 EOF
 chmod +x "$T/bbin/dconf"
-PATH="$T/bbin:$PATH" GSETTINGS_OUT="$T/snap.conf" bash "$ROOT/scripts/backup-gsettings.sh" >/dev/null \
+PATH="$T/bbin:$PATH" GSETTINGS_OUT="$T/snap.conf" bash "$ROOT/desktop/scripts/backup-gsettings.sh" >/dev/null \
   || fail "backup-gsettings failed"
 grep -q "^accent-color='blue'" "$T/snap.conf" || fail "snapshot must keep accent-color"
 grep -qE '^(gtk-theme|icon-theme|cursor-theme|cursor-size)=' "$T/snap.conf" && fail "snapshot must drop theme interface keys"

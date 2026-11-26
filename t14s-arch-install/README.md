@@ -14,7 +14,7 @@ auto-detected from DMI (or set in answers; defaults to `generic` on unrecognized
 `FW_SYNCTHING` / `FW_KDECONNECT` (firewalld port allows).
 Optional **`ollama-cuda`** / **`ollama`** (P15 and generic profiles) binds `127.0.0.1:11434`.
 Stage B (labs / AI / rice / firewalld zones) lives in the parent
-`dotfiles` repository ([../README.md](../README.md): `scripts/configure.sh` / `install.sh`).
+`dotfiles` repository ([../README.md](../README.md): `provision/scripts/configure.sh` / `install.sh`).
 
 UX ideas adapted from [archfi](https://github.com/MatMoul/archfi) and
 [archdi-pkg](https://github.com/MatMoul/archdi-pkg). Not ported: i18n packs,
@@ -413,7 +413,7 @@ sudo less /var/log/t14s-install.log  # full installer log
 
 ### Stage B (dotfiles)
 
-After first boot, run Stage B from the parent `~/dotfiles` repository (`./install.sh` for interactive TUI/GUI/full bootstrap, or `bash scripts/configure.sh` for modular labs/AI/rice/firewalld). Canonical howtos live in [../README.md](../README.md):
+After first boot, run Stage B from the parent `~/dotfiles` repository (`./install.sh` for interactive TUI/GUI/full bootstrap, or `bash provision/scripts/configure.sh` for modular labs/AI/rice/firewalld). Canonical howtos live in [../README.md](../README.md):
 
 * [Stage B bootstrap & `configure.sh`](../README.md#how-to-configuresh-stage-b-tui)
 * [firewalld lab zones (`lab-malware`)](../README.md#how-to-firewalld-lab-zones--lab-malware)

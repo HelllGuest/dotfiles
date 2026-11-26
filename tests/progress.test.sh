@@ -4,8 +4,8 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 fail() { echo "FAIL: $*" >&2; exit 1; }
 
-# shellcheck source=scripts/lib/progress.sh
-source "$ROOT/scripts/lib/progress.sh"
+# shellcheck source=provision/lib/progress.sh
+source "$ROOT/provision/lib/progress.sh"
 
 bar_utf8="$(LC_ALL=en_US.UTF-8 ui_bar 0 10)"
 [[ $bar_utf8 == '[░░░░░░░░░░]' ]] || fail "UTF-8 0%: got $bar_utf8"
@@ -21,7 +21,7 @@ bar_c="$(LC_ALL=C ui_bar 40 10)"
 bar_c="$(LC_ALL=C ui_bar 100 10)"
 [[ $bar_c == '[##########]' ]] || fail "C 100%: got $bar_c"
 
-grep -q 'scripts/lib/progress.sh' "$ROOT/install.sh" \
+grep -q 'provision/lib/progress.sh' "$ROOT/install.sh" \
   || fail "install.sh must source progress.sh"
 grep -q 'progress_line' "$ROOT/install.sh" \
   || fail "install.sh must call progress_line"
@@ -41,30 +41,30 @@ grep -q "INSTALL_STEPS=${_expect}" "$ROOT/install.sh" \
   || fail "INSTALL_STEPS must equal run_step($_rs)+advance($_ap)=$_expect"
 unset -v _rs _ap _expect _lab
 
-grep -q 'scripts/lib/progress.sh' "$ROOT/scripts/configure.sh" \
+grep -q 'provision/lib/progress.sh' "$ROOT/provision/scripts/configure.sh" \
   || fail "configure.sh must source progress.sh"
-grep -q 'scripts/lib/ui-menu.sh' "$ROOT/scripts/configure.sh" \
+grep -q 'provision/lib/ui-menu.sh' "$ROOT/provision/scripts/configure.sh" \
   || fail "configure.sh must source ui-menu.sh"
-grep -q 'scripts/lib/ui-menu.sh' "$ROOT/install.sh" \
+grep -q 'provision/lib/ui-menu.sh' "$ROOT/install.sh" \
   || fail "install.sh must source ui-menu.sh"
-grep -q -- '--backtitle' "$ROOT/scripts/lib/ui-menu.sh" \
+grep -q -- '--backtitle' "$ROOT/provision/lib/ui-menu.sh" \
   || fail "ui-menu.sh must set dialog/whiptail backtitle"
-grep -q 'NEWT_COLORS=' "$ROOT/scripts/lib/ui-menu.sh" \
+grep -q 'NEWT_COLORS=' "$ROOT/provision/lib/ui-menu.sh" \
   || fail "ui-menu.sh must set NEWT_COLORS"
-grep -q 'dialogrc' "$ROOT/scripts/lib/ui-menu.sh" \
+grep -q 'dialogrc' "$ROOT/provision/lib/ui-menu.sh" \
   || fail "ui-menu.sh must write a dialogrc"
-grep -q 'zenity --list --checklist' "$ROOT/scripts/lib/ui-menu.sh" \
+grep -q 'zenity --list --checklist' "$ROOT/provision/lib/ui-menu.sh" \
   || fail "ui-menu.sh must support zenity GUI checklist"
-grep -q 'progress_line' "$ROOT/scripts/configure.sh" \
+grep -q 'progress_line' "$ROOT/provision/scripts/configure.sh" \
   || fail "configure.sh run_mod must call progress_line"
-grep -q 'progress_banner' "$ROOT/scripts/configure.sh" \
+grep -q 'progress_banner' "$ROOT/provision/scripts/configure.sh" \
   || fail "configure.sh run_mod must call progress_banner"
 # Runnable count must exclude OLLAMA on non-P15 (is_p15 gate before +=).
-grep -q 'selected SETUP_OLLAMA && (( is_p15 ))' "$ROOT/scripts/configure.sh" \
+grep -q 'selected SETUP_OLLAMA && (( is_p15 ))' "$ROOT/provision/scripts/configure.sh" \
   || fail "CONFIGURE_STEPS must not count OLLAMA when not P15"
-grep -q 'configure_once' "$ROOT/scripts/configure.sh" \
+grep -q 'configure_once' "$ROOT/provision/scripts/configure.sh" \
   || fail "configure.sh must support CONFIGURE_ONCE / one-shot mode"
-grep -q 'Stage B main menu' "$ROOT/scripts/configure.sh" \
+grep -q 'Stage B main menu' "$ROOT/provision/scripts/configure.sh" \
   || fail "configure.sh must offer an interactive main menu loop"
 grep -q 'CONFIGURE_ONCE=1' "$ROOT/install.sh" \
   || fail "install.sh must set CONFIGURE_ONCE=1 so the menu does not block"
@@ -75,12 +75,18 @@ grep -q 'CONFIGURE_ONCE=1' "$ROOT/install.sh" \
 # cfg_ran (modules that ran, one per line).
 CT="$(mktemp -d)"
 trap 'rm -rf "$CT"' EXIT
-mkdir -p "$CT/scripts/lib" "$CT/bin"
-cp "$ROOT/scripts/configure.sh" "$CT/scripts/"
-cp "$ROOT/scripts/lib/dmi.sh" "$ROOT/scripts/lib/progress.sh" "$ROOT/scripts/lib/ui-menu.sh" "$CT/scripts/lib/"
-for _m in firewalld-lab-zones apply-profile ollama-setup labs-setup lab-detonate ai-stack-setup rice-setup; do
-  printf '#!/bin/sh\necho %s >>"%s/ran"\n' "$_m" "$CT" >"$CT/scripts/$_m.sh"
+mkdir -p "$CT/provision/scripts" "$CT/provision/lib" "$CT/security/scripts" "$CT/ai/scripts" "$CT/labs/scripts" "$CT/desktop/scripts" "$CT/bin"
+cp "$ROOT/provision/scripts/configure.sh" "$CT/provision/scripts/"
+cp "$ROOT/provision/lib/dmi.sh" "$ROOT/provision/lib/progress.sh" "$ROOT/provision/lib/ui-menu.sh" "$CT/provision/lib/"
+printf '#!/bin/sh\necho firewalld-lab-zones >>"%s/ran"\n' "$CT" >"$CT/security/scripts/firewalld-lab-zones.sh"
+printf '#!/bin/sh\necho apply-profile >>"%s/ran"\n' "$CT" >"$CT/provision/scripts/apply-profile.sh"
+for _m in ollama-setup ai-stack-setup; do
+  printf '#!/bin/sh\necho %s >>"%s/ran"\n' "$_m" "$CT" >"$CT/ai/scripts/$_m.sh"
 done
+for _m in labs-setup lab-detonate; do
+  printf '#!/bin/sh\necho %s >>"%s/ran"\n' "$_m" "$CT" >"$CT/labs/scripts/$_m.sh"
+done
+printf '#!/bin/sh\necho rice-setup >>"%s/ran"\n' "$CT" >"$CT/desktop/scripts/rice-setup.sh"
 unset -v _m
 # The menu tests need script(1) that passes end of input on to the pty
 # (util-linux 2.35+); otherwise they would hang until the timeout.
@@ -98,10 +104,10 @@ cfg_run() {
   local input=$1; shift
   : >"$CT/ran"
   if [[ $input == - ]]; then
-    cfg_out="$(env "$@" timeout 20 bash "$CT/scripts/configure.sh" </dev/null 2>&1)" && cfg_rc=0 || cfg_rc=$?
+    cfg_out="$(env "$@" timeout 20 bash "$CT/provision/scripts/configure.sh" </dev/null 2>&1)" && cfg_rc=0 || cfg_rc=$?
   else
     cfg_pty_ok || return 1
-    cfg_out="$(printf '%b' "$input" | env "$@" timeout 20 script -qec "bash $CT/scripts/configure.sh; echo RC=\$?" /dev/null 2>&1)" || true
+    cfg_out="$(printf '%b' "$input" | env "$@" timeout 20 script -qec "bash $CT/provision/scripts/configure.sh; echo RC=\$?" /dev/null 2>&1)" || true
     cfg_rc=$(sed -n 's/.*RC=\([0-9]*\).*/\1/p' <<<"$cfg_out" | tail -1)
   fi
   cfg_ran="$(cat "$CT/ran")"
@@ -136,11 +142,11 @@ if cfg_run '' CONFIGURE_UI=plain; then
   [[ $cfg_rc == 0 && $cfg_ran == firewalld-lab-zones && $cfg_out != *'Stage B main menu'* \
      && $cfg_out != *'Selected modules finished.'* ]] \
     || fail "CONFIGURE_ONCE=1: one checklist, no menu, no extra prompt (rc=$cfg_rc)"
-  printf '#!/bin/sh\nexit 3\n' >"$CT/scripts/firewalld-lab-zones.sh"
+  printf '#!/bin/sh\nexit 3\n' >"$CT/security/scripts/firewalld-lab-zones.sh"
   cfg_run '1\n\n3\n' CONFIGURE_UI=plain
   [[ $cfg_rc == 1 && $cfg_out == *'Module failed: firewalld'* ]] \
     || fail "a failing module must stop the menu loop with exit 1 (rc=$cfg_rc)"
-  printf '#!/bin/sh\necho firewalld-lab-zones >>"%s/ran"\n' "$CT" >"$CT/scripts/firewalld-lab-zones.sh"
+  printf '#!/bin/sh\necho firewalld-lab-zones >>"%s/ran"\n' "$CT" >"$CT/security/scripts/firewalld-lab-zones.sh"
 fi
 # whiptail draws on stdout and answers on stderr: the checklist must capture
 # the answer. A stand-in whiptail does exactly that (screen → stdout, the
@@ -235,12 +241,12 @@ cfg_run - WAYLAND_DISPLAY=wayland-0 CONFIGURE_UI=gui PATH="$CT/bin:$PATH" ZN_MEN
 : >"$CT/ran"
 printf 'modules\nquit\n' >"$CT/zmenu"
 WAYLAND_DISPLAY=wayland-0 ZN_MENU="$CT/zmenu" PATH="$CT/bin:$PATH" \
-  bash "$CT/scripts/configure.sh" --gui </dev/null >/dev/null 2>&1 \
+  bash "$CT/provision/scripts/configure.sh" --gui </dev/null >/dev/null 2>&1 \
   || fail "configure.sh --gui failed"
 [[ "$(cat "$CT/ran")" == firewalld-lab-zones ]] \
   || fail "configure.sh --gui ran wrong modules: $(cat "$CT/ran")"
 : >"$CT/ran"
-bash "$CT/scripts/configure.sh" --plain </dev/null >/dev/null 2>&1 \
+bash "$CT/provision/scripts/configure.sh" --plain </dev/null >/dev/null 2>&1 \
   || fail "configure.sh --plain failed"
 [[ "$(cat "$CT/ran")" == firewalld-lab-zones ]] \
   || fail "configure.sh --plain ran wrong modules: $(cat "$CT/ran")"
@@ -249,7 +255,7 @@ bash "$CT/scripts/configure.sh" --plain </dev/null >/dev/null 2>&1 \
 # pre-select the first row when DEFAULT_MENU_ITEM does not match any tag.
 _noglob="$(cd "$CT" && bash -euo pipefail -c '
   source "$1"; ui_init plain; ui_checklist "Pick" a "A" on
-' _ "$ROOT/scripts/lib/ui-menu.sh" <<<'*' 2>/dev/null)"
+' _ "$ROOT/provision/lib/ui-menu.sh" <<<'*' 2>/dev/null)"
 [[ $_noglob == '*' ]] || fail "ui_checklist plain must not glob-expand '*' (got: $_noglob)"
 _zchk="$CT/bin/zenity-chk"
 cat >"$_zchk" <<'ZC'
@@ -262,13 +268,13 @@ _zout="$(Z_ARGS="$CT/zargs" WAYLAND_DISPLAY=wayland-0 PATH="$CT/bin:$PATH" bash 
   source "$1"; UI=zenity; DEFAULT_MENU_ITEM="stale"
   zenity() { "'"$_zchk"'" "$@"; }
   ui_menu "M" first "First" second "Second"
-' _ "$ROOT/scripts/lib/ui-menu.sh")"
+' _ "$ROOT/provision/lib/ui-menu.sh")"
 [[ $_zout == first ]] && grep -q '^TRUE$' "$CT/zargs" \
   || fail "ui_menu zenity must default to TRUE on first row when DEFAULT_MENU_ITEM misses"
 unset -v _noglob _zchk _zout
 
 # ui_dims clamps to the terminal and returns 0 (callable under set -e).
-_dims="$(sed -n '/^ui_dims() {/,/^}/p' "$ROOT/scripts/lib/ui-menu.sh")"
+_dims="$(sed -n '/^ui_dims() {/,/^}/p' "$ROOT/provision/lib/ui-menu.sh")"
 [[ -n $_dims ]] || fail "ui-menu.sh: ui_dims not found"
 _got="$(LINES=20 COLUMNS=70 TERM=xterm bash -euo pipefail -c "$_dims"'
   ui_dims 20 76 12; echo "$UI_H $UI_W $UI_LH"')" \
@@ -281,11 +287,18 @@ unset -v _dims _got
 
 # ── install.sh menu & selective section flags (stub repo in $CT/inst) ──
 IR="$CT/inst"
-mkdir -p "$IR/scripts/lib" "$IR/bin" "$IR/bin-ok"
+mkdir -p "$IR/scripts" "$IR/provision/scripts" "$IR/provision/lib" "$IR/desktop/scripts" "$IR/security/scripts" "$IR/bin" "$IR/bin-ok"
 cp "$ROOT/install.sh" "$IR/"
-cp "$ROOT/scripts/lib/progress.sh" "$ROOT/scripts/lib/ui-menu.sh" "$IR/scripts/lib/"
-for _s in check validate-configs git-setup nvim-setup privacy-hardener ops-hygiene configure; do
+cp "$ROOT/provision/lib/progress.sh" "$ROOT/provision/lib/ui-menu.sh" "$IR/provision/lib/"
+for _s in check validate-configs; do
   printf '#!/bin/sh\necho %s >>"%s/ran"\n' "$_s" "$IR" >"$IR/scripts/$_s.sh"
+done
+printf '#!/bin/sh\necho configure >>"%s/ran"\n' "$IR" >"$IR/provision/scripts/configure.sh"
+for _s in privacy-hardener ops-hygiene; do
+  printf '#!/bin/sh\necho %s >>"%s/ran"\n' "$_s" "$IR" >"$IR/security/scripts/$_s.sh"
+done
+for _s in git-setup nvim-setup; do
+  printf '#!/bin/sh\necho %s >>"%s/ran"\n' "$_s" "$IR" >"$IR/desktop/scripts/$_s.sh"
 done
 # Failing sudo stub proves check-only runs never ask for sudo; ok stub tracks sudo calls.
 printf '#!/bin/sh\necho "SUDO_CALLED" >>"%s/ran"; exit 99\n' "$IR" >"$IR/bin/sudo"
@@ -370,9 +383,9 @@ if command -v desktop-file-validate >/dev/null 2>&1; then
 fi
 unset -v _desk
 
-bash -n "$ROOT/scripts/lib/progress.sh" || fail "bash -n progress.sh"
-bash -n "$ROOT/scripts/lib/ui-menu.sh" || fail "bash -n ui-menu.sh"
-bash -n "$ROOT/scripts/configure.sh" || fail "bash -n configure.sh"
+bash -n "$ROOT/provision/lib/progress.sh" || fail "bash -n progress.sh"
+bash -n "$ROOT/provision/lib/ui-menu.sh" || fail "bash -n ui-menu.sh"
+bash -n "$ROOT/provision/scripts/configure.sh" || fail "bash -n configure.sh"
 bash -n "$ROOT/install.sh" || fail "bash -n install.sh"
 
 echo "ok progress bars + Stage B wiring"

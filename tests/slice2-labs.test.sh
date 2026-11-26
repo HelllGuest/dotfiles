@@ -5,10 +5,10 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 fail() { echo "FAIL: $*" >&2; exit 1; }
 
 for f in \
-  "$ROOT/scripts/labs-setup.sh" \
-  "$ROOT/scripts/ai-stack-setup.sh" \
-  "$ROOT/scripts/rice-setup.sh" \
-  "$ROOT/scripts/configure.sh" \
+  "$ROOT/labs/scripts/labs-setup.sh" \
+  "$ROOT/ai/scripts/ai-stack-setup.sh" \
+  "$ROOT/desktop/scripts/rice-setup.sh" \
+  "$ROOT/provision/scripts/configure.sh" \
   "$ROOT/labs/lab-triage/Containerfile" \
   "$ROOT/labs/lab-re/Containerfile" \
   "$ROOT/labs/lab-android/Containerfile" \
@@ -24,10 +24,10 @@ do
   [[ -f $f ]] || fail "missing $f"
 done
 
-grep -q 'podman build --network=host' "$ROOT/scripts/labs-setup.sh" \
+grep -q 'podman build --network=host' "$ROOT/labs/scripts/labs-setup.sh" \
   || fail "labs-setup.sh must build with --network=host (isolated nets starve pacman)"
-for f in "$ROOT/scripts/labs-setup.sh" "$ROOT/scripts/ai-stack-setup.sh" \
-  "$ROOT/scripts/rice-setup.sh" "$ROOT/scripts/configure.sh" \
+for f in "$ROOT/labs/scripts/labs-setup.sh" "$ROOT/ai/scripts/ai-stack-setup.sh" \
+  "$ROOT/desktop/scripts/rice-setup.sh" "$ROOT/provision/scripts/configure.sh" \
   "$ROOT/labs/lab-android/entrypoint.sh"; do
   bash -n "$f" || fail "bash -n $f"
   [[ -x $f ]] || fail "not executable: $f"
@@ -102,7 +102,7 @@ for _sh in bash zsh; do
       "home/u/proj:allow" "home/u/proj/a:allow"; do
     _dir="$_wd/${_case%%:*}"; _want=${_case##*:}
     _got="$(cd "$_dir" && HOME="$_wd/home/u" LAB_OUT="$_wd/home/u/labs/out" LAB_SAMPLES="$_wd/srv/lab/samples" \
-      "$_sh" -c 'source "$1"; _lab_work_dir' _ "$ROOT/scripts/lib/lab-workdir.sh" 2>/dev/null)"
+      "$_sh" -c 'source "$1"; _lab_work_dir' _ "$ROOT/labs/lib/lab-workdir.sh" 2>/dev/null)"
     if [[ $_want == refuse ]]; then
       [[ $_got == "$_wd/home/u/labs/out" ]] || fail "$_sh: /work must refuse ${_case%%:*} (got $_got)"
     else
@@ -112,24 +112,24 @@ for _sh in bash zsh; do
   for _sysp in /run /run/user/1000 /var/lib /opt /tmp /srv/lab \
       /tmp/.X11-unix /tmp/.ICE-unix /tmp/tmux-1000 /tmp/tmux-1000/x /tmp/ssh-abc123 /tmp/systemd-private-x; do
     _r="$(HOME="$_wd/home/u" LAB_SAMPLES="$_wd/srv/lab/samples" \
-      "$_sh" -c 'source "$1"; _lab_path_refusal_reason "$2"' _ "$ROOT/scripts/lib/lab-workdir.sh" "$_sysp")"
+      "$_sh" -c 'source "$1"; _lab_path_refusal_reason "$2"' _ "$ROOT/labs/lib/lab-workdir.sh" "$_sysp")"
     [[ -n $_r ]] || fail "$_sh: _lab_path_refusal_reason must refuse $_sysp"
   done
 done
 rm -rf "$_wd"; unset -v _wd _sh _case _dir _want _got _sysp _r
 # One implementation: lab-* wrappers and lab-mcp.sh both use the shared lib, and
 # the wrappers fail closed when it is missing.
-grep -q 'source "$(cd "$(dirname "$0")" && pwd)/lib/lab-workdir.sh"' "$ROOT/scripts/lab-mcp.sh" \
-  || fail "lab-mcp.sh must use scripts/lib/lab-workdir.sh"
-! grep -qE 'refusing|readlink -f -- "\$\{HOME' "$ROOT/scripts/lab-mcp.sh" || fail "lab-mcp.sh must not keep its own work-dir logic"
+grep -q 'lib/lab-workdir.sh' "$ROOT/labs/scripts/lab-mcp.sh" \
+  || fail "lab-mcp.sh must use labs/lib/lab-workdir.sh"
+! grep -qE 'refusing|readlink -f -- "\$\{HOME' "$ROOT/labs/scripts/lab-mcp.sh" || fail "lab-mcp.sh must not keep its own work-dir logic"
 # Behaviour: lab-mcp's work_dir refuses $HOME under set -u even when LAB_SAMPLES is unset.
-_wfn="$(grep -E '^work_dir\(\)' "$ROOT/scripts/lab-mcp.sh")"
+_wfn="$(grep -E '^work_dir\(\)' "$ROOT/labs/scripts/lab-mcp.sh")"
 _h="$(mktemp -d)"; _h="$(cd "$_h" && pwd -P)"; mkdir -p "$_h/out"
 _got="$(cd "$_h" && env -u LAB_SAMPLES HOME="$_h" LAB_OUT="$_h/out" bash -euo pipefail -c \
-  'source "$1"; '"$_wfn"'; work_dir' _ "$ROOT/scripts/lib/lab-workdir.sh" 2>/dev/null)"
+  'source "$1"; '"$_wfn"'; work_dir' _ "$ROOT/labs/lib/lab-workdir.sh" 2>/dev/null)"
 [[ $_got == "$_h/out" ]] || fail "lab-mcp work_dir must refuse \$HOME without LAB_SAMPLES set (got $_got)"
 rm -rf -- "$_h"; unset -v _wfn _h _got
-grep -q 'scripts/lib/lab-workdir.sh"' "$ROOT/stow/zsh/.shell-functions" || fail ".shell-functions must source the shared work-dir lib"
+grep -q 'labs/lib/lab-workdir.sh"' "$ROOT/stow/zsh/.shell-functions" || fail ".shell-functions must source the shared work-dir lib"
 [[ $(grep -cF 'work=$(_lab_work_dir) || return 1' "$ROOT/stow/zsh/.shell-functions") -eq 3 ]] \
   || fail "every lab must stop when _lab_work_dir refuses"
 _o="$(DOTFILES_DIR=/nonexistent HOME=/tmp bash -c 'source "$1" >/dev/null 2>&1; _lab_work_dir' _ "$ROOT/stow/zsh/.shell-functions" 2>&1)" \
@@ -144,17 +144,17 @@ triage_block=$(awk '/^lab-triage\(\)/,/^lab-re\(\)/' "$ROOT/stow/zsh/.shell-func
 echo "$triage_block" | grep -q 'SYS_PTRACE' \
   && fail "lab-triage must not get SYS_PTRACE" || true
 
-grep -E 'bash[[:space:]].*install-caveman\.sh' "$ROOT/scripts/ai-stack-setup.sh" \
+grep -E 'bash[[:space:]].*install-caveman\.sh' "$ROOT/ai/scripts/ai-stack-setup.sh" \
   && fail "ai-stack must not call install-caveman (full install.sh owns caveman; SETUP_AI = ponytail only)" || true
-grep -q 'install-ponytail.sh' "$ROOT/scripts/ai-stack-setup.sh" \
+grep -q 'install-ponytail.sh' "$ROOT/ai/scripts/ai-stack-setup.sh" \
   || fail "ai-stack must still install ponytail"
-grep -E 'bash[[:space:]].*install-rea\.sh' "$ROOT/scripts/ai-stack-setup.sh" \
+grep -E 'bash[[:space:]].*install-rea\.sh' "$ROOT/ai/scripts/ai-stack-setup.sh" \
   && fail "ai-stack must not install REA on host (use lab-re)" || true
 grep -E 'bash[[:space:]].*install-rea\.sh' "$ROOT/install.sh" \
   && fail "install.sh must not auto-run host install-rea (use lab-re)" || true
 grep -q 'AI_STACK_EXTRAS_ONLY=1' "$ROOT/install.sh" \
   || fail "install.sh must run ai-stack extras (Continue / OpenCode / hr-proxy)"
-grep -q 'AI_STACK_EXTRAS_ONLY' "$ROOT/scripts/ai-stack-setup.sh" \
+grep -q 'AI_STACK_EXTRAS_ONLY' "$ROOT/ai/scripts/ai-stack-setup.sh" \
   || fail "ai-stack-setup.sh must honor AI_STACK_EXTRAS_ONLY"
 grep -q 'ollama-setup.sh' "$ROOT/install.sh" \
   || fail "install.sh must run ollama-setup.sh (P15 no-op elsewhere)"
@@ -172,45 +172,45 @@ grep -q 'rizin' "$ROOT/labs/lab-re/Containerfile" \
 grep -q 'rea-agents' "$ROOT/labs/lab-re/Containerfile" \
   || fail "lab-re must install rea-agents inside image"
 
-grep -q 'SETUP_LABS' "$ROOT/scripts/configure.sh" || fail "configure must wire SETUP_LABS"
-grep -q 'labs-setup.sh' "$ROOT/scripts/configure.sh" || fail "configure must call labs-setup"
-grep -q 'ai-stack-setup.sh' "$ROOT/scripts/configure.sh" || fail "configure must call ai-stack"
-grep -q 'rice-setup.sh' "$ROOT/scripts/configure.sh" || fail "configure must call rice-setup"
-grep -q 'LABS_SLICE2' "$ROOT/scripts/configure.sh" \
+grep -q 'SETUP_LABS' "$ROOT/provision/scripts/configure.sh" || fail "configure must wire SETUP_LABS"
+grep -q 'labs-setup.sh' "$ROOT/provision/scripts/configure.sh" || fail "configure must call labs-setup"
+grep -q 'ai-stack-setup.sh' "$ROOT/provision/scripts/configure.sh" || fail "configure must call ai-stack"
+grep -q 'rice-setup.sh' "$ROOT/provision/scripts/configure.sh" || fail "configure must call rice-setup"
+grep -q 'LABS_SLICE2' "$ROOT/provision/scripts/configure.sh" \
   && fail "Slice 2 placeholders must be gone" || true
 
 # P15 ollama checklist default + no swallowed module failures
-grep -q 'OLLAMA_STATE=on' "$ROOT/scripts/configure.sh" \
+grep -q 'OLLAMA_STATE=on' "$ROOT/provision/scripts/configure.sh" \
   || fail "configure must set OLLAMA_STATE=on for P15"
-grep -q 'is_p15 -eq 1' "$ROOT/scripts/configure.sh" \
+grep -q 'is_p15 -eq 1' "$ROOT/provision/scripts/configure.sh" \
   || fail "configure must gate OLLAMA_STATE on is_p15"
-grep -q 'lab-malware' "$ROOT/scripts/configure.sh" \
+grep -q 'lab-malware' "$ROOT/provision/scripts/configure.sh" \
   || fail "SETUP_FIREWALLD label must mention lab-malware"
 # run_mod must not be paired with || true (would hide failures)
-grep -E 'run_mod[[:space:]].*\|\|[[:space:]]*true' "$ROOT/scripts/configure.sh" \
+grep -E 'run_mod[[:space:]].*\|\|[[:space:]]*true' "$ROOT/provision/scripts/configure.sh" \
   && fail "configure must not swallow run_mod failures with || true" || true
-grep -q 'selected SETUP_FIREWALLD' "$ROOT/scripts/configure.sh" \
+grep -q 'selected SETUP_FIREWALLD' "$ROOT/provision/scripts/configure.sh" \
   || fail "configure must use selected() fail-fast module gates"
-grep -q 'CONFIGURE_UI' "$ROOT/scripts/configure.sh" \
+grep -q 'CONFIGURE_UI' "$ROOT/provision/scripts/configure.sh" \
   || fail "configure must support CONFIGURE_UI override"
-grep -q -- '--add-source=192.168.200.0/24' "$ROOT/scripts/lib/lab-malware-zone.sh" \
+grep -q -- '--add-source=192.168.200.0/24' "$ROOT/security/lib/lab-malware-zone.sh" \
   || fail "lab-malware-zone must permanently add source 192.168.200.0/24"
-grep -q '67/udp' "$ROOT/scripts/lib/lab-malware-zone.sh" \
+grep -q '67/udp' "$ROOT/security/lib/lab-malware-zone.sh" \
   || fail "lab-malware zone must allow DHCP (67/udp) under DROP"
-grep -E 'for spec in .*68/udp' "$ROOT/scripts/lib/lab-malware-zone.sh" \
+grep -E 'for spec in .*68/udp' "$ROOT/security/lib/lab-malware-zone.sh" \
   && fail "lab-malware zone must not open 68/udp (host is DHCP server)" || true
-grep -qE "<dns[^>]*enable=['\"]no['\"]" "$ROOT/scripts/firewalld-lab-zones.sh" \
+grep -qE "<dns[^>]*enable=['\"]no['\"]" "$ROOT/security/scripts/firewalld-lab-zones.sh" \
   || fail "virbr-malware XML must set dns enable=no (INetSim owns DNS)"
-grep -q 'dhcp-option=6,192.168.200.1' "$ROOT/scripts/firewalld-lab-zones.sh" \
+grep -q 'dhcp-option=6,192.168.200.1' "$ROOT/security/scripts/firewalld-lab-zones.sh" \
   || fail "virbr-malware DHCP must advertise DNS 192.168.200.1 (INetSim)"
-grep -qE 'zone=["'\'']lab-malware["'\'']' "$ROOT/scripts/firewalld-lab-zones.sh" \
+grep -qE 'zone=["'\'']lab-malware["'\'']' "$ROOT/security/scripts/firewalld-lab-zones.sh" \
   || fail "virbr-malware bridge XML must set zone=lab-malware (stop libvirt reclaim)"
-_fw_zone_ln="$(grep -n -m1 '^ensure_lab_malware_zone$' "$ROOT/scripts/firewalld-lab-zones.sh" | cut -d: -f1)"
-_fw_start_ln="$(grep -n -m1 'virsh net-start virbr-malware' "$ROOT/scripts/firewalld-lab-zones.sh" | cut -d: -f1)"
+_fw_zone_ln="$(grep -n -m1 '^ensure_lab_malware_zone$' "$ROOT/security/scripts/firewalld-lab-zones.sh" | cut -d: -f1)"
+_fw_start_ln="$(grep -n -m1 'virsh net-start virbr-malware' "$ROOT/security/scripts/firewalld-lab-zones.sh" | cut -d: -f1)"
 [[ -n $_fw_zone_ln && -n $_fw_start_ln ]] && (( _fw_zone_ln < _fw_start_ln )) \
   || fail "firewalld-lab-zones must create lab-malware zone before virsh net-start virbr-malware"
 unset -v _fw_zone_ln _fw_start_ln
-grep -q 'sudo firewall-cmd --permanent --get-zones' "$ROOT/scripts/firewalld-lab-zones.sh" \
+grep -q 'sudo firewall-cmd --permanent --get-zones' "$ROOT/security/scripts/firewalld-lab-zones.sh" \
   || fail "firewalld-lab-zones must query zones with sudo"
 
 grep -q '^bubblewrap$' "$ROOT/packages/pacman.txt" || fail "bubblewrap in pacman.txt"
@@ -267,7 +267,7 @@ else
 fi
 
 # Regression checks for Slice 2 / shell / desktop hardening fixes
-grep -qE '^[^#]*dconf write.*/media-keys/' "$ROOT/scripts/gnome-console-setup.sh" \
+grep -qE '^[^#]*dconf write.*/media-keys/' "$ROOT/desktop/scripts/gnome-console-setup.sh" \
   && fail "gnome-console-setup.sh must not overwrite GNOME media-keys / custom-keybindings" || true
 
 # Behavioral: .shell-aliases j='cd' (stub zoxide so CI without zoxide runs it)
@@ -309,7 +309,7 @@ grep -qE '^[^#]*dconf write.*/media-keys/' "$ROOT/scripts/gnome-console-setup.sh
     >"$_p15_t/home/.config/opencode/opencode.json"
   PATH="$_p15_t/bin:$PATH" HOME="$_p15_t/home" XDG_CONFIG_HOME="$_p15_t/home/.config" \
     DMI_SYSFS_ROOT="$_p15_t/dmi" AI_STACK_EXTRAS_ONLY=1 \
-    bash "$ROOT/scripts/ai-stack-setup.sh" >/dev/null
+    bash "$ROOT/ai/scripts/ai-stack-setup.sh" >/dev/null
   python3 - "$_p15_t/home/.config/opencode/opencode.json" <<'PY' \
     || fail "ai-stack-setup.sh failed to merge ollama into existing opencode.json"
 import json, sys
@@ -324,7 +324,7 @@ PY
     >"$_p15_t/home/.config/opencode/opencode.json"
   PATH="$_p15_t/bin:$PATH" HOME="$_p15_t/home" XDG_CONFIG_HOME="$_p15_t/home/.config" \
     DMI_SYSFS_ROOT="$_p15_t/dmi" AI_STACK_EXTRAS_ONLY=1 \
-    bash "$ROOT/scripts/ai-stack-setup.sh" >/dev/null
+    bash "$ROOT/ai/scripts/ai-stack-setup.sh" >/dev/null
   python3 - "$_p15_t/home/.config/opencode/opencode.json" <<'PY' \
     || fail "ai-stack-setup.sh overwrote existing model or provider.ollama"
 import json, sys
@@ -343,7 +343,7 @@ PY
   printf '#!/bin/sh\nexec "$@"\n' >"$_ut/bin/sudo"
   printf '#!/bin/sh\nexit 0\n' >"$_ut/bin/udevadm"
   chmod +x "$_ut/bin/sudo" "$_ut/bin/udevadm"
-  _udev_block="$(sed -n '/^# adb udev (host)/,/^unset _legacy_udev$/p' "$ROOT/scripts/labs-setup.sh")"
+  _udev_block="$(sed -n '/^# adb udev (host)/,/^unset _legacy_udev$/p' "$ROOT/labs/scripts/labs-setup.sh")"
   [[ -n "$_udev_block" ]] || fail "labs-setup.sh missing udev block"
   # 1. Fresh install writes 0660 + TAG+="uaccess", no 0666/plugdev
   PATH="$_ut/bin:$PATH" ANDROID_UDEV_USR="$_ut/usr/51-android.rules" \
@@ -371,7 +371,7 @@ PY
   _ot="$(mktemp -d)"
   trap 'rm -rf "$_ot"' EXIT
   mkdir -p "$_ot/home/.kimi-code"
-  _py_block="$(sed -n '/^  python3 - "\$obscura_bin" <<'\''PY'\''$/,/^PY$/p' "$ROOT/scripts/install-obscura.sh" | sed '1d;$d')"
+  _py_block="$(sed -n '/^  python3 - "\$obscura_bin" <<'\''PY'\''$/,/^PY$/p' "$ROOT/ai/scripts/install-obscura.sh" | sed '1d;$d')"
   [[ -n "$_py_block" ]] || fail "install-obscura.sh missing agent MCP merge block"
   HOME="$_ot/home" python3 -c "$_py_block" "/usr/local/bin/obscura" >/dev/null
   [[ -f "$_ot/home/.kimi-code/mcp.json" ]] || fail "install-obscura skipped Kimi MCP when ~/.cursor absent"
@@ -390,8 +390,8 @@ PY
     printf '#!/bin/sh\nexit 0\n' >"$_rt/bin/$_c"
     chmod +x "$_rt/bin/$_c"
   done
-  PATH="$_rt/bin:$PATH" HOME="$_rt/home" bash "$ROOT/scripts/rice-setup.sh" >/dev/null
-  PATH="$_rt/bin:$PATH" HOME="$_rt/home" bash "$ROOT/scripts/rice-setup.sh" >/dev/null
+  PATH="$_rt/bin:$PATH" HOME="$_rt/home" bash "$ROOT/desktop/scripts/rice-setup.sh" >/dev/null
+  PATH="$_rt/bin:$PATH" HOME="$_rt/home" bash "$ROOT/desktop/scripts/rice-setup.sh" >/dev/null
   _n="$(grep -c 'CMD_NOTIFY_THRESHOLD' "$_rt/home/.zshrc.local")"
   [[ "$_n" -eq 1 ]] || fail "rice-setup.sh duplicated CMD_NOTIFY_THRESHOLD in .zshrc.local (count=$_n)"
 )
@@ -399,8 +399,8 @@ PY
 # Behavioral: agent-run.sh shares lib/lab-workdir.sh; refuses sensitive system/socket
 # paths (/run, /var/lib, /opt, whole /tmp, /tmp session socket dirs, dirs holding
 # a socket), home/hidden/dotfiles/samples; allows project dir.
-grep -q 'source "$(cd "$(dirname "$0")" && pwd)/lib/lab-workdir.sh"' "$ROOT/scripts/agent-run.sh" \
-  || fail "agent-run.sh must source shared scripts/lib/lab-workdir.sh"
+grep -q 'lib/lab-workdir.sh' "$ROOT/ai/scripts/agent-run.sh" \
+  || fail "agent-run.sh must source shared labs/lib/lab-workdir.sh"
 (
   _ar="$(mktemp -d)"; _ar="$(cd "$_ar" && pwd -P)"
   trap 'rm -rf "$_ar"' EXIT
@@ -414,12 +414,12 @@ grep -q 'source "$(cd "$(dirname "$0")" && pwd)/lib/lab-workdir.sh"' "$ROOT/scri
       /run /var/lib /opt /tmp /tmp/.X11-unix "/tmp/tmux-$(id -u)"; do
     [[ -d "$_bad" ]] || continue
     if PATH="$_ar/bin:$PATH" HOME="$_ar/home/u" LAB_SAMPLES="$_ar/srv/lab/samples" \
-        bash "$ROOT/scripts/agent-run.sh" "$_bad" alpine:3.20 >/dev/null 2>&1; then
+        bash "$ROOT/ai/scripts/agent-run.sh" "$_bad" alpine:3.20 >/dev/null 2>&1; then
       fail "agent-run.sh must refuse $_bad"
     fi
   done
   _ok="$(PATH="$_ar/bin:$PATH" HOME="$_ar/home/u" LAB_SAMPLES="$_ar/srv/lab/samples" \
-    bash "$ROOT/scripts/agent-run.sh" "$_ar/home/u/proj/a" alpine:3.20 2>&1)"
+    bash "$ROOT/ai/scripts/agent-run.sh" "$_ar/home/u/proj/a" alpine:3.20 2>&1)"
   [[ "$_ok" == "PODMAN_OK" ]] || fail "agent-run.sh must allow normal project dir (got: $_ok)"
 )
 

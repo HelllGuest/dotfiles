@@ -45,7 +45,7 @@ This guide prioritizes:
 > `thinkpad-p15.sh`. Verify: `scripts/check.sh --stage-a` (Stage A, via the
 > installer's `tests/host-check.sh`), `scripts/check.sh` (post-install), `--all`
 > (both). Rehearse with
-> [`arch-install-vmtest.sh`](../scripts/arch-install-vmtest.sh). Manual phases
+> [`arch-install-vmtest.sh`](../provision/scripts/arch-install-vmtest.sh). Manual phases
 > below remain the reference for what Stage A does.
 
 > **Dotfiles:** After completing this guide, continue with [PHASE 27 — Dotfiles Setup](#phase-27--dotfiles-setup) or jump to the [dotfiles README](../README.md) for shell and maintenance. For coding, reverse engineering, and malware-lab purpose stacks on this ThinkPad, see [fresh-install-coding-re.md](fresh-install-coding-re.md).
@@ -94,14 +94,14 @@ Windows and Linux
 This repo’s tracked files pin **s2idle** (not S3/`deep`):
 `mem_sleep_default=s2idle` on the kernel cmdline (written by `arch-install.sh` /
 `arch-install-t14s.sh` / `arch-install-p15.sh` and machine profiles) plus
-`stow/system/etc/systemd/sleep.conf.d/` (`SuspendState=mem` +
+`system/etc/systemd/sleep.conf.d/` (`SuspendState=mem` +
 `MemorySleepMode=s2idle`). Check with [Verify sleep](#verify-sleep-s2idle);
 after resume, `journalctl -b | grep "suspend entry"` →
 `PM: suspend entry (s2idle)`.
 
 ### Kernel cmdline + `system/` files (installed, not stowed)
 
-`stow/system/` is **not** stowed. `install.sh` runs `scripts/system-setup.sh`,
+`system/` is **not** stowed. `install.sh` runs `system/scripts/system-setup.sh`,
 which installs each file as a root-owned regular file (same reason as zram and
 GDM). Symlinks from `/etc` into `$HOME` break in two ways:
 
@@ -120,8 +120,8 @@ setups are removed; `scripts/check.sh` flags any that remain.
 
 The four location files (`/etc/geolocation`, GeoClue drop-in, NetworkManager
 dispatcher, `50-vpn-location-sync.rules`) are installed by
-`scripts/location-setup.sh`, and `50-kali-lan-host-prep.rules` is installed by
-`scripts/kali-disposable.sh setup`; `system-setup.sh` skips all of them.
+`security/scripts/location-setup.sh`, and `50-kali-lan-host-prep.rules` is installed by
+`labs/scripts/kali-disposable.sh setup`; `system-setup.sh` skips all of them.
 
 ---
 
@@ -756,7 +756,7 @@ Do **not** `stow -t / zram`: a symlink into `$HOME` breaks at early boot (home i
 
 ```bash
 cd ~/dotfiles
-bash scripts/zram-setup.sh
+bash system/scripts/zram-setup.sh
 ```
 
 That copies a real file to `/etc/systemd/zram-generator.conf`.
@@ -815,7 +815,7 @@ Apply:
 sysctl --system
 ```
 
-`scripts/system-setup.sh` also installs `/etc/sysctl.d/99-perf.conf`
+`system/scripts/system-setup.sh` also installs `/etc/sysctl.d/99-perf.conf`
 (`kernel.perf_event_paranoid = 2`): linux-hardened defaults to 3, which blocks
 `perf` for every non-root user. Attaching a debugger to a running process
 (`gdb -p`, `strace -p`) still needs `sudo` because of `ptrace_scope = 1`.
@@ -852,7 +852,7 @@ Configure firewalld (nftables backend, deny inbound):
 
 ```bash
 pacman -S firewalld
-# or: bash scripts/firewalld-lab-zones.sh   # drop + lab zones; removes ufw if present
+# or: bash security/scripts/firewalld-lab-zones.sh   # drop + lab zones; removes ufw if present
 firewall-cmd --set-default-zone=drop
 systemctl enable --now firewalld
 ```
@@ -890,8 +890,8 @@ systemctl mask ufw 2>/dev/null || true
 Waydroid bridges the container on `waydroid0` (`192.168.240.1/24`) but provides
 no outbound NAT, so containers have no return path and no internet. Bind the
 bridge to a zone that allows DHCP/DNS to the host, then enable the idempotent
-`waydroid-nat.service` unit (from `stow/system/`, installed by
-`scripts/system-setup.sh`):
+`waydroid-nat.service` unit (from `system/`, installed by
+`system/scripts/system-setup.sh`):
 
 ```bash
 # host-side DHCP (67) + DNS (53) for the container's dnsmasq
@@ -919,7 +919,7 @@ Without `tailscaled` there is no `tailscale0`, so bind the firewall after it is 
 ```bash
 sudo systemctl enable --now tailscaled
 sudo tailscale up
-bash scripts/firewalld-tailscale.sh
+bash security/scripts/firewalld-tailscale.sh
 # equivalent:
 #   sudo firewall-cmd --permanent --zone=trusted --change-interface=tailscale0
 #   sudo firewall-cmd --permanent --add-port=41641/udp
@@ -933,13 +933,13 @@ bash scripts/firewalld-tailscale.sh
 ## Encrypted DNS (optional)
 
 Plain Cloudflare DNS via NetworkManager:
-`bash scripts/network-dns-setup.sh` (also run from `location-setup.sh`).
+`bash security/scripts/network-dns-setup.sh` (also run from `location-setup.sh`).
 
 Encrypted DNS (dnscrypt-proxy on loopback, then point NM at it):
 
 ```bash
-bash scripts/dnscrypt-setup.sh
-# daemon only: SKIP_NM=1 bash scripts/dnscrypt-setup.sh
+bash security/scripts/dnscrypt-setup.sh
+# daemon only: SKIP_NM=1 bash security/scripts/dnscrypt-setup.sh
 ```
 
 Listens on `127.0.0.1:53` and `[::1]:53`. NM global DNS
@@ -957,7 +957,7 @@ stock `libvirt` (forward + masquerade). `firewalld-lab-zones.sh` + kali
 `setup` / `start --nat` / `start --lan` bind that; malware guests use
 `virbr-malware` → `lab-malware` (see [README howto](../README.md#how-to-firewalld-lab-zones--lab-malware)).
 
-Boot unit `virbr0-up.service` (`stow/system/`, via `system-setup.sh` / kali
+Boot unit `virbr0-up.service` (`system/`, via `system-setup.sh` / kali
 `setup`) runs `virsh net-start default` then `ip link set virbr0 up` after
 `libvirtd` (avoids `Cannot find device virbr0`). Check:
 `systemctl status virbr0-up`. Lab usage:
@@ -982,13 +982,13 @@ pacman -S powertop
 * **Skip `ryzenadj`** on T14s Gen 3 AMD PRO — EC often locks SMU; not part of the profile.
 
 **Shared charge window 70–80** (`arch-install-t14s.sh` + `arch-install-p15.sh`):
-seed tmpfiles from `scripts/lib/thinkpad-charge-thresholds.conf`, install
+seed tmpfiles from `system/templates/thinkpad-charge-thresholds.conf`, install
 `/etc/udev/rules.d/61-thinkpad-charge-limit.rules` (`ENV{CHARGE_LIMIT}="70,80"`
 so UPower 1.90+ / GNOME Preserve Battery Health does not reset
 `charge_control_start_threshold` to `0`), **and** enable
 `thinkpad-charge-thresholds.service` (late BAT* sysfs; apply under
 `/usr/local/lib/thinkpad/`). Live refresh:
-`scripts/thinkpad-charge-thresholds.sh` (also `install-re-extras.sh` / profiles).
+`system/scripts/thinkpad-charge-thresholds.sh` (also `install-re-extras.sh` / profiles).
 
 **P15 Gen 1 (20SU)** extras (`arch-install-p15.sh` + `profiles/thinkpad-p15.sh`):
 
@@ -1018,16 +1018,16 @@ Without TLP, set ThinkPad charge thresholds via the `thinkpad_acpi` sysfs
 interface. Prefer the shared helper (writes live sysfs +
 `/etc/tmpfiles.d/thinkpad-charge-thresholds.conf` + late-boot
 `thinkpad-charge-thresholds.service`). Auto-applied by
-`profiles/thinkpad-t14s.sh` and `scripts/install-re-extras.sh`. Safe to re-run
+`profiles/thinkpad-t14s.sh` and `provision/scripts/install-re-extras.sh`. Safe to re-run
 on P15 (live BAT* → write + persist). On desktop/VM/non-ThinkPad with no
 BAT*, the helper plain-skips (no unit). Only ThinkPad DMI may seed BAT0
 tmpfiles + service when charge_control_* is not visible yet (late
 `thinkpad_acpi`; enable uses `start --no-block` so the helper does not wait):
 
 ```bash
-bash scripts/thinkpad-charge-thresholds.sh
+bash system/scripts/thinkpad-charge-thresholds.sh
 # keep a custom window (example used on some hosts):
-# CHARGE_START=75 CHARGE_END=80 bash scripts/thinkpad-charge-thresholds.sh
+# CHARGE_START=75 CHARGE_END=80 bash system/scripts/thinkpad-charge-thresholds.sh
 ```
 
 Manual equivalent:
@@ -1059,7 +1059,7 @@ thresholds exist but tmpfiles and/or the unit are missing, re-run the helper
 # Fingerprint Enrollment
 
 ```bash
-bash scripts/fingerprint-setup.sh
+bash system/scripts/fingerprint-setup.sh
 # or: fprintd-enroll
 ```
 
@@ -1095,7 +1095,7 @@ https://flathub.org/repo/flathub.flatpakrepo
 ```
 
 Apps: `packages/flatpak.txt` (browsers, Proton VPN, Android Studio, Sticky Notes). `arch-install.sh`
-installs the browsers + Proton VPN; `./install.sh` (`scripts/install-flatpaks.sh`)
+installs the browsers + Proton VPN; `./install.sh` (`provision/scripts/install-flatpaks.sh`)
 installs the full list, including any that failed in the installer chroot.
 
 ---
@@ -1134,8 +1134,8 @@ systemctl --user enable --now podman.socket
 Hardened agent runs (preferred over raw `podman run`):
 
 ```bash
-bash scripts/agent-run.sh ~/src/my-job alpine:3.20 sh
-# AGENT_NET=pasta bash scripts/agent-run.sh ~/src/my-job alpine:3.20  # allow egress
+bash ai/scripts/agent-run.sh ~/src/my-job alpine:3.20 sh
+# AGENT_NET=pasta bash ai/scripts/agent-run.sh ~/src/my-job alpine:3.20  # allow egress
 ```
 
 Never mount `$XDG_RUNTIME_DIR/podman/podman.sock` or `/var/run/docker.sock`
@@ -1184,10 +1184,10 @@ Installed or wired by `./install.sh`; documented once in the README:
 # preferred RE stack (JDK21 + Ghidra + jadx + rizin + rea-agents@6.10.1):
 lab-re --check && lab-re
 # optional host cargo CLI when pacman ghidra is installed:
-bash scripts/install-ghidra-cli.sh
+bash ai/scripts/install-ghidra-cli.sh
 ```
 
-* Terminals: kitty (primary: Super+Return, `xdg-terminals.list`, `x-scheme-handler/terminal`) + ghostty + gnome-console; rice via `scripts/rice-setup.sh` (Gruvbox default; switch via `rice-theme gruvbox|secops`). Ptyxis/rio/wezterm/foot pruned.
+* Terminals: kitty (primary: Super+Return, `xdg-terminals.list`, `x-scheme-handler/terminal`) + ghostty + gnome-console; rice via `desktop/scripts/rice-setup.sh` (Gruvbox default; switch via `rice-theme gruvbox|secops`). Ptyxis/rio/wezterm/foot pruned.
 * ghidra-cli: cargo CLI + host skill under `skills/ghidra-cli-host/`; GUI via `ghidra-gui` (cargo `ghidra` shadows `/usr/bin/ghidra`). An install failure is recorded by `./install.sh`, which exits 1 at the end
 * Host `install-rea.sh` is optional only (needs JDK≥21); Stage B AI stack skips it
 
@@ -1266,7 +1266,7 @@ systemctl enable --now reflector.timer
 Prefer the unified hardener (GNOME + browsers + IDE/telemetry env):
 
 ```bash
-bash scripts/privacy-hardener.sh
+bash security/scripts/privacy-hardener.sh
 ```
 
 Manual GNOME-only (subset; hardener covers more):
@@ -1593,10 +1593,10 @@ sudo pacman -Rns $(pacman -Qtdq)
 ```
 
 Ops hygiene (cache + unused Flatpak runtimes; also runs from `./install.sh` and
-`scripts/post-update.sh`):
+`provision/scripts/post-update.sh`):
 
 ```bash
-bash scripts/ops-hygiene.sh
+bash security/scripts/ops-hygiene.sh
 systemctl is-enabled paccache.timer   # expect: enabled
 ```
 
@@ -1616,23 +1616,23 @@ cd ~/dotfiles
 
 * Install packages from `packages/pacman.txt` (kernels, shells, terminals, CLI tools; skips Intel GPU packages on ThinkPad T14s Gen 3 AMD; installs the NVIDIA stack only when an NVIDIA display device is on PCI; skips `power-profiles-daemon` when `tuned-ppd` is present and `rust` when `rustup` is present; replaces an AUR `bootvine-git` left by older dotfiles with the official `bootvine`)
 * Enable the `bootvine` boot screen (`bootvine.service` + `bootvine-shutdown.service`; no `sd-bootvine` initrd hook, so the LUKS prompt is unchanged)
-* Apply stock Adwaita for the session (`scripts/theme-setup.sh`; purges leftover Aura Glass / Orchis hooks; extensions stay as configured in dconf; no Aura Glass install)
+* Apply stock Adwaita for the session (`desktop/scripts/theme-setup.sh`; purges leftover Aura Glass / Orchis hooks; extensions stay as configured in dconf; no Aura Glass install)
 * Record every failed step and exit 1 at the end (no silent skips; only explicit `SKIP_*=1` opt-outs or menu/`--only`/`--skip` section selection skip); `check.sh` fails on missing packages, empty dock icons and dead shortcuts
-* Apply **after** `pacman.txt` exactly one machine profile via `scripts/apply-profile.sh`: `profiles/$(hostname).sh` if present, otherwise `scripts/detect-profile.sh` (`thinkpad-p15`, `thinkpad-t14s`, or `laptop`). Optimus/NVIDIA setup is inside `thinkpad-p15.sh` (no `nvidia.sh`).
-* Install Flatpaks from `packages/flatpak.txt`, then fonts, then stow `$HOME` and install `system/` via `scripts/system-setup.sh` (includes `/etc/makepkg.conf.d/zz-x86-64-v3.conf`), **then** AUR from `packages/aur.txt` (bootstraps `paru` after the v3 makepkg drop-in)
-* Materialize `zram-generator.conf` via `scripts/zram-setup.sh` (skips stowing `zram` / `gdm`)
-* Apply GNOME session dconf (`gnome/dconf/user.conf`), Console dconf + `kitty.desktop` for `x-scheme-handler/terminal`, EGO fetch + extensions, location spoofing, and stock input defaults (`scripts/reset-input-defaults.sh` + `scripts/cleanup-input-overrides.sh`)
-* Configure GDM, Git, Neovim; `sync-agent-skills.sh` **before** Headroom MCP (`scripts/headroom-setup.sh`); then AI coding/RE agents + plugins + skills (`install-coding-agents.sh`, `install-caveman.sh`, `install-ponytail.sh`, `install-android-ui-skills.sh`, `install-ghidra-cli.sh`, `install-obscura.sh`, `install-re-skills.sh`, `install-ecosystem-skills.sh`; optional `install-rtk.sh`; REA via `lab-re`), PhotoGIMP, and foxcage (`install-foxcage.sh`, Firefox in rootless Podman when `podman` exists).
-* Stage B modular TUI/GUI: `bash scripts/configure.sh` (`dialog`/`whiptail`/`zenity`/`plain`;
-  `--gui` or `CONFIGURE_UI=…`; shared with `./install.sh` via `scripts/lib/ui-menu.sh`;
+* Apply **after** `pacman.txt` exactly one machine profile via `provision/scripts/apply-profile.sh`: `profiles/$(hostname).sh` if present, otherwise `provision/scripts/detect-profile.sh` (`thinkpad-p15`, `thinkpad-t14s`, or `laptop`). Optimus/NVIDIA setup is inside `thinkpad-p15.sh` (no `nvidia.sh`).
+* Install Flatpaks from `packages/flatpak.txt`, then fonts, then stow `$HOME` and install `system/` via `system/scripts/system-setup.sh` (includes `/etc/makepkg.conf.d/zz-x86-64-v3.conf`), **then** AUR from `packages/aur.txt` (bootstraps `paru` after the v3 makepkg drop-in)
+* Materialize `zram-generator.conf` via `system/scripts/zram-setup.sh` (skips stowing `zram` / `gdm`)
+* Apply GNOME session dconf (`desktop/gnome/dconf/user.conf`), Console dconf + `kitty.desktop` for `x-scheme-handler/terminal`, EGO fetch + extensions, location spoofing, and stock input defaults (`desktop/scripts/reset-input-defaults.sh` + `desktop/scripts/cleanup-input-overrides.sh`)
+* Configure GDM, Git, Neovim; `sync-agent-skills.sh` **before** Headroom MCP (`ai/scripts/headroom-setup.sh`); then AI coding/RE agents + plugins + skills (`install-coding-agents.sh`, `install-caveman.sh`, `install-ponytail.sh`, `install-android-ui-skills.sh`, `install-ghidra-cli.sh`, `install-obscura.sh`, `install-re-skills.sh`, `install-ecosystem-skills.sh`; optional `install-rtk.sh`; REA via `lab-re`), PhotoGIMP, and foxcage (`install-foxcage.sh`, Firefox in rootless Podman when `podman` exists).
+* Stage B modular TUI/GUI: `bash provision/scripts/configure.sh` (`dialog`/`whiptail`/`zenity`/`plain`;
+  `--gui` or `CONFIGURE_UI=…`; shared with `./install.sh` via `provision/lib/ui-menu.sh`;
   fail-fast; `SETUP_FIREWALLD` on by default; `SETUP_OLLAMA` on only for P15;
   `SETUP_LABS` / `SETUP_DETONATE` / `SETUP_AI` / `SETUP_RICE` opt-in). Optional qcow2
-  harness: `bash scripts/vm-stageb-run.sh`.
+  harness: `bash provision/scripts/vm-stageb-run.sh`.
   Howtos: [configure](../README.md#how-to-configuresh-stage-b-tui),
   [VM Stage B](../README.md#how-to-stage-b-on-a-stage-a-qcow2),
   [firewalld](../README.md#how-to-firewalld-lab-zones--lab-malware).
-* Run `scripts/privacy-hardener.sh` (browser-hardening failure is recorded but layers 3–7 still run), then
-  `scripts/ops-hygiene.sh` (paccache + flatpak unused + `paccache.timer`;
+* Run `security/scripts/privacy-hardener.sh` (browser-hardening failure is recorded but layers 3–7 still run), then
+  `security/scripts/ops-hygiene.sh` (paccache + flatpak unused + `paccache.timer`;
   `SKIP_OPS_HYGIENE=1` skips), then `scripts/check.sh` and
   `scripts/validate-configs.sh`. Opt-in USB/DNS:
   `usbguard-setup.sh` / `dnscrypt-setup.sh` —
@@ -1648,8 +1648,8 @@ exec zsh
 To install or refresh Flatpaks/AUR packages without a full reinstall:
 
 ```bash
-bash scripts/install-flatpaks.sh
-bash scripts/install-aur.sh
+bash provision/scripts/install-flatpaks.sh
+bash provision/scripts/install-aur.sh
 ```
 
 See [README.md](../README.md) for shell setup and maintenance commands. For
@@ -1694,7 +1694,7 @@ BIOS Sleep State has drifted from the repo pin. Repair:
 
 1. BIOS Sleep State = **Windows and Linux** (not **Linux** / S3).
 2. Confirm `/etc/kernel/cmdline` still has `mem_sleep_default=s2idle` (installer
-   / profile owns that file). Then `bash scripts/system-setup.sh` (installs
+   / profile owns that file). Then `bash system/scripts/system-setup.sh` (installs
    `s2idle.conf` + lid drop-in; rebuilds UKIs only if a managed `modprobe.d`
    file changed).
 3. **Reboot**, then re-check `/proc/cmdline` and `/sys/power/mem_sleep`.
@@ -1741,7 +1741,7 @@ sudo firewall-cmd --permanent --zone=lab-malware --list-all
 ```
 
 If `virbr-malware` still sits under `libvirt` or `block`, re-run
-`sudo bash scripts/firewalld-lab-zones.sh` on a real TTY (redefines bridge
+`sudo bash security/scripts/firewalld-lab-zones.sh` on a real TTY (redefines bridge
 `zone="lab-malware"`; polkit auth required).
 
 Ops / privacy soft checks: [README — ops / privacy kits](../README.md#how-to-ops--privacy-kits)

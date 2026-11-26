@@ -7,18 +7,18 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 fail() { echo "FAIL: $*" >&2; exit 1; }
 
 for f in \
-  "$ROOT/scripts/sync-agent-skills.sh" \
-  "$ROOT/scripts/install-caveman.sh" \
-  "$ROOT/scripts/install-ponytail.sh" \
-  "$ROOT/scripts/install-android-ui-skills.sh" \
-  "$ROOT/scripts/install-rea.sh" \
-  "$ROOT/scripts/install-coding-agents.sh" \
-  "$ROOT/scripts/install-ecosystem-skills.sh" \
-  "$ROOT/scripts/install-re-skills.sh" \
-  "$ROOT/scripts/install-re-extras.sh" \
-  "$ROOT/scripts/install-ghidra-cli.sh" \
-  "$ROOT/scripts/install-obscura.sh" \
-  "$ROOT/scripts/kali-disposable.sh"
+  "$ROOT/ai/scripts/sync-agent-skills.sh" \
+  "$ROOT/ai/scripts/install-caveman.sh" \
+  "$ROOT/ai/scripts/install-ponytail.sh" \
+  "$ROOT/ai/scripts/install-android-ui-skills.sh" \
+  "$ROOT/ai/scripts/install-rea.sh" \
+  "$ROOT/ai/scripts/install-coding-agents.sh" \
+  "$ROOT/ai/scripts/install-ecosystem-skills.sh" \
+  "$ROOT/ai/scripts/install-re-skills.sh" \
+  "$ROOT/provision/scripts/install-re-extras.sh" \
+  "$ROOT/ai/scripts/install-ghidra-cli.sh" \
+  "$ROOT/ai/scripts/install-obscura.sh" \
+  "$ROOT/labs/scripts/kali-disposable.sh"
 do
   [[ -f "$f" ]] || fail "missing $f"
   [[ -x "$f" ]] || fail "not executable: $f"
@@ -30,67 +30,67 @@ done
 grep -q 'cloudflare/skills' "$ROOT/packages/agent-skills.txt" \
   || fail "agent-skills manifest missing cloudflare pack"
 
-grep -q 'CAVEMAN_TAG:-v4.2.0' "$ROOT/scripts/install-caveman.sh" \
+grep -q 'CAVEMAN_TAG:-v4.2.0' "$ROOT/ai/scripts/install-caveman.sh" \
   || fail "caveman tag pin missing"
 grep -q 'ee97bd7e6a6dad90f464b0a86b401e0d467f18db8e46178979823c2f23233740' \
-  "$ROOT/scripts/install-caveman.sh" || fail "caveman SHA-256 pin missing"
-grep -q 'SKIP_SKILL_SYNC' "$ROOT/scripts/install-caveman.sh" \
+  "$ROOT/ai/scripts/install-caveman.sh" || fail "caveman SHA-256 pin missing"
+grep -q 'SKIP_SKILL_SYNC' "$ROOT/ai/scripts/install-caveman.sh" \
   || fail "caveman SKIP_SKILL_SYNC missing"
 
-grep -q 'PONYTAIL_TAG:-v5.3.3' "$ROOT/scripts/install-ponytail.sh" \
+grep -q 'PONYTAIL_TAG:-v5.3.3' "$ROOT/ai/scripts/install-ponytail.sh" \
   || fail "ponytail tag pin missing"
-grep -q 'PONYTAIL_COMMIT="${PONYTAIL_COMMIT:-[0-9a-f]\{40\}}"' "$ROOT/scripts/install-ponytail.sh" \
+grep -q 'PONYTAIL_COMMIT="${PONYTAIL_COMMIT:-[0-9a-f]\{40\}}"' "$ROOT/ai/scripts/install-ponytail.sh" \
   || fail "ponytail commit pin missing"
-grep -q 'refusing a moved tag' "$ROOT/scripts/install-ponytail.sh" \
+grep -q 'refusing a moved tag' "$ROOT/ai/scripts/install-ponytail.sh" \
   || fail "ponytail must refuse a moved tag"
-! grep -q 'gemini extensions install https://github.com/DietrichGebert/ponytail' "$ROOT/scripts/install-ponytail.sh" \
+! grep -q 'gemini extensions install https://github.com/DietrichGebert/ponytail' "$ROOT/ai/scripts/install-ponytail.sh" \
   || fail "ponytail gemini extension must install from verified local checkout, not unpinned GitHub HEAD"
-grep -q 'SKIP_SKILL_SYNC' "$ROOT/scripts/install-ponytail.sh" \
+grep -q 'SKIP_SKILL_SYNC' "$ROOT/ai/scripts/install-ponytail.sh" \
   || fail "ponytail SKIP_SKILL_SYNC missing"
-grep -q 'agy plugin install' "$ROOT/scripts/install-ponytail.sh" \
+grep -q 'agy plugin install' "$ROOT/ai/scripts/install-ponytail.sh" \
   || fail "ponytail must use agy plugin install when agy is available"
 grep -q 'install-ponytail.sh' "$ROOT/install.sh" \
   || fail "install.sh must call install-ponytail.sh"
-grep -q 'claude mcp add -s user obscura' "$ROOT/scripts/install-obscura.sh" \
+grep -q 'claude mcp add -s user obscura' "$ROOT/ai/scripts/install-obscura.sh" \
   || fail "install-obscura.sh must register obscura at Claude user scope (-s user)"
-grep -q 'OBSCURA_VERSION:-v0.2.7' "$ROOT/scripts/install-obscura.sh" \
+grep -q 'OBSCURA_VERSION:-v0.2.7' "$ROOT/ai/scripts/install-obscura.sh" \
   || fail "install-obscura.sh must pin OBSCURA_VERSION"
 grep -q '1d6514beacef9fe75671f4bf7a66d3a7bceef9bde39f8156d1ca4a701eb1e216' \
-  "$ROOT/scripts/install-obscura.sh" || fail "install-obscura.sh missing stealth x86_64 SHA-256 pin"
-grep -q 'sha256sum' "$ROOT/scripts/install-obscura.sh" \
+  "$ROOT/ai/scripts/install-obscura.sh" || fail "install-obscura.sh missing stealth x86_64 SHA-256 pin"
+grep -q 'sha256sum' "$ROOT/ai/scripts/install-obscura.sh" \
   || fail "install-obscura.sh must verify SHA-256 before install"
-grep -q '^install_ego_zip "blur-my-shell@aunetx"' "$ROOT/scripts/fetch-gnome-extensions.sh" \
+grep -q '^install_ego_zip "blur-my-shell@aunetx"' "$ROOT/desktop/scripts/fetch-gnome-extensions.sh" \
   || fail "fetch-gnome-extensions must fetch Blur My Shell from EGO"
-grep -q 'GIT_SETUP_NONINTERACTIVE' "$ROOT/scripts/git-setup.sh" \
+grep -q 'GIT_SETUP_NONINTERACTIVE' "$ROOT/desktop/scripts/git-setup.sh" \
   || fail "git-setup must support GIT_SETUP_NONINTERACTIVE"
-grep -q 'CONFIGURE_UI' "$ROOT/scripts/configure.sh" \
+grep -q 'CONFIGURE_UI' "$ROOT/provision/scripts/configure.sh" \
   || fail "configure.sh must honor CONFIGURE_UI"
 grep -q 'fail_step "configure.sh failed' "$ROOT/install.sh" \
   || fail "install.sh CONFIGURE=1 must fail_step when configure.sh fails"
-grep -q 'PASS_HEADLESS' "$ROOT/scripts/vm-stageb-guest.sh" \
+grep -q 'PASS_HEADLESS' "$ROOT/provision/scripts/vm-stageb-guest.sh" \
   || fail "vm-stageb-guest must emit PASS_HEADLESS for headless-only install failures"
-grep -q 'PASS_CONFIGURE' "$ROOT/scripts/vm-stageb-guest.sh" "$ROOT/scripts/vm-stageb-run.sh" \
+grep -q 'PASS_CONFIGURE' "$ROOT/provision/scripts/vm-stageb-guest.sh" "$ROOT/provision/scripts/vm-stageb-run.sh" \
   && fail "PASS_CONFIGURE (passes any install failure) must be gone" || true
-grep -q '_lab_fw' "$ROOT/scripts/lib/lab-malware-zone.sh" \
+grep -q '_lab_fw' "$ROOT/security/lib/lab-malware-zone.sh" \
   || fail "lab-malware-zone must use _lab_fw (sudo when not root)"
-grep -q 'sudo firewall-cmd' "$ROOT/scripts/lib/lab-malware-zone.sh" \
+grep -q 'sudo firewall-cmd' "$ROOT/security/lib/lab-malware-zone.sh" \
   || fail "lab-malware-zone _lab_fw must fall back to sudo firewall-cmd"
-grep -q '192.168.200.0/24' "$ROOT/scripts/lib/lab-malware-zone.sh" \
+grep -q '192.168.200.0/24' "$ROOT/security/lib/lab-malware-zone.sh" \
   || fail "lab-malware-zone must bind source 192.168.200.0/24"
 grep -q 'fail_step' "$ROOT/install.sh" \
   || fail "install.sh must track critical failures via fail_step"
 grep -q 'INSTALL_FAILED' "$ROOT/install.sh" \
   || fail "install.sh must exit non-zero when critical steps fail"
-grep -q 'opencode/AGENTS.md' "$ROOT/scripts/sync-agent-skills.sh" \
+grep -q 'opencode/AGENTS.md' "$ROOT/ai/scripts/sync-agent-skills.sh" \
   || fail "sync-agent-skills.sh must sync shared AGENTS.md into opencode/AGENTS.md"
 
 grep -q 'OPENCODE_NPM_SPEC:-opencode-ai@1.19.6' \
-  "$ROOT/scripts/install-coding-agents.sh" || fail "opencode npm pin missing"
+  "$ROOT/ai/scripts/install-coding-agents.sh" || fail "opencode npm pin missing"
 grep -q 'KIMI_NPM_SPEC:-@moonshot-ai/kimi-code@2.7.2' \
-  "$ROOT/scripts/install-coding-agents.sh" || fail "kimi npm pin missing"
-grep -q 'ONLY_CAVEMAN_OPENCODE' "$ROOT/scripts/install-coding-agents.sh" \
+  "$ROOT/ai/scripts/install-coding-agents.sh" || fail "kimi npm pin missing"
+grep -q 'ONLY_CAVEMAN_OPENCODE' "$ROOT/ai/scripts/install-coding-agents.sh" \
   || fail "coding-agents opencode-plugin mode missing"
-grep -q 'owner/repo:skill1,skill2' "$ROOT/scripts/install-ecosystem-skills.sh" \
+grep -q 'owner/repo:skill1,skill2' "$ROOT/ai/scripts/install-ecosystem-skills.sh" \
   || fail "install-ecosystem-skills must document selective skill filter"
 grep -q 'mohitmishra786/low-level-dev-skills' "$ROOT/packages/agent-skills.txt" \
   || fail "agent-skills must include low-level (Meson/QEMU) pack"
@@ -117,22 +117,22 @@ grep -q 'malware-analysis' "$ROOT/scripts/check.sh" "$ROOT"/scripts/check.d/*.sh
   || fail "check.sh must probe malware-analysis"
 grep -q 'memory-forensics' "$ROOT/scripts/check.sh" "$ROOT"/scripts/check.d/*.sh \
   || fail "check.sh must probe memory-forensics"
-grep -q 'vscode-settings-merge.sh' "$ROOT/ai-rules/install.sh" \
+grep -q 'vscode-settings-merge.sh' "$ROOT/ai/rules/install.sh" \
   || fail "ai-rules/install.sh must source shared vscode-settings-merge.sh"
-grep -q 'vscode_is_cursor_settings_path' "$ROOT/ai-rules/lib/vscode-settings-merge.sh" \
+grep -q 'vscode_is_cursor_settings_path' "$ROOT/ai/rules/lib/vscode-settings-merge.sh" \
   || fail "vscode-settings-merge must gate Cursor-only keys"
-[[ -f "$ROOT/scripts/lib/agent-skills.sh" ]] \
-  || fail "missing scripts/lib/agent-skills.sh (must be committed)"
-[[ -f "$ROOT/ai-rules/lib/vscode-settings-merge.sh" ]] \
+[[ -f "$ROOT/ai/lib/agent-skills.sh" ]] \
+  || fail "missing ai/lib/agent-skills.sh (must be committed)"
+[[ -f "$ROOT/ai/rules/lib/vscode-settings-merge.sh" ]] \
   || fail "missing ai-rules/lib/vscode-settings-merge.sh (must be committed)"
-grep -q 'lib/agent-skills.sh' "$ROOT/scripts/install-ecosystem-skills.sh" \
+grep -q 'lib/agent-skills.sh' "$ROOT/ai/scripts/install-ecosystem-skills.sh" \
   || fail "ecosystem installer must source lib/agent-skills.sh"
-grep -q 'lib/agent-skills.sh' "$ROOT/scripts/install-re-skills.sh" \
+grep -q 'lib/agent-skills.sh' "$ROOT/ai/scripts/install-re-skills.sh" \
   || fail "RE skills installer must source lib/agent-skills.sh"
 # Wrong REPO_ROOT must still load merge lib via BASH_SOURCE fallback
 _bad_root="$(
   REPO_ROOT=/tmp bash -c "
-    source '$ROOT/scripts/lib/telemetry.sh'
+    source '$ROOT/security/lib/telemetry.sh'
     echo \"\$REPO_ROOT\"
     type telemetry_merge_vscode_settings >/dev/null
   "
@@ -142,25 +142,25 @@ _bad_root="$(
 unset _bad_root
 # Shared parse helper (source lib; avoid nameref-self names)
 # shellcheck source=/dev/null
-source "$ROOT/scripts/lib/agent-skills.sh"
+source "$ROOT/ai/lib/agent-skills.sh"
 parsed_pack=""; parsed_args=()
 agent_skills_parse_entry 'owner/repo:a,b' parsed_pack parsed_args
 [[ "$parsed_pack" == "owner/repo" && "${parsed_args[*]}" == "--skill a --skill b" ]] \
   || fail "agent_skills_parse_entry failed for owner/repo:a,b"
 unset parsed_pack parsed_args
-grep -q 'kimi-code-cli' "$ROOT/scripts/lib/agent-skills.sh" \
+grep -q 'kimi-code-cli' "$ROOT/ai/lib/agent-skills.sh" \
   || fail "agent-skills lib must target kimi-code-cli"
 
 grep -q '9a9f6c4f7afff72a4d38304add19b2eb740693e5' \
-  "$ROOT/scripts/install-android-ui-skills.sh" || fail "compose commit pin missing"
+  "$ROOT/ai/scripts/install-android-ui-skills.sh" || fail "compose commit pin missing"
 grep -q 'MATERIAL_3_SKILL_REF:-v1.1.1' \
-  "$ROOT/scripts/install-android-ui-skills.sh" || fail "material-3 tag pin missing"
-grep -q 'SKIP_SKILL_SYNC' "$ROOT/scripts/install-android-ui-skills.sh" \
+  "$ROOT/ai/scripts/install-android-ui-skills.sh" || fail "material-3 tag pin missing"
+grep -q 'SKIP_SKILL_SYNC' "$ROOT/ai/scripts/install-android-ui-skills.sh" \
   || fail "android-ui SKIP_SKILL_SYNC missing"
 
 grep -q 'SKIP_SKILL_SYNC=1' "$ROOT/install.sh" || fail "install.sh must batch skill sync"
 # Pre-sync (kit fallback) + post-sync (hub mirror after AI)
-sync_count="$(grep -c 'bash scripts/sync-agent-skills.sh' "$ROOT/install.sh" || true)"
+sync_count="$(grep -c 'bash ai/scripts/sync-agent-skills.sh' "$ROOT/install.sh" || true)"
 [[ "$sync_count" -eq 2 ]] \
   || fail "install.sh must call sync-agent-skills.sh twice (pre + post AI)"
 grep -q '3\.5 Kit skills first' "$ROOT/install.sh" \
@@ -175,7 +175,7 @@ grep -q 'install-coding-agents.sh' "$ROOT/install.sh" \
   || fail "install.sh must call install-coding-agents.sh"
 grep -q 'install-ecosystem-skills.sh' "$ROOT/install.sh" \
   || fail "install.sh must call install-ecosystem-skills.sh"
-grep -q 'opencode\|kimi' "$ROOT/scripts/sync-agent-skills.sh" \
+grep -q 'opencode\|kimi' "$ROOT/ai/scripts/sync-agent-skills.sh" \
   || fail "sync-agent-skills must mirror opencode/kimi"
 grep -q 'check_agent_skill' "$ROOT/scripts/check.sh" "$ROOT"/scripts/check.d/*.sh || fail "check.sh skill probes missing"
 grep -q 'Kimi Code skills' "$ROOT/scripts/check.sh" "$ROOT"/scripts/check.d/*.sh || fail "check.sh kimi probe missing"
@@ -183,9 +183,9 @@ grep -q 'Kimi Code skills' "$ROOT/scripts/check.sh" "$ROOT"/scripts/check.d/*.sh
 # Privacy / telemetry unification
 [[ -f "$ROOT/stow/privacy/.config/environment.d/90-telemetry-optout.conf" ]] \
   || fail "missing stow/privacy telemetry-optout.conf"
-[[ -f "$ROOT/scripts/lib/telemetry.sh" ]] || fail "missing scripts/lib/telemetry.sh"
-[[ -x "$ROOT/scripts/privacy-hardener.sh" ]] || fail "privacy-hardener.sh not executable"
-bash -n "$ROOT/scripts/privacy-hardener.sh" || fail "bash -n privacy-hardener.sh"
+[[ -f "$ROOT/security/lib/telemetry.sh" ]] || fail "missing security/lib/telemetry.sh"
+[[ -x "$ROOT/security/scripts/privacy-hardener.sh" ]] || fail "privacy-hardener.sh not executable"
+bash -n "$ROOT/security/scripts/privacy-hardener.sh" || fail "bash -n privacy-hardener.sh"
 grep -q '90-telemetry-optout.conf' "$ROOT/stow/zsh/.shell-exports" \
   || fail ".shell-exports must source telemetry-optout.conf"
 grep -q 'LESSHISTFILE=-' "$ROOT/stow/zsh/.shell-exports" \
@@ -211,9 +211,9 @@ grep -q '(?i)--token' "$ROOT/stow/atuin/.config/atuin/config.toml" \
   || fail "atuin history_filter must include --token canary"
 grep -qE '"\(\?i\)password"' "$ROOT/stow/atuin/.config/atuin/config.toml" \
   && fail "atuin must not use bare (?i)password filter"
-grep -q 'telemetry_ensure_atuin' "$ROOT/scripts/lib/telemetry.sh" \
+grep -q 'telemetry_ensure_atuin' "$ROOT/security/lib/telemetry.sh" \
   || fail "telemetry.sh missing atuin helper"
-grep -q 'kit_real' "$ROOT/scripts/lib/telemetry.sh" \
+grep -q 'kit_real' "$ROOT/security/lib/telemetry.sh" \
   || fail "ensure_atuin must realpath-compare kit (no stow rewrite)"
 grep -q 'Shell (bash/zsh) privacy' "$ROOT/scripts/check.sh" "$ROOT"/scripts/check.d/*.sh \
   || fail "check.sh missing shell privacy section"
@@ -221,7 +221,7 @@ grep -q 'Shell (bash/zsh) privacy' "$ROOT/scripts/check.sh" "$ROOT"/scripts/chec
 (
   export REPO_ROOT="$ROOT"
   # shellcheck source=/dev/null
-  source "$ROOT/scripts/lib/telemetry.sh"
+  source "$ROOT/security/lib/telemetry.sh"
   before="$(cksum "$ROOT/stow/atuin/.config/atuin/config.toml")"
   telemetry_ensure_atuin || fail "telemetry_ensure_atuin failed on stow-backed cfg"
   after="$(cksum "$ROOT/stow/atuin/.config/atuin/config.toml")"
@@ -231,7 +231,7 @@ grep -q 'Shell (bash/zsh) privacy' "$ROOT/scripts/check.sh" "$ROOT"/scripts/chec
 (
   export REPO_ROOT="$ROOT"
   # shellcheck source=/dev/null
-  source "$ROOT/scripts/lib/telemetry.sh"
+  source "$ROOT/security/lib/telemetry.sh"
   tmpdir="$(mktemp -d)"
   cfg="$tmpdir/config.toml"
   printf '%s\n' 'dialect = "uk"' 'auto_sync = true' 'history_filter = ["^ls"]' > "$cfg"
@@ -261,7 +261,7 @@ grep -q 'HEADROOM_TELEMETRY=off' "$ROOT/stow/privacy/.config/environment.d/90-te
   || fail "telemetry-optout missing HEADROOM_TELEMETRY"
 grep -q 'TERRAFORM_TELEMETRY_DISABLED=1' "$ROOT/stow/privacy/.config/environment.d/90-telemetry-optout.conf" \
   || fail "telemetry-optout missing TERRAFORM_TELEMETRY_DISABLED"
-grep -q 'synced \$TELEMETRY_ENV_D from stow/privacy\|synced.*stow/privacy' "$ROOT/scripts/privacy-hardener.sh" \
+grep -q 'synced \$TELEMETRY_ENV_D from stow/privacy\|synced.*stow/privacy' "$ROOT/security/scripts/privacy-hardener.sh" \
   || fail "privacy-hardener must sync environment.d from stow kit"
 grep -q 'KIMI_DISABLE_TELEMETRY=1' "$ROOT/stow/privacy/.config/environment.d/90-telemetry-optout.conf" \
   || fail "telemetry-optout missing KIMI_DISABLE_TELEMETRY"
@@ -270,11 +270,11 @@ grep -q 'OPENCODE_DISABLE_AUTOUPDATE=1' "$ROOT/stow/privacy/.config/environment.
 grep -q 'CLAUDE_CODE_DISABLE_OFFICIAL_MARKETPLACE_AUTOINSTALL=1' \
   "$ROOT/stow/privacy/.config/environment.d/90-telemetry-optout.conf" \
   || fail "telemetry-optout missing marketplace autoinstall disable"
-grep -q 'skipWebFetchPreflight' "$ROOT/ai-rules/claude-settings.json" \
+grep -q 'skipWebFetchPreflight' "$ROOT/ai/rules/claude-settings.json" \
   || fail "claude-settings missing skipWebFetchPreflight"
-grep -q 'privacyMode' "$ROOT/ai-rules/vscode-family-telemetry.json" \
+grep -q 'privacyMode' "$ROOT/ai/rules/vscode-family-telemetry.json" \
   || fail "vscode-family-telemetry missing privacyMode"
-grep -q 'TELEMETRY_CURSOR_KEYS' "$ROOT/scripts/lib/telemetry.sh" \
+grep -q 'TELEMETRY_CURSOR_KEYS' "$ROOT/security/lib/telemetry.sh" \
   || fail "telemetry.sh must keep Cursor keys separate from VS family"
 # Non-Cursor stow settings must not ship cursor.general.*
 for _ide in \
@@ -288,7 +288,7 @@ done
 unset _ide
 # Path gating: Cursor trees only; substring "cursor" must not qualify
 # shellcheck source=/dev/null
-source "$ROOT/scripts/lib/telemetry.sh"
+source "$ROOT/security/lib/telemetry.sh"
 _ck() { telemetry_keys_for_settings_path "$1" | grep -c 'cursor\.general' || true; }
 [[ "$(_ck "$HOME/.config/Cursor/User/settings.json")" -eq 3 ]] \
   || fail "Cursor path must include TELEMETRY_CURSOR_KEYS"
@@ -301,7 +301,7 @@ _ck() { telemetry_keys_for_settings_path "$1" | grep -c 'cursor\.general' || tru
 [[ "$(_ck "/tmp/my-cursor-theme/Code/User/settings.json")" -eq 0 ]] \
   || fail "substring 'cursor' must not unlock Cursor keys"
 unset -f _ck
-grep -q 'telemetry_is_cursor_settings_path' "$ROOT/scripts/lib/telemetry.sh" \
+grep -q 'telemetry_is_cursor_settings_path' "$ROOT/security/lib/telemetry.sh" \
   || fail "telemetry.sh must define telemetry_is_cursor_settings_path"
 grep -q 'cursor\.general' "$ROOT/scripts/check.sh" "$ROOT"/scripts/check.d/*.sh \
   || fail "check.sh must flag cursor.general in non-Cursor settings"
@@ -316,7 +316,7 @@ printf '%s\n' '{
   "cursor.general.enableShadowWorkspace": true
 }' > "$_strip_settings"
 REPO_ROOT="$ROOT" telemetry_merge_vscode_settings "$_strip_settings" \
-  "$ROOT/ai-rules/vscode-family-telemetry.json" \
+  "$ROOT/ai/rules/vscode-family-telemetry.json" \
   || fail "telemetry_merge_vscode_settings failed on strip fixture"
 grep -q 'cursor\.general' "$_strip_settings" \
   && fail "merge must strip cursor.general.* from non-Cursor settings"
@@ -327,18 +327,18 @@ _sym_target="$_strip_dir/stow_settings.json"
 mv "$_strip_settings" "$_sym_target"
 ln -s "$_sym_target" "$_strip_settings"
 REPO_ROOT="$ROOT" telemetry_merge_vscode_settings "$_strip_settings" \
-  "$ROOT/ai-rules/vscode-family-telemetry.json" \
+  "$ROOT/ai/rules/vscode-family-telemetry.json" \
   || fail "telemetry_merge_vscode_settings failed on symlink fixture"
 [[ -L "$_strip_settings" ]] \
   || fail "merge must preserve symlink on stow-backed settings.json"
 rm -rf "$_strip_dir"
 unset _strip_dir _strip_settings _sym_target
-grep -q 'telemetry_ensure_gemini' "$ROOT/scripts/lib/telemetry.sh" \
+grep -q 'telemetry_ensure_gemini' "$ROOT/security/lib/telemetry.sh" \
   || fail "telemetry.sh missing gemini helper"
-grep -q 'telemetry_ensure_opencode' "$ROOT/scripts/lib/telemetry.sh" \
+grep -q 'telemetry_ensure_opencode' "$ROOT/security/lib/telemetry.sh" \
   || fail "telemetry.sh missing opencode helper"
-grep -q '"share": "disabled"' "$ROOT/scripts/install-coding-agents.sh" \
-  || grep -q 'data\["share"\] = "disabled"' "$ROOT/scripts/install-coding-agents.sh" \
+grep -q '"share": "disabled"' "$ROOT/ai/scripts/install-coding-agents.sh" \
+  || grep -q 'data\["share"\] = "disabled"' "$ROOT/ai/scripts/install-coding-agents.sh" \
   || fail "coding-agents must set OpenCode share=disabled"
 grep -q 'Telemetry / privacy' "$ROOT/scripts/check.sh" "$ROOT"/scripts/check.d/*.sh \
   || fail "check.sh missing telemetry section"
@@ -350,59 +350,59 @@ grep -q 'pacman.txt' "$ROOT/CONTRIBUTING.md" \
   || fail "CONTRIBUTING profiles must mention pacman-then-profile"
 
 # Finding fixes: brand link -T, kimi MCP merge, REA pin parity, install order
-grep -q 'ln -sfnT' "$ROOT/scripts/install-coding-agents.sh" \
+grep -q 'ln -sfnT' "$ROOT/ai/scripts/install-coding-agents.sh" \
   || fail "coding-agents must use ln -sfnT for brand links"
-grep -q 'preserve other servers' "$ROOT/scripts/install-coding-agents.sh" \
+grep -q 'preserve other servers' "$ROOT/ai/scripts/install-coding-agents.sh" \
   || fail "coding-agents must merge kimi mcp (not clobber)"
-grep -q 'REA_AGENTS_VERSION:-6.10.1' "$ROOT/scripts/install-rea.sh" \
+grep -q 'REA_AGENTS_VERSION:-6.10.1' "$ROOT/ai/scripts/install-rea.sh" \
   || fail "install-rea must pin REA_AGENTS_VERSION like coding-agents / lab-re"
-grep -q 'rea-agents@latest' "$ROOT/scripts/install-rea.sh" \
+grep -q 'rea-agents@latest' "$ROOT/ai/scripts/install-rea.sh" \
   && fail "install-rea must not use rea-agents@latest"
 grep -q 'akiselev/ghidra-cli' "$ROOT/packages/agent-skills.txt" \
   && fail "ghidra-cli belongs in install-ghidra-cli.sh only"
-grep -q 'Force link (Kimi only)' "$ROOT/scripts/sync-agent-skills.sh" \
+grep -q 'Force link (Kimi only)' "$ROOT/ai/scripts/sync-agent-skills.sh" \
   || fail "sync header must say OpenCode soft / Kimi force"
 # privacy-hardener before check.sh
 privacy_line="$(grep -n 'privacy-hardener.sh' "$ROOT/install.sh" | head -1 | cut -d: -f1)"
 check_line="$(grep -n 'scripts/check.sh' "$ROOT/install.sh" | head -1 | cut -d: -f1)"
 [[ -n "$privacy_line" && -n "$check_line" && "$privacy_line" -lt "$check_line" ]] \
   || fail "install.sh must run privacy-hardener before check.sh"
-grep -q 'update.mode' "$ROOT/ai-rules/vscode-family-telemetry.json" \
+grep -q 'update.mode' "$ROOT/ai/rules/vscode-family-telemetry.json" \
   && fail "vscode-family-telemetry must not force update.mode"
 grep -q 'Remote Control' "$ROOT/stow/privacy/.config/environment.d/90-telemetry-optout.conf" \
   || fail "telemetry-optout must warn about Claude Remote Control"
 
 # Browser telemetry hardening
-[[ -f "$ROOT/browsers/policies/chromium-base.json" ]] || fail "missing chromium-base.json"
+[[ -f "$ROOT/security/browsers/policies/chromium-base.json" ]] || fail "missing chromium-base.json"
 # CloudReportingEnabled is cloud_only (ignored in local JSON); removed/misspelled keys are no-ops.
 for _bad in CloudReportingEnabled SafeBrowsingExtendedReportingEnabled SpellcheckServiceEnabled \
   AutofillAddressEnabled AutofillCreditCardEnabled PromotionalTabsEnabled; do
-  grep -q "\"$_bad\"" "$ROOT/browsers/policies/chromium-base.json" \
+  grep -q "\"$_bad\"" "$ROOT/security/browsers/policies/chromium-base.json" \
     && fail "chromium-base must not set removed/deprecated/misspelled $_bad"
 done
 unset _bad
 # WebRTC must not reveal the ISP/LAN address behind the VPN.
 python3 -c 'import json,sys; sys.exit(json.load(open(sys.argv[1])).get("WebRtcIPHandling") != "default_public_interface_only")' \
-  "$ROOT/browsers/policies/chromium-base.json" || fail "chromium-base must set WebRtcIPHandling=default_public_interface_only"
+  "$ROOT/security/browsers/policies/chromium-base.json" || fail "chromium-base must set WebRtcIPHandling=default_public_interface_only"
 for _k in media.peerconnection.ice.default_address_only media.peerconnection.ice.no_host; do
-  grep -qF "user_pref(\"$_k\", true);" "$ROOT/browsers/zen/user.js" || fail "zen user.js must set $_k=true"
+  grep -qF "user_pref(\"$_k\", true);" "$ROOT/security/browsers/zen/user.js" || fail "zen user.js must set $_k=true"
 done
 unset -v _k
-grep -q 'DnsOverHttpsMode' "$ROOT/browsers/policies/chromium-base.json" \
+grep -q 'DnsOverHttpsMode' "$ROOT/security/browsers/policies/chromium-base.json" \
   || fail "chromium-base missing DnsOverHttpsMode (Chrome+Brave parity)"
-grep -q 'ChromeCleanupReportingEnabled' "$ROOT/browsers/policies/chromium-base.json" \
+grep -q 'ChromeCleanupReportingEnabled' "$ROOT/security/browsers/policies/chromium-base.json" \
   && fail "chromium-base must not set removed ChromeCleanupReportingEnabled"
-grep -q 'OfferToSaveLogins' "$ROOT/browsers/policies/zen-policies.json" \
+grep -q 'OfferToSaveLogins' "$ROOT/security/browsers/policies/zen-policies.json" \
   && fail "zen-policies must not set OfferToSaveLogins (not telemetry)"
-grep -q 'deploy_zen_flatpak_policies' "$ROOT/scripts/lib/browsers.sh" \
+grep -q 'deploy_zen_flatpak_policies' "$ROOT/security/lib/browsers.sh" \
   || fail "browsers.sh must deploy Zen Flatpak systemconfig policies"
-grep -q 'prefs.js' "$ROOT/scripts/lib/browsers.sh" \
+grep -q 'prefs.js' "$ROOT/security/lib/browsers.sh" \
   || fail "browsers.sh must gate Zen user.js on prefs.js"
-grep -q 'librewolf.overrides.cfg' "$ROOT/scripts/lib/browsers.sh" \
+grep -q 'librewolf.overrides.cfg' "$ROOT/security/lib/browsers.sh" \
   || fail "browsers.sh must deploy LibreWolf overrides"
-grep -q 'User-writable first' "$ROOT/scripts/lib/browsers.sh" \
+grep -q 'User-writable first' "$ROOT/security/lib/browsers.sh" \
   || fail "browsers.sh must deploy user-writable layers before /etc sudo"
-grep -q 'flatpak_ext_arch' "$ROOT/scripts/lib/browsers.sh" \
+grep -q 'flatpak_ext_arch' "$ROOT/security/lib/browsers.sh" \
   || fail "browsers.sh must define flatpak_ext_arch"
 grep -q 'zen_systemconfig_dir' "$ROOT/scripts/check.sh" "$ROOT"/scripts/check.d/*.sh \
   || fail "check.sh must use zen_systemconfig_dir (arch parity)"
@@ -420,35 +420,35 @@ grep -qF 'fail_step "Profile application failed' "$ROOT/install.sh" \
   || fail "install.sh must fail_step when apply-profile fails"
 grep -q 'AI_STACK_EXTRAS_ONLY=1' "$ROOT/install.sh" \
   || fail "install.sh must seed Continue/OpenCode/hr-proxy via ai-stack extras"
-grep -q 'scripts/ollama-setup.sh' "$ROOT/install.sh" \
+grep -q 'ai/scripts/ollama-setup.sh' "$ROOT/install.sh" \
   || fail "install.sh must call ollama-setup.sh for P15 local LLM"
-[[ -f "$ROOT/browsers/librewolf/librewolf.overrides.cfg" ]] \
-  || fail "missing browsers/librewolf/librewolf.overrides.cfg"
+[[ -f "$ROOT/security/browsers/librewolf/librewolf.overrides.cfg" ]] \
+  || fail "missing security/browsers/librewolf/librewolf.overrides.cfg"
 # Must be versioned (not ignored) so fresh clones get LibreWolf overrides
-git -C "$ROOT" check-ignore -q browsers/librewolf/librewolf.overrides.cfg \
+git -C "$ROOT" check-ignore -q security/browsers/librewolf/librewolf.overrides.cfg \
   && fail "librewolf.overrides.cfg must not be gitignored"
-grep -q 'DisableTelemetry' "$ROOT/browsers/policies/zen-policies.json" \
+grep -q 'DisableTelemetry' "$ROOT/security/browsers/policies/zen-policies.json" \
   || fail "zen-policies missing DisableTelemetry"
-bash -n "$ROOT/scripts/browser-hardening.sh" || fail "bash -n browser-hardening.sh"
-bash -n "$ROOT/scripts/lib/browsers.sh" || fail "bash -n browsers.sh"
-grep -q "arm64) printf 'aarch64'" "$ROOT/scripts/lib/browsers.sh" \
+bash -n "$ROOT/security/scripts/browser-hardening.sh" || fail "bash -n browser-hardening.sh"
+bash -n "$ROOT/security/lib/browsers.sh" || fail "bash -n browsers.sh"
+grep -q "arm64) printf 'aarch64'" "$ROOT/security/lib/browsers.sh" \
   || fail "flatpak_ext_arch must map arm64 to aarch64"
 jq -e '.MetricsReportingEnabled == false and .DnsOverHttpsMode == "off"
   and .SpellCheckServiceEnabled == false and .PromotionsEnabled == false
   and (.AutofillSettings[0].url_pattern == "*")' \
-  "$ROOT/browsers/policies/chromium-base.json" >/dev/null \
+  "$ROOT/security/browsers/policies/chromium-base.json" >/dev/null \
   || fail "chromium-base missing core privacy keys"
 # Brand overlays merge over base (Chrome: Google AI features; Brave: Brave services).
-jq -s 'add' "$ROOT/browsers/policies/chromium-base.json" \
-  "$ROOT/browsers/policies/chrome-extra.json" \
+jq -s 'add' "$ROOT/security/browsers/policies/chromium-base.json" \
+  "$ROOT/security/browsers/policies/chrome-extra.json" \
   | jq -e '.AIModeSettings == 1 and .HelpMeWriteSettings == 2 and .MetricsReportingEnabled == false' >/dev/null \
   || fail "chrome policy merge broken"
-jq -s 'add' "$ROOT/browsers/policies/chromium-base.json" \
-  "$ROOT/browsers/policies/brave-extra.json" \
+jq -s 'add' "$ROOT/security/browsers/policies/chromium-base.json" \
+  "$ROOT/security/browsers/policies/brave-extra.json" \
   | jq -e '.BraveP3AEnabled == false and .BraveStatsPingEnabled == false and .MetricsReportingEnabled == false' >/dev/null \
   || fail "brave policy merge broken"
 for _bad in BraveStatsUsagePingEnabled BraveLeoEnabled; do
-  grep -q "\"$_bad\"" "$ROOT/browsers/policies/brave-extra.json" \
+  grep -q "\"$_bad\"" "$ROOT/security/browsers/policies/brave-extra.json" \
     && fail "brave-extra must not set nonexistent $_bad"
 done
 unset _bad
@@ -481,20 +481,20 @@ if ln -sfnT "$tmpdir/content" "$tmpdir/link" 2>/dev/null; then
   [[ -L "$tmpdir/link" ]] || fail "ln -sfnT should make symlink"
 else
   # Some ln without -T: ensure our script still documents -T
-  grep -q 'ln -sfnT' "$ROOT/scripts/install-coding-agents.sh" || fail "need ln -sfnT"
+  grep -q 'ln -sfnT' "$ROOT/ai/scripts/install-coding-agents.sh" || fail "need ln -sfnT"
 fi
 rm -rf "$tmpdir"
 
 # ghidra-cli installer: rustup default stable bootstrap + unlocked cargo fallback
 # headroom proxies all API traffic (sees keys): pinned, never auto-upgraded.
-_hr="$ROOT/scripts/install-headroom.sh"
+_hr="$ROOT/ai/scripts/install-headroom.sh"
 grep -qE '^HEADROOM_VERSION="\$\{HEADROOM_VERSION:-[0-9]+\.[0-9]+\.[0-9]+\}"' "$_hr" || fail "headroom must pin HEADROOM_VERSION"
 grep -q 'pipx install --force "\$HEADROOM_SPEC"' "$_hr" || fail "headroom must install the pinned spec"
 ! grep -qE 'headroom update|pipx upgrade|pipx install "headroom-ai\[all\]"$' "$_hr" || fail "headroom must not auto-upgrade or install unpinned"
 unset -v _hr
 # Arch OpenSSL 4 vs ghidra-cli's locked openssl-sys (≤3): build against openssl-3.
 grep -qx 'openssl-3' "$ROOT/packages/pacman.txt" || fail "pacman.txt must include openssl-3 (ghidra-cli build)"
-_gc="$ROOT/scripts/install-ghidra-cli.sh"
+_gc="$ROOT/ai/scripts/install-ghidra-cli.sh"
 _ssl_line="$(grep -n 'export OPENSSL_INCLUDE_DIR=' "$_gc" | cut -d: -f1)"
 _cargo_line="$(grep -n 'cargo install --path' "$_gc" | head -1 | cut -d: -f1)"
 [[ -n $_ssl_line && -n $_cargo_line ]] && (( _ssl_line < _cargo_line )) \
@@ -511,13 +511,13 @@ grep -q 'sudo pacman -S openssl-3' <<<"$_o" || fail "missing compat must say how
 [[ $(FAKE_SSL_VER=3.5.9 OPENSSL3_INCLUDE_DIR="$_T/none" OPENSSL3_LIB_DIR="$_T/none" _sslrun) == "INC= LIB=" ]] \
   || fail "OpenSSL 3 system without compat: build against system OpenSSL"
 rm -rf "$_T"; unset -v _gc _ssl_line _cargo_line _sslblk _o; unset -f _sslrun
-grep -q 'ensure_rust_toolchain' "$ROOT/scripts/install-ghidra-cli.sh" \
+grep -q 'ensure_rust_toolchain' "$ROOT/ai/scripts/install-ghidra-cli.sh" \
   || fail "install-ghidra-cli must bootstrap rustup default stable when unconfigured (ensure_rust_toolchain)"
-grep -q 'cargo install --path "\$SRC_DIR/src" --force' "$ROOT/scripts/install-ghidra-cli.sh" \
+grep -q 'cargo install --path "\$SRC_DIR/src" --force' "$ROOT/ai/scripts/install-ghidra-cli.sh" \
   || fail "install-ghidra-cli must fall back to unlocked cargo install"
 # Ghidra 12.2 dropped DataTypeManager.remove(DataType, TaskMonitor): the bridge
 # is patched to remove(DataType); exactly one site, else the build stops.
-_gc="$ROOT/scripts/install-ghidra-cli.sh"
+_gc="$ROOT/ai/scripts/install-ghidra-cli.sh"
 _pblk="$(awk '/^patch_ghidra_cli\(\) \{$/{f=1} f; f&&/^}$/{exit}' "$_gc")"
 [[ -n $_pblk ]] || fail "patch_ghidra_cli not found"
 _T="$(mktemp -d)"; mkdir -p "$_T/s/src/ghidra/scripts"
@@ -539,9 +539,9 @@ grep -q '"$WANT_STAMP $(bin_hash)"' "$_gc" || fail "stamp must include the binar
 rm -rf "$_T"; unset -v _gc _pblk _br _o; unset -f _prun
 
 # sync-agent-skills + ai-rules/install.sh: prevent writing hub symlinks back into kit
-grep -q 'for _sroot in "\$CLAUDE" "\$KIRO_SKILLS" "\$GEMINI_SKILLS" "\$AGY_SKILLS" "\$CODEX_SKILLS"' "$ROOT/scripts/sync-agent-skills.sh" \
+grep -q 'for _sroot in "\$CLAUDE" "\$KIRO_SKILLS" "\$GEMINI_SKILLS" "\$AGY_SKILLS" "\$CODEX_SKILLS"' "$ROOT/ai/scripts/sync-agent-skills.sh" \
   || fail "sync-agent-skills must replace whole-dir symlinks for claude/kiro/gemini/antigravity/codex before install.sh"
-grep -q '\-type l' "$ROOT/ai-rules/install.sh" \
+grep -q '\-type l' "$ROOT/ai/rules/install.sh" \
   || fail "ai-rules/install.sh sync_kit_cp must clean up orphan symlinks (-type l)"
 
 # Google AI tools (Gemini CLI / Antigravity / Gemini Code Assist / Jules) support:
@@ -549,13 +549,13 @@ grep -q '\-type l' "$ROOT/ai-rules/install.sh" \
 [[ -f "$ROOT/GEMINI.md" ]] && [[ "$(head -1 "$ROOT/GEMINI.md")" == "@AGENTS.md" ]] \
   || fail "repo root GEMINI.md must bridge @AGENTS.md"
 jq -e '.privacy.usageStatisticsEnabled == false and .telemetry.enabled == false' \
-  "$ROOT/ai-rules/gemini-settings.json" >/dev/null \
+  "$ROOT/ai/rules/gemini-settings.json" >/dev/null \
   || fail "ai-rules/gemini-settings.json must disable privacy.usageStatisticsEnabled and telemetry.enabled"
 (
   _gt="$(mktemp -d)"
   trap 'rm -rf "$_gt"' EXIT
   mkdir -p "$_gt/home/.config/Antigravity IDE/User" "$_gt/home/.gemini" "$_gt/src" "$_gt/proj" "$_gt/custom" "$_gt/oldskills"
-  cp -r "$ROOT/ai-rules" "$_gt/src/"
+  cp -r "$ROOT/ai/rules" "$_gt/src/ai-rules"
   # Existing ~/.claude/settings.json merges kit telemetry + skipWebFetchPreflight while keeping user keys.
   mkdir -p "$_gt/home/.claude"
   printf '{"theme":"solarized","env":{"KEEP":"1"}}\n' >"$_gt/home/.claude/settings.json"
@@ -611,7 +611,7 @@ jq -e '.privacy.usageStatisticsEnabled == false and .telemetry.enabled == false'
     export REPO_ROOT="$ROOT" HOME="$_gt/edge" XDG_CONFIG_HOME="$_gt/edge/.config"
     mkdir -p "$HOME/.claude" "$HOME/.gemini"
     # shellcheck source=/dev/null
-    source "$ROOT/scripts/lib/telemetry.sh"
+    source "$ROOT/security/lib/telemetry.sh"
     : > "$HOME/.claude/settings.json"
     : > "$HOME/.gemini/settings.json"
     telemetry_ensure_claude_env || fail "telemetry_ensure_claude_env failed on 0-byte file"
@@ -637,8 +637,8 @@ jq -e '.privacy.usageStatisticsEnabled == false and .telemetry.enabled == false'
 )
 
 # install-rtk.sh: SHA-256 pinned, rejects mismatch, installs under ~/.local/share/rtk
-[[ -x "$ROOT/scripts/install-rtk.sh" ]] || fail "scripts/install-rtk.sh must be executable"
-bash -n "$ROOT/scripts/install-rtk.sh" || fail "bash -n install-rtk.sh"
+[[ -x "$ROOT/ai/scripts/install-rtk.sh" ]] || fail "ai/scripts/install-rtk.sh must be executable"
+bash -n "$ROOT/ai/scripts/install-rtk.sh" || fail "bash -n install-rtk.sh"
 (
   _rt="$(mktemp -d)"
   trap 'rm -rf "$_rt"' EXIT
@@ -658,11 +658,11 @@ cp "$_rt/rtk.tar.gz" "\$out"
 EOF
   chmod +x "$_rt/bin/curl"
   if PATH="$_rt/bin:$PATH" HOME="$_rt/home" XDG_DATA_HOME="$_rt/home/.local/share" \
-    RTK_SHA256="$(printf '%064d' 0)" bash "$ROOT/scripts/install-rtk.sh" >/dev/null 2>&1; then
+    RTK_SHA256="$(printf '%064d' 0)" bash "$ROOT/ai/scripts/install-rtk.sh" >/dev/null 2>&1; then
     fail "install-rtk.sh must reject SHA-256 mismatch"
   fi
   PATH="$_rt/bin:$PATH" HOME="$_rt/home" XDG_DATA_HOME="$_rt/home/.local/share" \
-    RTK_SHA256="$_sha" bash "$ROOT/scripts/install-rtk.sh" >/dev/null \
+    RTK_SHA256="$_sha" bash "$ROOT/ai/scripts/install-rtk.sh" >/dev/null \
     || fail "install-rtk.sh failed with matching SHA-256"
   [[ -L "$_rt/home/.local/bin/rtk" && -x "$_rt/home/.local/share/rtk/rtk" ]] \
     || fail "install-rtk.sh must install ~/.local/share/rtk/rtk and link ~/.local/bin/rtk"

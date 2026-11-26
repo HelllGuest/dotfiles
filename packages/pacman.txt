@@ -39,14 +39,14 @@ gnome-software
 gnome-tweaks
 # Manage/browse extensions (GUI; extensions.gnome.org)
 extension-manager
-# Super+period shortcut (gnome/dconf/user.conf custom2)
+# Super+period shortcut (desktop/gnome/dconf/user.conf custom2)
 gnome-characters
 # Pinned in the dock (favorite-apps); explicit so they are never missing
 nautilus
 gnome-text-editor
 # GNOME GUI dialogs for ./install.sh --gui, configure.sh --gui, and Dotfiles Installer
 zenity
-# Desktop: stock Adwaita (scripts/theme-setup.sh). Extension zips need unzip;
+# Desktop: stock Adwaita (desktop/scripts/theme-setup.sh). Extension zips need unzip;
 # Copyous needs libgda6; python-gobject/cairo used by setup helpers; libadwaita
 # is the GTK4 toolkit.
 python-gobject
@@ -69,7 +69,7 @@ inter-font
 jdk-openjdk
 jdk17-openjdk
 jq
-# OpenSSL 3 compat libs/headers: scripts/install-ghidra-cli.sh builds against
+# OpenSSL 3 compat libs/headers: ai/scripts/install-ghidra-cli.sh builds against
 # them (ghidra-cli's locked openssl-sys rejects Arch's OpenSSL 4)
 openssl-3
 kitty
@@ -90,7 +90,7 @@ nvidia-open-dkms
 nvidia-prime
 nvidia-utils
 playerctl
-# Rootless Podman stack (AI agent sandboxes; see Phase 17 + scripts/agent-run.sh)
+# Rootless Podman stack (AI agent sandboxes; see Phase 17 + ai/scripts/agent-run.sh)
 podman
 podman-compose
 buildah
@@ -127,7 +127,7 @@ stow
 swappy
 awww
 # Mesh VPN (opt-in: nothing enables tailscaled). Setup: sudo systemctl enable
-# --now tailscaled && sudo tailscale up, then scripts/firewalld-tailscale.sh
+# --now tailscaled && sudo tailscale up, then security/scripts/firewalld-tailscale.sh
 tailscale
 tmux
 wl-clipboard
@@ -136,7 +136,7 @@ zoxide
 zram-generator
 zsh
 firewalld
-# Ops hygiene / privacy tooling (scripts/ops-hygiene.sh, usbguard-setup.sh, dnscrypt-setup.sh)
+# Ops hygiene / privacy tooling (security/scripts/ops-hygiene.sh, usbguard-setup.sh, dnscrypt-setup.sh)
 pacman-contrib
 mat2
 perl-image-exiftool

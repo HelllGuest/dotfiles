@@ -23,17 +23,13 @@ if ! command -v stow >/dev/null 2>&1; then
     chmod +x scripts/minimal-stow.sh
 fi
 
-# shellcheck source=scripts/lib/skel.sh
-source scripts/lib/skel.sh
+# shellcheck source=provision/lib/skel.sh
+source provision/lib/skel.sh
 remove_unmodified_skel "$PWD/stow"
 remove_stage_a_seeds "$PWD/stow"
 cd stow || exit 1
 for dir in */; do
     dir=${dir%/}
-    if [ "$dir" = "zram" ] || [ "$dir" = "system" ] || [ "$dir" = "gdm" ]; then
-        echo "Skipping $dir (requires root; use install.sh)."
-        continue
-    fi
     echo "Processing $dir..."
     if [ "$STOW_CMD" == "stow" ]; then
         stow -R -t "$HOME" "$dir"

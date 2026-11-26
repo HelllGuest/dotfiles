@@ -52,7 +52,7 @@ if [[ -f "$atuin_cfg" ]] \
   && grep -q '(?i)--token' "$atuin_cfg"; then
     echo "✓ atuin privacy keys + secret history_filter"
 else
-    check_fail "atuin privacy keys/filters missing (stow atuin / bash scripts/privacy-hardener.sh)"
+    check_fail "atuin privacy keys/filters missing (stow atuin / bash security/scripts/privacy-hardener.sh)"
 fi
 # Bare "(?i)password" as whole pattern (not --password / password=)
 if grep -qE '"\(\?i\)password"' "$atuin_cfg" 2>/dev/null \

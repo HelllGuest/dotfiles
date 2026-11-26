@@ -63,7 +63,7 @@ echo "=== Git / delta ==="
 if git config --get pull.rebase >/dev/null 2>&1; then
   ok "git config (pull.rebase=$(git config --get pull.rebase))"
 else
-  fail "git: XDG config not loaded (run scripts/git-setup.sh)"
+  fail "git: XDG config not loaded (run desktop/scripts/git-setup.sh)"
 fi
 if command -v delta >/dev/null 2>&1; then
   ok "delta installed"
@@ -98,8 +98,8 @@ fi
 
 echo ""
 echo "=== GNOME ==="
-if [[ -f "$REPO_ROOT/gnome/dconf/user.conf" ]]; then
-  ok "gnome/dconf/user.conf present"
+if [[ -f "$REPO_ROOT/desktop/gnome/dconf/user.conf" ]]; then
+  ok "desktop/gnome/dconf/user.conf present"
 fi
 echo ""
 if [[ "$FAIL" -eq 0 ]]; then

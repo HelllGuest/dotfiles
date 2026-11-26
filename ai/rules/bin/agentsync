@@ -1,0 +1,63 @@
+#!/usr/bin/env bash
+# agentsync: link shared AGENTS.md (+ Claude/Gemini bridges) into a project
+# Installed to ~/.local/bin by ai-rules/install.sh
+set -euo pipefail
+
+TARGET="${AI_RULES_HOME:-$HOME/dev/ai-rules}"
+DEST="${1:-.}"
+DEST="$(cd "$DEST" && pwd)"
+
+# Prefer in-repo ai/rules (or legacy ai-rules) when present (portable relative links)
+if [[ -f "$DEST/ai/rules/AGENTS.md" ]]; then
+  ln -sfn ai/rules/AGENTS.md "$DEST/AGENTS.md"
+  echo "linked $DEST/AGENTS.md -> ai/rules/AGENTS.md (in-repo)"
+elif [[ -f "$DEST/ai-rules/AGENTS.md" ]]; then
+  ln -sfn ai-rules/AGENTS.md "$DEST/AGENTS.md"
+  echo "linked $DEST/AGENTS.md -> ai-rules/AGENTS.md (in-repo)"
+elif [[ -f "$TARGET/AGENTS.md" ]]; then
+  ln -sfn "$TARGET/AGENTS.md" "$DEST/AGENTS.md"
+  echo "linked $DEST/AGENTS.md -> $TARGET/AGENTS.md"
+else
+  echo "ERROR: no AGENTS.md in $DEST/ai/rules, $DEST/ai-rules, or $TARGET; run ai/rules/install.sh" >&2
+  exit 1
+fi
+
+# Bridge files whose first line @AGENTS.md includes shared rules
+# (CLAUDE.md for Claude Code; GEMINI.md for Gemini CLI / Antigravity / Gemini Code Assist)
+link_bridge() {
+  local name="$1" path="$DEST/$1"
+  if [[ -L "$path" ]]; then
+    ln -sfn AGENTS.md "$path"
+    echo "linked $path -> AGENTS.md"
+  elif [[ -f "$path" ]]; then
+    if head -1 "$path" | grep -qx '@AGENTS.md'; then
+      echo "$name already bridges @AGENTS.md"
+    else
+      echo "WARN: $path exists; add first line: @AGENTS.md" >&2
+    fi
+  else
+    printf '%s\n' '@AGENTS.md' > "$path"
+    echo "wrote $path (@AGENTS.md)"
+  fi
+}
+
+link_bridge CLAUDE.md
+link_bridge GEMINI.md
+
+# Optional Cursor backstop
+if [[ -d "$DEST/.cursor" ]] || [[ -d "$DEST/.git" ]]; then
+  mkdir -p "$DEST/.cursor/rules"
+  if [[ -f "$DEST/ai/rules/cursor-mdc/00-agents-pointer.mdc" ]]; then
+    ln -sfn ../../ai/rules/cursor-mdc/00-agents-pointer.mdc \
+      "$DEST/.cursor/rules/00-agents-pointer.mdc"
+    echo "linked .cursor/rules/00-agents-pointer.mdc (in-repo)"
+  elif [[ -f "$DEST/ai-rules/cursor-mdc/00-agents-pointer.mdc" ]]; then
+    ln -sfn ../../ai-rules/cursor-mdc/00-agents-pointer.mdc \
+      "$DEST/.cursor/rules/00-agents-pointer.mdc"
+    echo "linked .cursor/rules/00-agents-pointer.mdc (in-repo)"
+  elif [[ -f "$TARGET/cursor-mdc/00-agents-pointer.mdc" ]]; then
+    ln -sfn "$TARGET/cursor-mdc/00-agents-pointer.mdc" \
+      "$DEST/.cursor/rules/00-agents-pointer.mdc"
+    echo "linked .cursor/rules/00-agents-pointer.mdc"
+  fi
+fi

@@ -117,14 +117,14 @@ builds/st/st-*.diff
 /config
 /VERSION
 
-# Real home location for GeoClue (scripts/location-setup.sh); never commit
-stow/system/etc/geolocation.local
+# Real home location for GeoClue (security/scripts/location-setup.sh); never commit
+system/etc/geolocation.local
 
 # Local runtime theme overrides written by rice-theme (never dirty repo)
 stow/ghostty/.config/ghostty/theme.local.conf
 stow/alacritty/.config/alacritty/theme.local.toml
 
-# Local VM rehearsal artifacts (t14s-arch-install/tests/vm-run.sh, scripts/vm-stageb-run.sh)
+# Local VM rehearsal artifacts (t14s-arch-install/tests/vm-run.sh, provision/scripts/vm-stageb-run.sh)
 *.iso
 *.qcow2
 *.img

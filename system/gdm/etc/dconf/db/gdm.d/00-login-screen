@@ -1,0 +1,43 @@
+# /etc/dconf/db/gdm.d/00-login-screen — GDM greeter (not user session)
+# Apply: sudo dconf update
+
+[org/gnome/login-screen]
+disable-user-list=true
+banner-message-enable=false
+enable-fingerprint-authentication=true
+enable-smartcard-authentication=false
+
+[org/gnome/desktop/session]
+idle-delay=uint32 60
+
+[org/gnome/desktop/interface]
+clock-show-seconds=false
+clock-show-date=true
+clock-format='24h'
+color-scheme='prefer-dark'
+# Theme, icons and pointer: stock Adwaita (desktop/scripts/theme-setup.sh); leave unset.
+accent-color='blue'
+font-name='Inter 11'
+
+[org/gnome/desktop/background]
+picture-uri=''
+picture-uri-dark=''
+primary-color='#2b2e30'
+secondary-color='#2b2e30'
+color-shading-type='solid'
+picture-options='none'
+
+[org/gnome/desktop/screensaver]
+picture-uri=''
+primary-color='#2b2e30'
+color-shading-type='solid'
+picture-options='none'
+
+[org/gnome/settings-daemon/plugins/power]
+sleep-inactive-ac-type='nothing'
+sleep-inactive-battery-type='blank'
+sleep-inactive-battery-timeout=180
+
+[org/gnome/desktop/a11y/applications]
+screen-keyboard-enabled=false
+screen-magnifier-enabled=false

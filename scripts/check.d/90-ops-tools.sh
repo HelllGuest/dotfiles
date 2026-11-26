@@ -15,7 +15,7 @@ unset _bin
 if systemctl is-enabled --quiet paccache.timer 2>/dev/null; then
     echo "✓ paccache.timer enabled"
 else
-    echo "○ paccache.timer off — bash scripts/ops-hygiene.sh"
+    echo "○ paccache.timer off — bash security/scripts/ops-hygiene.sh"
 fi
 if systemctl --user is-enabled --quiet tmp-semgrep-cleanup.timer 2>/dev/null; then
     echo "✓ tmp-semgrep-cleanup.timer enabled"
@@ -25,10 +25,10 @@ fi
 if systemctl is-active --quiet usbguard 2>/dev/null; then
     echo "✓ usbguard active"
 else
-    echo "○ usbguard inactive — bash scripts/usbguard-setup.sh (allowlists plugged devices first)"
+    echo "○ usbguard inactive — bash security/scripts/usbguard-setup.sh (allowlists plugged devices first)"
 fi
 if systemctl is-active --quiet dnscrypt-proxy 2>/dev/null; then
     echo "✓ dnscrypt-proxy active"
 else
-    echo "○ dnscrypt-proxy inactive — bash scripts/dnscrypt-setup.sh (Tailscale MagicDNS may override)"
+    echo "○ dnscrypt-proxy inactive — bash security/scripts/dnscrypt-setup.sh (Tailscale MagicDNS may override)"
 fi

@@ -1,8 +1,8 @@
-# Reverse-engineering Agent Skills for `scripts/install-re-skills.sh`
+# Reverse-engineering Agent Skills for `ai/scripts/install-re-skills.sh`
 # One GitHub owner/repo per line (optional @ref). Lines starting with # ignored.
 # Optional skill filter: owner/repo:skill1,skill2  (else installs --skill '*')
-# REA MCP + reverse-engineer-anything skill: scripts/install-rea.sh (not here).
-# ghidra-cli-host: repo skills/ (synced by sync-agent-skills.sh).
+# REA MCP + reverse-engineer-anything skill: ai/scripts/install-rea.sh (not here).
+# ghidra-cli-host: repo ai/skills/ (synced by ai/scripts/sync-agent-skills.sh).
 
 # Lean CLI-first RE (no MCP); complements REA for cheap triage
 aicodeking/leanrea

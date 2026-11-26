@@ -5,8 +5,8 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 fail() { echo "FAIL: $*" >&2; exit 1; }
 
 for f in \
-  "$ROOT/scripts/lab-detonate.sh" \
-  "$ROOT/scripts/lab-mcp.sh" \
+  "$ROOT/labs/scripts/lab-detonate.sh" \
+  "$ROOT/labs/scripts/lab-mcp.sh" \
   "$ROOT/labs/lab-capture/Containerfile" \
   "$ROOT/labs/lab-capture/inetsim.conf" \
   "$ROOT/labs/lab-capture/entrypoint.sh" \
@@ -19,18 +19,18 @@ do
   [[ -f $f ]] || fail "missing $f"
 done
 
-bash -n "$ROOT/scripts/lab-detonate.sh" || fail "bash -n lab-detonate"
-bash -n "$ROOT/scripts/lab-mcp.sh" || fail "bash -n lab-mcp"
-[[ -x $ROOT/scripts/lab-detonate.sh ]] || fail "lab-detonate not executable"
-[[ -x $ROOT/scripts/lab-mcp.sh ]] || fail "lab-mcp not executable"
+bash -n "$ROOT/labs/scripts/lab-detonate.sh" || fail "bash -n lab-detonate"
+bash -n "$ROOT/labs/scripts/lab-mcp.sh" || fail "bash -n lab-mcp"
+[[ -x $ROOT/labs/scripts/lab-detonate.sh ]] || fail "lab-detonate not executable"
+[[ -x $ROOT/labs/scripts/lab-mcp.sh ]] || fail "lab-mcp not executable"
 
 grep -q '192.168.200.1' "$ROOT/labs/lab-capture/inetsim.conf" \
   || fail "INetSim must bind malware gateway IP"
-ZONE_LIB="$ROOT/scripts/lib/lab-malware-zone.sh"
+ZONE_LIB="$ROOT/security/lib/lab-malware-zone.sh"
 [[ -f $ZONE_LIB ]] || fail "missing lib/lab-malware-zone.sh"
-grep -q 'ensure_lab_malware_zone' "$ROOT/scripts/lab-detonate.sh" \
+grep -q 'ensure_lab_malware_zone' "$ROOT/labs/scripts/lab-detonate.sh" \
   || fail "detonate must call ensure_lab_malware_zone"
-grep -q 'ensure_lab_malware_zone' "$ROOT/scripts/firewalld-lab-zones.sh" \
+grep -q 'ensure_lab_malware_zone' "$ROOT/security/scripts/firewalld-lab-zones.sh" \
   || fail "firewalld-lab-zones must call ensure_lab_malware_zone"
 grep -q 'set-target=DROP' "$ZONE_LIB" \
   || fail "lab-malware must set-target=DROP"
@@ -54,20 +54,20 @@ grep -q 'postcondition failed' "$ZONE_LIB" \
   || fail "lab-malware helper must verify permanent bind"
 grep -q 'failed to add port' "$ZONE_LIB" \
   || fail "lab-malware helper must fail if gateway ports missing"
-grep -q 'virbr-malware' "$ROOT/scripts/lab-detonate.sh" \
+grep -q 'virbr-malware' "$ROOT/labs/scripts/lab-detonate.sh" \
   || fail "detonate must use virbr-malware"
-grep -q 'PolarProxy' "$ROOT/scripts/lab-detonate.sh" \
+grep -q 'PolarProxy' "$ROOT/labs/scripts/lab-detonate.sh" \
   || fail "detonate must mention PolarProxy"
-grep -q 'linux-define' "$ROOT/scripts/lab-detonate.sh" \
+grep -q 'linux-define' "$ROOT/labs/scripts/lab-detonate.sh" \
   || fail "detonate must define linux VM helpers"
-grep -q 'windows-define' "$ROOT/scripts/lab-detonate.sh" \
+grep -q 'windows-define' "$ROOT/labs/scripts/lab-detonate.sh" \
   || fail "detonate must define windows VM helpers"
 
 grep -q '@playwright/mcp' "$ROOT/labs/lab-web/Containerfile" \
   || fail "lab-web must install @playwright/mcp"
-grep -q 'mcp-playwright' "$ROOT/scripts/lab-mcp.sh" \
+grep -q 'mcp-playwright' "$ROOT/labs/scripts/lab-mcp.sh" \
   || fail "lab-mcp must launch playwright"
-grep -q 'mcp-flutter' "$ROOT/scripts/lab-mcp.sh" \
+grep -q 'mcp-flutter' "$ROOT/labs/scripts/lab-mcp.sh" \
   || fail "lab-mcp must launch flutter MCP"
 grep -q 'android-tools' "$ROOT/labs/lab-android/Containerfile" \
   || fail "lab-android must ship android-tools (adb)"
@@ -76,52 +76,52 @@ grep -q 'lab-detonate()' "$ROOT/stow/zsh/.shell-functions" \
   || fail "shell-functions lab-detonate missing"
 grep -q 'lab-mcp()' "$ROOT/stow/zsh/.shell-functions" \
   || fail "shell-functions lab-mcp missing"
-grep -q 'SETUP_DETONATE' "$ROOT/scripts/configure.sh" \
+grep -q 'SETUP_DETONATE' "$ROOT/provision/scripts/configure.sh" \
   || fail "configure must expose SETUP_DETONATE"
-! grep -q 'podman build.*lab-capture' "$ROOT/scripts/labs-setup.sh" \
-  && grep -q 'lab-detonate.sh" setup' "$ROOT/scripts/labs-setup.sh" \
+! grep -q 'podman build.*lab-capture' "$ROOT/labs/scripts/labs-setup.sh" \
+  && grep -q 'lab-detonate.sh" setup' "$ROOT/labs/scripts/labs-setup.sh" \
   || fail "labs-setup must delegate lab-capture build to lab-detonate.sh setup (avoid double build)"
 # The build lives in a step labs-setup tolerates failing: the image must be checked after it.
-_ls_setup="$(grep -n -m1 'lab-detonate.sh" setup' "$ROOT/scripts/labs-setup.sh" | cut -d: -f1)"
-_ls_check="$(grep -n -m1 'sudo podman image exists localhost/lab-capture:latest' "$ROOT/scripts/labs-setup.sh" | cut -d: -f1)"
+_ls_setup="$(grep -n -m1 'lab-detonate.sh" setup' "$ROOT/labs/scripts/labs-setup.sh" | cut -d: -f1)"
+_ls_check="$(grep -n -m1 'sudo podman image exists localhost/lab-capture:latest' "$ROOT/labs/scripts/labs-setup.sh" | cut -d: -f1)"
 [[ -n $_ls_setup && -n $_ls_check ]] && (( _ls_check > _ls_setup )) \
-  && sed -n "${_ls_check},$((_ls_check + 1))p" "$ROOT/scripts/labs-setup.sh" | grep -q 'exit 1' \
+  && sed -n "${_ls_check},$((_ls_check + 1))p" "$ROOT/labs/scripts/labs-setup.sh" | grep -q 'exit 1' \
   || fail "labs-setup must stop when lab-capture is missing after lab-detonate.sh setup"
 unset -v _ls_setup _ls_check
-grep -qE 'sudo podman build --network=host -t localhost/lab-capture:latest' "$ROOT/scripts/lab-detonate.sh" \
+grep -qE 'sudo podman build --network=host -t localhost/lab-capture:latest' "$ROOT/labs/scripts/lab-detonate.sh" \
   || fail "lab-detonate setup must build lab-capture in rootful podman store"
-grep -q 'sudo podman image exists localhost/lab-capture:latest' "$ROOT/scripts/lab-detonate.sh" \
+grep -q 'sudo podman image exists localhost/lab-capture:latest' "$ROOT/labs/scripts/lab-detonate.sh" \
   || fail "lab-detonate capture-up must check rootful podman store"
-grep -q 'sudo -n firewall-cmd --permanent --zone=lab-malware --list-interfaces' "$ROOT/scripts/lab-detonate.sh" \
+grep -q 'sudo -n firewall-cmd --permanent --zone=lab-malware --list-interfaces' "$ROOT/labs/scripts/lab-detonate.sh" \
   || fail "lab-detonate status must query permanent firewalld zone with sudo -n (no polkit hang)"
-grep -q 'qemu:///system' "$ROOT/scripts/lab-detonate.sh" \
+grep -q 'qemu:///system' "$ROOT/labs/scripts/lab-detonate.sh" \
   || fail "lab-detonate virsh must use qemu:///system (libvirt group, no sudo when possible)"
-! grep -q 'virsh -c qemu:///system uri' "$ROOT/scripts/lab-detonate.sh" \
+! grep -q 'virsh -c qemu:///system uri' "$ROOT/labs/scripts/lab-detonate.sh" \
   || fail "lab-detonate must not probe virsh uri (triggers polkit / faillock for non-libvirt users)"
-grep -q 'grep -qw libvirt' "$ROOT/scripts/lab-detonate.sh" \
-  && grep -q 'sudo -n virsh -c qemu:///system' "$ROOT/scripts/lab-detonate.sh" \
+grep -q 'grep -qw libvirt' "$ROOT/labs/scripts/lab-detonate.sh" \
+  && grep -q 'sudo -n virsh -c qemu:///system' "$ROOT/labs/scripts/lab-detonate.sh" \
   || fail "lab-detonate must gate unprivileged virsh on libvirt group and use sudo -n for status"
-grep -q 'failed to start virbr-malware' "$ROOT/scripts/lab-detonate.sh" \
-  && grep -q 'dnsmasq' "$ROOT/scripts/lab-detonate.sh" \
-  && grep -q 'dnsmasq' "$ROOT/scripts/firewalld-lab-zones.sh" \
+grep -q 'failed to start virbr-malware' "$ROOT/labs/scripts/lab-detonate.sh" \
+  && grep -q 'dnsmasq' "$ROOT/labs/scripts/lab-detonate.sh" \
+  && grep -q 'dnsmasq' "$ROOT/security/scripts/firewalld-lab-zones.sh" \
   || fail "lab-detonate and firewalld-lab-zones must ensure dnsmasq and fail closed if virbr-malware will not start"
 grep -q '21/tcp' "$ZONE_LIB" && grep -q '25/tcp' "$ZONE_LIB" \
   || fail "lab-malware zone must allow INetSim FTP (21/tcp) and SMTP (25/tcp)"
 grep -q 'LAB_CAPTURE_BIND' "$ROOT/labs/lab-capture/entrypoint.sh" \
   || fail "lab-capture entrypoint must honor LAB_CAPTURE_BIND"
-grep -q -- '--cloud-init' "$ROOT/scripts/lab-detonate.sh" \
-  && grep -q 'aborted without creating a broken' "$ROOT/scripts/lab-detonate.sh" \
+grep -q -- '--cloud-init' "$ROOT/labs/scripts/lab-detonate.sh" \
+  && grep -q 'aborted without creating a broken' "$ROOT/labs/scripts/lab-detonate.sh" \
   || fail "lab-detonate linux-define must seed cloud-init and fail closed on poweroff timeout"
 grep -q 'lab-android-flutter:/opt/flutter"' "$ROOT/stow/zsh/.shell-functions" \
-  && grep -q 'lab-android-flutter:/opt/flutter"' "$ROOT/scripts/lab-mcp.sh" \
-  && ! grep -q 'lab-android-.*:U' "$ROOT/stow/zsh/.shell-functions" "$ROOT/scripts/lab-mcp.sh" \
+  && grep -q 'lab-android-flutter:/opt/flutter"' "$ROOT/labs/scripts/lab-mcp.sh" \
+  && ! grep -q 'lab-android-.*:U' "$ROOT/stow/zsh/.shell-functions" "$ROOT/labs/scripts/lab-mcp.sh" \
   || fail "lab-android and lab-mcp must share persistent lab-android-flutter volume without per-start :U re-chown"
 grep -q 'exec /usr/local/bin/mcp-playwright' "$ROOT/labs/lab-web/mcp-devtools.sh" \
   && grep -q -- '--executablePath' "$ROOT/labs/lab-web/mcp-devtools.sh" \
   || fail "mcp-devtools.sh must pass --executablePath to chrome-devtools-mcp and delegate fallback to mcp-playwright"
 
 # No host secret mounts in MCP launcher
-grep -E '(-v|--bind).*\.ssh|\.gnupg' "$ROOT/scripts/lab-mcp.sh" \
+grep -E '(-v|--bind).*\.ssh|\.gnupg' "$ROOT/labs/scripts/lab-mcp.sh" \
   && fail "lab-mcp must not mount secrets" || true
 
 # inetsim.conf: only option names INetSim knows (http_port/https_port/dns_port
@@ -130,7 +130,7 @@ grep -E '(-v|--bind).*\.ssh|\.gnupg' "$ROOT/scripts/lab-mcp.sh" \
   || fail "inetsim.conf uses option names INetSim does not know"
 # INetSim (rootful, host network, parses malware traffic): minimal caps,
 # no-new-privileges, read-only root; recreated so old broad containers go away.
-_det="$ROOT/scripts/lab-detonate.sh"
+_det="$ROOT/labs/scripts/lab-detonate.sh"
 _run="$(awk '/sudo podman run -d --name lab-inetsim/{f=1} f; f&&/localhost\/lab-capture:latest/{exit}' "$_det")"
 for _f in '--cap-drop ALL' '--cap-add NET_BIND_SERVICE' '--cap-add SETUID' '--cap-add SETGID' '--cap-add CHOWN' \
     '--security-opt no-new-privileges' '--read-only'; do

@@ -4,7 +4,7 @@
 # ThinkPad battery charge thresholds.
 
 echo "--- ThinkPad charge thresholds ---"
-_charge="$REPO_ROOT/scripts/thinkpad-charge-thresholds.sh"
+_charge="$REPO_ROOT/system/scripts/thinkpad-charge-thresholds.sh"
 if [[ -f "$_charge" ]]; then
     if bash -n "$_charge" 2>/dev/null; then
         echo "✓ thinkpad-charge-thresholds.sh (syntax OK)"
@@ -24,7 +24,7 @@ if [[ -f "$_charge" ]]; then
       if [[ -f /etc/tmpfiles.d/thinkpad-charge-thresholds.conf ]]; then
           echo "✓ /etc/tmpfiles.d/thinkpad-charge-thresholds.conf present"
       else
-          echo "○ charge tmpfiles not installed (bash scripts/thinkpad-charge-thresholds.sh)"
+          echo "○ charge tmpfiles not installed (bash system/scripts/thinkpad-charge-thresholds.sh)"
       fi
       if [[ -f /etc/systemd/system/thinkpad-charge-thresholds.service ]]; then
           echo "✓ thinkpad-charge-thresholds.service unit present"
@@ -34,7 +34,7 @@ if [[ -f "$_charge" ]]; then
               echo "○ thinkpad-charge-thresholds.service not enabled (re-run helper)"
           fi
       else
-          echo "○ charge late-boot unit missing (bash scripts/thinkpad-charge-thresholds.sh)"
+          echo "○ charge late-boot unit missing (bash system/scripts/thinkpad-charge-thresholds.sh)"
       fi
       if [[ -x /usr/local/lib/thinkpad/apply-charge-thresholds.sh ]]; then
           echo "✓ /usr/local/lib/thinkpad/apply-charge-thresholds.sh present"

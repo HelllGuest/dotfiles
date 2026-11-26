@@ -3,7 +3,7 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-SCRIPT="$ROOT/scripts/install-foxcage.sh"
+SCRIPT="$ROOT/provision/scripts/install-foxcage.sh"
 fail() { echo "FAIL: $*" >&2; exit 1; }
 
 [[ -x $SCRIPT ]] || fail "not executable: $SCRIPT"
@@ -21,9 +21,9 @@ grep -q 'podman storage unusable' "$ROOT/scripts/check.sh" "$ROOT"/scripts/check
 grep -qx 'mount_program = "/usr/bin/fuse-overlayfs"' \
   "$ROOT/stow/containers/.config/containers/storage.conf" \
   || fail "storage.conf must set overlay mount_program (podman build on linux-hardened)"
-grep -q 'scripts/install-foxcage.sh' "$ROOT/install.sh" || fail "install.sh does not run install-foxcage.sh"
+grep -q 'provision/scripts/install-foxcage.sh' "$ROOT/install.sh" || fail "install.sh does not run install-foxcage.sh"
 grep -q 'SKIP_FOXCAGE:-0' "$ROOT/install.sh" || fail "install.sh must honor SKIP_FOXCAGE"
-grep -B3 'bash scripts/install-foxcage.sh' "$ROOT/install.sh" | grep -q 'need_cmd podman' \
+grep -B3 'bash provision/scripts/install-foxcage.sh' "$ROOT/install.sh" | grep -q 'need_cmd podman' \
   || fail "install.sh must record a failure (need_cmd) for foxcage without podman"
 grep -q 'command -v foxcage' "$ROOT/scripts/check.sh" "$ROOT"/scripts/check.d/*.sh || fail "check.sh must report foxcage"
 # Pins in this test must track the script (both are bumped together on update).

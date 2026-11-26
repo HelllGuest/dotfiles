@@ -10,11 +10,11 @@ trap 'rm -rf "$TMP"' EXIT
 for f in \
   "$ROOT/scripts/arch-install-t14s.sh" \
   "$ROOT/profiles/thinkpad-t14s.sh" \
-  "$ROOT/scripts/thinkpad-charge-thresholds.sh" \
-  "$ROOT/scripts/lib/dmi.sh" \
-  "$ROOT/scripts/lib/thinkpad-charge-thresholds.conf" \
+  "$ROOT/system/scripts/thinkpad-charge-thresholds.sh" \
+  "$ROOT/provision/lib/dmi.sh" \
+  "$ROOT/system/templates/thinkpad-charge-thresholds.conf" \
   "$ROOT/packages/thinkpad-t14s.txt" \
-  "$ROOT/scripts/detect-profile.sh"
+  "$ROOT/provision/scripts/detect-profile.sh"
 do
   [[ -f "$f" ]] || fail "missing $f"
   if [[ "$f" == *.sh ]]; then
@@ -23,7 +23,7 @@ do
 done
 [[ -x "$ROOT/scripts/arch-install-t14s.sh" ]] || fail "arch-install-t14s.sh not executable"
 [[ -x "$ROOT/profiles/thinkpad-t14s.sh" ]] || fail "thinkpad-t14s.sh not executable"
-[[ -x "$ROOT/scripts/thinkpad-charge-thresholds.sh" ]] \
+[[ -x "$ROOT/system/scripts/thinkpad-charge-thresholds.sh" ]] \
   || fail "thinkpad-charge-thresholds.sh not executable"
 
 # Stage A is thin handoff → in-repo t14s-arch-install (HW_PROFILE=t14s)
@@ -38,11 +38,11 @@ grep -q '^firewalld$' "$ROOT/packages/pacman.txt" || fail "pacman.txt must inclu
 grep -q '^github-cli$' "$ROOT/packages/pacman.txt" || fail "pacman.txt must include github-cli"
 grep -q '^glab$' "$ROOT/packages/pacman.txt" || fail "pacman.txt must include glab"
 ! grep -qE '^ufw$' "$ROOT/packages/pacman.txt" || fail "pacman.txt must not include ufw"
-grep -q 'pacman -Rns --noconfirm ufw' "$ROOT/scripts/firewalld-lab-zones.sh" \
+grep -q 'pacman -Rns --noconfirm ufw' "$ROOT/security/scripts/firewalld-lab-zones.sh" \
   || fail "firewalld-lab-zones must remove ufw package"
 grep -qE '"btop"|"htop"' "$ROOT/scripts/check.sh" "$ROOT"/scripts/check.d/*.sh \
   || fail "check.sh must require btop and htop"
-grep -qE '(^|[[:space:]_/])20SU' "$ROOT/scripts/lib/dmi.sh" \
+grep -qE '(^|[[:space:]_/])20SU' "$ROOT/provision/lib/dmi.sh" \
   || fail "is_thinkpad_p15 must match 20SU (Stage A parity)"
 
 # Profile repairs generic-install Intel leftovers
@@ -74,45 +74,45 @@ grep -q '61-thinkpad-charge-limit.rules' "$ROOT/profiles/thinkpad-t14s.sh" \
   || fail "profiles/thinkpad-t14s.sh must install 61-thinkpad-charge-limit.rules"
 grep -q 'LIBVA_DRIVER_NAME=radeonsi' "$ROOT/stow/zsh/.shell-exports" \
   || fail ".shell-exports must set LIBVA_DRIVER_NAME=radeonsi on amdgpu"
-grep -q 'LIBVA_DRIVER_NAME=radeonsi' "$ROOT/scripts/system-setup.sh" \
+grep -q 'LIBVA_DRIVER_NAME=radeonsi' "$ROOT/system/scripts/system-setup.sh" \
   || fail "system-setup.sh must rewrite LIBVA_DRIVER_NAME=radeonsi on amdgpu"
-grep -q 'LIBVA_DRIVER_NAME=radeonsi' "$ROOT/scripts/gdm-setup.sh" \
+grep -q 'LIBVA_DRIVER_NAME=radeonsi' "$ROOT/desktop/scripts/gdm-setup.sh" \
   || fail "gdm-setup.sh must rewrite LIBVA_DRIVER_NAME=radeonsi on amdgpu"
-grep -q '0x1002' "$ROOT/stow/gdm/etc/udev/rules.d/61-gdm-wayland.rules" \
+grep -q '0x1002' "$ROOT/system/gdm/etc/udev/rules.d/61-gdm-wayland.rules" \
   || fail "61-gdm-wayland.rules must include AMD vendor 0x1002"
-grep -q '0x10de' "$ROOT/stow/gdm/etc/udev/rules.d/61-gdm-wayland.rules" \
+grep -q '0x10de' "$ROOT/system/gdm/etc/udev/rules.d/61-gdm-wayland.rules" \
   || fail "61-gdm-wayland.rules must include NVIDIA vendor 0x10de (P15 Optimus)"
-grep -qE 'egl-wayland' "$ROOT/scripts/lib/pkg-lists.sh" \
+grep -qE 'egl-wayland' "$ROOT/provision/lib/pkg-lists.sh" \
   || fail "pkg-lists.sh host filter must mention egl-wayland"
-grep -q 'yoga-tablet-mode.service' "$ROOT/scripts/gnome-session-setup.sh" \
+grep -q 'yoga-tablet-mode.service' "$ROOT/desktop/scripts/gnome-session-setup.sh" \
   || fail "gnome-session-setup.sh must disable leftover yoga-tablet-mode.service"
 grep -qE 'is_thinkpad_x1|yoga-tablet-mode' "$ROOT/scripts/validate-configs.sh" \
   && fail "validate-configs.sh must not gate or check yoga-tablet-mode / is_thinkpad_x1" || true
 for f in \
-  "$ROOT/scripts/lib/apply-charge-thresholds.sh.tmpl" \
-  "$ROOT/scripts/lib/thinkpad-charge-thresholds.service.tmpl" \
-  "$ROOT/scripts/lib/thinkpad-charge-thresholds.conf"
+  "$ROOT/system/templates/apply-charge-thresholds.sh.tmpl" \
+  "$ROOT/system/templates/thinkpad-charge-thresholds.service.tmpl" \
+  "$ROOT/system/templates/thinkpad-charge-thresholds.conf"
 do
   [[ -f $f ]] || fail "missing $f"
 done
-grep -q 'POWER_SUPPLY_ROOT' "$ROOT/scripts/thinkpad-charge-thresholds.sh" \
+grep -q 'POWER_SUPPLY_ROOT' "$ROOT/system/scripts/thinkpad-charge-thresholds.sh" \
   || fail "charge helper must support POWER_SUPPLY_ROOT for tests"
-grep -q 'thinkpad-charge-thresholds.service' "$ROOT/scripts/thinkpad-charge-thresholds.sh" \
+grep -q 'thinkpad-charge-thresholds.service' "$ROOT/system/scripts/thinkpad-charge-thresholds.sh" \
   || fail "charge helper must install late-boot service"
-grep -q '/usr/local/lib/thinkpad/' "$ROOT/scripts/thinkpad-charge-thresholds.sh" \
+grep -q '/usr/local/lib/thinkpad/' "$ROOT/system/scripts/thinkpad-charge-thresholds.sh" \
   || fail "helper default apply path must be /usr/local/lib/thinkpad/"
-grep -q 'install -m' "$ROOT/scripts/thinkpad-charge-thresholds.sh" \
+grep -q 'install -m' "$ROOT/system/scripts/thinkpad-charge-thresholds.sh" \
   || fail "helper must install with explicit mode (not raw 0600 mktemp copy)"
 grep -q 'systemctl is-enabled thinkpad-charge-thresholds.service' \
   "$ROOT/docs/hardened-arch-gnome.md" \
   || fail "Verify Battery Thresholds must check service enabled"
 
 # vmtest INSTALLER override
-grep -q 'INSTALLER=' "$ROOT/scripts/arch-install-vmtest.sh" \
+grep -q 'INSTALLER=' "$ROOT/provision/scripts/arch-install-vmtest.sh" \
   || fail "arch-install-vmtest must support INSTALLER="
 
-# shellcheck source=../scripts/lib/dmi.sh
-source "$ROOT/scripts/lib/dmi.sh"
+# shellcheck source=../provision/lib/dmi.sh
+source "$ROOT/provision/lib/dmi.sh"
 
 mock_dmi() {
   local dir="$1"
@@ -137,7 +137,7 @@ mock_dmi "$TMP/cr" \
   chassis_type "10"
 export DMI_SYSFS_ROOT="$TMP/cr"
 is_thinkpad_t14s || fail "21CR MTM must match is_thinkpad_t14s"
-[[ "$(bash "$ROOT/scripts/detect-profile.sh")" == thinkpad-t14s ]] \
+[[ "$(bash "$ROOT/provision/scripts/detect-profile.sh")" == thinkpad-t14s ]] \
   || fail "detect-profile must return thinkpad-t14s for 21CR"
 
 # Positive: 21CQ
@@ -158,7 +158,7 @@ mock_dmi "$TMP/intel" \
   chassis_type "10"
 export DMI_SYSFS_ROOT="$TMP/intel"
 is_thinkpad_t14s && fail "T14s without 21CQ/21CR must NOT match" || true
-[[ "$(bash "$ROOT/scripts/detect-profile.sh")" != thinkpad-t14s ]] \
+[[ "$(bash "$ROOT/provision/scripts/detect-profile.sh")" != thinkpad-t14s ]] \
   || fail "detect-profile must not return thinkpad-t14s for non-21CQ/21CR T14s"
 
 # Retired X1 Yoga: no thinkpad-x1 profile; chassis → laptop fallback
@@ -169,7 +169,7 @@ mock_dmi "$TMP/x1" \
   product_sku "LENOVO_MT_20UC" \
   chassis_type "31"
 export DMI_SYSFS_ROOT="$TMP/x1"
-[[ "$(bash "$ROOT/scripts/detect-profile.sh")" == laptop ]] \
+[[ "$(bash "$ROOT/provision/scripts/detect-profile.sh")" == laptop ]] \
   || fail "detect-profile must return laptop for retired X1 Yoga"
 
 # P15 Gen 1 (20SU) → thinkpad-p15
@@ -181,7 +181,7 @@ mock_dmi "$TMP/p15" \
   chassis_type "10"
 export DMI_SYSFS_ROOT="$TMP/p15"
 is_thinkpad_p15 || fail "20SU must match is_thinkpad_p15"
-[[ "$(bash "$ROOT/scripts/detect-profile.sh")" == thinkpad-p15 ]] \
+[[ "$(bash "$ROOT/provision/scripts/detect-profile.sh")" == thinkpad-p15 ]] \
   || fail "detect-profile must return thinkpad-p15 for P15 Gen 1"
 
 # Charge helper: fake sysfs (no sudo)
@@ -195,7 +195,7 @@ printf '90\n' >"$PSY/BAT0/charge_control_end_threshold"
 
 out="$(
   POWER_SUPPLY_ROOT="$PSY" CHARGE_TMPFILES="$CONF_OUT" CHARGE_START=70 CHARGE_END=80 \
-    bash "$ROOT/scripts/thinkpad-charge-thresholds.sh" 2>&1
+    bash "$ROOT/system/scripts/thinkpad-charge-thresholds.sh" 2>&1
 )" || fail "charge helper failed on fake sysfs: $out"
 echo "$out" | grep -q 'charge BAT0' || fail "must report BAT0 thresholds set"
 echo "$out" | grep -q 'charge BAT1' && fail "must not claim BAT1 without charge_control_*" || true
@@ -208,7 +208,7 @@ printf '90\n' >"$PSY3/BAT0/charge_control_end_threshold"
 chmod a-w "$PSY3/BAT0/charge_control_start_threshold" "$PSY3/BAT0/charge_control_end_threshold"
 out3="$(
   POWER_SUPPLY_ROOT="$PSY3" CHARGE_TMPFILES="$TMP/fail.conf" CHARGE_NOSUDO=1 \
-    bash "$ROOT/scripts/thinkpad-charge-thresholds.sh" 2>&1
+    bash "$ROOT/system/scripts/thinkpad-charge-thresholds.sh" 2>&1
 )" && fail "unwritable sysfs with CHARGE_NOSUDO must exit non-zero" || true
 echo "$out3" | grep -q 'charge BAT0 →' && fail "must not success-say when live write fails" || true
 echo "$out3" | grep -qi 'live write failed\|tmpfiles queued' \
@@ -227,14 +227,14 @@ PSY2="$TMP/psy2"
 mkdir -p "$PSY2/BAT0"
 out2="$(
   POWER_SUPPLY_ROOT="$PSY2" CHARGE_TMPFILES="$TMP/none.conf" \
-    bash "$ROOT/scripts/thinkpad-charge-thresholds.sh" 2>&1
+    bash "$ROOT/system/scripts/thinkpad-charge-thresholds.sh" 2>&1
 )" || fail "empty charge_control should exit 0: $out2"
 echo "$out2" | grep -qi 'skip' || fail "empty charge_control must say skip"
 [[ ! -e "$TMP/none.conf" ]] || fail "skip path must not write conf"
 
 # Bad range rejected
 if POWER_SUPPLY_ROOT="$PSY" CHARGE_TMPFILES="$TMP/bad.conf" CHARGE_START=80 CHARGE_END=70 \
-    bash "$ROOT/scripts/thinkpad-charge-thresholds.sh" 2>/dev/null; then
+    bash "$ROOT/system/scripts/thinkpad-charge-thresholds.sh" 2>/dev/null; then
   fail "START>=END must exit non-zero"
 fi
 
@@ -245,7 +245,7 @@ out_svc="$(
   POWER_SUPPLY_ROOT="$PSY" CHARGE_TMPFILES="$CONF_OUT" \
     CHARGE_APPLY_SCRIPT="$APPLY_OUT" CHARGE_SERVICE_UNIT="$UNIT_OUT" \
     CHARGE_SKIP_SYSTEMCTL=1 CHARGE_START=70 CHARGE_END=80 \
-    bash "$ROOT/scripts/thinkpad-charge-thresholds.sh" 2>&1
+    bash "$ROOT/system/scripts/thinkpad-charge-thresholds.sh" 2>&1
 )" || fail "charge helper service install failed: $out_svc"
 [[ -x "$APPLY_OUT" ]] || fail "apply script not installed executable"
 # Modes: conf/unit 0644 (not mktemp 0600); apply 0755
@@ -263,7 +263,7 @@ bash -n "$APPLY_OUT" || fail "generated apply script bash -n failed"
 # Rendered apply must match template
 diff -u \
   <(sed -e 's|@@START@@|70|g' -e 's|@@END@@|80|g' \
-      "$ROOT/scripts/lib/apply-charge-thresholds.sh.tmpl") \
+      "$ROOT/system/templates/apply-charge-thresholds.sh.tmpl") \
   "$APPLY_OUT" >/dev/null \
   || fail "helper apply output drifted from template"
 # CHARGE_SKIP_SERVICE skips unit even with explicit paths
@@ -271,7 +271,7 @@ rm -f "$APPLY_OUT" "$UNIT_OUT"
 POWER_SUPPLY_ROOT="$PSY" CHARGE_TMPFILES="$CONF_OUT" \
   CHARGE_APPLY_SCRIPT="$APPLY_OUT" CHARGE_SERVICE_UNIT="$UNIT_OUT" \
   CHARGE_SKIP_SERVICE=1 CHARGE_SKIP_SYSTEMCTL=1 \
-  bash "$ROOT/scripts/thinkpad-charge-thresholds.sh" >/dev/null \
+  bash "$ROOT/system/scripts/thinkpad-charge-thresholds.sh" >/dev/null \
   || fail "CHARGE_SKIP_SERVICE run failed"
 [[ ! -e "$APPLY_OUT" ]] || fail "CHARGE_SKIP_SERVICE must not install apply script"
 
@@ -312,7 +312,7 @@ out_seed="$(
     CHARGE_APPLY_SCRIPT="$APPLY_SEED" CHARGE_SERVICE_UNIT="$UNIT_SEED" \
     SCTCTL_LOG="$SCTCTL_LOG" PATH="$BIN_STUB:$PATH" \
     env -u SUDO_ASKPASS \
-    bash "$ROOT/scripts/thinkpad-charge-thresholds.sh" 2>&1
+    bash "$ROOT/system/scripts/thinkpad-charge-thresholds.sh" 2>&1
 )" || fail "no-BAT service seed failed: $out_seed"
 echo "$out_seed" | grep -qi 'seed BAT0\|late-boot' \
   || fail "no-BAT+ThinkPad must say seed/late-boot: $out_seed"
@@ -337,7 +337,7 @@ out_live="$(
     CHARGE_APPLY_SCRIPT="$APPLY_LIVE" CHARGE_SERVICE_UNIT="$UNIT_LIVE" \
     SCTCTL_LOG="$SCTCTL_LOG" PATH="$BIN_STUB:$PATH" \
     env -u SUDO_ASKPASS \
-    bash "$ROOT/scripts/thinkpad-charge-thresholds.sh" 2>&1
+    bash "$ROOT/system/scripts/thinkpad-charge-thresholds.sh" 2>&1
 )" || fail "live-BAT service install failed: $out_live"
 grep -qx 'enable --now thinkpad-charge-thresholds.service' "$SCTCTL_LOG" \
   || fail "live BAT must systemctl enable --now (got: $(tr '\n' ';' <"$SCTCTL_LOG"))"
@@ -357,7 +357,7 @@ out_desk="$(
   POWER_SUPPLY_ROOT="$PSY_EMPTY" CHARGE_TMPFILES="$CONF_DESK" \
     CHARGE_APPLY_SCRIPT="$APPLY_DESK" CHARGE_SERVICE_UNIT="$UNIT_DESK" \
     CHARGE_SKIP_SYSTEMCTL=1 \
-    bash "$ROOT/scripts/thinkpad-charge-thresholds.sh" 2>&1
+    bash "$ROOT/system/scripts/thinkpad-charge-thresholds.sh" 2>&1
 )" || fail "desktop no-BAT must exit 0: $out_desk"
 echo "$out_desk" | grep -qi 'skip' || fail "desktop no-BAT must skip: $out_desk"
 [[ ! -e "$CONF_DESK" && ! -e "$APPLY_DESK" && ! -e "$UNIT_DESK" ]] \
@@ -376,7 +376,7 @@ out_dell="$(
   POWER_SUPPLY_ROOT="$PSY_EMPTY" CHARGE_TMPFILES="$CONF_DELL" \
     CHARGE_APPLY_SCRIPT="$APPLY_DELL" CHARGE_SERVICE_UNIT="$UNIT_DELL" \
     CHARGE_SKIP_SYSTEMCTL=1 \
-    bash "$ROOT/scripts/thinkpad-charge-thresholds.sh" 2>&1
+    bash "$ROOT/system/scripts/thinkpad-charge-thresholds.sh" 2>&1
 )" || fail "non-ThinkPad laptop no-BAT must exit 0: $out_dell"
 echo "$out_dell" | grep -qi 'skip' || fail "non-ThinkPad laptop must skip: $out_dell"
 [[ ! -e "$CONF_DELL" && ! -e "$APPLY_DELL" && ! -e "$UNIT_DELL" ]] \
@@ -385,9 +385,9 @@ echo "$out_dell" | grep -qi 'skip' || fail "non-ThinkPad laptop must skip: $out_
 # Templates must be tracked in git when this tree is a checkout (skip tarballs)
 if git -C "$ROOT" rev-parse >/dev/null 2>&1; then
   git -C "$ROOT" ls-files --error-unmatch \
-    scripts/lib/apply-charge-thresholds.sh.tmpl \
-    scripts/lib/thinkpad-charge-thresholds.service.tmpl >/dev/null \
-    || fail "git-add scripts/lib/*.tmpl before commit (fresh clones need them)"
+    system/templates/apply-charge-thresholds.sh.tmpl \
+    system/templates/thinkpad-charge-thresholds.service.tmpl >/dev/null \
+    || fail "git-add system/templates/*.tmpl before commit (fresh clones need them)"
 fi
 
 # Docs: Phase 14 anchor uses double hyphen (em dash in heading)
@@ -404,8 +404,8 @@ _helpers="$(awk '/^INSTALL_FAILED=0$/{f=1} f&&/^echo "Starting installation..."$
 [[ -n $_helpers ]] || fail "install.sh helper block not found"
 _pkgblk="$_helpers
 $_pkgblk"
-mkdir -p "$TMP/pk/bin" "$TMP/pk/repo/packages" "$TMP/pk/repo/scripts/lib" "$TMP/none"
-cp "$ROOT/scripts/lib/pkg-lists.sh" "$ROOT/scripts/lib/dmi.sh" "$TMP/pk/repo/scripts/lib/"
+mkdir -p "$TMP/pk/bin" "$TMP/pk/repo/packages" "$TMP/pk/repo/provision/lib" "$TMP/none"
+cp "$ROOT/provision/lib/pkg-lists.sh" "$ROOT/provision/lib/dmi.sh" "$TMP/pk/repo/provision/lib/"
 printf '%s\n' '# comment' 'bash' '' '  # indented comment' 'power-profiles-daemon' \
   'rust' 'zsh   # trailing comment' >"$TMP/pk/repo/packages/pacman.txt"
 cat >"$TMP/pk/bin/sudo" <<'STUB'
@@ -479,9 +479,9 @@ grep -qE '^(nvidia-open-dkms|nvidia-prime|nvidia-utils|egl-wayland)$' "$TMP/pk/v
   && fail "host without an NVIDIA display device must skip NVIDIA packages" || true
 unset _gp
 # has_nvidia_gpu: display class only (audio companion alone does not count).
-(source "$ROOT/scripts/lib/dmi.sh"; PCI_SYSFS_ROOT="$TMP/pci-optimus" has_nvidia_gpu) \
+(source "$ROOT/provision/lib/dmi.sh"; PCI_SYSFS_ROOT="$TMP/pci-optimus" has_nvidia_gpu) \
   || fail "has_nvidia_gpu must detect NVIDIA 0x03 class"
-(source "$ROOT/scripts/lib/dmi.sh"; PCI_SYSFS_ROOT="$TMP/pci-vm" has_nvidia_gpu) \
+(source "$ROOT/provision/lib/dmi.sh"; PCI_SYSFS_ROOT="$TMP/pci-vm" has_nvidia_gpu) \
   && fail "has_nvidia_gpu must ignore NVIDIA HDMI audio / non-NVIDIA VGA" || true
 # All-filtered manifest on T14s: must exit 0 and not invoke pacman -S.
 printf '%s\n' 'intel-media-driver' 'nvidia-open-dkms' 'egl-wayland' >"$TMP/pk/repo/packages/pacman.txt"

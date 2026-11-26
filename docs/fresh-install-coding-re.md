@@ -14,7 +14,7 @@ Automation:
 
 * Bare metal Stage A (canonical): [t14s-arch-install](../t14s-arch-install/README.md) (`HW_PROFILE=t14s|p15|generic`)
 * Thin wrappers (same installer): [`arch-install-t14s.sh`](../scripts/arch-install-t14s.sh) / [`arch-install-p15.sh`](../scripts/arch-install-p15.sh) / [`arch-install.sh`](../scripts/arch-install.sh)
-* VM rehearsal: [`arch-install-vmtest.sh`](../scripts/arch-install-vmtest.sh) (`INSTALLER=arch-install-p15.sh` or `arch-install-t14s.sh`)
+* VM rehearsal: [`arch-install-vmtest.sh`](../provision/scripts/arch-install-vmtest.sh) (`INSTALLER=arch-install-p15.sh` or `arch-install-t14s.sh`)
 * After first GNOME login: [`../install.sh`](../install.sh)
 
 **P15 Gen 1:** Stage A with `HW_PROFILE=p15` (canonical repo or
@@ -26,8 +26,8 @@ optional `ollama-cuda` on `127.0.0.1:11434`.
 **T14s Gen 3 AMD:** use the AMD installer, then `./install.sh` (detect →
 `thinkpad-t14s`). Expect `amd_iommu` / `amd_pstate`, `mesa` + `vulkan-radeon`,
 `fprintd`, and charge thresholds **70–80** via
-[`scripts/thinkpad-charge-thresholds.sh`](../scripts/thinkpad-charge-thresholds.sh).
-Health check: [`scripts/thinkpad-health.sh`](../scripts/thinkpad-health.sh)
+[`system/scripts/thinkpad-charge-thresholds.sh`](../system/scripts/thinkpad-charge-thresholds.sh).
+Health check: [`system/scripts/thinkpad-health.sh`](../system/scripts/thinkpad-health.sh)
 covers AMD/NVIDIA/Intel when those modules are present. Details:
 [hardened Phase 14](hardened-arch-gnome.md#phase-14--thinkpad-optimization).
 
@@ -63,7 +63,7 @@ an NVIDIA card, so VMs and other laptops never build the NVIDIA DKMS module.
    `packages/pacman.txt`). Go is optional and separate (see Coding stack below).
 2. **Reverse engineering** — Ghidra (+ ghidra-cli), REA MCP, RE agent skills,
    plus optional host tools (`packages/re-extra.txt`); host notes in
-   [`skills/ghidra-cli-host/`](../skills/ghidra-cli-host/).
+   [`ai/skills/ghidra-cli-host/`](../ai/skills/ghidra-cli-host/).
 3. **Malware analysis** — host stays clean; samples only in disposable VMs.
    Extra triage packages below are optional and not all listed in
    `packages/pacman.txt`.
@@ -119,7 +119,7 @@ out (boots a full install onto a **virtual** disk; real host disks untouched):
 
 ```bash
 cd /path/to/dotfiles
-bash scripts/arch-install-vmtest.sh
+bash provision/scripts/arch-install-vmtest.sh
 ```
 
 On the machine, from the official Arch ISO as root:
@@ -158,23 +158,23 @@ sudo -v && bash ~/dotfiles/scripts/check.sh --stage-a
 
 Two paths: modular TUI/GUI (`configure.sh`) or full/selective bootstrap (`./install.sh`; interactive TTY opens a TUI menu, `--gui` uses zenity, `--all` or non-TTY runs the full default install).
 Headless / qcow2: see [How to: Stage B VM](../README.md#how-to-stage-b-on-a-stage-a-qcow2)
-(or run `bash scripts/vm-stageb-run.sh`).
+(or run `bash provision/scripts/vm-stageb-run.sh`).
 
 #### How to: modular TUI (`configure.sh`)
 
 ```bash
 git clone https://github.com/HelllGuest/dotfiles.git ~/dotfiles
 cd ~/dotfiles
-bash scripts/p15-dotfiles-preflight.sh   # P15 only; skip on T14s
-bash scripts/configure.sh                # dialog → whiptail → plain
-# bash scripts/configure.sh --gui        # GNOME zenity GUI
-# CONFIGURE_UI=plain bash scripts/configure.sh   # serial / CI / no TTY
+bash provision/scripts/p15-dotfiles-preflight.sh   # P15 only; skip on T14s
+bash provision/scripts/configure.sh                # dialog → whiptail → plain
+# bash provision/scripts/configure.sh --gui        # GNOME zenity GUI
+# CONFIGURE_UI=plain bash provision/scripts/configure.sh   # serial / CI / no TTY
 ```
 
 Module checklist tags, defaults, and fail-fast rules: [README — configure.sh](../README.md#how-to-configuresh-stage-b-tui).
 
 Firewall / malware net: [README — firewalld lab zones](../README.md#how-to-firewalld-lab-zones--lab-malware)
-(`bash scripts/firewalld-lab-zones.sh`; bridge `zone="lab-malware"`). Ops kits /
+(`bash security/scripts/firewalld-lab-zones.sh`; bridge `zone="lab-malware"`). Ops kits /
 usbguard / dnscrypt: [README — ops / privacy kits](../README.md#how-to-ops--privacy-kits).
 Desktop look: stock Adwaita via `theme-setup.sh` (EGO Full-pack via
 `fetch-gnome-extensions.sh`); [README — install order](../README.md).
@@ -183,14 +183,14 @@ Desktop look: stock Adwaita via `theme-setup.sh` (EGO Full-pack via
 
 ```bash
 cd ~/dotfiles
-bash scripts/p15-dotfiles-preflight.sh   # P15 only
+bash provision/scripts/p15-dotfiles-preflight.sh   # P15 only
 ./install.sh                             # interactive TUI menu on TTY (rejects root); --gui for zenity; --all for full unattended
 # Selective: ./install.sh --only stow,desktop,check   # or --skip ai,apps (--list shows sections)
 # Headless pipe (auto full install): GIT_SETUP_NONINTERACTIVE=1 SKIP_THEME=1 ./install.sh --all
 # Explicit Optimus re-run if needed: bash profiles/thinkpad-p15.sh
-# Optional REA host MCP (prefer lab-re): bash scripts/install-rea.sh
+# Optional REA host MCP (prefer lab-re): bash ai/scripts/install-rea.sh
 # Optional Claude CLI: npm install -g @anthropic-ai/claude-code
-# Opt-in: bash scripts/usbguard-setup.sh ; bash scripts/dnscrypt-setup.sh
+# Opt-in: bash security/scripts/usbguard-setup.sh ; bash security/scripts/dnscrypt-setup.sh
 # Opt-in proxy: systemctl --user enable --now hr-proxy.service && loginctl enable-linger $USER
 exec zsh
 reboot   # P15: UKI must embed nvidia_drm.modeset=1 + rd.driver.blacklist=nouveau
@@ -206,8 +206,8 @@ prime-run nvidia-smi -L
 
 Step order: [README — what `./install.sh` runs](../README.md#script-execution-order-fresh-machine).
 
-`stow/system/` (sleep, logind, makepkg v3, udev, `virbr0-up.service`, waydroid-nat)
-is installed by `scripts/system-setup.sh` as root-owned files, not stowed. Kernel
+`system/` (sleep, logind, makepkg v3, udev, `virbr0-up.service`, waydroid-nat)
+is installed by `system/scripts/system-setup.sh` as root-owned files, not stowed. Kernel
 cmdline stays with the installer / machine profile. Details:
 [hardened-arch-gnome.md — `system/` files](hardened-arch-gnome.md#kernel-cmdline--system-files-installed-not-stowed).
 Firewall: **firewalld** (`drop` / `libvirt` / `lab-malware`) — see
@@ -217,7 +217,7 @@ Firewall: **firewalld** (`drop` / `libvirt` / `lab-malware`) — see
 `MemorySleepMode=s2idle`. A live host may still show `s2idle [deep]` (deep
 active) if BIOS is **Linux**/S3, `system-setup.sh` never ran, or cmdline was
 edited to `deep`. Fix: BIOS → **Windows and Linux**, then
-`bash scripts/system-setup.sh`, **reboot**, re-check
+`bash system/scripts/system-setup.sh`, **reboot**, re-check
 `/proc/cmdline` + `/sys/power/mem_sleep` (want `[s2idle] deep`).
 See [Verify sleep](hardened-arch-gnome.md#verify-sleep-s2idle).
 
@@ -235,7 +235,7 @@ See [Verify sleep](hardened-arch-gnome.md#verify-sleep-s2idle).
 | Mobile | Flatpak Android Studio; `ANDROID_HOME` in `.shell-exports`; alias `as` |
 | AI stack | `sync-agent-skills` (hub → Claude/Cursor/OpenCode/Kimi/Gemini/Antigravity/Kiro/Codex), Headroom + `hr-*` / optional `hr-proxy.service`, RTK (`install-rtk.sh`), OpenCode + Kimi (+ opt-in Gemini/Codex via `install-coding-agents.sh`), Caveman + Ponytail, curated official + RE skills, Continue FIM→ollama (P15), Obscura, `ai-stack-setup.sh` |
 | Labs | `lab-triage` / `lab-re` / `lab-android` / `lab-web` / `lab-detonate` / `lab-mcp` via `firewalld-lab-zones.sh` then `labs-setup.sh` (`cd` into a project for `/work`; app-grid launches default to `/srv/lab/out`, see [README](../README.md)) |
-| Local builds | x86-64-v3 makepkg drop-in; `bash scripts/rebuild-v3.sh` after big upgrades |
+| Local builds | x86-64-v3 makepkg drop-in; `bash system/scripts/rebuild-v3.sh` after big upgrades |
 
 ### Containers (Podman — in `pacman.txt`)
 
@@ -244,7 +244,7 @@ After Stage B / `./install.sh`, finish Podman storage + socket (Phase 17):
 ```bash
 mkdir -p ~/.local/share/containers/storage && chattr +C ~/.local/share/containers/storage
 systemctl --user enable --now podman.socket
-mkdir -p /tmp/agent-smoke && bash ~/dotfiles/scripts/agent-run.sh /tmp/agent-smoke alpine:3.20 echo ok   # optional smoke
+mkdir -p /tmp/agent-smoke && bash ~/dotfiles/ai/scripts/agent-run.sh /tmp/agent-smoke alpine:3.20 echo ok   # optional smoke
 ```
 
 `DOCKER_HOST` prefers Podman when `podman.socket` is up. If `docker` package is
@@ -282,7 +282,7 @@ go version    # if installed
 ### Core
 
 `./install.sh` installs `ghidra`, `jdk-openjdk`, `jdk17-openjdk`, and `rust`
-(`packages/pacman.txt`) and runs `scripts/install-ghidra-cli.sh`. Check:
+(`packages/pacman.txt`) and runs `ai/scripts/install-ghidra-cli.sh`. Check:
 
 ```bash
 ghidra doctor
@@ -294,7 +294,7 @@ ghidra-gui   # GUI; cargo `ghidra` on PATH shadows /usr/bin/ghidra
 Manifest: [`packages/re-extra.txt`](../packages/re-extra.txt). Installer:
 
 ```bash
-bash scripts/install-re-extras.sh
+bash provision/scripts/install-re-extras.sh
 # Installs packages/re-extra.txt (RE tools: jdk11-openjdk, jadx, gdb, binwalk,
 # android-tools, rizin, rz-cutter, rz-ghidra, hexyl, yara, strace, ltrace,
 # smali, radare2; firmware tools: squashfs-tools, mtd-utils, flashrom,
@@ -317,14 +317,14 @@ Prefer containerized REA inside `lab-re` (`rea-agents@6.10.1` + JDK21/Ghidra/jad
 
 | Layer | What | Install |
 |-------|------|---------|
-| **REA (lab-re)** | MCP + CLI inside Podman image | `lab-re` / `bash scripts/labs-setup.sh` |
-| **REA (host, optional)** | MCP on bare metal when JDK≥21 + tools exist | `bash scripts/install-rea.sh` |
-| **leanrea** | Small skill: shell-tool RE, no MCP (cheap triage) | `bash scripts/install-re-skills.sh` |
+| **REA (lab-re)** | MCP + CLI inside Podman image | `lab-re` / `bash labs/scripts/labs-setup.sh` |
+| **REA (host, optional)** | MCP on bare metal when JDK≥21 + tools exist | `bash ai/scripts/install-rea.sh` |
+| **leanrea** | Small skill: shell-tool RE, no MCP (cheap triage) | `bash ai/scripts/install-re-skills.sh` |
 | **reverse-engineering** | Playbooks + triage scripts (EncidXVII) | same |
 | **android-reverse-engineering** | APK/XAPK API recovery (jadx) | same |
 | **ghidra-iterative-re** | Safe Ghidra apply→verify loop | same |
 | **firmware-extraction** / **firmware-static-analysis** / **firmware-emulation** / **ghidra-re** / **firmware-security-reports** | Firmware/IoT unpack → analyze → emulate (OrbitCurve) | same |
-| **ghidra-cli-host** | This machine’s Ghidra CLI footguns | repo `skills/` + sync |
+| **ghidra-cli-host** | This machine’s Ghidra CLI footguns | repo `ai/skills/` + sync |
 
 Firmware host tools (squashfs, mtd-utils, flashrom, uboot-tools, qemu-user-static, …)
 are in [`packages/re-extra.txt`](../packages/re-extra.txt) via `install-re-extras.sh`.
@@ -342,14 +342,14 @@ Survey (Oct 2026): [AI RE tools compared](https://dev.to/leemie8848/ai-reverse-e
 
 ```bash
 lab-re --check && lab-re          # preferred REA + Ghidra/jadx
-# optional host MCP: bash scripts/install-rea.sh
-bash scripts/install-re-skills.sh
+# optional host MCP: bash ai/scripts/install-rea.sh
+bash ai/scripts/install-re-skills.sh
 bash ~/dotfiles/scripts/check.sh   # ○/✓ for leanrea, reverse-engineering, …
 ```
 
 ### Ghidra footguns on this machine
 
-From [`skills/ghidra-cli-host/SKILL.md`](../skills/ghidra-cli-host/SKILL.md):
+From [`ai/skills/ghidra-cli-host/SKILL.md`](../ai/skills/ghidra-cli-host/SKILL.md):
 
 * CLI: `~/.cargo/bin/ghidra`; GUI: `ghidra-gui` → `/opt/ghidra/ghidraRun`
 * Exit codes are unreliable; prefer `--json` and check `"status":"success"`
@@ -395,11 +395,11 @@ if you accept licensing and risk.
 ### Disposable Kali
 
 Immutable qcow2 base + ephemeral session overlay. `wipe` deletes the overlay
-and undefines the domain; base stays clean. Script: `scripts/kali-disposable.sh`.
-Full shell alias table (`kali`, `kali-up`, `kali-up-nat`, `kali-up-lan`, `kali-lan`, `kali-lan-check`, `kali-wipe`, `kali-stop`, `kali-st`): [gnome/keybindings.md](../gnome/keybindings.md#disposable-kali).
+and undefines the domain; base stays clean. Script: `labs/scripts/kali-disposable.sh`.
+Full shell alias table (`kali`, `kali-up`, `kali-up-nat`, `kali-up-lan`, `kali-lan`, `kali-lan-check`, `kali-wipe`, `kali-stop`, `kali-st`): [desktop/gnome/keybindings.md](../desktop/gnome/keybindings.md#disposable-kali).
 
 ```bash
-bash scripts/kali-disposable.sh setup    # once: libvirt pkgs + download base + virbr0/libvirt zone
+bash labs/scripts/kali-disposable.sh setup    # once: libvirt pkgs + download base + virbr0/libvirt zone
 # re-login / newgrp libvirt
 kali-up                                  # isolated (samples)
 kali-up-nat                              # NAT for apt/cloud-init
@@ -413,7 +413,7 @@ kali-wipe                                # back to clean base
 **Physical LAN:** `--lan` / `attach-lan` sets `nat+lan`: NAT eth0 plus host
 `KALI_LAN_IFACE` (default `enp0s31f6`, else first ethernet) as guest eth1 via
 macvtap bridge mode. Dual defaults break LAN: host RJ45 must have **no IP**
-(wifi keeps default — `scripts/kali-lan-host-prep.sh` / `pkexec kali-lan-host-prep`);
+(wifi keeps default — `labs/scripts/kali-lan-host-prep.sh` / `pkexec kali-lan-host-prep`);
 guest eth1 gets DHCP on the LAN **without** gateway/DNS/routes (NAT eth0 is
 the only default). Verify with `kali lan-check` (`KALI_LAN_PROBE` overrides the
 default `192.168.8.1` gateway ping target). Public DNS on eth0. Cable
@@ -431,9 +431,9 @@ install. `--lan` needs a wired NIC (`KALI_LAN_IFACE`); Wi-Fi cannot carry macvta
 
 **NAT / firewalld:** `setup` and `start --nat` bind `virbr0` to the stock
 `libvirt` zone (forward + masquerade for guest subnet `192.168.122.0/24`) and
-bring the bridge up. Prefer `bash scripts/firewalld-lab-zones.sh` if zones are
+bring the bridge up. Prefer `bash security/scripts/firewalld-lab-zones.sh` if zones are
 missing ([howto](../README.md#how-to-firewalld-lab-zones--lab-malware)). Boot unit
-`virbr0-up.service` (from `stow/system/`, also installed by `setup`) starts the
+`virbr0-up.service` (from `system/`, also installed by `setup`) starts the
 libvirt `default` network then `ip link set virbr0 up` so the bridge exists
 after reboot. Cloud-init NoCloud seed sets hostname `kali-disposable`, enables
 password SSH, and uses a fresh `instance-id` each overlay. Isolated login
@@ -494,7 +494,7 @@ BIOS (SB off, VT-x/d on; Sleep = Windows and Linux for s2idle)
   → Arch ISO → t14s-arch-install (or thin arch-install-*.sh wrappers; AUTO wipe, or MANUAL + reuse EFI)
   → reboot → GNOME login
   → optional: sbctl enroll-keys -m → enable SB in BIOS → sbctl verify
-  → clone dotfiles → ./install.sh (installs stow/system/ via system-setup.sh) → exec zsh
+  → clone dotfiles → ./install.sh (installs system/ via system-setup.sh) → exec zsh
   → thinkpad-health.sh → reboot
   → coding extras if needed: go (Podman is already primary)
   → RE: ghidra doctor + ghidra-gui; optional jadx / rz-cutter / …
@@ -509,5 +509,5 @@ General tasks: [README — Maintenance](../README.md#-maintenance). On this mach
 
 | Task | Command |
 |------|---------|
-| ThinkPad health | `bash scripts/thinkpad-health.sh` |
+| ThinkPad health | `bash system/scripts/thinkpad-health.sh` |
 | Secure Boot | `sbctl status && sbctl verify` |

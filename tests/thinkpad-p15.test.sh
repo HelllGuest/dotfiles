@@ -10,10 +10,10 @@ trap 'rm -rf "$TMP"' EXIT
 for f in \
   "$ROOT/scripts/arch-install-p15.sh" \
   "$ROOT/profiles/thinkpad-p15.sh" \
-  "$ROOT/scripts/lib/dmi.sh" \
-  "$ROOT/scripts/lib/thinkpad-charge-thresholds.conf" \
-  "$ROOT/scripts/lib/stage-a-handoff.sh" \
-  "$ROOT/scripts/detect-profile.sh"
+  "$ROOT/provision/lib/dmi.sh" \
+  "$ROOT/system/templates/thinkpad-charge-thresholds.conf" \
+  "$ROOT/provision/lib/stage-a-handoff.sh" \
+  "$ROOT/provision/scripts/detect-profile.sh"
 do
   [[ -f "$f" ]] || fail "missing $f"
   if [[ "$f" == *.sh ]]; then
@@ -33,9 +33,9 @@ grep -q 't14s-arch-install/install.sh' "$INST" \
 grep -qE 'cryptsetup|pacstrap' "$INST" \
   && fail "arch-install-p15 must not embed Stage A body" || true
 
-grep -q '0x10de' "$ROOT/stow/gdm/etc/udev/rules.d/61-gdm-wayland.rules" \
+grep -q '0x10de' "$ROOT/system/gdm/etc/udev/rules.d/61-gdm-wayland.rules" \
   || fail "stow GDM udev must keep NVIDIA 0x10de after Stage B gdm-setup"
-grep -qE '(^|[[:space:]_/])20SU' "$ROOT/scripts/lib/dmi.sh" \
+grep -qE '(^|[[:space:]_/])20SU' "$ROOT/provision/lib/dmi.sh" \
   || fail "is_thinkpad_p15 must match 20SU"
 
 # Profile + detect
@@ -56,8 +56,8 @@ grep -q 'return 0' "$ROOT/profiles/laptop.sh" \
 (
   _lt="$(mktemp -d)"
   trap 'rm -rf "$_lt"' EXIT
-  mkdir -p "$_lt/repo/profiles" "$_lt/repo/scripts/lib" "$_lt/dmi"
-  cp "$ROOT/scripts/lib/dmi.sh" "$_lt/repo/scripts/lib/dmi.sh"
+  mkdir -p "$_lt/repo/profiles" "$_lt/repo/provision/lib" "$_lt/dmi"
+  cp "$ROOT/provision/lib/dmi.sh" "$_lt/repo/provision/lib/dmi.sh"
   cp "$ROOT/profiles/laptop.sh" "$_lt/repo/profiles/laptop.sh"
   printf 'echo DELEGATED_T14S\n' >"$_lt/repo/profiles/thinkpad-t14s.sh"
   printf 'ThinkPad T14s Gen 3\n' >"$_lt/dmi/product_family"
@@ -67,8 +67,8 @@ grep -q 'return 0' "$ROOT/profiles/laptop.sh" \
   grep -q 'DELEGATED_T14S' <<<"$_out" && grep -q 'CALLER_SURVIVED' <<<"$_out" \
     || fail "laptop.sh sourced delegation failed (got: $_out)"
 )
-# shellcheck source=../scripts/lib/dmi.sh
-source "$ROOT/scripts/lib/dmi.sh"
+# shellcheck source=../provision/lib/dmi.sh
+source "$ROOT/provision/lib/dmi.sh"
 mock_dmi() {
   local dir="$1"
   shift
@@ -91,7 +91,7 @@ mock_dmi "$TMP/p15" \
   chassis_type "10"
 export DMI_SYSFS_ROOT="$TMP/p15"
 is_thinkpad_p15 || fail "20SU must match is_thinkpad_p15"
-[[ "$(bash "$ROOT/scripts/detect-profile.sh")" == thinkpad-p15 ]] \
+[[ "$(bash "$ROOT/provision/scripts/detect-profile.sh")" == thinkpad-p15 ]] \
   || fail "detect-profile must return thinkpad-p15 for P15 Gen 1"
 
 # Negative: T14s must not pick p15
@@ -102,7 +102,7 @@ mock_dmi "$TMP/cr" \
   chassis_type "10"
 export DMI_SYSFS_ROOT="$TMP/cr"
 is_thinkpad_p15 && fail "T14s 21CR must NOT match is_thinkpad_p15" || true
-[[ "$(bash "$ROOT/scripts/detect-profile.sh")" != thinkpad-p15 ]] \
+[[ "$(bash "$ROOT/provision/scripts/detect-profile.sh")" != thinkpad-p15 ]] \
   || fail "detect-profile must not return thinkpad-p15 for T14s"
 
 # Canonical sibling owns Optimus seeds when present

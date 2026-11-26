@@ -1,4 +1,4 @@
-# Global Agent Skills packs for `scripts/install-ecosystem-skills.sh`
+# Global Agent Skills packs for `ai/scripts/install-ecosystem-skills.sh`
 # One GitHub owner/repo per line (optional @ref). Lines starting with # ignored.
 # Optional skill filter: owner/repo:skill1,skill2  (else installs --skill '*')
 # Caveman / android-compose / material-3 / ghidra-cli installed by dedicated

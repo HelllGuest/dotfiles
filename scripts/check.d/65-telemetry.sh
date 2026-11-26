@@ -15,20 +15,20 @@ if [[ -f "$TELEMETRY_ENV_D" ]]; then
         fi
     done
 else
-    check_fail "telemetry-optout.conf missing (stow privacy / bash scripts/privacy-hardener.sh)"
+    check_fail "telemetry-optout.conf missing (stow privacy / bash security/scripts/privacy-hardener.sh)"
 fi
 if command -v gsettings >/dev/null 2>&1; then
     if [[ "$(gsettings get org.gnome.desktop.privacy report-technical-problems 2>/dev/null)" == "false" ]]; then
         echo "✓ GNOME report-technical-problems=false"
     else
-        check_fail "GNOME report-technical-problems not false (bash scripts/privacy-hardener.sh)"
+        check_fail "GNOME report-technical-problems not false (bash security/scripts/privacy-hardener.sh)"
     fi
 fi
 if [[ -f "${HOME}/.dart-tool/dart-flutter-telemetry.config" ]] \
   && grep -q '^reporting=0' "${HOME}/.dart-tool/dart-flutter-telemetry.config"; then
     echo "✓ Flutter/Dart reporting=0"
 else
-    echo "○ Flutter telemetry config missing (optional: bash scripts/privacy-hardener.sh)"
+    echo "○ Flutter telemetry config missing (optional: bash security/scripts/privacy-hardener.sh)"
 fi
 if [[ -f "${HOME}/.claude/settings.json" ]] \
   && grep -q 'DISABLE_TELEMETRY' "${HOME}/.claude/settings.json"; then

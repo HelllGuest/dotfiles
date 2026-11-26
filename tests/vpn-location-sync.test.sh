@@ -5,8 +5,13 @@
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 fail() { echo "FAIL: $*" >&2; exit 1; }
-SCRIPT="$ROOT/scripts/vpn-location-sync.sh"
+SCRIPT="$ROOT/security/scripts/vpn-location-sync.sh"
 bash -n "$SCRIPT" || fail "bash -n vpn-location-sync.sh"
+
+EXT_JS="$ROOT/stow/proton-vpn/.local/share/gnome-shell/extensions/proton-vpn@helllguest/extension.js"
+grep -q 'dotfiles/security/scripts/vpn-location-sync.sh' "$EXT_JS" \
+  && ! grep -q 'dotfiles/scripts/vpn-location-sync.sh' "$EXT_JS" \
+  || fail "Proton VPN extension fallback must point to dotfiles/security/scripts/vpn-location-sync.sh"
 
 # Static checks (always run, also where user namespaces are unavailable, e.g. CI):
 # the root branch may only use the root-owned installed copy.
@@ -28,7 +33,7 @@ if ! unshare -r true 2>/dev/null; then
   echo "PASS: vpn-location-sync.test.sh"; exit 0
 fi
 T="$(mktemp -d)"; trap 'rm -rf "$T"' EXIT
-mkdir -p "$T/bin" "$T/share" "$T/etc" "$T/home/u/dotfiles/stow/system/etc"
+mkdir -p "$T/bin" "$T/share" "$T/etc" "$T/home/u/dotfiles/system/etc"
 sed -e "s#^INSTALLED_HOME_GEO=.*#INSTALLED_HOME_GEO=\"$T/share/home.geolocation\"#" \
     -e "s#^GEO_FILE=.*#GEO_FILE=\"$T/etc/geolocation\"#" \
     -e "s#^CURL=/usr/bin/curl\$#CURL=$T/bin/curl#" "$SCRIPT" >"$T/sync.sh"
@@ -37,8 +42,8 @@ grep -q "$T/share/home.geolocation" "$T/sync.sh" && grep -q "$T/etc/geolocation"
   || fail "test could not retarget fixed paths (variable names changed?)"
 printf 'SECRET-ROOT-ONLY\n' >"$T/secret"; chmod 600 "$T/secret"
 printf '# installed\n10.0\n20.0\n5\n1000\n' >"$T/share/home.geolocation"
-printf '# tracked\n1.0\n2.0\n5\n1000\n' >"$T/home/u/dotfiles/stow/system/etc/geolocation"
-ln -s "$T/secret" "$T/home/u/dotfiles/stow/system/etc/geolocation.local"
+printf '# tracked\n1.0\n2.0\n5\n1000\n' >"$T/home/u/dotfiles/system/etc/geolocation"
+ln -s "$T/secret" "$T/home/u/dotfiles/system/etc/geolocation.local"
 cat >"$T/bin/ip" <<'S'
 #!/bin/sh
 [ -n "$VPN_UP" ] && echo "5: proton0: <POINTOPOINT,NOARP,UP,LOWER_UP> mtu 1420"

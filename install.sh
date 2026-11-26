@@ -44,12 +44,14 @@ Options:
   --plain          Force plain text prompts
   --only LIST      Run only comma-separated sections (no menu)
   --skip LIST      Run default sections except comma-separated ones (no menu)
+  --minimal        Skip heavy IDE/mobile/RE package bundles (MINIMAL_PACKAGES=1)
   --list           List available section names and exit
   -h, --help       Show this help and exit
 
 Environment:
   INSTALL_ALL=1    Same as --all
   INSTALL_UI=...   plain|tui|dialog|whiptail|gui|zenity
+  MINIMAL_PACKAGES=1 / SKIP_AI_IDES=1 / SKIP_MOBILE_DEV=1 / SKIP_RE_TOOLS=1
   SKIP_THEME=1 / SKIP_OLLAMA=1 / SKIP_FOXCAGE=1 / SKIP_OPS_HYGIENE=1 / CONFIGURE=1
 EOF
 }
@@ -59,7 +61,7 @@ install_list_sections() {
 packages   Pacman packages (pacman.txt), input cleanup, bootvine
 profile    Machine hardware profile (apply-profile.sh)
 flatpak    Flatpak apps (packages/flatpak.txt)
-fonts      Fonts (scripts/install-fonts.sh)
+fonts      Fonts (provision/scripts/install-fonts.sh)
 stow       Dotfiles stow + /etc system configs + user timers
 aur        AUR packages (packages/aur.txt)
 shell      zsh login shell, Node 22 (fnm), atuin history, zram
@@ -113,6 +115,7 @@ while (($#)); do
         --skip=*)
             INSTALL_SKIP="${1#--skip=}"; INSTALL_MODE="filter"; INSTALL_CLI_MODE=1
             ;;
+        --minimal) export MINIMAL_PACKAGES=1 ;;
         --list) install_list_sections; exit 0 ;;
         -h|--help) install_usage; exit 0 ;;
         *)
@@ -176,8 +179,8 @@ elif [[ -n $INSTALL_SKIP ]]; then
     INSTALL_SECTIONS="$(printf '%s\n' "${_chosen[@]}")"
     unset _sk _base _chosen _d _s _drop
 elif [[ $INSTALL_MODE == menu || ( $INSTALL_MODE == auto && ( ( -t 0 && -t 1 ) || $INSTALL_UI == gui || $INSTALL_UI == zenity ) ) ]]; then
-    # shellcheck source=scripts/lib/ui-menu.sh
-    source scripts/lib/ui-menu.sh
+    # shellcheck source=provision/lib/ui-menu.sh
+    source provision/lib/ui-menu.sh
     ui_init "$INSTALL_UI" "Dotfiles Installer · Stage B" "INSTALL_UI" || exit 1
     trap ui_theme_cleanup EXIT
     ui_theme_init
@@ -202,7 +205,7 @@ elif [[ $INSTALL_MODE == menu || ( $INSTALL_MODE == auto && ( ( -t 0 && -t 1 ) |
                     packages  "Pacman packages (pacman.txt), input cleanup, bootvine" on \
                     profile   "Machine hardware profile (apply-profile.sh)" on \
                     flatpak   "Flatpak apps (packages/flatpak.txt)" on \
-                    fonts     "Fonts (scripts/install-fonts.sh)" on \
+                    fonts     "Fonts (provision/scripts/install-fonts.sh)" on \
                     stow      "Dotfiles stow + /etc system configs + user timers" on \
                     aur       "AUR packages (packages/aur.txt)" on \
                     shell     "zsh login shell, Node 22 (fnm), atuin history, zram" on \
@@ -259,7 +262,7 @@ elif [[ $INSTALL_MODE == menu || ( $INSTALL_MODE == auto && ( ( -t 0 && -t 1 ) |
                 ;;
             configure)
                 ui_theme_cleanup
-                CONFIGURE_UI="$UI" bash scripts/configure.sh
+                CONFIGURE_UI="$UI" bash provision/scripts/configure.sh
                 _rc=$?
                 if [[ ${INSTALL_PAUSE:-0} == 1 && -t 0 ]]; then
                     read -r -p "Press Enter to close..." _
@@ -295,13 +298,13 @@ fail_step() {
     INSTALL_FAIL_REASONS+=("$1")
 }
 
-# Progress bars (scripts/lib/progress.sh). Stub when tests eval this helper
+# Progress bars (provision/lib/progress.sh). Stub when tests eval this helper
 # block without the lib on disk.
-# shellcheck source=scripts/lib/progress.sh
-if [[ -f scripts/lib/progress.sh ]]; then
-    source scripts/lib/progress.sh
-elif [[ -f "$(dirname "${BASH_SOURCE[0]:-$0}")/scripts/lib/progress.sh" ]]; then
-    source "$(dirname "${BASH_SOURCE[0]:-$0}")/scripts/lib/progress.sh"
+# shellcheck source=provision/lib/progress.sh
+if [[ -f provision/lib/progress.sh ]]; then
+    source provision/lib/progress.sh
+elif [[ -f "$(dirname "${BASH_SOURCE[0]:-$0}")/provision/lib/progress.sh" ]]; then
+    source "$(dirname "${BASH_SOURCE[0]:-$0}")/provision/lib/progress.sh"
 else
     ui_bar() { printf '[----------]'; }
     progress_line() { :; }
@@ -371,8 +374,8 @@ if _install_needs_sudo; then
 fi
 
 # Legacy touchpad udev/inhibit cleanup (if present from older dotfiles)
-if section_on packages && [ -f "scripts/cleanup-input-overrides.sh" ]; then
-    run_step "Input override cleanup" bash scripts/cleanup-input-overrides.sh
+if section_on packages && [ -f "desktop/scripts/cleanup-input-overrides.sh" ]; then
+    run_step "Input override cleanup" bash desktop/scripts/cleanup-input-overrides.sh
 fi
 
 # 1. Install packages (before machine profile — NVIDIA/Optimus needs nvidia-* present)
@@ -381,8 +384,8 @@ if [ -f "packages/pacman.txt" ]; then
     advance_progress "pacman packages"
     echo "Installing pacman packages..."
     REPO_ROOT="$PWD"
-    # shellcheck source=scripts/lib/pkg-lists.sh
-    source scripts/lib/pkg-lists.sh
+    # shellcheck source=provision/lib/pkg-lists.sh
+    source provision/lib/pkg-lists.sh
     mapfile -t pkgs < <(pacman_targets)
     # Older dotfiles built AUR bootvine-git: same files as official bootvine and
     # no conflicts= metadata, so installing bootvine would abort the whole
@@ -429,21 +432,21 @@ fi
 
 # 1.05 Machine profile (hostname override, else hardware detect)
 # Runs after pacman so thinkpad-p15 can enable nvidia-*.service and rebuild UKIs.
-if section_on profile && [ -f "scripts/apply-profile.sh" ]; then
+if section_on profile && [ -f "provision/scripts/apply-profile.sh" ]; then
     advance_progress "machine profile"
-    bash scripts/apply-profile.sh \
+    bash provision/scripts/apply-profile.sh \
         || fail_step "Profile application failed (sudo / hardware setup) — see output above."
 fi
 
 # 1.1 Install Flatpaks
-if section_on flatpak && [ -f "scripts/install-flatpaks.sh" ]; then
+if section_on flatpak && [ -f "provision/scripts/install-flatpaks.sh" ]; then
     echo "Installing flatpak packages..."
-    run_step "Flatpak install" bash scripts/install-flatpaks.sh
+    run_step "Flatpak install" bash provision/scripts/install-flatpaks.sh
 fi
 
 # 1.2 Install Fonts
-if section_on fonts && [ -f "scripts/install-fonts.sh" ]; then
-    run_step "Font install" bash scripts/install-fonts.sh
+if section_on fonts && [ -f "provision/scripts/install-fonts.sh" ]; then
+    run_step "Font install" bash provision/scripts/install-fonts.sh
 fi
 
 # 2. Setup symlinks using Stow or Fallback
@@ -458,22 +461,15 @@ fi
 
 advance_progress "stow dotfiles"
 echo "Applying dotfiles..."
-# shellcheck source=scripts/lib/skel.sh
-source scripts/lib/skel.sh
+# shellcheck source=provision/lib/skel.sh
+source provision/lib/skel.sh
 remove_unmodified_skel "$PWD/stow"
 remove_stage_a_seeds "$PWD/stow" || fail_step "Stage A ~/.zshrc not cleared — stow will refuse the zsh package"
 cd stow || exit 1
 for dir in */; do
     dir=${dir%/}
     echo "Processing $dir..."
-    if [ "$dir" = "zram" ]; then
-        echo "Skipping zram stow (use scripts/zram-setup.sh — /etc must not symlink into \$HOME)."
-    elif [ "$dir" = "system" ]; then
-        echo "Installing $dir as root-owned files (scripts/system-setup.sh — /etc must not symlink into \$HOME)."
-        bash ../scripts/system-setup.sh || fail_step "System setup failed (sudo required)."
-    elif [ "$dir" = "gdm" ]; then
-        echo "Skipping gdm (handled by scripts/gdm-setup.sh)."
-    elif [ "$STOW_CMD" == "stow" ]; then
+    if [ "$STOW_CMD" == "stow" ]; then
         stow -R -t "$HOME" "$dir" \
             || fail_step "stow failed for package: $dir"
     else
@@ -482,12 +478,14 @@ for dir in */; do
     fi
 done
 cd .. || exit 1
+echo "Installing system/etc as root-owned files (system/scripts/system-setup.sh — /etc must not symlink into \$HOME)."
+bash system/scripts/system-setup.sh || fail_step "System setup failed (sudo required)."
 fi
 
 # 2.05 AUR after system-setup so paru/makepkg see x86-64-v3 flags
-if section_on aur && [ -f "scripts/install-aur.sh" ]; then
+if section_on aur && [ -f "provision/scripts/install-aur.sh" ]; then
     echo "Installing AUR packages..."
-    run_step "AUR install" bash scripts/install-aur.sh
+    run_step "AUR install" bash provision/scripts/install-aur.sh
 fi
 
 # 2.0a User units shipped by stow packages (stow links them; nothing enabled them).
@@ -566,96 +564,98 @@ fi
 fi
 
 # 2.3 Materialize zram config (early-boot safe; not a $HOME symlink)
-if section_on shell && [ -f "scripts/zram-setup.sh" ]; then
-    run_step "zram setup" bash scripts/zram-setup.sh
+if section_on shell && [ -f "system/scripts/zram-setup.sh" ]; then
+    run_step "zram setup" bash system/scripts/zram-setup.sh
 fi
 
 # 3. Restore GNOME session (dconf + extensions + tablet handler)
 if section_on desktop; then
-if [ -f "scripts/gnome-session-setup.sh" ]; then
+if [ -f "desktop/scripts/gnome-session-setup.sh" ]; then
     # Extensions are fetched + enabled once, at 3.7/3.8 (failures recorded there).
-    run_step "GNOME session setup" env SKIP_GNOME_EXTENSIONS=1 bash scripts/gnome-session-setup.sh
+    run_step "GNOME session setup" env SKIP_GNOME_EXTENSIONS=1 bash desktop/scripts/gnome-session-setup.sh
 fi
 
-if [ -f "scripts/location-setup.sh" ]; then
-    run_step "Location setup" bash scripts/location-setup.sh
+if [ -f "security/scripts/location-setup.sh" ]; then
+    run_step "Location setup" bash security/scripts/location-setup.sh
 fi
 
-# 3.0 GNOME Console (kgx app settings only — shortcuts in gnome/dconf/user.conf)
-if [ -f "scripts/gnome-console-setup.sh" ]; then
-    run_step "GNOME Console setup" bash scripts/gnome-console-setup.sh
+# 3.0 GNOME Console (kgx app settings only — shortcuts in desktop/gnome/dconf/user.conf)
+if [ -f "desktop/scripts/gnome-console-setup.sh" ]; then
+    run_step "GNOME Console setup" bash desktop/scripts/gnome-console-setup.sh
 fi
 
 # 3.2 GDM login screen (Wayland, greeter dconf, udev)
-if [ -f "scripts/gdm-setup.sh" ]; then
-    run_step "GDM setup" bash scripts/gdm-setup.sh
+if [ -f "desktop/scripts/gdm-setup.sh" ]; then
+    run_step "GDM setup" bash desktop/scripts/gdm-setup.sh
 fi
 
 # 3.2a Theme: stock Adwaita (no Aura Glass). Cleans leftover greeter hooks once.
 # Needs a GNOME login session. Opt out: SKIP_THEME=1 (headless VM).
 if [ "${SKIP_THEME:-0}" = 1 ]; then
     echo "Skipping theme setup (SKIP_THEME=1)."
-elif [ -f "scripts/theme-setup.sh" ]; then
-    run_step "Theme setup" bash scripts/theme-setup.sh
+elif [ -f "desktop/scripts/theme-setup.sh" ]; then
+    run_step "Theme setup" bash desktop/scripts/theme-setup.sh
 fi
 fi
 
 # 3.3 Git global config (identity, hooks, signing). Noninteractive when
 # stdin is not a TTY or GIT_SETUP_NONINTERACTIVE=1 (applies defaults).
 if section_on dev; then
-if [ -f "scripts/git-setup.sh" ]; then
-    run_step "Git setup" bash scripts/git-setup.sh
+if [ -f "desktop/scripts/git-setup.sh" ]; then
+    run_step "Git setup" bash desktop/scripts/git-setup.sh
 fi
 
 # 3.4 Neovim (lazy.nvim, treesitter parsers)
-if [ -f "scripts/nvim-setup.sh" ]; then
-    run_step "Neovim setup" bash scripts/nvim-setup.sh
+if [ -f "desktop/scripts/nvim-setup.sh" ]; then
+    run_step "Neovim setup" bash desktop/scripts/nvim-setup.sh
 fi
 fi
 
 if section_on ai; then
 # 3.5 Kit skills first (creates ~/.claude, ~/.cursor, … that Headroom merges into)
-if [ -f "scripts/sync-agent-skills.sh" ]; then
-    run_step "Agent skills pre-sync" bash scripts/sync-agent-skills.sh
+if [ -f "ai/scripts/sync-agent-skills.sh" ]; then
+    run_step "Agent skills pre-sync" bash ai/scripts/sync-agent-skills.sh
 fi
 
 # 3.5a Headroom (Claude / Cursor context proxy — optional, pipx user-local)
-if [ -f "scripts/headroom-setup.sh" ]; then
-    run_step "Headroom setup" bash scripts/headroom-setup.sh
+if [ -f "ai/scripts/headroom-setup.sh" ]; then
+    run_step "Headroom setup" bash ai/scripts/headroom-setup.sh
 fi
 
 # 3.5b OpenCode + Kimi CLIs + MCP configs (before caveman so opencode is detected)
-if [ -f "scripts/install-coding-agents.sh" ]; then
+if [ -f "ai/scripts/install-coding-agents.sh" ]; then
     if need_cmd npm "OpenCode/Kimi" "$NODE_SRC"; then
-        run_step "Coding agents" env SKIP_CAVEMAN_OPENCODE=1 bash scripts/install-coding-agents.sh
+        run_step "Coding agents" env SKIP_CAVEMAN_OPENCODE=1 bash ai/scripts/install-coding-agents.sh
     fi
 fi
 
 # 3.5c Caveman (terse voice + ultracave/megacave; pinned installer + SHA-256)
-if [ -f "scripts/install-caveman.sh" ]; then
+if [ -f "ai/scripts/install-caveman.sh" ]; then
     if need_cmd npm "Caveman" "$NODE_SRC"; then
-        run_step "Caveman install" env SKIP_SKILL_SYNC=1 bash scripts/install-caveman.sh
+        run_step "Caveman install" env SKIP_SKILL_SYNC=1 bash ai/scripts/install-caveman.sh
     fi
 fi
 
 # 3.5c1 Ponytail (lazy senior dev mode; pinned tag + skills/hooks/plugins)
-if [ -f "scripts/install-ponytail.sh" ]; then
+if [ -f "ai/scripts/install-ponytail.sh" ]; then
     if need_cmd node "Ponytail" "$NODE_SRC"; then
-        run_step "Ponytail install" env SKIP_SKILL_SYNC=1 bash scripts/install-ponytail.sh
+        run_step "Ponytail install" env SKIP_SKILL_SYNC=1 bash ai/scripts/install-ponytail.sh
     fi
 fi
 
 # 3.5d Android UI skills (Compose anti-slop + Material 3; pinned refs)
-if [ -f "scripts/install-android-ui-skills.sh" ]; then
+if [ -f "ai/scripts/install-android-ui-skills.sh" ]; then
     if need_cmd npx "Android UI skills" "$NODE_SRC"; then
-        run_step "Android UI skills" env SKIP_SKILL_SYNC=1 bash scripts/install-android-ui-skills.sh
+        run_step "Android UI skills" env SKIP_SKILL_SYNC=1 bash ai/scripts/install-android-ui-skills.sh
     fi
 fi
 
 # 3.5e ghidra-cli (optional Rust bridge; needs pacman ghidra + rust/cargo)
-if [ -f "scripts/install-ghidra-cli.sh" ]; then
-    if pacman -Q ghidra >/dev/null 2>&1; then
-        run_step "ghidra-cli install" bash scripts/install-ghidra-cli.sh
+if [ -f "ai/scripts/install-ghidra-cli.sh" ]; then
+    if [[ ${MINIMAL_PACKAGES:-0} == 1 || ${SKIP_RE_TOOLS:-0} == 1 ]]; then
+        echo "Skipping ghidra-cli (MINIMAL_PACKAGES/SKIP_RE_TOOLS)."
+    elif pacman -Q ghidra >/dev/null 2>&1; then
+        run_step "ghidra-cli install" bash ai/scripts/install-ghidra-cli.sh
     else
         fail_step "ghidra-cli not installed: pacman package ghidra missing (packages/pacman.txt)"
     fi
@@ -665,53 +665,53 @@ fi
 # optional only (needs host JDK>=21); prefer: lab-re --check && lab-re
 
 # 3.5f1 Obscura headless browser + MCP (OpenCode/Cursor/Claude)
-if [ -f "scripts/install-obscura.sh" ]; then
-    run_step "Obscura install" bash scripts/install-obscura.sh
+if [ -f "ai/scripts/install-obscura.sh" ]; then
+    run_step "Obscura install" bash ai/scripts/install-obscura.sh
 fi
 
 # 3.5f2 RE agent skills (leanrea, reverse-engineering, android-RE, ghidra-iterative-re)
-if [ -f "scripts/install-re-skills.sh" ]; then
+if [ -f "ai/scripts/install-re-skills.sh" ]; then
     if need_cmd npx "RE skills" "$NODE_SRC"; then
-        run_step "RE skills" env SKIP_SKILL_SYNC=1 bash scripts/install-re-skills.sh
+        run_step "RE skills" env SKIP_SKILL_SYNC=1 bash ai/scripts/install-re-skills.sh
     fi
 fi
 
 # 3.5g Third-party skill packs (cloudflare, emil, vercel, … — packages/agent-skills.txt)
-if [ -f "scripts/install-ecosystem-skills.sh" ]; then
+if [ -f "ai/scripts/install-ecosystem-skills.sh" ]; then
     if need_cmd npx "Ecosystem skills" "$NODE_SRC"; then
-        run_step "Ecosystem skills" env SKIP_SKILL_SYNC=1 bash scripts/install-ecosystem-skills.sh
+        run_step "Ecosystem skills" env SKIP_SKILL_SYNC=1 bash ai/scripts/install-ecosystem-skills.sh
     fi
 fi
 
 # 3.5h Hub mirror after AI installers (→ Claude/Cursor/OpenCode/Kimi)
-if [ -f "scripts/sync-agent-skills.sh" ]; then
-    run_step "Agent skills post-sync" bash scripts/sync-agent-skills.sh
+if [ -f "ai/scripts/sync-agent-skills.sh" ]; then
+    run_step "Agent skills post-sync" bash ai/scripts/sync-agent-skills.sh
 fi
 
 # 3.5i Caveman OpenCode plugin (after hub sync; coding-agents skipped this in 3.5b)
-if [ -f "scripts/install-coding-agents.sh" ] && command -v npm >/dev/null 2>&1; then
+if [ -f "ai/scripts/install-coding-agents.sh" ] && command -v npm >/dev/null 2>&1; then
     if [ -d "${XDG_CONFIG_HOME:-$HOME/.config}/opencode" ]; then
-        run_step "Caveman OpenCode plugin" env ONLY_CAVEMAN_OPENCODE=1 bash scripts/install-coding-agents.sh
+        run_step "Caveman OpenCode plugin" env ONLY_CAVEMAN_OPENCODE=1 bash ai/scripts/install-coding-agents.sh
     fi
 fi
 
 # 3.5j AI stack extras (Continue FIM config, P15 OpenCode↔ollama, hr-proxy unit).
 # Cores (Headroom / coding-agents / Caveman / Ponytail) already ran above.
-if [ -f "scripts/ai-stack-setup.sh" ]; then
-    run_step "AI stack extras" env AI_STACK_EXTRAS_ONLY=1 bash scripts/ai-stack-setup.sh
+if [ -f "ai/scripts/ai-stack-setup.sh" ]; then
+    run_step "AI stack extras" env AI_STACK_EXTRAS_ONLY=1 bash ai/scripts/ai-stack-setup.sh
 fi
 
 # 3.5k Local LLM on P15 (ollama-cuda + qwen pulls; no-op on other hosts).
 # Opt out: SKIP_OLLAMA=1 ./install.sh
-if [ "${SKIP_OLLAMA:-0}" != 1 ] && [ -f "scripts/ollama-setup.sh" ]; then
-    run_step "ollama setup" bash scripts/ollama-setup.sh
+if [ "${SKIP_OLLAMA:-0}" != 1 ] && [ -f "ai/scripts/ollama-setup.sh" ]; then
+    run_step "ollama setup" bash ai/scripts/ollama-setup.sh
 fi
 fi
 
 if section_on apps; then
 # 3.6 PhotoGIMP (Photoshop-like GIMP layout — optional)
-if [ -f "scripts/install-photogimp.sh" ]; then
-    run_step "PhotoGIMP setup" bash scripts/install-photogimp.sh
+if [ -f "provision/scripts/install-photogimp.sh" ]; then
+    run_step "PhotoGIMP setup" bash provision/scripts/install-photogimp.sh
 fi
 
 # 3.6a foxcage: Firefox in a rootless Podman container (pinned commit + SHA-256)
@@ -719,20 +719,20 @@ if [ "${SKIP_FOXCAGE:-0}" = 1 ]; then
     echo "Skipping foxcage (SKIP_FOXCAGE=1)."
 elif ! need_cmd podman "foxcage"; then
     :
-elif [ -f "scripts/install-foxcage.sh" ]; then
-    run_step "foxcage install" bash scripts/install-foxcage.sh
+elif [ -f "provision/scripts/install-foxcage.sh" ]; then
+    run_step "foxcage install" bash provision/scripts/install-foxcage.sh
 fi
 fi
 
 if section_on desktop; then
 # 3.7 Extension downloads: EGO Full pack + Caffeine + Dash2Dock, before enable
-if [ -f "scripts/fetch-gnome-extensions.sh" ]; then
-    run_step "GNOME extension downloads" bash scripts/fetch-gnome-extensions.sh
+if [ -f "desktop/scripts/fetch-gnome-extensions.sh" ]; then
+    run_step "GNOME extension downloads" bash desktop/scripts/fetch-gnome-extensions.sh
 fi
 
-# 3.8 Enable GNOME Extensions (list in gnome/extensions.txt)
-if [ -f "scripts/install-extensions.sh" ]; then
-    run_step "GNOME extensions" bash scripts/install-extensions.sh
+# 3.8 Enable GNOME Extensions (list in desktop/gnome/extensions.txt)
+if [ -f "desktop/scripts/install-extensions.sh" ]; then
+    run_step "GNOME extensions" bash desktop/scripts/install-extensions.sh
 fi
 fi
 
@@ -741,7 +741,7 @@ fi
 # CONFIGURE=1; skip with SKIP_CONFIGURE=1. Headless: CONFIGURE_UI=plain.
 # Runs after stow (containers storage.conf, continue, starship), fnm (node/npm
 # for SETUP_AI) and the extension pass, so its modules find what they build on.
-if section_on configure && [ "${SKIP_CONFIGURE:-0}" != 1 ] && [ -f scripts/configure.sh ]; then
+if section_on configure && [ "${SKIP_CONFIGURE:-0}" != 1 ] && [ -f provision/scripts/configure.sh ]; then
     if [ "${CONFIGURE:-0}" = 1 ] || [ "${CONFIGURE:-}" = Y ]; then
         if [ ! -t 0 ] && [ -z "${CONFIGURE_UI:-}" ] && [ "${UI:-}" != "zenity" ]; then
             export CONFIGURE_UI=plain
@@ -749,30 +749,30 @@ if section_on configure && [ "${SKIP_CONFIGURE:-0}" != 1 ] && [ -f scripts/confi
             export CONFIGURE_UI="$UI"
         fi
         # One checklist pass then continue install (no interactive menu loop).
-        CONFIGURE_ONCE=1 bash scripts/configure.sh \
+        CONFIGURE_ONCE=1 bash provision/scripts/configure.sh \
             || fail_step "configure.sh failed — see module output above."
     elif [ -t 0 ]; then
-        echo "Stage B modules: run  bash scripts/configure.sh  (or CONFIGURE=1 ./install.sh)"
+        echo "Stage B modules: run  bash provision/scripts/configure.sh  (or CONFIGURE=1 ./install.sh)"
     fi
 fi
 
 if section_on hardening; then
 # 4. Privacy Hardening (before health check so telemetry probes reflect final state)
-if [ -f "scripts/privacy-hardener.sh" ]; then
+if [ -f "security/scripts/privacy-hardener.sh" ]; then
     advance_progress "privacy hardener"
-    bash scripts/privacy-hardener.sh || fail_step "Privacy hardener failed."
+    bash security/scripts/privacy-hardener.sh || fail_step "Privacy hardener failed."
 fi
 
 # 4.1 Ops hygiene: weekly paccache.timer + optional cache/flatpak prune
 # Full prune: default. Skip with SKIP_OPS_HYGIENE=1. usbguard/dnscrypt stay opt-in
-# (bash scripts/usbguard-setup.sh / bash scripts/dnscrypt-setup.sh).
-if [ "${SKIP_OPS_HYGIENE:-0}" != 1 ] && [ -f "scripts/ops-hygiene.sh" ]; then
-    run_step "Ops hygiene" bash scripts/ops-hygiene.sh
+# (bash security/scripts/usbguard-setup.sh / bash security/scripts/dnscrypt-setup.sh).
+if [ "${SKIP_OPS_HYGIENE:-0}" != 1 ] && [ -f "security/scripts/ops-hygiene.sh" ]; then
+    run_step "Ops hygiene" bash security/scripts/ops-hygiene.sh
 fi
 
 # 4.5 Tailscale + firewalld (tailscale is in pacman.txt; need_cmd fails if missing)
-if [ -f "scripts/firewalld-tailscale.sh" ] && need_cmd tailscale "Tailscale firewalld rules"; then
-    run_step "Tailscale firewalld rules" bash scripts/firewalld-tailscale.sh
+if [ -f "security/scripts/firewalld-tailscale.sh" ] && need_cmd tailscale "Tailscale firewalld rules"; then
+    run_step "Tailscale firewalld rules" bash security/scripts/firewalld-tailscale.sh
 fi
 fi
 

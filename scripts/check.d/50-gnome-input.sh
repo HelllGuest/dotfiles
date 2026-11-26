@@ -8,16 +8,16 @@ ENABLED_EXT=$(gnome-extensions list --enabled 2>/dev/null | wc -l || echo 0)
 if [ "$ENABLED_EXT" -ge 4 ] 2>/dev/null; then
     echo "✓ GNOME extensions enabled ($ENABLED_EXT)"
 else
-    check_fail "Few GNOME extensions enabled ($ENABLED_EXT/4 — run scripts/gnome-session-setup.sh)"
+    check_fail "Few GNOME extensions enabled ($ENABLED_EXT/4 — run desktop/scripts/gnome-session-setup.sh)"
 fi
 
 echo "--- Input / touchpad ---"
-# shellcheck source=lib/input.sh
-source "$REPO_ROOT/scripts/lib/input.sh"
+# shellcheck source=../../desktop/lib/input.sh
+source "$REPO_ROOT/desktop/lib/input.sh"
 if phantom_syna_mouse_inhibited; then
     check_fail "synaptics Mouse node is inhibited (clicks will not work)"
     list_phantom_syna_mice | sed 's/^/  /'
-    echo "  run: bash scripts/cleanup-input-overrides.sh && log out once"
+    echo "  run: bash desktop/scripts/cleanup-input-overrides.sh && log out once"
 else
     echo "✓ synaptics Mouse node not inhibited"
 fi
@@ -34,6 +34,6 @@ if is_thinkpad_t14s; then
     if grep -qx 'LIBVA_DRIVER_NAME=radeonsi' /etc/environment.d/99-wayland.conf 2>/dev/null; then
         echo "✓ /etc/environment.d/99-wayland.conf sets LIBVA_DRIVER_NAME=radeonsi"
     else
-        check_fail "/etc/environment.d/99-wayland.conf missing LIBVA_DRIVER_NAME=radeonsi (run scripts/system-setup.sh)"
+        check_fail "/etc/environment.d/99-wayland.conf missing LIBVA_DRIVER_NAME=radeonsi (run system/scripts/system-setup.sh)"
     fi
 fi

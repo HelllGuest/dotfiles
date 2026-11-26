@@ -1,4 +1,4 @@
-# ~/.config/git/config — global git configuration (identity set by scripts/git-setup.sh)
+# ~/.config/git/config — global git configuration (identity set by desktop/scripts/git-setup.sh)
 
 [user]
 	# name and email configured by git-setup.sh

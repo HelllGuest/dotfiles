@@ -3,7 +3,7 @@
 # ThinkPad T14s Gen 3 AMD (21CQ/21CR) — Rembrandt-U, amdgpu, soldered LPDDR5
 #
 # Host addons this profile owns (PPD or tuned+tuned-ppd; no TLP):
-#   * charge thresholds 70–80 via scripts/thinkpad-charge-thresholds.sh
+#   * charge thresholds 70–80 via system/scripts/thinkpad-charge-thresholds.sh
 #   * amd_iommu=on + amd_pstate=active (strip intel_iommu / i915 leftovers)
 #   * packages/thinkpad-t14s.txt (mesa / vulkan-radeon / libva-utils / wireless-regdb / fprintd)
 #   * I2C touchpad s2idle wakeup disable (i2c-ELAN0678 / i2c-SYNA8018)
@@ -14,8 +14,8 @@
 echo "Applying ThinkPad T14s Gen 3 AMD optimizations..."
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-# shellcheck source=../scripts/lib/dmi.sh
-source "$REPO_ROOT/scripts/lib/dmi.sh"
+# shellcheck source=../provision/lib/dmi.sh
+source "$REPO_ROOT/provision/lib/dmi.sh"
 
 if ! is_thinkpad_t14s; then
   echo "WARN: DMI is not type 21CQ/21CR — continuing anyway (forced by profile)."
@@ -49,7 +49,7 @@ fi
 # Battery longevity: thinkpad_acpi charge window (sysfs resets each boot)
 # Install 61-thinkpad-charge-limit.rules first so UPower's Preserve Battery Health
 # exports CHARGE_LIMIT=70,80 on BAT* instead of resetting start_threshold to 0.
-CHARGE_UDEV_SRC="$REPO_ROOT/stow/system/etc/udev/rules.d/61-thinkpad-charge-limit.rules"
+CHARGE_UDEV_SRC="$REPO_ROOT/system/etc/udev/rules.d/61-thinkpad-charge-limit.rules"
 CHARGE_UDEV_DST="/etc/udev/rules.d/61-thinkpad-charge-limit.rules"
 if [[ -f "$CHARGE_UDEV_SRC" ]]; then
   if [[ ! -f "$CHARGE_UDEV_DST" ]] || ! cmp -s "$CHARGE_UDEV_SRC" "$CHARGE_UDEV_DST"; then
@@ -59,9 +59,9 @@ if [[ -f "$CHARGE_UDEV_SRC" ]]; then
   fi
 fi
 unset CHARGE_UDEV_SRC CHARGE_UDEV_DST
-if [[ -f "$REPO_ROOT/scripts/thinkpad-charge-thresholds.sh" ]]; then
+if [[ -f "$REPO_ROOT/system/scripts/thinkpad-charge-thresholds.sh" ]]; then
   echo "Setting ThinkPad charge thresholds 70–80..."
-  bash "$REPO_ROOT/scripts/thinkpad-charge-thresholds.sh" || true
+  bash "$REPO_ROOT/system/scripts/thinkpad-charge-thresholds.sh" || true
 fi
 
 # Rembrandt extras (680M + FP) — install.sh skips Intel/NVIDIA GPU pkgs on T14s.
@@ -156,7 +156,7 @@ echo "Enabling fstrim.timer..."
 sudo systemctl enable --now fstrim.timer || true
 
 # Disable I2C touchpad wakeup from s2idle (prevents spurious wakeups in transit)
-TP_WAKE_RULE_SRC="$REPO_ROOT/stow/system/etc/udev/rules.d/71-thinkpad-t14s-touchpad-wakeup.rules"
+TP_WAKE_RULE_SRC="$REPO_ROOT/system/etc/udev/rules.d/71-thinkpad-t14s-touchpad-wakeup.rules"
 TP_WAKE_RULE_DST="/etc/udev/rules.d/71-thinkpad-t14s-touchpad-wakeup.rules"
 if [[ -f "$TP_WAKE_RULE_SRC" ]]; then
   if [[ ! -f "$TP_WAKE_RULE_DST" ]] || ! cmp -s "$TP_WAKE_RULE_SRC" "$TP_WAKE_RULE_DST"; then
@@ -175,8 +175,8 @@ done
 unset _tp_wake TP_WAKE_RULE_SRC TP_WAKE_RULE_DST
 
 # Legacy touchpad udev/inhibit cleanup (if present)
-if [ -f "$REPO_ROOT/scripts/cleanup-input-overrides.sh" ]; then
-  bash "$REPO_ROOT/scripts/cleanup-input-overrides.sh" || true
+if [ -f "$REPO_ROOT/desktop/scripts/cleanup-input-overrides.sh" ]; then
+  bash "$REPO_ROOT/desktop/scripts/cleanup-input-overrides.sh" || true
 fi
 
 echo "ThinkPad T14s Gen 3 AMD optimizations applied."

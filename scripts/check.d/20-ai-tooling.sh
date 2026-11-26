@@ -28,7 +28,7 @@ if command -v headroom >/dev/null 2>&1; then
     unset _hr_unit _u
     echo "  doctor: headroom doctor"
 else
-    echo "  install/upgrade: bash scripts/headroom-setup.sh"
+    echo "  install/upgrade: bash ai/scripts/headroom-setup.sh"
 fi
 
 AGENTS_SKILLS="${HOME}/.agents/skills"
@@ -40,40 +40,40 @@ check_agent_skill() {
         echo "○ skill $name missing (optional: $hint)"
     fi
 }
-check_agent_skill caveman "bash scripts/install-caveman.sh"
-check_agent_skill ponytail "bash scripts/install-ponytail.sh"
-check_agent_skill android-compose-design "bash scripts/install-android-ui-skills.sh"
-check_agent_skill material-3 "bash scripts/install-android-ui-skills.sh"
-check_agent_skill android-cli "bash scripts/install-ecosystem-skills.sh"
-check_agent_skill gemini-api-dev "bash scripts/install-ecosystem-skills.sh"
-check_agent_skill unsafe-rust-review "bash scripts/install-ecosystem-skills.sh"
-check_agent_skill ai-systems-security "bash scripts/install-ecosystem-skills.sh"
-check_agent_skill reverse-engineer-anything "lab-re (or optional: bash scripts/install-rea.sh)"
-check_agent_skill dwarf-expert "bash scripts/install-re-skills.sh"
-check_agent_skill firebase-apk-scanner "bash scripts/install-re-skills.sh"
-check_agent_skill leanrea "bash scripts/install-re-skills.sh"
-check_agent_skill reverse-engineering "bash scripts/install-re-skills.sh"
-check_agent_skill android-reverse-engineering "bash scripts/install-re-skills.sh"
-check_agent_skill ghidra-iterative-re "bash scripts/install-re-skills.sh"
-check_agent_skill firmware-extraction "bash scripts/install-re-skills.sh"
-check_agent_skill firmware-static-analysis "bash scripts/install-re-skills.sh"
-check_agent_skill firmware-emulation "bash scripts/install-re-skills.sh"
-check_agent_skill firmware-security-reports "bash scripts/install-re-skills.sh"
-check_agent_skill ghidra-re "bash scripts/install-re-skills.sh"
-check_agent_skill firmware-pentest "bash scripts/install-re-skills.sh"
-check_agent_skill malware-analysis "bash scripts/install-re-skills.sh"
-check_agent_skill mobile-reverse "bash scripts/install-re-skills.sh"
-check_agent_skill memory-forensics "bash scripts/install-re-skills.sh"
-check_agent_skill meson "bash scripts/install-ecosystem-skills.sh"
-check_agent_skill arch-linux-triage "bash scripts/install-ecosystem-skills.sh"
-check_agent_skill agent-browser "bash scripts/install-ecosystem-skills.sh"
+check_agent_skill caveman "bash ai/scripts/install-caveman.sh"
+check_agent_skill ponytail "bash ai/scripts/install-ponytail.sh"
+check_agent_skill android-compose-design "bash ai/scripts/install-android-ui-skills.sh"
+check_agent_skill material-3 "bash ai/scripts/install-android-ui-skills.sh"
+check_agent_skill android-cli "bash ai/scripts/install-ecosystem-skills.sh"
+check_agent_skill gemini-api-dev "bash ai/scripts/install-ecosystem-skills.sh"
+check_agent_skill unsafe-rust-review "bash ai/scripts/install-ecosystem-skills.sh"
+check_agent_skill ai-systems-security "bash ai/scripts/install-ecosystem-skills.sh"
+check_agent_skill reverse-engineer-anything "lab-re (or optional: bash ai/scripts/install-rea.sh)"
+check_agent_skill dwarf-expert "bash ai/scripts/install-re-skills.sh"
+check_agent_skill firebase-apk-scanner "bash ai/scripts/install-re-skills.sh"
+check_agent_skill leanrea "bash ai/scripts/install-re-skills.sh"
+check_agent_skill reverse-engineering "bash ai/scripts/install-re-skills.sh"
+check_agent_skill android-reverse-engineering "bash ai/scripts/install-re-skills.sh"
+check_agent_skill ghidra-iterative-re "bash ai/scripts/install-re-skills.sh"
+check_agent_skill firmware-extraction "bash ai/scripts/install-re-skills.sh"
+check_agent_skill firmware-static-analysis "bash ai/scripts/install-re-skills.sh"
+check_agent_skill firmware-emulation "bash ai/scripts/install-re-skills.sh"
+check_agent_skill firmware-security-reports "bash ai/scripts/install-re-skills.sh"
+check_agent_skill ghidra-re "bash ai/scripts/install-re-skills.sh"
+check_agent_skill firmware-pentest "bash ai/scripts/install-re-skills.sh"
+check_agent_skill malware-analysis "bash ai/scripts/install-re-skills.sh"
+check_agent_skill mobile-reverse "bash ai/scripts/install-re-skills.sh"
+check_agent_skill memory-forensics "bash ai/scripts/install-re-skills.sh"
+check_agent_skill meson "bash ai/scripts/install-ecosystem-skills.sh"
+check_agent_skill arch-linux-triage "bash ai/scripts/install-ecosystem-skills.sh"
+check_agent_skill agent-browser "bash ai/scripts/install-ecosystem-skills.sh"
 
 check_skill_mirror() {
     local label=$1 dir=$2
     if [[ -f "${dir}/caveman/SKILL.md" ]]; then
         echo "✓ ${label} (caveman)"
     else
-        echo "○ ${label} missing (bash scripts/sync-agent-skills.sh)"
+        echo "○ ${label} missing (bash ai/scripts/sync-agent-skills.sh)"
     fi
 }
 check_skill_mirror "OpenCode skills"    "${XDG_CONFIG_HOME:-$HOME/.config}/opencode/skills"
@@ -94,20 +94,20 @@ fi
 if command -v obscura >/dev/null 2>&1; then
     echo "✓ obscura ($(obscura --version 2>/dev/null | head -1))"
 else
-    echo "○ obscura missing (bash scripts/install-obscura.sh)"
+    echo "○ obscura missing (bash ai/scripts/install-obscura.sh)"
 fi
 if command -v foxcage >/dev/null 2>&1; then
     echo "✓ foxcage ($(foxcage --version 2>/dev/null | head -1))"
 else
-    echo "○ foxcage missing (bash scripts/install-foxcage.sh)"
+    echo "○ foxcage missing (bash provision/scripts/install-foxcage.sh)"
 fi
 opencode_json="${XDG_CONFIG_HOME:-$HOME/.config}/opencode/opencode.json"
 if [[ -f "$opencode_json" ]] && grep -q '"obscura"' "$opencode_json"; then
     echo "✓ OpenCode MCP obscura"
 else
-    echo "○ OpenCode MCP obscura missing (bash scripts/install-obscura.sh)"
+    echo "○ OpenCode MCP obscura missing (bash ai/scripts/install-obscura.sh)"
 fi
-check_agent_skill obscura-host "bash scripts/install-obscura.sh"
+check_agent_skill obscura-host "bash ai/scripts/install-obscura.sh"
 if [[ -f "${KIMI_CODE_HOME:-$HOME/.kimi-code}/mcp.json" ]]; then
     echo "✓ Kimi MCP config"
 else

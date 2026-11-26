@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# system-setup.test.sh — scripts/system-setup.sh against a fake root (no sudo).
+# system-setup.test.sh — system/scripts/system-setup.sh against a fake root (no sudo).
 # Covers: stow file symlink, folded dir symlink, identical file, drifted file +
 # backup, 700 parent dir, location-owned skip, AMDGPU LIBVA rewrite, retired
 # makepkg drop-in, default DMI detection.
@@ -7,8 +7,8 @@
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-SETUP="$REPO_ROOT/scripts/system-setup.sh"
-SRC="$REPO_ROOT/stow/system"
+SETUP="$REPO_ROOT/system/scripts/system-setup.sh"
+SRC="$REPO_ROOT/system"
 
 work="$(mktemp -d)"
 trap 'rm -rf "$work"' EXIT

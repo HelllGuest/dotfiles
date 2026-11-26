@@ -1,7 +1,7 @@
 # 10-core-tools.sh — sourced by scripts/check.sh at top level, in name order:
 # shares check_fail/CHECK_FAILED, MODE and REPO_ROOT with the other checks.
 # shellcheck shell=bash
-# Required binaries, /etc ownership and stow/system links, shell tools, login shell.
+# Required binaries, /etc ownership and dotfiles system/ links, shell tools, login shell.
 
 # 1. Check for required binaries
 # kitty is the primary terminal (Super+Return / MIME); ghostty is also required.
@@ -26,13 +26,13 @@ fi
 # sudo -n when cached: plain find cannot enter 700 dirs (e.g. /etc/sudoers.d).
 find_etc=(find)
 sudo -n true 2>/dev/null && find_etc=(sudo -n find)
-stowed_etc="$("${find_etc[@]}" /etc -type l -lname '*/stow/system/*' 2>/dev/null)"
+stowed_etc="$("${find_etc[@]}" /etc -type l \( -lname '*/stow/system/*' -o -lname '*/dotfiles/system/*' -o -lname "${REPO_ROOT}/system/*" \) 2>/dev/null)"
 if [[ -z "$stowed_etc" ]]; then
-    echo "✓ no /etc symlinks into stow/system"
+    echo "✓ no /etc symlinks into dotfiles system/"
 else
-    check_fail "/etc symlinks into stow/system (dangle at early boot; user-writable root config):"
+    check_fail "/etc symlinks into dotfiles system/ (dangle at early boot; user-writable root config):"
     echo "$stowed_etc" | sed 's/^/  /'
-    echo "  run: bash scripts/system-setup.sh"
+    echo "  run: bash system/scripts/system-setup.sh"
 fi
 
 echo "--- Shell productivity tools ---"

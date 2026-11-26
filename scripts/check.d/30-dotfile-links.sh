@@ -26,7 +26,6 @@ if command -v stow >/dev/null 2>&1; then
     _blocked=""
     for _d in "$REPO_ROOT"/stow/*/; do
         _d=$(basename "$_d")
-        case $_d in zram | system | gdm) continue ;; esac  # not stowed (install.sh)
         stow -d "$REPO_ROOT/stow" -n -R -t "$HOME" "$_d" >/dev/null 2>&1 || _blocked+="$_d "
     done
     if [[ -z $_blocked ]]; then

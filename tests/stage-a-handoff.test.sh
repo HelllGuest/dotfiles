@@ -5,7 +5,7 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 fail() { echo "FAIL: $*" >&2; exit 1; }
 
 for f in \
-  "$ROOT/scripts/lib/stage-a-handoff.sh" \
+  "$ROOT/provision/lib/stage-a-handoff.sh" \
   "$ROOT/scripts/arch-install.sh" \
   "$ROOT/scripts/arch-install-t14s.sh" \
   "$ROOT/scripts/arch-install-p15.sh"
@@ -38,8 +38,8 @@ grep -q 't14s-arch-install/install.sh' "$ROOT/scripts/arch-install-p15.sh" \
 
 # Resolution: local checkout. Use a fixture so CI / hosts without a sibling
 # ~/t14s-arch-install still exercise the local path (no network).
-# shellcheck source=../scripts/lib/stage-a-handoff.sh
-source "$ROOT/scripts/lib/stage-a-handoff.sh"
+# shellcheck source=../provision/lib/stage-a-handoff.sh
+source "$ROOT/provision/lib/stage-a-handoff.sh"
 T14S_FIXTURE_ROOT="$(mktemp -d)"
 trap 'rm -rf -- "$T14S_FIXTURE_ROOT"' EXIT
 T14S_FIXTURE="$T14S_FIXTURE_ROOT/t14s-arch-install"
@@ -57,7 +57,7 @@ if command -v unshare >/dev/null 2>&1 && unshare -rn true 2>/dev/null; then
     ROOT="'"$ROOT"'"
     T14S_FIXTURE="'"$T14S_FIXTURE"'"
     # shellcheck source=/dev/null
-    source "$ROOT/scripts/lib/stage-a-handoff.sh"
+    source "$ROOT/provision/lib/stage-a-handoff.sh"
     STAGE_A_DRY_PRINT=1 STAGE_A_DOTFILES_ROOT="$ROOT" \
       T14S_LOCAL="$T14S_FIXTURE" \
       stage_a_handoff t14s
@@ -69,7 +69,7 @@ echo "$out" | grep -q '^local:' || fail "expected local resolution: $out"
 echo "$out" | grep -qx 'HW_PROFILE=t14s' || fail "expected HW_PROFILE=t14s: $out"
 echo "$out" | grep -q 'T14S_LIB_DIR=' || fail "expected T14S_LIB_DIR: $out"
 # Resolve must sit after local checkout attempts (not before)
-python3 - "$ROOT/scripts/lib/stage-a-handoff.sh" <<'PY' || fail "resolve must follow local checkout"
+python3 - "$ROOT/provision/lib/stage-a-handoff.sh" <<'PY' || fail "resolve must follow local checkout"
 from pathlib import Path
 import sys
 t = Path(sys.argv[1]).read_text()
@@ -105,9 +105,9 @@ out="$(
 )" || fail "dry fetch handoff with T14S_REF failed"
 echo "$out" | grep -q '^fetch:https://raw.githubusercontent.com/HelllGuest/dotfiles/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/t14s-arch-install/install.sh' \
   || fail "expected T14S_REF override in fetch URL: $out"
-grep -q 't14s_resolve_base_url' "$ROOT/scripts/lib/stage-a-handoff.sh" \
+grep -q 't14s_resolve_base_url' "$ROOT/provision/lib/stage-a-handoff.sh" \
   || fail "stage-a-handoff must resolve main SHA via t14s_resolve_base_url"
-grep -q "application/vnd.github.sha" "$ROOT/scripts/lib/stage-a-handoff.sh" \
+grep -q "application/vnd.github.sha" "$ROOT/provision/lib/stage-a-handoff.sh" \
   || fail "stage-a-handoff must use GitHub commits API Accept: sha"
 
 # In-repo canonical Stage A owns hardware seeds
@@ -128,11 +128,11 @@ grep -q 'github-cli glab' "${CANON_CHROOT[@]}" \
 grep -q 'btop fastfetch' "${CANON_CHROOT[@]}" \
   || fail "canonical Stage A cli bundle must include btop fastfetch"
 
-grep -q 'INSTALLER=' "$ROOT/scripts/arch-install-vmtest.sh" \
+grep -q 'INSTALLER=' "$ROOT/provision/scripts/arch-install-vmtest.sh" \
   || fail "arch-install-vmtest must support INSTALLER="
-grep -q 'STAGE_A_HANDOFF_URL=http://10.0.2.2' "$ROOT/scripts/arch-install-vmtest.sh" \
+grep -q 'STAGE_A_HANDOFF_URL=http://10.0.2.2' "$ROOT/provision/scripts/arch-install-vmtest.sh" \
   || fail "vmtest must print STAGE_A_HANDOFF_URL for local lib/"
-grep -q 'T14S_BASE_URL=http://10.0.2.2' "$ROOT/scripts/arch-install-vmtest.sh" \
+grep -q 'T14S_BASE_URL=http://10.0.2.2' "$ROOT/provision/scripts/arch-install-vmtest.sh" \
   || fail "vmtest must print T14S_BASE_URL for local Stage A tree"
 grep -q 'failed to fetch' "$ROOT/scripts/arch-install-t14s.sh" \
   || fail "wrappers must fail clearly when handoff curl fails"

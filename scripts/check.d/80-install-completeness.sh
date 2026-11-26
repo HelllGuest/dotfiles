@@ -6,8 +6,8 @@
 echo "--- Install completeness ---"
 # Everything the lists promise must be present: a missing package, an empty
 # dock slot or a shortcut that runs nothing is a failure, not a quiet skip.
-# shellcheck source=lib/pkg-lists.sh
-source "$REPO_ROOT/scripts/lib/pkg-lists.sh"
+# shellcheck source=../../provision/lib/pkg-lists.sh
+source "$REPO_ROOT/provision/lib/pkg-lists.sh"
 _report_missing() {  # LABEL HINT < names
     local _m
     _m="$(missing_pkgs | tr '\n' ' ')"
@@ -19,7 +19,7 @@ _report_missing() {  # LABEL HINT < names
 }
 # Process substitution, not a pipe: check_fail must count in this shell.
 _report_missing "pacman.txt packages" "re-run ./install.sh" < <(pacman_targets)
-_report_missing "aur.txt packages" "bash scripts/install-aur.sh" < <(list_entries "$REPO_ROOT/packages/aur.txt")
+_report_missing "aur.txt packages" "bash provision/scripts/install-aur.sh" < <(aur_targets)
 if command -v flatpak >/dev/null 2>&1; then
     _fp="$(flatpak list --app --columns=application 2>/dev/null)"
     _m=""
@@ -27,7 +27,7 @@ if command -v flatpak >/dev/null 2>&1; then
         grep -qx "$_a" <<<"$_fp" || _m+="$_a "
     done < <(list_entries "$REPO_ROOT/packages/flatpak.txt")
     if [ -n "$_m" ]; then
-        check_fail "flatpaks not installed: $_m— bash scripts/install-flatpaks.sh"
+        check_fail "flatpaks not installed: $_m— bash provision/scripts/install-flatpaks.sh"
     else
         echo "✓ all flatpak.txt apps installed"
     fi
@@ -64,11 +64,11 @@ if command -v gsettings >/dev/null 2>&1 && gsettings list-schemas 2>/dev/null | 
     while IFS= read -r _u; do
         [ -d "$HOME/.local/share/gnome-shell/extensions/$_u" ] \
             || [ -d "/usr/share/gnome-shell/extensions/$_u" ] || _m+="$_u "
-    done < <(list_entries "$REPO_ROOT/gnome/extensions.txt")
+    done < <(list_entries "$REPO_ROOT/desktop/gnome/extensions.txt")
     if [ -z "$_m" ]; then
-        echo "✓ all gnome/extensions.txt extensions installed"
+        echo "✓ all desktop/gnome/extensions.txt extensions installed"
     else
-        check_fail "GNOME extensions not installed: $_m— bash scripts/install-aur.sh / install-extensions.sh"
+        check_fail "GNOME extensions not installed: $_m— bash provision/scripts/install-aur.sh / desktop/scripts/install-extensions.sh"
     fi
 fi
 unset _fp _m _a _f _p _kb _cmd _name _bin _u _app_dirs

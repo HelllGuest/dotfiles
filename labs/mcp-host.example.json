@@ -2,19 +2,19 @@
   "mcpServers": {
     "playwright-lab": {
       "command": "bash",
-      "args": ["__DOTFILES__/scripts/lab-mcp.sh", "playwright"]
+      "args": ["__DOTFILES__/labs/scripts/lab-mcp.sh", "playwright"]
     },
     "chrome-devtools-lab": {
       "command": "bash",
-      "args": ["__DOTFILES__/scripts/lab-mcp.sh", "devtools"]
+      "args": ["__DOTFILES__/labs/scripts/lab-mcp.sh", "devtools"]
     },
     "flutter-lab": {
       "command": "bash",
-      "args": ["__DOTFILES__/scripts/lab-mcp.sh", "flutter"]
+      "args": ["__DOTFILES__/labs/scripts/lab-mcp.sh", "flutter"]
     },
     "adb-lab": {
       "command": "bash",
-      "args": ["__DOTFILES__/scripts/lab-mcp.sh", "adb"]
+      "args": ["__DOTFILES__/labs/scripts/lab-mcp.sh", "adb"]
     }
   }
 }

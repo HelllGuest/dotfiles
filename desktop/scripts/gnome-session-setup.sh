@@ -1,0 +1,57 @@
+#!/usr/bin/env bash
+# gnome-session-setup.sh — GNOME session dconf, extensions, cleanup
+
+set -euo pipefail
+
+REPO_ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
+STOW_DIR="$REPO_ROOT/stow"
+
+echo "→ GNOME session setup..."
+
+PAC_PKGS=(gnome-shell-extensions gnome-tweaks inter-font)
+sudo pacman -S --needed --noconfirm "${PAC_PKGS[@]}" 2>/dev/null || \
+  pacman -S --needed --noconfirm "${PAC_PKGS[@]}" 2>/dev/null || true
+
+mkdir -p "$HOME/.config"
+cd "$STOW_DIR" || exit 1
+# install.sh already stows proton-vpn without --adopt; never --adopt (would
+# overwrite tracked repo files with modified live copies).
+if ! stow -R -t "$HOME" proton-vpn 2>/dev/null; then
+  echo "⚠ stow proton-vpn skipped (already present or conflict)" >&2
+fi
+
+if [[ -f "$REPO_ROOT/desktop/gnome/dconf/user.conf" ]]; then
+  echo "→ Applying session dconf..."
+  dconf load / < "$REPO_ROOT/desktop/gnome/dconf/user.conf"
+fi
+
+if [[ -f "$REPO_ROOT/desktop/scripts/reset-input-defaults.sh" ]]; then
+  bash "$REPO_ROOT/desktop/scripts/reset-input-defaults.sh" || true
+fi
+
+if [[ -f "$REPO_ROOT/desktop/scripts/cleanup-input-overrides.sh" ]]; then
+  bash "$REPO_ROOT/desktop/scripts/cleanup-input-overrides.sh" || true
+fi
+
+# Fetch EGO zips (BMS, Full pack, Caffeine, Dash2Dock), then enable extensions.txt.
+# SKIP_GNOME_EXTENSIONS=1: ./install.sh does this itself later, as recorded steps.
+if [[ ${SKIP_GNOME_EXTENSIONS:-0} != 1 && -f "$REPO_ROOT/desktop/scripts/install-extensions.sh" ]]; then
+  echo "→ Fetching/enabling GNOME extensions..."
+  GNOME_EXT_FETCH=1 bash "$REPO_ROOT/desktop/scripts/install-extensions.sh" || true
+fi
+
+if [[ -f "$REPO_ROOT/desktop/gnome/dconf/extensions.conf" ]]; then
+  echo "→ Applying extension dconf..."
+  dconf load / < "$REPO_ROOT/desktop/gnome/dconf/extensions.conf" || true
+fi
+
+systemctl --user daemon-reload 2>/dev/null || true
+# Drop leftover tablet watcher from older installs.
+systemctl --user disable --now yoga-tablet-mode.service 2>/dev/null || true
+
+fc-cache -fv &>/dev/null || true
+
+echo ""
+echo "✓ GNOME session configured."
+echo "  Log out/in (or restart GNOME Shell) to reload extensions."
+echo "  Super+1-4 workspaces | Super+Return kitty | Shell 51"

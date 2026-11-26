@@ -7,7 +7,7 @@ echo "--- Git ---"
 if [ -f "$HOME/.config/git/config" ]; then
     echo "✓ Git XDG config deployed"
 else
-    check_fail "Git config missing (run scripts/git-setup.sh)"
+    check_fail "Git config missing (run desktop/scripts/git-setup.sh)"
 fi
 if command -v delta >/dev/null 2>&1; then
     echo "✓ delta is installed"
@@ -25,10 +25,10 @@ echo "--- Neovim ---"
 if [ -f "$HOME/.config/nvim/init.lua" ]; then
     echo "✓ Neovim config deployed"
 else
-    check_fail "Neovim config missing (run scripts/nvim-setup.sh)"
+    check_fail "Neovim config missing (run desktop/scripts/nvim-setup.sh)"
 fi
 if [ -d "${XDG_DATA_HOME:-$HOME/.local/share}/nvim/lazy/lazy.nvim" ]; then
     echo "✓ lazy.nvim bootstrapped"
 else
-    check_fail "lazy.nvim not bootstrapped (run scripts/nvim-setup.sh)"
+    check_fail "lazy.nvim not bootstrapped (run desktop/scripts/nvim-setup.sh)"
 fi

@@ -31,9 +31,9 @@ printf "%s|" "$INSTALL_FAILED" "${INSTALL_FAIL_REASONS[@]}"' 2>/dev/null | tail 
   || fail "run_step/need_cmd must record failures: $out"
 
 # --- stubs --------------------------------------------------------------------
-mkdir -p "$T/bin" "$T/repo/scripts/lib" "$T/repo/packages"
-cp "$ROOT/scripts/install-aur.sh" "$ROOT/scripts/install-flatpaks.sh" "$T/repo/scripts/"
-cp "$ROOT/scripts/lib/pkg-lists.sh" "$T/repo/scripts/lib/"
+mkdir -p "$T/bin" "$T/repo/provision/scripts" "$T/repo/provision/lib" "$T/repo/packages"
+cp "$ROOT/provision/scripts/install-aur.sh" "$ROOT/provision/scripts/install-flatpaks.sh" "$T/repo/provision/scripts/"
+cp "$ROOT/provision/lib/pkg-lists.sh" "$T/repo/provision/lib/"
 # pacman: installed set lives in $T/installed.
 cat >"$T/bin/pacman" <<EOF
 #!/bin/sh
@@ -60,18 +60,18 @@ SP="$T/bin:$T/core"
 # --- install-aur.sh -----------------------------------------------------------
 printf '%s\n' '# comment' 'forgit  # inline' 'blesh-git' >"$T/repo/packages/aur.txt"
 : >"$T/installed"
-PATH="$SP" bash "$T/repo/scripts/install-aur.sh" >"$T/out" 2>&1 \
+PATH="$SP" bash "$T/repo/provision/scripts/install-aur.sh" >"$T/out" 2>&1 \
   || fail "install-aur.sh must succeed when per-package retry installs all: $(cat "$T/out")"
 grep -q -- '--sudoloop' "$T/yay.log" || fail "AUR helper must run with --sudoloop"
 grep -qx forgit "$T/installed" && grep -qx blesh-git "$T/installed" \
   || fail "per-package retry must install every AUR entry (inline comment stripped)"
 printf '%s\n' forgit broken >"$T/repo/packages/aur.txt"
-if PATH="$SP" bash "$T/repo/scripts/install-aur.sh" >"$T/out" 2>&1; then
+if PATH="$SP" bash "$T/repo/provision/scripts/install-aur.sh" >"$T/out" 2>&1; then
   fail "install-aur.sh must exit 1 when a package stays missing"
 fi
 grep -q '✗ AUR packages not installed: broken' "$T/out" || fail "must name the missing AUR package: $(cat "$T/out")"
 rm "$T/bin/yay"
-if PATH="$SP" bash "$T/repo/scripts/install-aur.sh" >"$T/out" 2>&1; then
+if PATH="$SP" bash "$T/repo/provision/scripts/install-aur.sh" >"$T/out" 2>&1; then
   fail "install-aur.sh must exit 1 without an AUR helper"
 fi
 
@@ -94,7 +94,7 @@ case "\$1" in
 esac
 EOF
 chmod +x "$T/bin/flatpak"
-if PATH="$SP" bash "$T/repo/scripts/install-flatpaks.sh" >"$T/out" 2>&1; then
+if PATH="$SP" bash "$T/repo/provision/scripts/install-flatpaks.sh" >"$T/out" 2>&1; then
   fail "install-flatpaks.sh must exit 1 when an app stays missing"
 fi
 grep -qx org.a.App "$T/fp" || fail "per-app retry must install the good app"
@@ -169,14 +169,14 @@ grep -q 'need_cmd npm "OpenCode/Kimi" "$NODE_SRC"' "$ROOT/install.sh" || fail "n
 
 # --- check.sh completeness: behaviour with stubs ------------------------------
 C="$T/chk"
-mkdir -p "$C/bin" "$C/repo/packages" "$C/repo/gnome" "$C/repo/scripts/lib" "$C/home/.local/share/applications" \
+mkdir -p "$C/bin" "$C/repo/packages" "$C/repo/desktop/gnome" "$C/repo/desktop/scripts" "$C/repo/provision/lib" "$C/home/.local/share/applications" \
   "$C/home/.local/share/gnome-shell/extensions/good@ext"
-cp "$ROOT/scripts/lib/pkg-lists.sh" "$ROOT/scripts/lib/dmi.sh" "$C/repo/scripts/lib/"
-cp "$ROOT/scripts/theme-setup.sh" "$C/repo/scripts/"
+cp "$ROOT/provision/lib/pkg-lists.sh" "$ROOT/provision/lib/dmi.sh" "$C/repo/provision/lib/"
+cp "$ROOT/desktop/scripts/theme-setup.sh" "$C/repo/desktop/scripts/"
 printf '%s\n' present missing-pkg >"$C/repo/packages/pacman.txt"
 printf '%s\n' aur-present >"$C/repo/packages/aur.txt"
 printf '%s\n' org.ok.App org.gone.App >"$C/repo/packages/flatpak.txt"
-printf '%s\n' good@ext gone@ext >"$C/repo/gnome/extensions.txt"
+printf '%s\n' good@ext gone@ext >"$C/repo/desktop/gnome/extensions.txt"
 : >"$C/home/.local/share/applications/ok.desktop"
 printf '%s\n' present aur-present >"$C/installed"
 cat >"$C/bin/pacman" <<EOF
@@ -217,7 +217,7 @@ grep -qx 'FAILS=6' <<<"$out" || fail "check.sh must count each problem as a fail
 # --- ai-rules/install.sh: missing jq is a failure, not a skip -----------------
 K="$T/kit"
 mkdir -p "$K/home/.config/Code/User" "$K/src"
-cp -r "$ROOT/ai-rules" "$K/src/"          # outside the git checkout: no agentsync on the repo
+cp -r "$ROOT/ai/rules" "$K/src/ai-rules"          # outside the git checkout: no agentsync on the repo
 for c in mkdir cp mv ln find chmod rmdir basename head tail sort cmp git realpath touch awk wc cut install diff ls date; do
   [[ -e $T/core/$c ]] || ln -s "$(command -v "$c")" "$T/core/$c"
 done

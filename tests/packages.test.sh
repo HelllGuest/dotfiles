@@ -35,7 +35,7 @@ grep -qx '✓ no aur.txt entry is in the official repos' <<<"$out" && ! grep -q 
 
 # Tailscale: nothing enables tailscaled (network service, opt-in) — check.sh
 # must say so and give the order: daemon, tailscale up, then firewall binding.
-grep -q 'tailscaled not enabled — sudo systemctl enable --now tailscaled && sudo tailscale up, then bash scripts/firewalld-tailscale.sh' \
+grep -q 'tailscaled not enabled — sudo systemctl enable --now tailscaled && sudo tailscale up, then bash security/scripts/firewalld-tailscale.sh' \
   "$ROOT/scripts/check.sh" "$ROOT"/scripts/check.d/*.sh || fail "check.sh must report tailscaled not enabled with the setup order"
 
 echo "PASS: packages.test.sh"

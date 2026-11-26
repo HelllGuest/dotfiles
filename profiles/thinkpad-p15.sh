@@ -15,8 +15,8 @@
 echo "Applying ThinkPad P15 Gen 1 (Optimus) optimizations..."
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-# shellcheck source=../scripts/lib/dmi.sh
-source "$REPO_ROOT/scripts/lib/dmi.sh"
+# shellcheck source=../provision/lib/dmi.sh
+source "$REPO_ROOT/provision/lib/dmi.sh"
 
 if ! is_thinkpad_p15; then
     echo "WARN: DMI does not look like a ThinkPad P15 — applying anyway (forced by profile)."
@@ -40,7 +40,7 @@ command -v boltctl  >/dev/null 2>&1 && sudo systemctl enable --now bolt || true
 command -v fwupdmgr >/dev/null 2>&1 && sudo fwupdmgr refresh || true
 
 # 2.5 Battery longevity: thinkpad_acpi charge window 70–80 (UPower rule + thresholds)
-CHARGE_UDEV_SRC="$REPO_ROOT/stow/system/etc/udev/rules.d/61-thinkpad-charge-limit.rules"
+CHARGE_UDEV_SRC="$REPO_ROOT/system/etc/udev/rules.d/61-thinkpad-charge-limit.rules"
 CHARGE_UDEV_DST="/etc/udev/rules.d/61-thinkpad-charge-limit.rules"
 if [[ -f "$CHARGE_UDEV_SRC" ]]; then
     if [[ ! -f "$CHARGE_UDEV_DST" ]] || ! cmp -s "$CHARGE_UDEV_SRC" "$CHARGE_UDEV_DST"; then
@@ -50,9 +50,9 @@ if [[ -f "$CHARGE_UDEV_SRC" ]]; then
     fi
 fi
 unset CHARGE_UDEV_SRC CHARGE_UDEV_DST
-if [[ -f "$REPO_ROOT/scripts/thinkpad-charge-thresholds.sh" ]]; then
+if [[ -f "$REPO_ROOT/system/scripts/thinkpad-charge-thresholds.sh" ]]; then
     echo "Setting ThinkPad charge thresholds 70–80..."
-    bash "$REPO_ROOT/scripts/thinkpad-charge-thresholds.sh" || true
+    bash "$REPO_ROOT/system/scripts/thinkpad-charge-thresholds.sh" || true
 fi
 
 if has_nvidia_gpu; then

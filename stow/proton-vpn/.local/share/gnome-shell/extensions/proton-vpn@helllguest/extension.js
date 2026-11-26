@@ -32,7 +32,7 @@ const GEO_FILE = '/etc/geolocation';
 const SYNC_BIN_CANDIDATES = [
     '/usr/local/bin/vpn-location-sync',
     `${GLib.get_home_dir()}/.local/bin/vpn-location-sync`,
-    `${GLib.get_home_dir()}/dotfiles/scripts/vpn-location-sync.sh`,
+    `${GLib.get_home_dir()}/dotfiles/security/scripts/vpn-location-sync.sh`,
 ];
 
 function resolveSyncBin() {

@@ -15,7 +15,7 @@ grep -qE '^notify-on-command-finish-action = .*(^|,)notify' "$g" || fail "ghostt
 grep -q '/etc/profile.d/vte.sh' "$ROOT/stow/zsh/.shell-functions" \
   || fail "shell must load vte.sh (Console notifications need vte.shell.postexec)"
 for app in kitty com-mitchellh-ghostty org-gnome-console alacritty org-contourterminal-contour; do
-  grep -qx "\[org/gnome/desktop/notifications/application/$app\]" "$ROOT/gnome/dconf/user.conf" \
+  grep -qx "\[org/gnome/desktop/notifications/application/$app\]" "$ROOT/desktop/gnome/dconf/user.conf" \
     || fail "dconf must allow notifications for $app"
 done
 

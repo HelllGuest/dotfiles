@@ -3,8 +3,8 @@
 echo "Applying Laptop profile..."
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-# shellcheck source=../scripts/lib/dmi.sh
-source "$REPO_ROOT/scripts/lib/dmi.sh"
+# shellcheck source=../provision/lib/dmi.sh
+source "$REPO_ROOT/provision/lib/dmi.sh"
 
 if is_thinkpad_t14s; then
     if [ -f "$REPO_ROOT/profiles/thinkpad-t14s.sh" ]; then
@@ -25,6 +25,6 @@ else
 fi
 
 # Legacy touchpad udev/inhibit cleanup (if present)
-if [ -f "$REPO_ROOT/scripts/cleanup-input-overrides.sh" ]; then
-    bash "$REPO_ROOT/scripts/cleanup-input-overrides.sh" || true
+if [ -f "$REPO_ROOT/desktop/scripts/cleanup-input-overrides.sh" ]; then
+    bash "$REPO_ROOT/desktop/scripts/cleanup-input-overrides.sh" || true
 fi
