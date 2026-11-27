@@ -62,11 +62,11 @@ for _dk in menubox_color menubox_border_color uarrow_color darrow_color position
     || fail "ui-menu.sh dialogrc missing ${_dk}"
 done
 # 8-color console-safe palette rules (matching stage-a/lib/11-ui-theme.sh):
-# no bold-black text in dialogrc; no bright/yellow/white backgrounds in NEWT_COLORS.
+# no bold-black text in dialogrc; no bright/gray/yellow/white backgrounds in NEWT_COLORS.
 awk '/dialogrc.*<<.*EOF/{f=1;next} f&&/^EOF$/{f=0} f' "$ROOT/provision/lib/ui-menu.sh" \
   | grep -qE '\(BLACK,[^,]+,ON\)' && fail "ui-menu.sh dialogrc must not use bold BLACK foreground" || true
 awk "/export NEWT_COLORS='/{f=1;next} f&&/^'$/{f=0} f" "$ROOT/provision/lib/ui-menu.sh" \
-  | grep -qE ',(bright|yellow|white)($|[[:space:]])' && fail "ui-menu.sh NEWT_COLORS must not use bright/yellow/white backgrounds" || true
+  | grep -qE ',(bright|gray|yellow|white)($|[[:space:]])' && fail "ui-menu.sh NEWT_COLORS must not use bright/gray/yellow/white backgrounds" || true
 # Behavioral color tests: progress_line emits ANSI on PTY, suppresses on NO_COLOR=1 / TERM=dumb / non-TTY.
 if command -v python3 >/dev/null 2>&1; then
   python3 - "$ROOT/provision/lib/progress.sh" <<'PY' || fail "progress.sh behavioral color check failed"
@@ -445,15 +445,31 @@ WAYLAND_DISPLAY=wayland-0 INSTALL_ALL=1 ZN_MENU="$IR/zmenu" \
   PATH="$CT/bin:$IR/bin:$PATH" bash "$IR/install.sh" --gui </dev/null >/dev/null 2>&1 \
   || fail "INSTALL_ALL=1 --gui must honor CLI --gui and exit 0 on Quit"
 [[ ! -s $IR/ran ]] || fail "INSTALL_ALL=1 --gui quit must not run any scripts: $(cat "$IR/ran")"
-# Plain menu loop: mistyped tag is warned and rejected; valid tag runs cleanly.
+# GUI (--gui) configure -> real configure.sh (CONFIGURE_FROM_INSTALL=1) back -> install.sh menu -> quit.
+cp "$ROOT/provision/scripts/configure.sh" "$IR/provision/scripts/configure.sh"
+cp "$ROOT/provision/lib/dmi.sh" "$IR/provision/lib/dmi.sh"
+printf 'configure\nback\nquit\n' >"$IR/zmenu"
+WAYLAND_DISPLAY=wayland-0 ZN_MENU="$IR/zmenu" \
+  PATH="$CT/bin:$IR/bin:$PATH" bash "$IR/install.sh" --gui </dev/null >/dev/null 2>&1 \
+  || fail "install.sh --gui configure back+quit failed"
+[[ ! -s $IR/zmenu ]] || fail "install.sh --gui did not return to menu after configure back (left: $(cat "$IR/zmenu"))"
+# Plain menu loop: custom BACK returns to menu; mistyped tag is warned and rejected; valid tag runs cleanly.
 : >"$IR/ran"
-_pm_out="$(printf '1\ncheck badtag\n1\ncheck\n' | PATH="$IR/bin:$PATH" \
+_pm_out="$(printf '1\nBACK\n1\ncheck badtag\n1\ncheck\n' | PATH="$IR/bin:$PATH" \
   bash "$IR/install.sh" --plain 2>&1)" \
-  || fail "install.sh --plain typo then check failed: $_pm_out"
+  || fail "install.sh --plain BACK then typo then check failed: $_pm_out"
 grep -q 'Unknown section(s): badtag' <<<"$_pm_out" \
   || fail "install.sh --plain must warn on mistyped section: $_pm_out"
 [[ "$(tr '\n' ' ' <"$IR/ran")" == "check validate-configs " ]] \
   || fail "install.sh --plain ran wrong scripts: $(cat "$IR/ran")"
+# UI_CANCEL_LABEL=Back: ui_menu accepts b/back and ui_checklist accepts BACK (both return 1).
+bash -euo pipefail -c '
+  source "$1"; ui_init plain
+  rc=0; UI_CANCEL_LABEL=Back ui_menu "Sub" a "A" <<<b >/dev/null 2>&1 || rc=$?
+  [[ $rc -eq 1 ]] || exit 11
+  rc=0; UI_CANCEL_LABEL=Back ui_checklist "Sub" a "A" on <<<BACK >/dev/null 2>&1 || rc=$?
+  [[ $rc -eq 1 ]] || exit 12
+' _ "$ROOT/provision/lib/ui-menu.sh" || fail "ui-menu.sh plain BACK/b failed"
 unset -v IR _s _out _pm_out
 
 # Desktop launcher for GUI installer exists and is valid, and zenity is in pacman.txt.

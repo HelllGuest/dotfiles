@@ -67,8 +67,57 @@ if (( NONINTERACTIVE )); then
   printf '%s\n' "$_REVIEW" | while IFS= read -r _l; do say "$_l"; done
 else
   ui_info "$_REVIEW"
-  ui_yesno "Start the installation? The partitions above will be ERASED." no erase \
-    || die "aborted by user"
+  if ! ui_yesno "Start the installation? The partitions above will be ERASED." no erase; then
+    _rev_opts=()
+    if (( ${#_t14s_hist[@]} > 0 )); then
+      _rev_opts+=(back "Back to previous step")
+    fi
+    _rev_opts+=(
+      jump "Jump to a specific step"
+      abort "Abort installation"
+    )
+    _rev_act="$(WIZARD_CAN_BACK=0 ui_menu "Installation not started — go back to change an option or abort?" \
+      "${_rev_opts[@]}")" || die "aborted by user"
+    unset -v _rev_opts
+    case $_rev_act in
+      back)
+        unset -v _REVIEW _l _rev_disk_mb _rev_efi_mb _rev_root_mb _rev_power _rev_act
+        WIZARD_BACK=1
+        return 0
+        ;;
+      jump)
+        _jump_opts=()
+        if (( ${_HW_PROMPTED:-0} )); then
+          _jump_opts+=(04-hardware.sh "Step 2 · Hardware profile")
+        fi
+        _jump_opts+=(
+          05-profile.sh "Step 3 · Profile preset"
+          06-disk.sh    "Step 4 · Target disk"
+        )
+        if (( ! ${QUICK_VM:-0} )); then
+          _jump_opts+=(07-partition.sh "Step 5 · Partition layout")
+        fi
+        if yn_on "${ENCRYPT_ROOT:-Y}"; then
+          _jump_opts+=(08-luks.sh "Step 6 · LUKS passphrase & wipe")
+        fi
+        _jump_opts+=(09-identity.sh "Step 7 · Hostname, timezone, locale, user")
+        if (( ! ${QUICK_VM:-0} )); then
+          _jump_opts+=(
+            10-downloads.sh "Step 8 · Parallel downloads, FS, zram"
+            11-extras.sh    "Step 9 · Extras, reflector, hook"
+          )
+        fi
+        _jump_opts+=(12-review.sh "Back to Review")
+        _jump_step="$(WIZARD_CAN_BACK=0 ui_menu "Jump to which step?" \
+          "${_jump_opts[@]}")" || die "aborted by user"
+        unset -v _REVIEW _l _rev_disk_mb _rev_efi_mb _rev_root_mb _rev_power _rev_act _jump_opts
+        WIZARD_JUMP="$_jump_step"
+        unset -v _jump_step
+        return 0
+        ;;
+      *) die "aborted by user" ;;
+    esac
+  fi
 fi
 unset -v _REVIEW _l _rev_disk_mb _rev_efi_mb _rev_root_mb _rev_power
 

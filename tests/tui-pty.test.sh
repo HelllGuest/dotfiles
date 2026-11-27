@@ -77,6 +77,10 @@ def check(name, cond, detail=""):
 rc, out = run_pty(["bash", "./install.sh", "--plain"], [(0.35, b"8\r")])
 check("install.sh --plain PTY quit", rc == 0 and "Installation cancelled." in out, f"rc={rc}")
 
+rc, out = run_pty(["bash", "./install.sh", "--plain"], [(0.35, b"1\r"), (0.35, b"BACK\r"), (0.35, b"6\r"), (0.35, b"b\r"), (0.35, b"8\r")])
+check("install.sh --plain PTY custom BACK + configure back + quit",
+      rc == 0 and "Back to installer menu" in out and "Installation cancelled." in out, f"rc={rc}")
+
 rc, out = run_pty(["bash", "provision/scripts/configure.sh", "--plain"], [(0.35, b"3\r")])
 check("configure.sh --plain PTY quit", rc == 0 and "configure.sh finished" in out, f"rc={rc}")
 
@@ -172,11 +176,12 @@ if ui_menu 'Cancel' a 'Alpha' b 'Beta'; then echo 'UNEXPECTED_OK'; else echo 'CA
         _got = open(_ran).read().splitlines() if os.path.exists(_ran) else []
         check(f"install.sh {backend} PTY check (no sudo)",
               rc == 0 and _got == ["check", "validate"], f"rc={rc} ran={_got}")
-        # configure (5 downs + Enter) -> opens configure.sh -> Cancel/Quit
+        # configure (5 downs + Enter) -> opens configure.sh -> Back returns to install.sh menu -> Quit
         rc, out = run_pty(["bash", os.path.join(_tmp, "install.sh")],
-                          [(0.4, b"\x1b[B"*5 + b"\r"), (0.5, cancel_keys)], env=_env)
-        check(f"install.sh {backend} PTY configure handoff",
-              rc == 0 and "configure.sh finished" in out, f"rc={rc} tail={out[-200:]!r}")
+                          [(0.4, b"\x1b[B"*5 + b"\r"), (0.5, cancel_keys), (0.5, cancel_keys)], env=_env)
+        check(f"install.sh {backend} PTY configure back+quit",
+              rc == 0 and "configure.sh finished" in out and "Installation cancelled." in out,
+              f"rc={rc} tail={out[-200:]!r}")
 
     rc, out = run_pty(
         ["bash", "provision/scripts/configure.sh"],
@@ -216,7 +221,7 @@ run_gauge "Gauge" 0 100 bash -c 'echo "::STAGE 1/1::Done"; sleep 0.1'
 printf 'SA=<%d|%d|%s|%s|%s>\\n' "$yes_rc" "$no_rc" "$inp" "$m" "$(printf '%s' "$chk" | tr '\\n' ',')"
 """],
         [
-            (0.35, b"\r"),          # ui_info
+            (0.60, b"\r"),          # ui_info (allow startup + sourcing 5 libs)
             (0.35, scroll_keys),    # overflowing ui_info
             (0.35, b"\r"),          # ui_yesno yes -> 0
             (0.35, b"\r"),          # ui_yesno no (defaultno) -> 1
@@ -228,6 +233,41 @@ printf 'SA=<%d|%d|%s|%s|%s>\\n' "$yes_rc" "$no_rc" "$inp" "$m" "$(printf '%s' "$
     )
     check(f"stage-a TUI {backend} PTY 80x24 (screens+scrolltext+gauge)",
           rc == 0 and "SA=<0|1|archbox|b|x>" in out, f"rc={rc} tail={out[-300:]!r}")
+
+    # Stage A Back/Previous + 13-line --fullbuttons overflow check in 80x24 PTY
+    input_back = b"\x1b" if backend == "dialog" else b"\t\t\r"
+    rc, out = run_pty(
+        ["bash", "-euo", "pipefail", "-c", f"""
+cd stage-a
+APP_TITLE="Stage A Back PTY"
+DIALOG_RC="" TUI_TITLE="" TUI_NEWT="" TUI_DIALOGRC=""
+TUI_HINT_MENU="Up/Down" TUI_HINT_RADIO="Space" TUI_HINT_CHECK="Space"
+LOGGING=0 T14S_DIED=0 T14S_RC_BACK=10 WIZARD_CAN_BACK=1
+source lib/00-common.sh
+source lib/10-ui.sh
+source lib/11-ui-theme.sh
+source lib/12-ui-screens.sh
+LOG="$(mktemp /tmp/stagea-back-pty.XXXXXX.log)"
+trap 'rm -f "$LOG"; cleanup_ui' EXIT
+UI={backend}; NONINTERACTIVE=0; TUI_STEPS=11
+ui_step 3 "BackTest"
+write_dialogrc
+# 13-line body: whiptail --fullbuttons needs scrolltext so L13 is not clipped
+body13=$(printf 'L%02d\\n' $(seq 1 13))
+ui_info "$body13"
+m_rc=0; ui_menu "Pick" a "Alpha" >/dev/null || m_rc=$?
+i_rc=0; ui_input "Host" "archbox" >/dev/null || i_rc=$?
+printf 'SA_BACK=<%d|%d>\\n' "$m_rc" "$i_rc"
+"""],
+        [
+            (0.60, scroll_keys),        # 13-line ui_info (scrolltext on whiptail)
+            (0.35, b"\x1b[B\r"),        # ui_menu Down -> back row -> rc=10
+            (0.35, input_back),         # ui_input Back button -> rc=10
+        ],
+        rows=24, cols=80,
+    )
+    check(f"stage-a TUI {backend} PTY 80x24 (Back+13L msg)",
+          rc == 0 and "SA_BACK=<10|10>" in out, f"rc={rc} tail={out[-300:]!r}")
 
 sys.exit(1 if failures else 0)
 PY

@@ -19,7 +19,7 @@ unset -v _lib
 # Greps search orchestrator + modules. Live runs use ORCH_SH (not the concat).
 ORCH_SH="$ROOT/install.sh"
 # Stages exactly as install.sh sources them; lib/steps/ must hold no more, no less.
-mapfile -t STEPS < <(sed -n '/^for _t14s_step in/,/; do$/p' "$ORCH_SH" \
+mapfile -t STEPS < <(sed -n '/^_t14s_steps=(/,/^)$/p' "$ORCH_SH" \
   | tr ' ' '\n' | sed 's/;$//' | grep -E '^[0-9]{2}-[a-z0-9-]+\.sh$')
 (( ${#STEPS[@]} > 0 )) || fail "could not read the stage list from install.sh"
 [[ "$(printf '%s\n' "${STEPS[@]}")" == "$(cd "$ROOT/lib/steps" && ls -1 [0-9]*.sh)" ]] \
@@ -1126,7 +1126,7 @@ done
 unset -v _c
 # The prompt re-asks; an answers-file value gets a box (a bare warn line there
 # was drawn over by the Review screen before logging even started).
-grep -A6 'REFLECTOR_COUNTRY="$(ui_input' "$WIZARD_SH" | grep -q 'valid_reflector_country' \
+grep -A6 'REFLECTOR_COUNTRY=".*ui_input' "$WIZARD_SH" | grep -q 'valid_reflector_country' \
   || fail "reflector country prompt must re-ask on invalid input"
 grep -A3 '^# Reflector country sanitize' "$WIZARD_SH" | grep -q 'ui_warn' \
   || fail "invalid REFLECTOR_COUNTRY from answers must be shown (ui_warn)"
@@ -1618,12 +1618,12 @@ _mo() { bash -c 'source "$1"; XH=$2; msg_overflows "$(seq 1 "$3")"' _ "$UI_SH" "
 _mo 20 14 && fail "14 lines fit a 20-row box (14+6)"
 _mo 20 15 || fail "15 lines overflow a 20-row box"
 unset -f _mo
-# list_height: whiptail shows only H - list - 6 prompt rows (the key hint under
-# every prompt was cut); dialog keeps LH and shrinks its list itself.
+# list_height: whiptail (--fullbuttons) shows only H - list - 8 prompt rows;
+# dialog keeps LH and shrinks its list itself.
 _lh() { bash -c 'source "$1"; UI=$2 H=37 W=$3 LH=29; list_height "$4"' _ "$UI_SH" "$@"; }
-[[ $(_lh whiptail 120 $'prompt\n\nhint') == 28 ]] || fail "whiptail list must leave room for prompt+blank+hint"
+[[ $(_lh whiptail 120 $'prompt\n\nhint') == 26 ]] || fail "whiptail list must leave room for prompt+blank+hint+fullbuttons"
 [[ $(_lh dialog 120 $'prompt\n\nhint') == 29 ]] || fail "dialog list height must stay LH"
-[[ $(_lh whiptail 60 "$(printf 'x%.0s' $(seq 1 200))") == 27 ]] || fail "wrapped prompt rows must be counted (200 cols / 54)"
+[[ $(_lh whiptail 60 "$(printf 'x%.0s' $(seq 1 200))") == 25 ]] || fail "wrapped prompt rows must be counted (200 cols / 54)"
 unset -f _lh
 for _f in ui_menu ui_radio ui_checklist; do
   awk "/^${_f}\\(\\) *\\{/{f=1} f{print} f&&/^}\$/{exit}" "$UI_SH" | grep -q 'list_height "' \
@@ -1845,7 +1845,7 @@ grep -q 'DIE:NONINTERACTIVE needs PRESET=gnome|dev|minimal|vm' "$_gtmp/pre.err" 
   || fail "unexpected error on invalid PRESET: $(cat "$_gtmp/pre.err")"
 
 # Behavioral: _extra_onoff + real _extras_keep block from 11-extras.sh keep free-form extras and drop unchecked items (including htop).
-_ex_keep="$(awk '/^  _extras_keep=\(\)/{f=1} f{print} f&&/^  unset -v _p$/{exit}' "$ROOT/lib/steps/11-extras.sh")"
+_ex_keep="$(awk '/^[[:space:]]+_extras_keep=\(\)/{f=1} f{print} f&&/^[[:space:]]+unset -v _p$/{exit}' "$ROOT/lib/steps/11-extras.sh")"
 [[ -n $_ex_keep ]] || fail "could not extract _extras_keep block from 11-extras.sh"
 _ex_out="$(bash -c '
   set -euo pipefail
@@ -2227,5 +2227,115 @@ grep -q 'mkfs\.ext4 -F -L archroot /dev/vda2' "$_vd_log" \
 rm -f "$_vd_log"; unset -v _vd_log
 echo "ok audit + generic profile checks"
 
+# Behavioral: Back/Previous navigation in Stage A UI widgets and wizard step loop.
+bash -euo pipefail -c '
+  UI=dialog NONINTERACTIVE=0 T14S_RC_BACK=10 WIZARD_CAN_BACK=1
+  APP_TITLE=T TUI_TITLE= TUI_NEWT= TUI_DIALOGRC= H=20 W=70 LH=10 MW=66 MH=8 XH=20
+  TUI_HINT_MENU=h TUI_HINT_RADIO=h TUI_HINT_CHECK=h LOG=/dev/null
+  ui_geometry() { :; }
+  source "$1"
+  tui() { printf "%s\n" "$@" | grep -qx back && { echo back; return 0; }; return 1; }
+  rc=0; ui_menu "M" a A >/dev/null || rc=$?
+  [[ $rc -eq 10 ]] || { echo "ui_menu back rc=$rc" >&2; exit 1; }
+  rc=0; ui_radio "R" a A on >/dev/null || rc=$?
+  [[ $rc -eq 10 ]] || { echo "ui_radio back rc=$rc" >&2; exit 1; }
+  rc=0; ui_checklist "C" a A on >/dev/null || rc=$?
+  [[ $rc -eq 10 ]] || { echo "ui_checklist back rc=$rc" >&2; exit 1; }
+  tui() { printf "%s\n" "$@" | grep -qx Back && return 1; echo ok; }
+  rc=0; ui_input "I" def >/dev/null || rc=$?
+  [[ $rc -eq 10 ]] || { echo "ui_input back rc=$rc" >&2; exit 1; }
+  rc=0; ui_password "P" >/dev/null || rc=$?
+  [[ $rc -eq 10 ]] || { echo "ui_password back rc=$rc" >&2; exit 1; }
+  # With WIZARD_CAN_BACK=0, back item must not be offered and cancel stays rc=1.
+  WIZARD_CAN_BACK=0
+  tui() { printf "%s\n" "$@" | grep -qx back && exit 99; return 1; }
+  rc=0; ui_menu "M" a A >/dev/null || rc=$?
+  [[ $rc -eq 1 ]] || { echo "ui_menu cancel rc=$rc" >&2; exit 1; }
+  # msg_height / msg_overflows account for whiptail --fullbuttons (+8) vs dialog (+6).
+  body13=$(printf "L%02d\n" $(seq 1 13))
+  UI=whiptail; [[ $(msg_height "$body13") -eq 20 ]] && msg_overflows "$body13" \
+    || { echo "whiptail 13-line body must overflow XH=20" >&2; exit 1; }
+  UI=dialog; [[ $(msg_height "$body13") -eq 19 ]] && ! msg_overflows "$body13" \
+    || { echo "dialog 13-line body must fit XH=20" >&2; exit 1; }
+' _ "$ROOT/lib/12-ui-screens.sh" || fail "Stage A UI Back navigation check failed"
+# Behavioral: wizard loop empty-history Back safety, 04-hardware re-entry, intra-step Back, Review filtering.
+bash -euo pipefail -c '
+  ROOT=$1
+  # 1) Empty-history WIZARD_BACK=1 in stage-a/install.sh must NOT advance to 20-install-disk.sh.
+  tmp=$(mktemp -d); trap "rm -rf $tmp" EXIT
+  mkdir -p "$tmp/steps"
+  for s in 01-preflight.sh 02-welcome.sh 03-answers.sh 04-hardware.sh 05-profile.sh \
+           06-disk.sh 07-partition.sh 08-luks.sh 09-identity.sh 10-downloads.sh \
+           11-extras.sh; do
+    echo "WIZARD_SKIPPED_STEP=1" >"$tmp/steps/$s"
+  done
+  cat >"$tmp/steps/12-review.sh" <<EOF
+_rev_calls=\$((\${_rev_calls:-0} + 1))
+if (( _rev_calls == 1 )); then WIZARD_BACK=1; return 0; fi
+exit 0
+EOF
+  echo "echo REACHED_DISK_WIPE >&2; exit 99" >"$tmp/steps/20-install-disk.sh"
+  for s in 21-install-filesystems.sh 22-install-base.sh 23-install-chroot.sh 30-finish.sh; do
+    : >"$tmp/steps/$s"
+  done
+  _loop=$(sed -n "/^_t14s_steps=(/,/^unset -v _t14s_step/p" "$ROOT/install.sh")
+  NONINTERACTIVE=0
+  _lib_path() { _LIB_PATH="$tmp/$1"; }
+  ( eval "$_loop" )
+  # 2) 04-hardware.sh re-prompts on Back re-entry instead of skipping.
+  _HW_PROMPTED=0 HW_PROFILE="" NONINTERACTIVE=0 T14S_DMI_DIR="$tmp/nodmi"
+  : >"$tmp/hw_calls"
+  ui_step() { :; }; ok() { :; }; warn() { :; }; die() { echo "DIE: $*" >&2; exit 1; }
+  dmi_matches_t14s() { return 1; }; dmi_matches_p15_gen1() { return 1; }
+  detect_vm_hypervisor() { echo none; }; detect_cpu_vendor() { echo x86; }; detect_gpu_vendors() { echo none; }
+  ui_radio() { echo x >>"$tmp/hw_calls"; echo generic; }
+  WIZARD_SKIPPED_STEP=0; source "$ROOT/lib/steps/04-hardware.sh"
+  [[ $(wc -l <"$tmp/hw_calls") -eq 1 && $WIZARD_SKIPPED_STEP -eq 0 && $_HW_PROMPTED -eq 1 ]] || { echo "04-hw pass1 bad" >&2; exit 1; }
+  WIZARD_SKIPPED_STEP=0; source "$ROOT/lib/steps/04-hardware.sh"
+  [[ $(wc -l <"$tmp/hw_calls") -eq 2 && $WIZARD_SKIPPED_STEP -eq 0 ]] || { echo "04-hw re-entry skipped prompt" >&2; exit 1; }
+  # 3) 10-downloads.sh Back on ROOT_FS steps back to PACMAN_PARALLEL (not WIZARD_BACK=1).
+  PACMAN_PARALLEL=10 ROOT_FS=btrfs BTRFS_COMPRESS=zstd3 ZRAM_SIZE=half QUICK_VM=0 T14S_RC_BACK=10 WIZARD_BACK=0
+  : >"$tmp/dl_calls"
+  ui_radio() {
+    echo x >>"$tmp/dl_calls"
+    case $(wc -l <"$tmp/dl_calls") in
+      1) echo 10 ;;          # PACMAN_PARALLEL
+      2) return 10 ;;        # Back on ROOT_FS -> back to PACMAN_PARALLEL
+      3) echo 15 ;;          # PACMAN_PARALLEL again
+      4) echo ext4 ;;        # ROOT_FS
+      5) echo quarter ;;     # ZRAM_SIZE
+    esac
+  }
+  source "$ROOT/lib/steps/10-downloads.sh"
+  [[ $WIZARD_BACK -eq 0 && $PACMAN_PARALLEL -eq 15 && $ROOT_FS == ext4 && $ZRAM_SIZE == quarter ]] \
+    || { echo "10-downloads intra-step back failed: WB=$WIZARD_BACK PP=$PACMAN_PARALLEL FS=$ROOT_FS ZR=$ZRAM_SIZE" >&2; exit 1; }
+  # 4) 12-review.sh hides back when _t14s_hist is empty and hides skipped Quick VM steps in jump.
+  _t14s_hist=() QUICK_VM=1 ENCRYPT_ROOT=N _HW_PROMPTED=0 DRYRUN=0
+  DISK=/dev/vda EFI_PART=/dev/vda1 ROOT_PART=/dev/vda2 MODE=auto FORMAT_EFI=1 ESP_MB=1024 CLEAN_ESP_ARCH=Y LUKS_WIPE=none
+  size_mb() { echo 20480; }; yn_on() { [[ ${1:-N} == Y ]]; }; ui_info() { :; }; ui_yesno() { return 1; }
+  _seen_menus="$tmp/menus"
+  ui_menu() {
+    printf "%s\n" "$*" >>"$_seen_menus"
+    if [[ $1 == *"go back"* ]]; then echo jump; else echo 12-review.sh; fi
+  }
+  DESKTOP=N PRESET=vm PACMAN_PARALLEL=10 ZRAM_SIZE=half SKIP_REFLECTOR=Y SKIP_THINKPAD_HW=Y
+  EXTRA_PKGS=() INSTALL_FLATPAK_APPS=N INSTALL_BLUETOOTH=N INSTALL_NERD_FONTS=N
+  INSTALL_SNAPPER_HOME=N INSTALL_BTRFS_ASSISTANT=N INSTALL_MULTILIB=N INSTALL_YAY=N
+  INSTALL_TUNED=N INSTALL_DEVTOOLS=N INSTALL_OLLAMA=N INSTALL_STARSHIP=N
+  INSTALL_LINUX_HARDENED=N INSTALL_LINUX_STABLE=N INSTALL_LINUX_ZEN=N INSTALL_PLYMOUTH=N
+  INSTALL_CLI=N INSTALL_PODMAN=N INSTALL_DOCKER=N INSTALL_VIRT=N INSTALL_AVAHI=N
+  INSTALL_WIREGUARD=N INSTALL_TAILSCALE=N FW_SYNCTHING=N FW_KDECONNECT=N
+  INSTALL_CUPS=N INSTALL_TLP=N ENROLL_SB=N ENABLE_SSHD=N INSTALL_FAIL2BAN=N
+  INSTALL_SELFTEST=N INSTALL_CHROME_HINT=N INSTALL_THINKFAN=N
+  HOSTNAME=vm USERNAME=arch TIMEZONE=UTC LOCALE=en_US.UTF-8 KEYMAP=us
+  ( source "$ROOT/lib/steps/12-review.sh" )
+  ! grep -q "Back to previous step" "$_seen_menus" || { echo "12-review offered back with empty hist" >&2; exit 1; }
+  ! grep -q "08-luks.sh" "$_seen_menus" && ! grep -q "11-extras.sh" "$_seen_menus" \
+    || { echo "12-review jump listed skipped Quick VM steps" >&2; exit 1; }
+' _ "$ROOT" || fail "Stage A wizard loop / step Back behavioral checks failed"
+grep -q 'WIZARD_JUMP=' "$ORCH_SH" && grep -q 'WIZARD_BACK=' "$ORCH_SH" \
+  && grep -q 'Jump to which step?' "$ROOT/lib/steps/12-review.sh" \
+  || fail "Stage A wizard must support Back and Review step jump"
+echo "ok Stage A back/previous navigation"
 
 echo "PASS: smoke.test.sh"

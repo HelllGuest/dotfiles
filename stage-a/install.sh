@@ -148,6 +148,12 @@ TUI_KEEP_STDIN=0
 TUI_STEPS=11
 TUI_STEP=0
 TUI_STEP_NAME=""
+# Wizard Back/Previous navigation (interactive steps 04..12 only; never after Erase confirm).
+T14S_RC_BACK=10
+WIZARD_CAN_BACK=0
+WIZARD_BACK=0
+WIZARD_JUMP=""
+WIZARD_SKIPPED_STEP=0
 # Shared key hints (one question per screen; never color-only).
 TUI_HINT_MENU='[log] view install log · [help] tips · Esc/Abort quits'
 TUI_HINT_RADIO='Arrows+Space select · Enter=Next · Esc=Abort · [log]/[help]'
@@ -170,13 +176,59 @@ trap 'on_exit $?' EXIT
 # Wizard (01-12: questions only; no disk is touched before 12-review's DRYRUN
 # exit and Erase confirm), then the install (20-30). Each stage is sourced
 # here at top level, not inside a function, so its globals stay global.
-for _t14s_step in \
-    01-preflight.sh 02-welcome.sh 03-answers.sh 04-hardware.sh 05-profile.sh \
-    06-disk.sh 07-partition.sh 08-luks.sh 09-identity.sh 10-downloads.sh \
-    11-extras.sh 12-review.sh 20-install-disk.sh 21-install-filesystems.sh \
-    22-install-base.sh 23-install-chroot.sh 30-finish.sh; do
+_t14s_steps=(
+  01-preflight.sh 02-welcome.sh 03-answers.sh 04-hardware.sh 05-profile.sh
+  06-disk.sh 07-partition.sh 08-luks.sh 09-identity.sh 10-downloads.sh
+  11-extras.sh 12-review.sh 20-install-disk.sh 21-install-filesystems.sh
+  22-install-base.sh 23-install-chroot.sh 30-finish.sh
+)
+_t14s_hist=()
+_t14s_idx=0
+while (( _t14s_idx < ${#_t14s_steps[@]} )); do
+  _t14s_step="${_t14s_steps[_t14s_idx]}"
+  WIZARD_BACK=0
+  WIZARD_JUMP=""
+  WIZARD_SKIPPED_STEP=0
+  # Only interactive wizard steps (04..12) support Back; preflight/welcome/answers and execute (20..30) never go back.
+  if (( _t14s_idx >= 3 && _t14s_idx <= 11 && ! NONINTERACTIVE && ${#_t14s_hist[@]} > 0 )); then
+    WIZARD_CAN_BACK=1
+  else
+    WIZARD_CAN_BACK=0
+  fi
   _lib_path "steps/$_t14s_step"
   # shellcheck source=/dev/null
   source "$_LIB_PATH"
+  if [[ -n $WIZARD_JUMP ]]; then
+    _t14s_j=-1
+    for (( _t14s_k = 3; _t14s_k <= 11; _t14s_k++ )); do
+      if [[ ${_t14s_steps[_t14s_k]} == "$WIZARD_JUMP" ]]; then
+        _t14s_j=$_t14s_k
+        break
+      fi
+    done
+    if (( _t14s_j >= 3 )); then
+      _t14s_new_hist=()
+      for _t14s_h in "${_t14s_hist[@]}"; do
+        (( _t14s_h < _t14s_j )) && _t14s_new_hist+=("$_t14s_h")
+      done
+      _t14s_hist=("${_t14s_new_hist[@]}")
+      unset -v _t14s_new_hist _t14s_h
+      _t14s_idx=$_t14s_j
+      unset -v _t14s_j _t14s_k
+      continue
+    fi
+    unset -v _t14s_j _t14s_k
+  fi
+  if (( WIZARD_BACK )); then
+    if (( ${#_t14s_hist[@]} > 0 )); then
+      _t14s_idx="${_t14s_hist[${#_t14s_hist[@]}-1]}"
+      unset "_t14s_hist[${#_t14s_hist[@]}-1]"
+    fi
+    continue
+  fi
+  if (( _t14s_idx >= 3 && _t14s_idx <= 10 && ! NONINTERACTIVE && ! WIZARD_SKIPPED_STEP )); then
+    _t14s_hist+=("$_t14s_idx")
+  fi
+  _t14s_idx=$((_t14s_idx + 1))
 done
-unset -v _t14s_step
+unset -v _t14s_step _t14s_steps _t14s_hist _t14s_idx

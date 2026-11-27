@@ -101,77 +101,77 @@ ui_dims() {
   return 0
 }
 
-# Neutral monochrome TUI palette (8-colour console safe, matches stock Adwaita/terminal).
+# Dark TUI palette with cyan focus accent (8-colour console safe, no bright/gray bg).
 # Call ui_theme_cleanup on EXIT. Every widget key is set so whiptail/dialog never fall
 # back to default blue/red/gray boxes.
 ui_theme_init() {
   if [[ $UI == dialog ]]; then
     UI_DIALOG_RC_DIR="$(mktemp -d /tmp/dotfiles-dialogrc.XXXXXX)"
     cat >"$UI_DIALOG_RC_DIR/dialogrc" <<'EOF'
-# Dotfiles TUI theme (neutral monochrome)
+# Dotfiles TUI theme (dark + cyan accent)
 use_shadow = ON
 use_colors = ON
 screen_color = (WHITE,BLACK,OFF)
 shadow_color = (BLACK,BLACK,OFF)
 dialog_color = (WHITE,BLACK,OFF)
-title_color = (WHITE,BLACK,ON)
-border_color = (WHITE,BLACK,OFF)
-border2_color = (WHITE,BLACK,OFF)
-button_active_color = (BLACK,WHITE,OFF)
+title_color = (CYAN,BLACK,ON)
+border_color = (CYAN,BLACK,OFF)
+border2_color = (CYAN,BLACK,OFF)
+button_active_color = (BLACK,CYAN,OFF)
 button_inactive_color = (WHITE,BLACK,OFF)
-button_key_active_color = (BLACK,WHITE,OFF)
-button_key_inactive_color = (WHITE,BLACK,ON)
-button_label_active_color = (BLACK,WHITE,OFF)
+button_key_active_color = (BLACK,CYAN,OFF)
+button_key_inactive_color = (CYAN,BLACK,ON)
+button_label_active_color = (BLACK,CYAN,OFF)
 button_label_inactive_color = (WHITE,BLACK,OFF)
 inputbox_color = (WHITE,BLACK,OFF)
-inputbox_border_color = (WHITE,BLACK,OFF)
-inputbox_border2_color = (WHITE,BLACK,OFF)
+inputbox_border_color = (CYAN,BLACK,OFF)
+inputbox_border2_color = (CYAN,BLACK,OFF)
 searchbox_color = (WHITE,BLACK,OFF)
-searchbox_title_color = (WHITE,BLACK,ON)
-searchbox_border_color = (WHITE,BLACK,OFF)
-searchbox_border2_color = (WHITE,BLACK,OFF)
+searchbox_title_color = (CYAN,BLACK,ON)
+searchbox_border_color = (CYAN,BLACK,OFF)
+searchbox_border2_color = (CYAN,BLACK,OFF)
 menubox_color = (WHITE,BLACK,OFF)
-menubox_border_color = (WHITE,BLACK,OFF)
-menubox_border2_color = (WHITE,BLACK,OFF)
+menubox_border_color = (CYAN,BLACK,OFF)
+menubox_border2_color = (CYAN,BLACK,OFF)
 item_color = (WHITE,BLACK,OFF)
-item_selected_color = (BLACK,WHITE,OFF)
-tag_color = (WHITE,BLACK,ON)
-tag_selected_color = (BLACK,WHITE,OFF)
-tag_key_color = (WHITE,BLACK,ON)
-tag_key_selected_color = (BLACK,WHITE,OFF)
+item_selected_color = (BLACK,CYAN,OFF)
+tag_color = (CYAN,BLACK,ON)
+tag_selected_color = (BLACK,CYAN,OFF)
+tag_key_color = (CYAN,BLACK,ON)
+tag_key_selected_color = (BLACK,CYAN,OFF)
 check_color = (WHITE,BLACK,OFF)
-check_selected_color = (BLACK,WHITE,OFF)
-uarrow_color = (WHITE,BLACK,ON)
-darrow_color = (WHITE,BLACK,ON)
-itemhelp_color = (BLACK,WHITE,OFF)
-gauge_color = (BLACK,WHITE,OFF)
-position_indicator_color = (WHITE,BLACK,ON)
+check_selected_color = (BLACK,CYAN,OFF)
+uarrow_color = (CYAN,BLACK,ON)
+darrow_color = (CYAN,BLACK,ON)
+itemhelp_color = (BLACK,CYAN,OFF)
+gauge_color = (BLACK,CYAN,OFF)
+position_indicator_color = (CYAN,BLACK,ON)
 EOF
     export DIALOGRC="$UI_DIALOG_RC_DIR/dialogrc"
   elif [[ $UI == whiptail ]]; then
     export NEWT_COLORS='
 root=lightgray,black
-roottext=white,black
-border=gray,black
+roottext=brightcyan,black
+border=cyan,black
 window=lightgray,black
 shadow=black,black
-title=white,black
+title=brightcyan,black
 button=lightgray,black
-actbutton=black,lightgray
+actbutton=black,cyan
 compactbutton=lightgray,black
 checkbox=lightgray,black
-actcheckbox=black,lightgray
+actcheckbox=black,cyan
 entry=white,black
-label=lightgray,black
+label=white,black
 listbox=lightgray,black
-actlistbox=black,lightgray
-sellistbox=white,black
-actsellistbox=black,lightgray
+actlistbox=black,cyan
+sellistbox=brightcyan,black
+actsellistbox=black,cyan
 textbox=lightgray,black
-acttextbox=black,lightgray
+acttextbox=black,cyan
 helpline=lightgray,black
 emptyscale=,black
-fullscale=,lightgray
+fullscale=,cyan
 disentry=gray,black
 '
   fi
@@ -188,8 +188,9 @@ ui_theme_cleanup() {
 }
 
 # ui_checklist TITLE TAG DESC STATE [TAG DESC STATE ...] -> selected tags (one per line)
+# Set UI_CANCEL_LABEL=Back for sub-screens so TUI shows Back and plain accepts BACK.
 ui_checklist() {
-  local title=$1; shift
+  local title=$1 cancel_lbl="${UI_CANCEL_LABEL:-Cancel}"; shift
   case $UI in
     zenity)
       local zargs=() tag item state flag
@@ -207,14 +208,21 @@ ui_checklist() {
     dialog)
       ui_dims 24 104 16
       dialog --colors --backtitle "$UI_APP_TITLE" --stdout --separate-output \
-        --checklist "$title" "$UI_H" "$UI_W" "$UI_LH" "$@" || return 1
+        --cancel-label "$cancel_lbl" \
+        --checklist "$title (Space: toggle · Enter: Ok · Esc: $cancel_lbl)" \
+        "$UI_H" "$UI_W" "$UI_LH" "$@" || return 1
       ;;
     whiptail)
       # whiptail draws on stdout and answers on stderr: swap them so $(…)
-      # captures the tags, not the screen.
-      ui_dims 24 104 16
-      whiptail --backtitle "$UI_APP_TITLE" --separate-output \
-        --checklist "$title" "$UI_H" "$UI_W" "$UI_LH" "$@" 3>&1 1>&2 2>&3 || return 1
+      # captures the tags, not the screen. --fullbuttons makes Ok/Back focus visible.
+      ui_dims 26 104 16
+      local lh=$UI_LH
+      (( UI_H - lh < 10 )) && lh=$(( UI_H - 10 ))
+      (( lh < 1 )) && lh=1
+      whiptail --fullbuttons --backtitle "$UI_APP_TITLE" --separate-output \
+        --cancel-button "$cancel_lbl" \
+        --checklist "$title (Space: toggle · Enter: Ok · Tab: Ok/$cancel_lbl)" \
+        "$UI_H" "$UI_W" "$lh" "$@" 3>&1 1>&2 2>&3 || return 1
       ;;
     *)
       echo "$title" >&2
@@ -228,9 +236,12 @@ ui_checklist() {
           printf '  [ ] %s — %s\n' "$tag" "$item" >&2
         fi
       done
-      printf 'Enter tags to enable (space-separated, empty=defaults on, NONE=none):\n' >&2
+      printf 'Enter tags to enable (space-separated, empty=defaults on, NONE=none, BACK=back):\n' >&2
       local ans
       read -r ans || true
+      if [[ ${ans^^} == BACK ]]; then
+        return 1
+      fi
       if [[ -n $ans ]]; then
         read -r -a out <<<"$ans"
       fi
@@ -240,20 +251,34 @@ ui_checklist() {
 }
 
 # ui_menu TITLE TAG DESC [TAG DESC ...] -> tag on stdout
+# Set UI_CANCEL_LABEL=Back for submenus so TUI shows Back, adds a Back row, and plain accepts b/back.
 ui_menu() {
-  local title=$1; shift
+  local title=$1 cancel_lbl="${UI_CANCEL_LABEL:-Quit}"; shift
+  local auto_back=0 menu_items=("$@")
+  if [[ $cancel_lbl == Back && $UI != plain ]]; then
+    local _has_back=0 _idx=0
+    while (( _idx < ${#menu_items[@]} )); do
+      [[ ${menu_items[_idx]} == back ]] && { _has_back=1; break; }
+      _idx=$((_idx + 2))
+    done
+    if (( ! _has_back )); then
+      auto_back=1
+      menu_items+=(back "Back")
+    fi
+  fi
+  local pick=""
   case $UI in
     zenity)
-      local zargs=() t d flag first=1 matched=0
-      local scan=("$@") idx=0
+      local zargs=() t d flag first=1 matched=0 idx=0
       if [[ -n ${DEFAULT_MENU_ITEM:-} ]]; then
-        while (( idx < ${#scan[@]} )); do
-          [[ ${scan[idx]} == "$DEFAULT_MENU_ITEM" ]] && { matched=1; break; }
+        while (( idx < ${#menu_items[@]} )); do
+          [[ ${menu_items[idx]} == "$DEFAULT_MENU_ITEM" ]] && { matched=1; break; }
           idx=$((idx + 2))
         done
       fi
-      while (($# >= 2)); do
-        t=$1; d=$2; shift 2
+      idx=0
+      while (( idx + 1 < ${#menu_items[@]} )); do
+        t=${menu_items[idx]}; d=${menu_items[idx + 1]}; idx=$((idx + 2))
         if (( matched )); then
           if [[ $t == "$DEFAULT_MENU_ITEM" ]]; then flag=TRUE; else flag=FALSE; fi
         elif (( first )); then
@@ -263,48 +288,62 @@ ui_menu() {
         fi
         zargs+=("$flag" "$t" "$d")
       done
-      zenity --list --radiolist --title="$UI_APP_TITLE" --text="$title" \
+      pick="$(zenity --list --radiolist --title="$UI_APP_TITLE" --text="$title" \
         --width=760 --height=480 \
         --column="" --column="Action" --column="Description" \
         --hide-column=2 --print-column=2 \
-        "${zargs[@]}" || return 1
+        "${zargs[@]}")" || return 1
       ;;
     dialog)
       ui_dims 18 96 10
-      dialog --colors --backtitle "$UI_APP_TITLE" --stdout \
+      pick="$(dialog --colors --backtitle "$UI_APP_TITLE" --stdout \
         --default-item "${DEFAULT_MENU_ITEM:-}" \
-        --cancel-label Quit --ok-label Select \
-        --menu "$title" "$UI_H" "$UI_W" "$UI_LH" "$@" || return 1
+        --cancel-label "$cancel_lbl" --ok-label Select \
+        --menu "$title" "$UI_H" "$UI_W" "$UI_LH" "${menu_items[@]}")" || return 1
       ;;
     whiptail)
-      ui_dims 18 96 10
-      whiptail --backtitle "$UI_APP_TITLE" \
+      ui_dims 20 96 10
+      local lh=$UI_LH
+      (( UI_H - lh < 10 )) && lh=$(( UI_H - 10 ))
+      (( lh < 1 )) && lh=1
+      pick="$(whiptail --fullbuttons --backtitle "$UI_APP_TITLE" \
         --default-item "${DEFAULT_MENU_ITEM:-}" \
-        --cancel-button Quit --ok-button Select \
-        --menu "$title" "$UI_H" "$UI_W" "$UI_LH" "$@" 3>&1 1>&2 2>&3 || return 1
+        --cancel-button "$cancel_lbl" --ok-button Select \
+        --menu "$title (Enter: Select · Tab: $cancel_lbl)" "$UI_H" "$UI_W" "$lh" "${menu_items[@]}" 3>&1 1>&2 2>&3)" || return 1
       ;;
     *)
       echo "$title" >&2
-      local tags=() descs=() t d i=0
-      while (($# >= 2)); do
-        t=$1; d=$2; shift 2
+      local tags=() descs=() t d i=0 idx=0
+      while (( idx + 1 < ${#menu_items[@]} )); do
+        t=${menu_items[idx]}; d=${menu_items[idx + 1]}; idx=$((idx + 2))
         tags+=("$t"); descs+=("$d"); i=$((i + 1))
         printf '  %d) %s [%s]\n' "$i" "$d" "$t" >&2
       done
-      # End of input (Ctrl-D) on an empty line quits; text typed before
+      # End of input (Ctrl-D) on an empty line quits/goes back; text typed before
       # Ctrl-D still counts as the answer. Out of range asks again.
-      local pick
+      local prompt="choose 1-$i (empty=1): "
+      if [[ $cancel_lbl == Back ]]; then
+        prompt="choose 1-$i (empty=1, b=back): "
+      fi
       while true; do
-        read -r -p "choose 1-$i (empty=1): " pick || [[ -n $pick ]] || return 1
+        read -r -p "$prompt" pick || [[ -n $pick ]] || return 1
         [[ -z $pick ]] && pick=1
+        if [[ $cancel_lbl == Back && ( ${pick,,} == b || ${pick,,} == back ) ]]; then
+          return 1
+        fi
         if [[ $pick =~ ^[0-9]+$ ]] && (( pick >= 1 && pick <= i )); then
-          printf '%s' "${tags[pick - 1]}"
-          return 0
+          pick="${tags[pick - 1]}"
+          break
         fi
         echo "not a choice: $pick" >&2
       done
       ;;
   esac
+  if (( auto_back )) && [[ $pick == back ]]; then
+    return 1
+  fi
+  printf '%s' "$pick"
+  return 0
 }
 
 # ui_msg TEXT
@@ -312,7 +351,7 @@ ui_msg() {
   case $UI in
     zenity) zenity --info --title="$UI_APP_TITLE" --no-markup --text="$1" --width=520 || true ;;
     dialog) ui_dims 14 72; dialog --colors --backtitle "$UI_APP_TITLE" --msgbox "$1" "$UI_H" "$UI_W" || true ;;
-    whiptail) ui_dims 14 72; whiptail --backtitle "$UI_APP_TITLE" --msgbox "$1" "$UI_H" "$UI_W" || true ;;
+    whiptail) ui_dims 14 72; whiptail --fullbuttons --backtitle "$UI_APP_TITLE" --msgbox "$1" "$UI_H" "$UI_W" || true ;;
     *) printf '%s\n' "$1" ;;
   esac
 }

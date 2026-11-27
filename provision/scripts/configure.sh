@@ -67,7 +67,7 @@ run_mod() {
 # Checklist → run selected modules (fail-fast). Returns 1 if checklist aborted.
 run_modules_batch() {
   local OPTS
-  OPTS="$(ui_checklist "Stage B modules" \
+  OPTS="$(UI_CANCEL_LABEL=Back ui_checklist "Stage B modules" \
     SETUP_FIREWALLD "firewalld drop + libvirt + lab-malware zones" on \
     APPLY_PROFILE "Re-run machine profile (detect / hostname)" off \
     SETUP_OLLAMA "P15: ollama-cuda + qwen models (localhost)" "$OLLAMA_STATE" \
@@ -143,17 +143,25 @@ if configure_once; then
   exit 0
 fi
 
-# Interactive loop (archdi-style): return here after each action until Quit.
+# Interactive loop (archdi-style): return here after each action until Quit/Back.
+_cfg_exit_tag="quit"
+_cfg_exit_lbl="Quit"
+_cfg_cancel="Quit"
+if [[ ${CONFIGURE_FROM_INSTALL:-0} == 1 ]]; then
+  _cfg_exit_tag="back"
+  _cfg_exit_lbl="Back to installer menu"
+  _cfg_cancel="Back"
+fi
 while true; do
-  choice="$(ui_menu "Stage B main menu" \
+  choice="$(UI_CANCEL_LABEL="$_cfg_cancel" ui_menu "Stage B main menu" \
     modules "Run modules (checklist)" \
     profile "Apply machine profile" \
-    quit "Quit")" || choice=quit
+    "$_cfg_exit_tag" "$_cfg_exit_lbl")" || choice="$_cfg_exit_tag"
   # shellcheck disable=SC2034 # consumed by ui_menu in lib/ui-menu.sh
   DEFAULT_MENU_ITEM=$choice
   case $choice in
     modules)
-      # Checklist Cancel → back to menu. Module failure → exit 1 (run_mod).
+      # Checklist Back/Cancel → back to menu. Module failure → exit 1 (run_mod).
       # CONFIGURE_STEP is how many modules ran.
       if run_modules_batch; then
         if (( CONFIGURE_STEP > 0 )); then
@@ -166,7 +174,7 @@ while true; do
     profile)
       run_profile_only
       ;;
-    quit|*)
+    back|quit|*)
       echo "✓ configure.sh finished"
       exit 0
       ;;

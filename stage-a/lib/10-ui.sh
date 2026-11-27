@@ -173,11 +173,11 @@ tui() {
     whiptail)
       if [[ ${TUI_KEEP_STDIN:-0} == 1 ]]; then
         NEWT_COLORS="${NEWT_COLORS_BASE}${TUI_NEWT:-}" \
-          whiptail --backtitle "$back" --title "$title" \
+          whiptail --fullbuttons --backtitle "$back" --title "$title" \
           "$@" 3>&1 1>/dev/tty 2>&3
       else
         NEWT_COLORS="${NEWT_COLORS_BASE}${TUI_NEWT:-}" \
-          whiptail --backtitle "$back" --title "$title" \
+          whiptail --fullbuttons --backtitle "$back" --title "$title" \
           "$@" 3>&1 1>/dev/tty 2>&3 </dev/tty
       fi
       ;;

@@ -202,7 +202,7 @@ elif [[ $INSTALL_MODE == menu || ( $INSTALL_MODE == auto && ( ( -t 0 && -t 1 ) |
         DEFAULT_MENU_ITEM="$_pick"
         case "$_pick" in
             custom)
-                if _sel="$(ui_checklist "Select sections to run" \
+                if _sel="$(UI_CANCEL_LABEL=Back ui_checklist "Select sections to run" \
                     packages  "Pacman packages (pacman.txt), input cleanup, bootvine" on \
                     profile   "Machine hardware profile (apply-profile.sh)" on \
                     flatpak   "Flatpak apps (packages/flatpak.txt)" on \
@@ -264,8 +264,12 @@ elif [[ $INSTALL_MODE == menu || ( $INSTALL_MODE == auto && ( ( -t 0 && -t 1 ) |
                 ;;
             configure)
                 ui_theme_cleanup
-                CONFIGURE_UI="$UI" bash provision/scripts/configure.sh
+                CONFIGURE_UI="$UI" CONFIGURE_FROM_INSTALL=1 bash provision/scripts/configure.sh
                 _rc=$?
+                if (( _rc == 0 )); then
+                    ui_theme_init
+                    continue
+                fi
                 if [[ ${INSTALL_PAUSE:-0} == 1 && -t 0 ]]; then
                     read -r -p "Press Enter to close..." _
                 fi

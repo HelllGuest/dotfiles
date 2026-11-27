@@ -335,10 +335,11 @@ Plain fallback tags: `[CRITICAL]` vs `[ERASE]` (and `[WARN]` / `[ERROR]`).
 
 ### Controls
 
-* Buttons: **Next** / **Abort** on menus; **Continue** on messages;
+* Buttons: **Next** / **Abort** on menus (**Next** / **Back** on text/password inputs once a prior step exists); **Continue** on messages;
   wipe confirms use **Erase** / **Abort**; hard gates use **Continue** /
-  **Abort** (default No)
+  **Abort** (default No). `whiptail` uses `--fullbuttons` for high-contrast button focus
 * Arrows move; **Space** toggles; **Enter** = Next; **Tab** to buttons
+* **Back / Previous**: menus, radios, and checklists include a **back** entry once a prior step exists; inputs/passwords use the **Back** button (`<<` or `:back` in plain mode); declining the final Review Erase confirm offers **Back** to previous step or **Jump** to any active step
 * **Abort** quits that menu (and the install if required). **Esc** does the
   same with `dialog`; whiptail (the ISO default) ignores it, so **Tab** to Abort
 * Menus offer **[log]** and **[help]**; log: `/tmp/t14s-install.*.log`

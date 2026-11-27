@@ -6,6 +6,7 @@
 
 # ── profile preset (feeds checklist defaults) ───────────────
 detect_vm_thinkpad_skip
+_prev_preset="${PRESET:-}"
 if [[ -z ${PRESET:-} ]]; then
   if (( IS_VM && ! NONINTERACTIVE )); then PRESET=vm; else PRESET=gnome; fi
 fi
@@ -21,13 +22,28 @@ else
     vm) _pv=on ;;
     *) _pg=on; PRESET=gnome ;;
   esac
+  _rc=0
   PRESET="$(ui_radio "Install profile (sets defaults; Quick VM uses a fast 4-screen flow)" \
     gnome "GNOME laptop — desktop, Nerd Fonts, mDNS, yay, tuned, multilib" "$_pg" \
     dev "Dev laptop — GNOME + dev toolchains, CLI, Podman, Starship, home snapper" "$_pd" \
     minimal "Minimal — no desktop, LUKS2, small tool set" "$_pm" \
-    vm "Quick VM — fast unencrypted ext4, guest agent, SSH, serial console" "$_pv")" || die "aborted"
+    vm "Quick VM — fast unencrypted ext4, guest agent, SSH, serial console" "$_pv")" || _rc=$?
   unset -v _pg _pd _pm _pv
+  if (( _rc == ${T14S_RC_BACK:-10} )); then
+    unset -v _rc _prev_preset; WIZARD_BACK=1; return 0
+  elif (( _rc != 0 )); then
+    die "aborted"
+  fi
+  unset -v _rc
+  if [[ -n $_prev_preset && $PRESET != "$_prev_preset" ]]; then
+    unset -v DESKTOP INSTALL_NERD_FONTS ENCRYPT_ROOT ROOT_FS MODE ESP_MB LUKS_WIPE \
+      ENABLE_SSHD INSTALL_VM_GUEST VM_FAST_PKG VM_SERIAL_CONSOLE INSTALL_BLUETOOTH \
+      INSTALL_FLATPAK_APPS INSTALL_CLI INSTALL_PODMAN INSTALL_STARSHIP INSTALL_AVAHI \
+      INSTALL_TLP INSTALL_SELFTEST INSTALL_MULTILIB INSTALL_YAY INSTALL_TUNED \
+      INSTALL_DEVTOOLS INSTALL_BTRFS_ASSISTANT INSTALL_SNAPPER_HOME INSTALL_CHROME_HINT
+  fi
 fi
+unset -v _prev_preset
 QUICK_VM=0
 _bt_def=Y
 if (( IS_VM )); then _bt_def=N; fi
@@ -37,9 +53,18 @@ case $PRESET in
       QUICK_VM=1
       _vd_min=on; _vd_gn=off
       if yn_on "${DESKTOP:-N}"; then _vd_min=off; _vd_gn=on; fi
-      _vm_de="$(ui_radio "Quick VM environment" \
+      _rc=0
+      _vm_de="$(WIZARD_CAN_BACK=1 ui_radio "Quick VM environment" \
         minimal "Headless minimal + SSH + serial console (fastest)" "$_vd_min" \
-        gnome "Minimal GNOME Wayland + SPICE/guest agent" "$_vd_gn")" || die "aborted"
+        gnome "Minimal GNOME Wayland + SPICE/guest agent" "$_vd_gn")" || _rc=$?
+      if (( _rc == ${T14S_RC_BACK:-10} )); then
+        unset -v _rc _vd_min _vd_gn _vm_de _bt_def
+        WIZARD_JUMP="05-profile.sh"
+        return 0
+      elif (( _rc != 0 )); then
+        die "aborted"
+      fi
+      unset -v _rc
       if [[ $_vm_de == gnome ]]; then DESKTOP=Y; else DESKTOP=N; fi
       unset -v _vd_min _vd_gn _vm_de
     fi

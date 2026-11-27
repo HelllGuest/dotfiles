@@ -335,9 +335,9 @@ UI backend (shared with `install.sh` in `provision/lib/ui-menu.sh`): auto-detect
 `pacman -S dialog` optional), or **zenity** GUI with `--gui` / `CONFIGURE_UI=gui`.
 Force with `--tui|--gui|--plain` or `CONFIGURE_UI=plain|tui|dialog|whiptail|gui|zenity`
 (use `plain` on serial / CI / no TTY).
-Theme matches Stage A (blue screen, cyan chrome, backtitle `Dotfiles configure · Stage B`).
-Interactive runs open an archdi-style **main menu** (Modules / Profile / Quit) that
-loops until Quit (plain menu: Ctrl-D quits, a bad number asks again).
+Theme uses a dark palette with cyan focus accent (`whiptail --fullbuttons` for high-contrast focus, backtitle `Dotfiles configure · Stage B`).
+Interactive runs open an archdi-style **main menu** (Modules / Profile / Quit, or Back to installer menu when launched from `./install.sh`) that
+loops until Quit/Back (submenus also offer a `Back` row or `b`/`BACK` in plain mode; plain menu Ctrl-D quits, a bad number asks again).
 `CONFIGURE_ONCE=1` (what `./install.sh` sets) does one checklist pass then exits. Module runs show a UTF-8/`#` progress bar (`provision/lib/progress.sh`);
 `./install.sh` `run_step` uses the same bar. Checklist Cancel returns to the menu
 (or aborts in one-shot mode). Selected modules **fail-fast** (a failing module

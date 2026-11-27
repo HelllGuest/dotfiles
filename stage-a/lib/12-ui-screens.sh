@@ -11,6 +11,8 @@ _tui_btns() {
   case ${UI:-plain}/$1 in
     dialog/nav) _btns=(--ok-label Next --cancel-label Abort) ;;
     whiptail/nav) _btns=(--ok-button Next --cancel-button Abort) ;;
+    dialog/nav_back) _btns=(--ok-label Next --cancel-label Back) ;;
+    whiptail/nav_back) _btns=(--ok-button Next --cancel-button Back) ;;
     dialog/msg) _btns=(--ok-label Continue) ;;
     whiptail/msg) _btns=(--ok-button Continue) ;;
     dialog/yesno) _btns=(--yes-label Yes --no-label No) ;;
@@ -22,13 +24,18 @@ _tui_btns() {
   esac
 }
 
+# Chrome rows around message text: dialog uses 6; whiptail --fullbuttons uses 8.
+_msg_pad() {
+  if [[ ${UI:-plain} == whiptail ]]; then printf 8; else printf 6; fi
+}
+
 # Height for a message body: MH floor, H ceiling, scales with line count.
 msg_height() {
-  local text=$1 lines need
+  local text=$1 lines need pad
   # Visible lines: wc -l counts newlines, so add the final unterminated line.
-  # whiptail/dialog need text + 6 rows (borders, padding, button row).
+  pad=$(_msg_pad)
   lines=$(printf '%s\n' "$text" | wc -l)
-  need=$(( lines + 6 ))
+  need=$(( lines + pad ))
   (( need < MH )) && need=$MH
   (( need > ${XH:-$H} )) && need=${XH:-$H}
   printf '%s' "$need"
@@ -37,9 +44,10 @@ msg_height() {
 # whiptail --scrolltext moves focus into the text, where Enter does nothing
 # (the box looks frozen until Tab). Only scroll bodies taller than the screen.
 msg_overflows() {
-  local lines
+  local lines pad
+  pad=$(_msg_pad)
   lines=$(printf '%s\n' "$1" | wc -l)
-  (( lines + 6 > ${XH:-$H} ))
+  (( lines + pad > ${XH:-$H} ))
 }
 
 # ── tty prompt primitives (plain fallback) ──────────────────
@@ -196,7 +204,7 @@ ui_console_help() {
 • Backtitle shows Step N/M · phase name
 • Full log:  $LOG
 • Other TTY: Ctrl+Alt+F2 → root →  tail -f $LOG
-• Menus: Next advances, Abort quits (Esc too with dialog; whiptail: Tab to Abort); [log] / [help] always available
+• Menus: Next advances, [back] returns to previous step, Abort quits (Esc too with dialog; whiptail: Tab to Abort); [log] / [help] always available
 • Checklist: Space toggles, Enter = Next
 • Radio/menu: arrows (+ Space on radio), Enter = Next
 • Severity badge + chrome (not color alone): INFO / WARN / ERROR / CRITICAL / OK
@@ -286,17 +294,45 @@ ui_yesno() { # text [default] [severity]
 }
 
 ui_input() { # prompt [default]
-  if [[ $UI == plain ]]; then ask "$1: " "${2:-}"; return; fi
+  if [[ $UI == plain ]]; then
+    local p="$1" v
+    if (( ${WIZARD_CAN_BACK:-0} )); then p="$p (<< = back)"; fi
+    v="$(ask "$p: " "${2:-}")"
+    if (( ${WIZARD_CAN_BACK:-0} )) && [[ $v == '<<' || ${v,,} == ':back' ]]; then
+      return "${T14S_RC_BACK:-10}"
+    fi
+    printf '%s' "$v"
+    return 0
+  fi
   ui_geometry
-  _tui_btns nav
-  tui "${_btns[@]}" --inputbox "$1" 10 "$MW" "${2:-}"
+  if (( ${WIZARD_CAN_BACK:-0} )); then
+    _tui_btns nav_back
+    tui "${_btns[@]}" --inputbox "$1" 10 "$MW" "${2:-}" || return "${T14S_RC_BACK:-10}"
+  else
+    _tui_btns nav
+    tui "${_btns[@]}" --inputbox "$1" 10 "$MW" "${2:-}"
+  fi
 }
 
 ui_password() { # prompt
-  if [[ $UI == plain ]]; then ask_secret "$1: "; return; fi
+  if [[ $UI == plain ]]; then
+    local p="$1" v
+    if (( ${WIZARD_CAN_BACK:-0} )); then p="$p (<< = back)"; fi
+    v="$(ask_secret "$p: ")"
+    if (( ${WIZARD_CAN_BACK:-0} )) && [[ $v == '<<' || ${v,,} == ':back' ]]; then
+      return "${T14S_RC_BACK:-10}"
+    fi
+    printf '%s' "$v"
+    return 0
+  fi
   ui_geometry
-  _tui_btns nav
-  tui "${_btns[@]}" --passwordbox "$1" 10 "$MW"
+  if (( ${WIZARD_CAN_BACK:-0} )); then
+    _tui_btns nav_back
+    tui "${_btns[@]}" --passwordbox "$1" 10 "$MW" || return "${T14S_RC_BACK:-10}"
+  else
+    _tui_btns nav
+    tui "${_btns[@]}" --passwordbox "$1" 10 "$MW"
+  fi
 }
 
 # list_height TEXT — list rows for a menu/radio/checklist whose prompt is TEXT.
@@ -309,17 +345,20 @@ list_height() {
   while IFS= read -r line; do
     rows=$(( rows + (${#line} > 0 ? (${#line} + tw - 1) / tw : 1) ))
   done <<<"$1"
-  lh=$(( H - 6 - rows ))
+  lh=$(( H - 8 - rows ))
   (( lh > LH )) && lh=$LH
   (( lh < 3 )) && lh=3
   printf '%s' "$lh"
 }
 
 # ui_menu prompt tag description [tag description ...]  -> tag on stdout
-# Always offers log / help as extra entries. Next advances; Abort (Esc: dialog only) quits.
+# Always offers log / help as extra entries (plus back when WIZARD_CAN_BACK=1). Next advances; Abort quits.
 ui_menu() {
   local prompt=$1; shift
-  local args=("$@") choice
+  local args=("$@") choice nav_extra=()
+  if (( ${WIZARD_CAN_BACK:-0} )); then
+    nav_extra=(back "Back to previous step")
+  fi
   while true; do
     set -- "${args[@]}"
     ui_geometry
@@ -329,6 +368,7 @@ ui_menu() {
 
 $TUI_HINT_MENU" \
         "$H" "$W" "$(list_height "${prompt}"$'\n\n'"$TUI_HINT_MENU")" "$@" \
+        "${nav_extra[@]}" \
         log "View install log" \
         help "Console / log tips") || return 1
     else
@@ -338,6 +378,10 @@ $TUI_HINT_MENU" \
         t=$1 d=$2; shift 2; tags+=("$t") descs+=("$d"); i=$((i + 1))
         printf '  %d) %s [%s]\n' "$i" "$d" "$t" >&2
       done
+      if (( ${WIZARD_CAN_BACK:-0} )); then
+        tags+=(back); descs+=("Back to previous step"); i=$((i + 1))
+        printf '  %d) Back to previous step [back]\n' "$i" >&2
+      fi
       tags+=(log help); descs+=("View install log" "Console / log tips")
       i=$((i + 2))
       printf '  %d) View install log [log]\n' "$((i - 1))" >&2
@@ -345,11 +389,16 @@ $TUI_HINT_MENU" \
       local pick
       read -r -p "choose 1-$i (empty=1): " pick </dev/tty || true
       [[ -z $pick ]] && pick=1
-      if [[ $pick =~ ^[0-9]+$ ]] && (( pick >= 1 && pick <= i )); then
+      if (( ${WIZARD_CAN_BACK:-0} )) && [[ ${pick,,} == b || ${pick,,} == back ]]; then
+        choice=back
+      elif [[ $pick =~ ^[0-9]+$ ]] && (( pick >= 1 && pick <= i )); then
         choice="${tags[pick - 1]}"
       else
         choice=$pick
       fi
+    fi
+    if [[ $choice == back ]] && (( ${WIZARD_CAN_BACK:-0} )); then
+      return "${T14S_RC_BACK:-10}"
     fi
     ui_nav_special "$choice" && continue
     printf '%s' "$choice"
@@ -360,7 +409,10 @@ $TUI_HINT_MENU" \
 # ui_radio prompt tag description on|off [...] -> tag
 ui_radio() {
   local prompt=$1; shift
-  local args=("$@") choice
+  local args=("$@") choice nav_extra=()
+  if (( ${WIZARD_CAN_BACK:-0} )); then
+    nav_extra=(back "Back to previous step" off)
+  fi
   while true; do
     set -- "${args[@]}"
     ui_geometry
@@ -370,6 +422,7 @@ ui_radio() {
 
 $TUI_HINT_RADIO" \
         "$H" "$W" "$(list_height "${prompt}"$'\n\n'"$TUI_HINT_RADIO")" "$@" \
+        "${nav_extra[@]}" \
         log "View install log" off \
         help "Console / log tips" off) || return 1
     else
@@ -380,10 +433,15 @@ $TUI_HINT_RADIO" \
         [[ $s == on ]] && def=$t
         printf '  %d) %s [%s]\n' "$i" "$d" "$t" >&2
       done
+      if (( ${WIZARD_CAN_BACK:-0} )); then
+        printf '  B) Back to previous step\n' >&2
+      fi
       printf '  L) View install log\n  H) Console / log tips\n' >&2
       local pick
       read -r -p "choose 1-$i / L / H (default $def): " pick </dev/tty || true
       case "${pick,,}" in
+        b|back)
+          if (( ${WIZARD_CAN_BACK:-0} )); then choice=back; else choice=$def; fi ;;
         l) choice=log ;;
         h) choice=help ;;
         '') choice=$def ;;
@@ -396,6 +454,9 @@ $TUI_HINT_RADIO" \
           ;;
       esac
     fi
+    if [[ $choice == back ]] && (( ${WIZARD_CAN_BACK:-0} )); then
+      return "${T14S_RC_BACK:-10}"
+    fi
     ui_nav_special "$choice" && continue
     printf '%s' "$choice"
     return 0
@@ -404,10 +465,13 @@ $TUI_HINT_RADIO" \
 
 # ui_checklist prompt tag item on|off [...] -> selected tags, one per line
 # Space toggles (dialog/whiptail). Plain: number toggles + empty line confirms.
-# Always offers log / help; selecting either re-opens the checklist.
+# Always offers log / help (plus back when WIZARD_CAN_BACK=1).
 ui_checklist() {
   local prompt=$1; shift
-  local args=("$@") out raw
+  local args=("$@") out raw nav_extra=()
+  if (( ${WIZARD_CAN_BACK:-0} )); then
+    nav_extra=(back "Back to previous step" off)
+  fi
   while true; do
     set -- "${args[@]}"
     ui_geometry
@@ -417,6 +481,7 @@ ui_checklist() {
 
 $TUI_HINT_CHECK" \
         "$H" "$W" "$LH" "$@" \
+        "${nav_extra[@]}" \
         log "View install log" off \
         help "Console / log tips" off) || return 1
       out=$raw
@@ -426,13 +491,15 @@ $TUI_HINT_CHECK" \
 
 $TUI_HINT_CHECK" \
         "$H" "$W" "$(list_height "${prompt}"$'\n\n'"${TUI_HINT_CHECK}")" "$@" \
+        "${nav_extra[@]}" \
         log "View install log" off \
         help "Console / log tips" off) || return 1
       out=$(printf '%s\n' "$raw" | sed 's/"/\n/g' | awk 'NF && $0 !~ /^[[:space:]]*$/')
     else
       local tags=() descs=() states=() t d s i=0
       printf '\n%s\n' "$prompt" >&2
-      printf '(numbers toggle; empty line=Next; L=log H=help)\n' >&2
+      printf '(numbers toggle; empty line=Next; L=log H=help%s)\n' \
+        "$( (( ${WIZARD_CAN_BACK:-0} )) && printf ' B=back' )" >&2
       while (( $# >= 3 )); do
         t=$1 d=$2 s=$3; shift 3
         tags+=("$t"); descs+=("$d"); states+=("$s"); i=$((i + 1))
@@ -447,6 +514,8 @@ $TUI_HINT_CHECK" \
         read -r -p "toggle # / Enter=Next / L=log / H=help: " pick </dev/tty || true
         case "${pick,,}" in
           '') break ;;
+          b|back)
+            if (( ${WIZARD_CAN_BACK:-0} )); then return "${T14S_RC_BACK:-10}"; fi ;;
           l) ui_view_log; continue ;;
           h) ui_console_help; continue ;;
           *)
@@ -465,9 +534,12 @@ $TUI_HINT_CHECK" \
         [[ ${states[j]} == on ]] && out+="${tags[j]}"$'\n'
       done
     fi
+    if (( ${WIZARD_CAN_BACK:-0} )) && printf '%s\n' "$out" | grep -qx back; then
+      return "${T14S_RC_BACK:-10}"
+    fi
     # log/help alone → open viewer and re-prompt. Mixed with real tags → strip nav.
     local real
-    real=$(printf '%s\n' "$out" | grep -Ev '^(log|help)$' || true)
+    real=$(printf '%s\n' "$out" | grep -Ev '^(back|log|help)$' || true)
     if [[ -z $real ]]; then
       if printf '%s\n' "$out" | grep -qx log; then
         ui_view_log

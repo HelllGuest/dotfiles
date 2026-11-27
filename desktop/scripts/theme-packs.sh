@@ -1169,29 +1169,47 @@ trap ui_theme_cleanup EXIT
 ui_theme_init
 
 gui_install_flow() {
-    local pack extras color_choice
-    pack="$(ui_menu "Choose a GNOME theme pack to install" \
-        mactahoe "MacTahoe macOS suite (vinceliuice GTK/Libadwaita + Shell + Icons + Cursors)" \
-        kayozxo-tahoe "GNOME-macOS-Tahoe (kayozxo GTK/Libadwaita -la + Shell + Icons + Cursors)" \
-        whitesur "WhiteSur macOS suite (GTK/Libadwaita + Shell + Icons + Cursors)" \
-        colloid "Colloid flat/Material suite (GTK/Libadwaita + Shell + Icons + Cursors)" \
-        graphite "Graphite flat monochrome suite (GTK/Libadwaita + Shell + Icons + Cursors)" \
-        fluent "Fluent rounded suite (GTK/Libadwaita + Shell + Icons + Cursors)" \
-        flat-remix "Flat Remix suite (GNOME Shell + GTK/Icons + Cursors; opt-in GDM uses sudo)" \
-        material-gnome "Material-Gnome Material 3 (GTK/Libadwaita + Shell + MoreWaita + Bibata)" \
-        modular-adwaita "GNOME 51-safe Adwaita stack (Marble Shell + adw-gtk3 + MoreWaita + Cursors)" \
-        modular-gruvbox "GNOME 51-safe Gruvbox stack (Marble Shell + adw-gtk3 + Gruvbox-Plus + Cursors)")" || return 0
-
-    color_choice="$(ui_menu "Variant for $pack" \
-        dark "Dark variant (default)" \
-        light "Light variant")" || return 0
-    OPT_COLOR="$color_choice"
-
-    OPT_GDM=0; OPT_FIREFOX=0; OPT_FLATPAK=0
-    extras="$(ui_checklist "Optional extras for $pack (all opt-in; GDM warns on GNOME 51 gresource)" \
-        GDM "Apply GDM login screen theme (uses sudo; may reset on gnome-shell upgrade)" off \
-        FIREFOX "Apply matching Firefox theme (MacTahoe / WhiteSur)" off \
-        FLATPAK "Apply Flatpak theme override" off)" || return 0
+    local pack="" extras="" color_choice="" step=0
+    while (( step < 3 )); do
+        case $step in
+            0)
+                pack="$(UI_CANCEL_LABEL=Back ui_menu "Choose a GNOME theme pack to install" \
+                    mactahoe "MacTahoe macOS suite (vinceliuice GTK/Libadwaita + Shell + Icons + Cursors)" \
+                    kayozxo-tahoe "GNOME-macOS-Tahoe (kayozxo GTK/Libadwaita -la + Shell + Icons + Cursors)" \
+                    whitesur "WhiteSur macOS suite (GTK/Libadwaita + Shell + Icons + Cursors)" \
+                    colloid "Colloid flat/Material suite (GTK/Libadwaita + Shell + Icons + Cursors)" \
+                    graphite "Graphite flat monochrome suite (GTK/Libadwaita + Shell + Icons + Cursors)" \
+                    fluent "Fluent rounded suite (GTK/Libadwaita + Shell + Icons + Cursors)" \
+                    flat-remix "Flat Remix suite (GNOME Shell + GTK/Icons + Cursors; opt-in GDM uses sudo)" \
+                    material-gnome "Material-Gnome Material 3 (GTK/Libadwaita + Shell + MoreWaita + Bibata)" \
+                    modular-adwaita "GNOME 51-safe Adwaita stack (Marble Shell + adw-gtk3 + MoreWaita + Cursors)" \
+                    modular-gruvbox "GNOME 51-safe Gruvbox stack (Marble Shell + adw-gtk3 + Gruvbox-Plus + Cursors)")" \
+                    || return 0
+                step=1
+                ;;
+            1)
+                if color_choice="$(UI_CANCEL_LABEL=Back ui_menu "Variant for $pack" \
+                    dark "Dark variant (default)" \
+                    light "Light variant")"; then
+                    OPT_COLOR="$color_choice"
+                    step=2
+                else
+                    step=0
+                fi
+                ;;
+            2)
+                OPT_GDM=0; OPT_FIREFOX=0; OPT_FLATPAK=0
+                if extras="$(UI_CANCEL_LABEL=Back ui_checklist "Optional extras for $pack (all opt-in; GDM warns on GNOME 51 gresource)" \
+                    GDM "Apply GDM login screen theme (uses sudo; may reset on gnome-shell upgrade)" off \
+                    FIREFOX "Apply matching Firefox theme (MacTahoe / WhiteSur)" off \
+                    FLATPAK "Apply Flatpak theme override" off)"; then
+                    step=3
+                else
+                    step=1
+                fi
+                ;;
+        esac
+    done
     if printf '%s\n' "$extras" | grep -qx GDM; then OPT_GDM=1; fi
     if printf '%s\n' "$extras" | grep -qx FIREFOX; then OPT_FIREFOX=1; fi
     if printf '%s\n' "$extras" | grep -qx FLATPAK; then OPT_FLATPAK=1; fi
@@ -1230,7 +1248,7 @@ gui_uninstall_flow() {
         items+=(all "Uninstall ALL installed theme packs & restore Adwaita")
     fi
 
-    pack="$(ui_menu "Choose a theme pack to uninstall" "${items[@]}")" || return 0
+    pack="$(UI_CANCEL_LABEL=Back ui_menu "Choose a theme pack to uninstall" "${items[@]}")" || return 0
     if [[ $pack == all ]]; then
         if uninstall_all; then
             ui_msg "Uninstalled all theme packs and restored stock Adwaita."
@@ -1249,7 +1267,7 @@ gui_uninstall_flow() {
 gui_gdm_flow() {
     local pick
     OPT_GDM=0; OPT_FIREFOX=0; OPT_FLATPAK=0
-    pick="$(ui_menu "Standalone GDM login screen tools (GNOME 51 safe)" \
+    pick="$(UI_CANCEL_LABEL=Back ui_menu "Standalone GDM login screen tools (GNOME 51 safe)" \
         install-gse "Install gse-gdm-extension (GNOME 42-51 safe, uses sudo)" \
         uninstall-gse "Uninstall gse-gdm-extension (uses sudo)" \
         install-settings "Install Login Manager Settings Flatpak (gdm-settings)" \

@@ -164,12 +164,15 @@ build_part_menu() {
 # pick_part PROMPT DISK [filter] [exclude] -> partition path on stdout
 pick_part() {
   local prompt=$1 disk=$2 filter=${3:-any} excl=${4:-}
-  local arr=() ans
+  local arr=() ans rc=0
   while :; do
     build_part_menu arr "$disk" "$filter" "$excl"
-    ans="$(ui_menu "$prompt" "${arr[@]}")" || return 1
+    rc=0; ans="$(ui_menu "$prompt" "${arr[@]}")" || rc=$?
+    if (( rc != 0 )); then return "$rc"; fi
     if [[ $ans == manual ]]; then
-      ans="$(ui_input "Partition path (e.g. /dev/nvme0n1p2)" "")" || return 1
+      rc=0; ans="$(ui_input "Partition path (e.g. /dev/nvme0n1p2)" "")" || rc=$?
+      if (( rc == ${T14S_RC_BACK:-10} )); then continue; fi
+      if (( rc != 0 )); then return "$rc"; fi
     fi
     if [[ -z $ans ]]; then continue; fi
     if [[ ! -b $ans ]]; then ui_error "Not a block device: $ans"; continue; fi
@@ -187,18 +190,20 @@ pick_part() {
 # archfi-inspired pickers: keymap from ISO maps, timezone Region/City menus.
 # Commons must be real map basenames under /usr/share/kbd/keymaps.
 pick_keymap() {
-  local choice km args=() browse_args=()
+  local choice km args=() browse_args=() rc=0
   local commons=(us uk de fr es it pt-latin1 br-abnt2 ru jp106 dvorak colemak)
   for km in "${commons[@]}"; do
     args+=("$km" "common")
   done
   args+=(other "type a keymap name" browse "browse all keymaps on the ISO")
   while :; do
-    choice="$(ui_menu "Console keymap (applied live with loadkeys)" "${args[@]}")" \
-      || return 1
+    rc=0; choice="$(ui_menu "Console keymap (applied live with loadkeys)" "${args[@]}")" || rc=$?
+    if (( rc != 0 )); then return "$rc"; fi
     case $choice in
       other)
-        km="$(ui_input "Keymap name" us)" || return 1
+        rc=0; km="$(ui_input "Keymap name" us)" || rc=$?
+        if (( rc == ${T14S_RC_BACK:-10} )); then continue; fi
+        if (( rc != 0 )); then return "$rc"; fi
         [[ -n $km ]] || continue
         printf '%s' "$km"
         return 0
@@ -228,50 +233,63 @@ pick_keymap() {
 
 # Emit only a resolvable zone file path (or UTC). Never a directory.
 pick_timezone() {
-  local zroot=/usr/share/zoneinfo region city sub args=() d path
+  local zroot=/usr/share/zoneinfo region city sub args=() d path rc=0
   # Do not invent UTC when zoneinfo is missing — valid_timezone needs a TZif file.
   [[ -d $zroot ]] || { ui_error "Missing $zroot — cannot pick a timezone"; return 1; }
-  while read -r d; do
-    args+=("$d" "")
-  done < <(find "$zroot" -mindepth 1 -maxdepth 1 -type d \
-    ! -name right ! -name posix -printf '%f\n' 2>/dev/null | sort)
-  args+=(UTC "Coordinated Universal Time" other "type Region/City")
-  region="$(ui_menu "Timezone region" "${args[@]}")" || return 1
-  if [[ $region == other ]]; then
-    city="$(ui_input "Timezone (Region/City)" America/New_York)" || return 1
-    [[ -n $city ]] || return 1
-    printf '%s' "$city"
-    return 0
-  fi
-  if [[ $region == UTC ]]; then
-    printf 'UTC'
-    return 0
-  fi
-  args=()
-  while read -r d; do
-    args+=("$d" "")
-  done < <(find "$zroot/$region" -mindepth 1 -maxdepth 1 \
-    \( -type f -o -type d \) -printf '%f\n' 2>/dev/null | sort)
-  (( ${#args[@]} >= 2 )) || { ui_error "No zones under $region"; return 1; }
-  city="$(ui_menu "Timezone city ($region)" "${args[@]}")" || return 1
-  path="$region/$city"
-  # One nested level (e.g. America/Argentina/Buenos_Aires).
-  if [[ -d $zroot/$path ]]; then
+  while :; do
     args=()
     while read -r d; do
       args+=("$d" "")
-    done < <(find "$zroot/$path" -mindepth 1 -maxdepth 1 \
-      \( -type f -o -type d \) -printf '%f\n' 2>/dev/null | sort)
-    if (( ${#args[@]} < 2 )); then
-      ui_error "No zone files under $path"
-      return 1
+    done < <(find "$zroot" -mindepth 1 -maxdepth 1 -type d \
+      ! -name right ! -name posix -printf '%f\n' 2>/dev/null | sort)
+    args+=(UTC "Coordinated Universal Time" other "type Region/City")
+    rc=0; region="$(ui_menu "Timezone region" "${args[@]}")" || rc=$?
+    if (( rc != 0 )); then return "$rc"; fi
+    if [[ $region == other ]]; then
+      rc=0; city="$(ui_input "Timezone (Region/City)" America/New_York)" || rc=$?
+      if (( rc == ${T14S_RC_BACK:-10} )); then continue; fi
+      if (( rc != 0 )); then return "$rc"; fi
+      [[ -n $city ]] || continue
+      printf '%s' "$city"
+      return 0
     fi
-    sub="$(ui_menu "Timezone ($path)" "${args[@]}")" || return 1
-    path="$path/$sub"
-  fi
-  if [[ ! -f $zroot/$path ]]; then
-    ui_error "Not a timezone file: $path"
-    return 1
-  fi
-  printf '%s' "$path"
+    if [[ $region == UTC ]]; then
+      printf 'UTC'
+      return 0
+    fi
+    while :; do
+      args=()
+      while read -r d; do
+        args+=("$d" "")
+      done < <(find "$zroot/$region" -mindepth 1 -maxdepth 1 \
+        \( -type f -o -type d \) -printf '%f\n' 2>/dev/null | sort)
+      (( ${#args[@]} >= 2 )) || { ui_error "No zones under $region"; break; }
+      rc=0; city="$(ui_menu "Timezone city ($region)" "${args[@]}")" || rc=$?
+      if (( rc == ${T14S_RC_BACK:-10} )); then break; fi
+      if (( rc != 0 )); then return "$rc"; fi
+      path="$region/$city"
+      # One nested level (e.g. America/Argentina/Buenos_Aires).
+      if [[ -d $zroot/$path ]]; then
+        args=()
+        while read -r d; do
+          args+=("$d" "")
+        done < <(find "$zroot/$path" -mindepth 1 -maxdepth 1 \
+          \( -type f -o -type d \) -printf '%f\n' 2>/dev/null | sort)
+        if (( ${#args[@]} < 2 )); then
+          ui_error "No zone files under $path"
+          continue
+        fi
+        rc=0; sub="$(ui_menu "Timezone ($path)" "${args[@]}")" || rc=$?
+        if (( rc == ${T14S_RC_BACK:-10} )); then continue; fi
+        if (( rc != 0 )); then return "$rc"; fi
+        path="$path/$sub"
+      fi
+      if [[ ! -f $zroot/$path ]]; then
+        ui_error "Not a timezone file: $path"
+        continue
+      fi
+      printf '%s' "$path"
+      return 0
+    done
+  done
 }

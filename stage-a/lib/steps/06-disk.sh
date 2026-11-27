@@ -22,10 +22,20 @@ else
     unset -v _sz _model
     menu_args+=("manual" "type a device path")
 
-    DISK="$(ui_menu "Select the target disk. AUTO wipes it entirely." "${menu_args[@]}")" \
-      || die "no disk selected"
+    _rc=0
+    DISK="$(ui_menu "Select the target disk. AUTO wipes it entirely." "${menu_args[@]}")" || _rc=$?
+    if (( _rc == ${T14S_RC_BACK:-10} )); then
+      unset -v _rc; WIZARD_BACK=1; return 0
+    elif (( _rc != 0 )); then
+      die "no disk selected"
+    fi
+    unset -v _rc
     if [[ $DISK == manual ]]; then
-      DISK="$(ui_input "Target disk (e.g. /dev/nvme0n1)" "${DISK:-}")" || die "no disk selected"
+      _rc=0
+      DISK="$(WIZARD_CAN_BACK=1 ui_input "Target disk (e.g. /dev/nvme0n1)" "")" || _rc=$?
+      if (( _rc == ${T14S_RC_BACK:-10} )); then unset -v _rc; continue; fi
+      if (( _rc != 0 )); then die "no disk selected"; fi
+      unset -v _rc
     fi
     [[ -b $DISK ]] || { ui_error "Not a block device: ${DISK:-<empty>}"; continue; }
     [[ $(disk_type "$DISK") == disk ]] || { ui_error "$DISK is not a whole disk."; continue; }
