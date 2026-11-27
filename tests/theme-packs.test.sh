@@ -49,13 +49,50 @@ done
 printf '#!/bin/sh\necho "make \$*" >>"%s"\nexit 0\n' "$LOG" >"$B/make"
 unset _dep
 
-# Stub git: creates realistic fake upstream repos with strict flag validation
+# Stub git: handles pinned init/remote/fetch/checkout/rev-parse and creates fake upstream repos
 cat >"$B/git" <<EOF
 #!/usr/bin/env bash
 echo "git \$*" >>"$LOG"
-if [[ \$1 == clone ]]; then
-    dest="\${@: -1}"
-    mkdir -p "\$dest/.git"
+dest=""
+if [[ \${1:-} == -C ]]; then
+    dest="\$2"
+    shift 2
+fi
+case "\${1:-}" in
+    init)
+        mkdir -p "\$dest/.git"
+        exit 0
+        ;;
+    remote)
+        exit 0
+        ;;
+    rev-parse)
+        if [[ -f "\$dest/.git/FAKE_HEAD" ]]; then
+            cat "\$dest/.git/FAKE_HEAD"
+            exit 0
+        fi
+        exit 1
+        ;;
+    checkout)
+        if [[ -f "\$dest/.git/FAKE_FETCH_HEAD" ]]; then
+            cp "\$dest/.git/FAKE_FETCH_HEAD" "\$dest/.git/FAKE_HEAD"
+        fi
+        exit 0
+        ;;
+    fetch)
+        pin="\${@: -1}"
+        mkdir -p "\$dest/.git"
+        if [[ \${FAKE_GIT_BAD_HEAD:-0} == 1 ]]; then
+            printf '0000000000000000000000000000000000000000\n' >"\$dest/.git/FAKE_FETCH_HEAD"
+        else
+            printf '%s\n' "\$pin" >"\$dest/.git/FAKE_FETCH_HEAD"
+        fi
+        ;;
+    *)
+        exit 0
+        ;;
+esac
+if [[ \${1:-} == fetch ]]; then
     case "\$dest" in
         *MacTahoe-gtk-theme|*WhiteSur-gtk-theme)
             printf '#!/bin/sh\necho "gtk-install \$(basename "\$PWD") \$*" >>"%s"\n' "$LOG" >"\$dest/install.sh"
@@ -250,8 +287,8 @@ unset _cmd _p err_out
 
 # 1) --dry-run mutates nothing and logs no real commands
 dry_out="$(run_tp --dry-run --install mactahoe --gdm --firefox --flatpak)"
-grep -qF '[dry-run] git clone --depth=1 https://github.com/vinceliuice/MacTahoe-gtk-theme.git' <<<"$dry_out" \
-    || fail "--dry-run must preview MacTahoe clone"
+grep -qE '^\[dry-run\] git fetch --depth=1 https://github\.com/vinceliuice/MacTahoe-gtk-theme\.git [0-9a-f]{40} ' <<<"$dry_out" \
+    || fail "--dry-run must preview pinned MacTahoe fetch"
 grep -q 'GDM note (GNOME 51)' <<<"$dry_out" \
     || fail "--gdm must print GNOME 51 gresource warning"
 [[ ! -s "$LOG" && ! -d "$CACHE" ]] || fail "--dry-run must not run commands or create cache"
@@ -265,7 +302,7 @@ rc=0; run_tp --install modular-adwaita </dev/null >/dev/null 2>&1 || rc=$?
 [[ $rc -ne 0 ]] || fail "non-TTY --install modular-adwaita (needs pacman) without -y must fail closed"
 rc=0; run_tp --uninstall all </dev/null >/dev/null 2>&1 || rc=$?
 [[ $rc -ne 0 ]] || fail "non-TTY --uninstall all without -y must fail closed"
-! grep -q 'sudo\|git clone' "$LOG" || fail "failed confirmation gates must not clone or run sudo"
+! grep -q 'sudo\|git fetch\|git clone' "$LOG" || fail "failed confirmation gates must not fetch or run sudo"
 
 # 2) Install & uninstall MacTahoe with --gdm --firefox --flatpak; keep real user gtk.css
 printf '/* user custom */\n' >"$H/.config/gtk-4.0/gtk.css"
@@ -409,5 +446,45 @@ grep -q 'gtk-tweaks MacTahoe-gtk-theme -g -r' "$LOG" \
 grep -q 'gse-install' "$LOG" && grep -q 'gse-uninstall' "$LOG" \
     || fail "GUI gdm submenu must install and uninstall gse-gdm"
 grep -q 'theme-setup-adwaita' "$LOG" || fail "GUI adwaita action must run theme-setup.sh"
+
+# 10) Every upstream GitHub repo URL in theme-packs.sh must be 40-hex commit-pinned,
+# and commit pin mismatch must fail closed.
+python3 - "$SCRIPT" <<'PY' || fail "theme-packs.sh has unpinned GitHub repo URL"
+import re, sys
+from pathlib import Path
+t = Path(sys.argv[1]).read_text()
+urls = sorted(set(re.findall(r'https://github\.com/[^\s"]+\.git', t)))
+pins = dict(re.findall(r'\["([^"]+)"\]="([0-9a-f]{40})"', t))
+var_urls = dict(re.findall(r'^(URL_[A-Z_]+)="([^"]+)"', t, re.M))
+resolved = {var_urls.get(k[1:], k) if k.startswith("$") else k: v for k, v in pins.items()}
+missing = [u for u in urls if u not in resolved]
+assert not missing, f"unpinned URLs: {missing}"
+PY
+rc=0
+FAKE_GIT_BAD_HEAD=1 run_tp --install fluent -y >/dev/null 2>&1 || rc=$?
+[[ $rc -ne 0 ]] || fail "commit pin mismatch must fail closed"
+
+# 11) Real git (not stubbed) exercises clone_or_update against a local file:// repo
+if command -v git >/dev/null 2>&1; then
+    _rsrc="$T/real-git-src"
+    _rdst="$T/real-git-dst"
+    git init -q "$_rsrc"
+    git -C "$_rsrc" config user.email "test@example.com"
+    git -C "$_rsrc" config user.name "Test"
+    printf 'ok\n' >"$_rsrc/marker"
+    git -C "$_rsrc" add marker
+    git -C "$_rsrc" commit -q -m "init"
+    _pin="$(git -C "$_rsrc" rev-parse HEAD)"
+    _clone_fn="$(awk '/^clone_or_update\(\)/{f=1} f{print} f&&/^}$/{exit}' "$SCRIPT")"
+    bash -euo pipefail -c "
+      DRY_RUN=0
+      need_cmd() { command -v \"\$1\" >/dev/null 2>&1; }
+      declare -A REPO_PINS=([\"file://$_rsrc\"]=\"$_pin\")
+      $_clone_fn
+      clone_or_update \"file://$_rsrc\" \"$_rdst\"
+      [[ \$(git -C \"$_rdst\" rev-parse HEAD) == \"$_pin\" && -f \"$_rdst/marker\" ]]
+    " || fail "clone_or_update failed with real git against file:// repo"
+    unset -v _rsrc _rdst _pin _clone_fn
+fi
 
 echo "PASS: theme-packs.test.sh"

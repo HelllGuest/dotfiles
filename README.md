@@ -709,8 +709,10 @@ We take a "quiet by default" approach:
 
 | Task | Command |
 |------|---------|
-| Task runner (`Makefile`) | `make help` (`make ci`, `make test`, `make check`, `make drift`, `make fix`, `make themes`, `make themes-gui`, `make uninstall-dry`, `make uninstall`, `make update-full`, `make vm-b`, `make vm-clean`) |
-| GNOME theme packs (opt-in) | `bash desktop/scripts/theme-packs.sh [--gui\|--install PACK\|--uninstall PACK\|--list]` (`make themes-gui` / `make themes`) |
+| Task runner (`Makefile`) | `make help` (`make ci`, `make test`, `make check`, `make drift`, `make fix`, `make themes`, `make themes-gui`, `make snapshot`, `make rollback`, `make backup`, `make restore`, `make uninstall-dry`, `make uninstall`, `make update-full`, `make vm-a`, `make vm-b`, `make vm-desktop`, `make vm-dual`, `make vm-clean`) |
+| GNOME theme packs (opt-in) | `bash desktop/scripts/theme-packs.sh [--gui\|--install PACK\|--uninstall PACK\|--list]` (`make themes-gui` / `make themes`; upstream repos commit-pinned) |
+| Snapper snapshot / rollback | `bash system/scripts/snapshot.sh create\|list\|status\|rollback` (`make snapshot` / `make rollback ID=… APPLY=1`; dry-run by default + `sbctl verify`) |
+| Encrypted personal backup | `bash security/scripts/personal-backup.sh backup\|verify\|restore` (`make backup` / `make restore ARCHIVE=…`; `age` or OpenSSL PBKDF2, mode `0600`) |
 | Uninstall | `./uninstall.sh [--dry-run\|--all\|--only …\|--yes]` (`make uninstall-dry` / `make uninstall`) |
 | Full update | `bash provision/scripts/post-update.sh --full` (or `sudo pacman -Syu && ./install.sh && bash provision/scripts/post-update.sh`) |
 | Minimal package install | `./install.sh --minimal` (or `MINIMAL_PACKAGES=1` / `SKIP_AI_IDES=1` / `SKIP_MOBILE_DEV=1` / `SKIP_RE_TOOLS=1`) |

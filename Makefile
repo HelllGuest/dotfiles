@@ -1,5 +1,7 @@
 .PHONY: help ci lint lint-docs test test-stage-a check check-all drift fix \
-	update update-full themes themes-gui uninstall uninstall-dry vm-a vm-b vm-clean secrets-init secrets-unlock
+	update update-full themes themes-gui uninstall uninstall-dry \
+	vm-a vm-b vm-desktop vm-dual vm-clean \
+	snapshot rollback backup restore secrets-init secrets-unlock
 
 SHELL := /usr/bin/env bash
 .SHELLFLAGS := -euo pipefail -c
@@ -14,6 +16,9 @@ ci: lint test test-stage-a lint-docs ## Run full local CI (exact mirror of .gith
 		if [[ $$rc -ne 1 ]]; then echo "FAIL: secret scan exited $$rc" >&2; exit 1; fi
 	@diff -u all_stow_files.txt <(bash scripts/list-stow-files.sh)
 	@! grep -Eiq 'Cache|/CacheStorage/|lazy-lock\.json' all_stow_files.txt
+	@if command -v desktop-file-validate >/dev/null 2>&1; then \
+		desktop-file-validate stow/applications/.local/share/applications/*.desktop; \
+	fi
 	@echo "PASS: make ci"
 
 lint: ## Run bash -n and ShellCheck on all scripts
@@ -83,9 +88,28 @@ vm-a: ## Run bare-disk Stage A VM install (ISO=... FRESH=1)
 vm-b: ## Run Stage B VM install on qcow2 overlay (preserves Stage A disk)
 	@bash provision/scripts/vm-stageb-run.sh
 
+vm-desktop: ## Run full GNOME desktop Stage A VM install (T14S_VM_DESKTOP=Y)
+	@T14S_VM_DESKTOP=Y FRESH=1 bash stage-a/tests/vm-run.sh
+
+vm-dual: ## Run dual-boot reinstall Stage A VM rehearsal
+	@VM_BOOTSTRAP=tests/vm-dual-bootstrap.sh FRESH=1 bash stage-a/tests/vm-run.sh
+
 vm-clean: ## Remove ~/arch-vmtest VM images and logs
 	@rm -rf "$${WORK:-$$HOME/arch-vmtest}"
 	@echo "Cleaned $${WORK:-$$HOME/arch-vmtest}"
+
+snapshot: ## Create Snapper root snapshot + check sbctl (DESC=...)
+	@bash system/scripts/snapshot.sh create $${DESC:+"$$DESC"}
+
+rollback: ## Preview or run Snapper rollback (ID=... APPLY=1)
+	@bash system/scripts/snapshot.sh rollback "$${ID:?set ID=<snapshot-number>}" $$([ "$${APPLY:-0}" = 1 ] && echo --apply)
+
+backup: ## Encrypt personal state (~/.ssh, ~/.gnupg, secrets, *.local) to archive (OUT=...)
+	@bash security/scripts/personal-backup.sh backup $${OUT:+"$$OUT"}
+
+restore: ## Preview or restore encrypted personal backup (ARCHIVE=... FORCE=1 DRY=1)
+	@bash security/scripts/personal-backup.sh restore "$${ARCHIVE:?set ARCHIVE=/path/to/backup}" \
+		$$([ "$${DRY:-0}" = 1 ] && echo --dry-run) $$([ "$${FORCE:-0}" = 1 ] && echo --force)
 
 secrets-init: ## Initialize encrypted local machine overrides (~/.config/dotfiles/local.env)
 	@bash security/scripts/secrets-bootstrap.sh init

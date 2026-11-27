@@ -35,6 +35,30 @@ URL_COLLOID_ICONS="https://github.com/vinceliuice/Colloid-icon-theme.git"
 URL_MOREWAITA="https://github.com/somepaulo/MoreWaita.git"
 URL_MARBLE_SHELL="https://github.com/imarkoff/Marble-shell-theme.git"
 
+# Pinned 40-hex upstream commits (refuses drift / floating tips before any install/sudo).
+declare -A REPO_PINS=(
+    ["https://github.com/SakibShahariar/material-bibata-cursor.git"]="efb43c0fa332f4dcc956c8093072b8cdaf0f105d"
+    ["https://github.com/SakibShahariar/material-gnome-theme.git"]="92c64afd547b0706f39ea58675a5bb5e6464f6d9"
+    ["https://github.com/SylEleuth/gruvbox-plus-icon-pack.git"]="208d72b9ca9629896c6d20e398c4da1cdb19da46"
+    ["https://github.com/daniruiz/flat-remix-gnome.git"]="b43c544b54ede3b663cb4bd8062b8da87b0203bb"
+    ["https://github.com/daniruiz/flat-remix-gtk.git"]="919494f4f4ede88e2efb45cd48b98db7cc23f6ee"
+    ["https://github.com/daniruiz/flat-remix.git"]="d9d882860c3284c255898eabf7ba6135960ad38a"
+    ["$URL_MARBLE_SHELL"]="df788bc3d9d2147bcdeaedb907b90ced64f0ad48"
+    ["https://github.com/kayozxo/GNOME-macOS-Tahoe.git"]="6eb17c244fdefb02e81e77128ac5f1be1bb162ee"
+    ["https://github.com/pratap-panabaka/gse-gdm-extension.git"]="02b5c9e1a7469fc8c7fa4f77e0457d5208dd18c8"
+    ["$URL_MOREWAITA"]="fb37f62eceaa9b07d0ad6dfa719ebf38ed6d7921"
+    ["https://github.com/vinceliuice/Colloid-gtk-theme.git"]="fe11342f37f124f1b29d44cf33e9a06053f4bba2"
+    ["$URL_COLLOID_ICONS"]="ceac6608ecd0e40025cbc2ebbd32bf0e0f4ebc6a"
+    ["https://github.com/vinceliuice/Fluent-gtk-theme.git"]="7a49a464b0188c340101c52965c18190b1c694cf"
+    ["https://github.com/vinceliuice/Fluent-icon-theme.git"]="c8a244f571ef8fb47812bdc9dbce76546cedce69"
+    ["https://github.com/vinceliuice/Graphite-gtk-theme.git"]="364173f47407164948788e4abb5e2eb46600f71a"
+    ["https://github.com/vinceliuice/MacTahoe-gtk-theme.git"]="1e45e19f510edb8cde18fa84d6cd5319f60b086b"
+    ["$URL_MACTAHOE_ICONS"]="839848b9a8a38a92a6936e30c4abe35cc6f2546d"
+    ["$URL_WHITESUR_CURSORS"]="e190baf618ed95ee217d2fd45589bd309b37672b"
+    ["https://github.com/vinceliuice/WhiteSur-gtk-theme.git"]="d5782652d412137e26fb8ff55b55a5572e4c6995"
+    ["https://github.com/vinceliuice/WhiteSur-icon-theme.git"]="73d8040da51a9ed74e47c7366e7e9ff437601a5c"
+)
+
 ALL_PACKS=(
     mactahoe
     kayozxo-tahoe
@@ -239,22 +263,34 @@ detect_dir_name() {
 
 clone_or_update() {
     local url=$1 dest=$2
+    local pin="${REPO_PINS[$url]:-}"
     need_cmd git git || return 1
+    if [[ ! $pin =~ ^[0-9a-f]{40}$ ]]; then
+        echo "error: refusing unpinned upstream repo: $url" >&2
+        return 1
+    fi
     if (( DRY_RUN )); then
-        if [[ -d $dest/.git ]]; then
-            printf '[dry-run] git -C %s pull --ff-only\n' "$dest"
-        else
-            printf '[dry-run] git clone --depth=1 %s %s\n' "$url" "$dest"
-        fi
+        printf '[dry-run] git fetch --depth=1 %s %s && checkout --detach (%s)\n' "$url" "$pin" "$dest"
         return 0
     fi
-    mkdir -p "$(dirname "$dest")"
-    if [[ -d $dest/.git ]]; then
-        echo "→ Updating $(basename "$dest")..."
-        git -C "$dest" pull --ff-only || echo "○ git pull skipped (using existing checkout at $dest)"
+    mkdir -p "$dest"
+    if [[ ! -d $dest/.git ]]; then
+        git -C "$dest" init -q
+        git -C "$dest" remote add origin "$url"
     else
-        echo "→ Cloning $url..."
-        git clone --depth=1 "$url" "$dest"
+        git -C "$dest" remote set-url origin "$url"
+    fi
+    local cur=""
+    cur="$(git -C "$dest" rev-parse HEAD 2>/dev/null || true)"
+    if [[ $cur != "$pin" ]]; then
+        echo "→ Fetching $(basename "$dest") @ ${pin:0:12}..."
+        git -C "$dest" fetch --depth=1 origin "$pin"
+        git -C "$dest" checkout -q --detach FETCH_HEAD
+    fi
+    cur="$(git -C "$dest" rev-parse HEAD 2>/dev/null || true)"
+    if [[ $cur != "$pin" ]]; then
+        echo "error: commit pin mismatch for $url (got ${cur:-none}, want $pin)" >&2
+        return 1
     fi
 }
 
@@ -265,7 +301,7 @@ warn_gdm_gresource() {
 
 warn_upstream_sudo() {
     local dir=$1
-    echo "⚠ Running unpinned upstream script under sudo from: $dir"
+    echo "⚠ Running pinned upstream script under sudo from: $dir"
     echo "  Review the checkout before authenticating sudo."
 }
 

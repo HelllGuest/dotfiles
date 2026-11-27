@@ -74,10 +74,24 @@ jobs:
             ai/rules/install.sh ai/rules/bin/agentsync ai/rules/lib/*.sh \
             ai/rules/git-hooks/* stow/git/.config/git/templates/hooks/*
 
+      - name: Desktop launcher validation
+        shell: bash
+        run: |
+          set -euo pipefail
+          if ! command -v desktop-file-validate >/dev/null 2>&1; then
+            sudo apt-get update -qq
+            sudo apt-get install -y -qq desktop-file-utils
+          fi
+          desktop-file-validate stow/applications/.local/share/applications/*.desktop
+
       - name: Script tests
         shell: bash
         run: |
           set -euo pipefail
+          if ! command -v dialog >/dev/null 2>&1 || ! command -v whiptail >/dev/null 2>&1; then
+            sudo apt-get update -qq
+            sudo apt-get install -y -qq dialog whiptail
+          fi
           for t in tests/*.test.sh; do
             bash "$t"
           done
@@ -86,10 +100,6 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          if ! command -v dialog >/dev/null 2>&1 || ! command -v whiptail >/dev/null 2>&1; then
-            sudo apt-get update -qq
-            sudo apt-get install -y -qq dialog whiptail
-          fi
           (
             cd stage-a
             bash tests/host-check.test.sh
