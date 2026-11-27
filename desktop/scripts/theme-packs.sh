@@ -37,7 +37,6 @@ URL_MARBLE_SHELL="https://github.com/imarkoff/Marble-shell-theme.git"
 
 # Pinned 40-hex upstream commits (refuses drift / floating tips before any install/sudo).
 declare -A REPO_PINS=(
-    ["https://github.com/SakibShahariar/material-bibata-cursor.git"]="efb43c0fa332f4dcc956c8093072b8cdaf0f105d"
     ["https://github.com/SakibShahariar/material-gnome-theme.git"]="92c64afd547b0706f39ea58675a5bb5e6464f6d9"
     ["https://github.com/SylEleuth/gruvbox-plus-icon-pack.git"]="208d72b9ca9629896c6d20e398c4da1cdb19da46"
     ["https://github.com/daniruiz/flat-remix-gnome.git"]="b43c544b54ede3b663cb4bd8062b8da87b0203bb"
@@ -58,6 +57,13 @@ declare -A REPO_PINS=(
     ["https://github.com/vinceliuice/WhiteSur-gtk-theme.git"]="d5782652d412137e26fb8ff55b55a5572e4c6995"
     ["https://github.com/vinceliuice/WhiteSur-icon-theme.git"]="73d8040da51a9ed74e47c7366e7e9ff437601a5c"
 )
+
+# Pinned Material-Bibata prebuilt cursor releases (upstream git repo has source only; releases ship Xcursor + GNOME 51 SVG).
+BIBATA_VERSION="v1.5.0"
+BIBATA_URL_DARK="https://github.com/SakibShahariar/material-bibata-cursor/releases/download/${BIBATA_VERSION}/bibata-material-dark-${BIBATA_VERSION}.tar.gz"
+BIBATA_SHA256_DARK="8a0cfddd60787c65a078ce494b5708c1d68f3e576118fde0701949edb40cba04"
+BIBATA_URL_LIGHT="https://github.com/SakibShahariar/material-bibata-cursor/releases/download/${BIBATA_VERSION}/bibata-material-light-${BIBATA_VERSION}.tar.gz"
+BIBATA_SHA256_LIGHT="db8e41025be52abd211de6485cb12b411058f7de811216bc0f495c7b04a1364b"
 
 ALL_PACKS=(
     mactahoe
@@ -124,7 +130,7 @@ kayozxo-tahoe    GNOME-macOS-Tahoe (kayozxo GTK/Libadwaita -la, Shell, MacTahoe 
 whitesur         WhiteSur macOS suite (GTK/Libadwaita, Shell, Icons, Cursors; opt-in GDM/Firefox/Flatpak)
 colloid          Colloid flat/Material suite (GTK/Libadwaita, Shell 48-0 bucket, Icons, Cursors; no native GDM)
 graphite         Graphite flat monochrome suite (GTK/Libadwaita, Shell 48-0 bucket, Colloid-grey Icons/Cursors; opt-in GDM)
-fluent           Fluent rounded suite (GTK/Libadwaita, Shell, Icons, Cursors; opt-in GDM)
+fluent           Fluent rounded suite (GTK/Libadwaita, Shell, Icons, Cursors; no native GDM)
 flat-remix       Flat Remix suite (GNOME Shell ~49, Flat-Remix GTK/Icons, WhiteSur Cursors; opt-in GDM uses sudo)
 material-gnome   Material You / Material 3 suite (GTK/Libadwaita, Shell, MoreWaita Icons, Material-Bibata Cursors)
 modular-adwaita  GNOME 51-safe HIG stack (Marble Shell, adw-gtk3, MoreWaita Icons, WhiteSur Cursors; opt-in GDM)
@@ -208,10 +214,18 @@ act_in() {
 
 need_cmd() {
     local cmd=$1 pkg=${2:-$1}
-    if ! command -v "$cmd" >/dev/null 2>&1; then
-        echo "error: missing required command '$cmd' (install: sudo pacman -S $pkg)" >&2
-        return 1
+    if command -v "$cmd" >/dev/null 2>&1; then
+        return 0
     fi
+    if command -v pacman >/dev/null 2>&1; then
+        confirm_action "privileged install of $pkg via pacman (required for $cmd)" || return 1
+        act sudo pacman -S --needed --noconfirm "$pkg" || return 1
+        if (( DRY_RUN )) || command -v "$cmd" >/dev/null 2>&1; then
+            return 0
+        fi
+    fi
+    echo "error: missing required command '$cmd' (install: sudo pacman -S $pkg)" >&2
+    return 1
 }
 
 have_session_bus() {
@@ -232,6 +246,9 @@ apply_gsettings() {
         echo "○ no session D-Bus — skipped gsettings apply (re-run inside GNOME session)"
         return 0
     fi
+    local scheme="prefer-dark"
+    [[ $OPT_COLOR == light ]] && scheme="default"
+    act gsettings set org.gnome.desktop.interface color-scheme "$scheme"
     if [[ -n $gtk ]]; then act gsettings set org.gnome.desktop.interface gtk-theme "$gtk"; fi
     if [[ -n $icons ]]; then act gsettings set org.gnome.desktop.interface icon-theme "$icons"; fi
     if [[ -n $cursor ]]; then act gsettings set org.gnome.desktop.interface cursor-theme "$cursor"; fi
@@ -381,7 +398,7 @@ any_desktop_pack_installed() {
 # another installed pack's active symlinks.
 remove_gtk4_overrides() {
     local pattern=$1 f tgt
-    for f in "$CONFIG_HOME/gtk-4.0/gtk.css" "$CONFIG_HOME/gtk-4.0/gtk-dark.css" "$CONFIG_HOME/gtk-4.0/assets"; do
+    for f in "$CONFIG_HOME/gtk-4.0/gtk.css" "$CONFIG_HOME/gtk-4.0/gtk-dark.css" "$CONFIG_HOME/gtk-4.0/colors.css" "$CONFIG_HOME/gtk-4.0/assets"; do
         [[ -L $f ]] || continue
         tgt="$(readlink -m "$f" 2>/dev/null || readlink "$f" 2>/dev/null || true)"
         if [[ $tgt == *"$pattern"* ]] \
@@ -415,7 +432,7 @@ install_pack() {
     [[ $OPT_COLOR == light ]] && color_cap="Light"
     local eff_gdm=0 eff_ff=0 eff_fp=0
 
-    if (( OPT_GDM )) && [[ $pack != colloid && $pack != material-gnome && $pack != kayozxo-tahoe ]]; then
+    if (( OPT_GDM )) && [[ $pack != colloid && $pack != fluent && $pack != material-gnome && $pack != kayozxo-tahoe ]]; then
         confirm_action "privileged GDM install for $pack" || return 1
     elif [[ $pack == gse-gdm ]]; then
         confirm_action "privileged install of gse-gdm-extension" || return 1
@@ -444,7 +461,7 @@ install_pack() {
             if (( OPT_GDM )); then
                 warn_gdm_gresource
                 warn_upstream_sudo "$gtk_dir"
-                act_in "$gtk_dir" sudo bash ./tweaks.sh -g
+                act_in "$gtk_dir" sudo bash ./tweaks.sh -g -c "$OPT_COLOR"
                 eff_gdm=1
             fi
             act_in "$icon_dir" bash ./install.sh
@@ -458,6 +475,7 @@ install_pack() {
 
         kayozxo-tahoe)
             need_cmd git git || return 1
+            need_cmd sass dart-sass || return 1
             local theme_dir="$THEME_PACKS_DIR/kayozxo-tahoe/GNOME-macOS-Tahoe"
             local icon_dir="$THEME_PACKS_DIR/shared/MacTahoe-icon-theme"
             local cur_dir="$THEME_PACKS_DIR/shared/WhiteSur-cursors"
@@ -484,7 +502,7 @@ install_pack() {
                 done
             done
             shopt -u nullglob
-            [[ -n $gtk_name ]] || gtk_name="MacOS-Tahoe-${color_cap}"
+            [[ -n $gtk_name ]] || gtk_name="Tahoe-${color_cap}"
             icon_name="$(detect_dir_name "MacTahoe-${OPT_COLOR}*" "$ICONS_DIR" "$HOME/.icons" || echo "MacTahoe-${OPT_COLOR}")"
             apply_gsettings "$gtk_name" "$gtk_name" "$icon_name" "WhiteSur-cursors"
             ;;
@@ -511,7 +529,7 @@ install_pack() {
             if (( OPT_GDM )); then
                 warn_gdm_gresource
                 warn_upstream_sudo "$gtk_dir"
-                act_in "$gtk_dir" sudo bash ./tweaks.sh -g
+                act_in "$gtk_dir" sudo bash ./tweaks.sh -g -c "$OPT_COLOR"
                 eff_gdm=1
             fi
             act_in "$icon_dir" bash ./install.sh
@@ -542,7 +560,7 @@ install_pack() {
             install_vinceliuice_cursors "$icon_dir"
             local gtk_name icon_name cur_name
             gtk_name="$(detect_dir_name "Colloid-${color_cap}*" "$THEMES_DIR" "$LEGACY_THEMES_DIR" || echo "Colloid-${color_cap}")"
-            icon_name="$(detect_dir_name "Colloid-${OPT_COLOR}*" "$ICONS_DIR" "$HOME/.icons" || echo "Colloid-${OPT_COLOR}")"
+            icon_name="$(detect_dir_name "Colloid-${color_cap}*" "$ICONS_DIR" "$HOME/.icons" || echo "Colloid-${color_cap}")"
             cur_name="$(detect_dir_name "Colloid*cursors*" "$ICONS_DIR" "$HOME/.icons" || echo "Colloid-dark-cursors")"
             apply_gsettings "$gtk_name" "$gtk_name" "$icon_name" "$cur_name"
             ;;
@@ -574,17 +592,13 @@ install_pack() {
         fluent)
             need_cmd git git || return 1
             need_cmd sassc sassc || return 1
-            if (( OPT_GDM )); then need_cmd glib-compile-resources glib2 || return 1; fi
             local gtk_dir="$THEME_PACKS_DIR/fluent/Fluent-gtk-theme"
             local icon_dir="$THEME_PACKS_DIR/fluent/Fluent-icon-theme"
             clone_or_update "https://github.com/vinceliuice/Fluent-gtk-theme.git" "$gtk_dir"
             clone_or_update "https://github.com/vinceliuice/Fluent-icon-theme.git" "$icon_dir"
             act_in "$gtk_dir" bash ./install.sh -c "$OPT_COLOR" -l
             if (( OPT_GDM )); then
-                warn_gdm_gresource
-                warn_upstream_sudo "$gtk_dir"
-                act_in "$gtk_dir" sudo bash ./install.sh -c "$OPT_COLOR" -g
-                eff_gdm=1
+                echo "○ Fluent has no built-in GDM patcher — use '--install gse-gdm' or '--install gdm-settings' for GDM."
             fi
             act_in "$icon_dir" bash ./install.sh
             install_vinceliuice_cursors "$icon_dir"
@@ -597,11 +611,10 @@ install_pack() {
 
         flat-remix)
             need_cmd git git || return 1
-            need_cmd make make || return 1
-            need_cmd glib-compile-resources glib2 || return 1
-            if ! command -v magick >/dev/null 2>&1 && ! command -v convert >/dev/null 2>&1; then
-                echo "error: missing required command 'magick'/'convert' (install: sudo pacman -S imagemagick)" >&2
-                return 1
+            if (( OPT_GDM )); then
+                need_cmd make make || return 1
+                need_cmd glib-compile-resources glib2 || return 1
+                need_cmd convert imagemagick || return 1
             fi
             local shell_dir="$THEME_PACKS_DIR/flat-remix/flat-remix-gnome"
             local gtk_dir="$THEME_PACKS_DIR/flat-remix/flat-remix-gtk"
@@ -611,9 +624,9 @@ install_pack() {
             clone_or_update "https://github.com/daniruiz/flat-remix-gtk.git" "$gtk_dir"
             clone_or_update "https://github.com/daniruiz/flat-remix.git" "$icon_dir"
             clone_or_update "$URL_WHITESUR_CURSORS" "$cur_dir"
-            act_in "$shell_dir" make
             act mkdir -p "$THEMES_DIR" "$ICONS_DIR"
             if (( OPT_GDM )); then
+                act_in "$shell_dir" make
                 warn_gdm_gresource
                 warn_upstream_sudo "$shell_dir"
                 act_in "$shell_dir" sudo make install
@@ -644,7 +657,7 @@ install_pack() {
             act_in "$cur_dir" bash ./install.sh
             local gtk_name="Flat-Remix-GTK-Blue-Dark" shell_name="Flat-Remix-Dark" icon_name="Flat-Remix-Blue-Dark"
             if [[ $OPT_COLOR == light ]]; then
-                gtk_name="Flat-Remix-GTK-Blue"
+                gtk_name="Flat-Remix-GTK-Blue-Light"
                 shell_name="Flat-Remix-Light"
                 icon_name="Flat-Remix-Blue-Light"
             fi
@@ -653,11 +666,12 @@ install_pack() {
 
         material-gnome)
             need_cmd git git || return 1
+            need_cmd curl curl || return 1
+            need_cmd tar tar || return 1
+            need_cmd sha256sum coreutils || return 1
             local theme_dir="$THEME_PACKS_DIR/material-gnome/material-gnome-theme"
-            local cur_dir="$THEME_PACKS_DIR/material-gnome/material-bibata-cursor"
             local icon_dir="$THEME_PACKS_DIR/shared/MoreWaita"
             clone_or_update "https://github.com/SakibShahariar/material-gnome-theme.git" "$theme_dir"
-            clone_or_update "https://github.com/SakibShahariar/material-bibata-cursor.git" "$cur_dir"
             clone_or_update "$URL_MOREWAITA" "$icon_dir"
             local args=(--force)
             if (( OPT_FLATPAK )); then
@@ -669,22 +683,33 @@ install_pack() {
                 echo "○ Material-Gnome has no built-in GDM patcher — use '--install gse-gdm' or '--install gdm-settings' for GDM."
             fi
             act_in "$icon_dir" bash ./install.sh
-            if [[ -f $cur_dir/install.sh ]]; then
-                act_in "$cur_dir" bash ./install.sh
+            local bibata_url="$BIBATA_URL_DARK" bibata_sha="$BIBATA_SHA256_DARK" bibata_want="Bibata-Material-Grey"
+            if [[ $OPT_COLOR == light ]]; then
+                bibata_url="$BIBATA_URL_LIGHT"
+                bibata_sha="$BIBATA_SHA256_LIGHT"
+                bibata_want="Bibata-Material-Grey-Light"
+            fi
+            local bibata_tgz="$THEME_PACKS_DIR/material-gnome/${bibata_url##*/}"
+            act mkdir -p "$THEME_PACKS_DIR/material-gnome" "$ICONS_DIR"
+            if (( DRY_RUN )); then
+                printf '[dry-run] curl -fsSL %s -o %s (sha256=%s) && extract %s -> %s\n' \
+                    "$bibata_url" "$bibata_tgz" "${bibata_sha:0:12}" "$bibata_want" "$ICONS_DIR"
             else
-                act mkdir -p "$ICONS_DIR"
-                shopt -s nullglob
-                local c
-                for c in "$cur_dir"/*Bibata* "$cur_dir"/themes/*; do
-                    if [[ -d $c && -d $c/cursors ]]; then
-                        act cp -a "$c" "$ICONS_DIR/"
+                if [[ ! -f $bibata_tgz ]] || ! printf '%s  %s\n' "$bibata_sha" "$bibata_tgz" | sha256sum -c --status; then
+                    echo "→ Fetching $(basename "$bibata_url")..."
+                    curl -fsSL "$bibata_url" -o "$bibata_tgz"
+                    if ! printf '%s  %s\n' "$bibata_sha" "$bibata_tgz" | sha256sum -c --status; then
+                        rm -f -- "$bibata_tgz"
+                        echo "error: sha256 mismatch for $bibata_url (want $bibata_sha)" >&2
+                        return 1
                     fi
-                done
-                shopt -u nullglob
+                fi
+                tar -xzf "$bibata_tgz" -C "$ICONS_DIR" --strip-components=1 --wildcards "*/${bibata_want}" \
+                    || tar -xzf "$bibata_tgz" -C "$ICONS_DIR" --strip-components=1
             fi
             local gtk_name cur_name
             gtk_name="$(detect_dir_name "Material-Gnome*" "$THEMES_DIR" "$LEGACY_THEMES_DIR" || echo "Material-Gnome")"
-            cur_name="$(detect_dir_name "*Bibata*" "$ICONS_DIR" "$HOME/.icons" || echo "Adwaita")"
+            cur_name="$(detect_dir_name "Bibata-Material*" "$ICONS_DIR" "$HOME/.icons" || echo "$bibata_want")"
             apply_gsettings "$gtk_name" "$gtk_name" "MoreWaita" "$cur_name"
             ;;
 
@@ -703,7 +728,7 @@ install_pack() {
             if (( OPT_GDM )); then
                 warn_gdm_gresource
                 warn_upstream_sudo "$shell_dir"
-                act_in "$shell_dir" sudo python3 install.py --gdm
+                act_in "$shell_dir" sudo python3 install.py --blue --filled --mode "$OPT_COLOR" --gdm
                 eff_gdm=1
             fi
             act_in "$icon_dir" bash ./install.sh
@@ -729,7 +754,7 @@ install_pack() {
             if (( OPT_GDM )); then
                 warn_gdm_gresource
                 warn_upstream_sudo "$shell_dir"
-                act_in "$shell_dir" sudo python3 install.py --gdm
+                act_in "$shell_dir" sudo python3 install.py --yellow --filled --mode "$OPT_COLOR" --gdm
                 eff_gdm=1
             fi
             act mkdir -p "$ICONS_DIR"
@@ -751,10 +776,8 @@ install_pack() {
 
         gse-gdm)
             need_cmd git git || return 1
-            need_cmd zip zip || return 1
-            need_cmd unzip unzip || return 1
             need_cmd dconf dconf || return 1
-            need_cmd glib-compile-schemas glib2 || return 1
+            need_cmd gnome-shell gnome-shell || return 1
             local gdm_dir="$THEME_PACKS_DIR/gse-gdm/gse-gdm-extension"
             clone_or_update "https://github.com/pratap-panabaka/gse-gdm-extension.git" "$gdm_dir"
             warn_upstream_sudo "$gdm_dir"
@@ -783,7 +806,7 @@ uninstall_pack() {
     if (( OPT_FIREFOX )); then had_ff=1; fi
     if (( OPT_FLATPAK )); then had_fp=1; fi
 
-    if [[ $pack == gse-gdm ]] || { (( had_gdm )) && [[ $pack != colloid && $pack != material-gnome && $pack != kayozxo-tahoe && $pack != gdm-settings ]]; }; then
+    if [[ $pack == gse-gdm ]] || { (( had_gdm )) && [[ $pack != colloid && $pack != fluent && $pack != material-gnome && $pack != kayozxo-tahoe && $pack != gdm-settings ]]; }; then
         confirm_action "privileged GDM uninstall for $pack" || return 1
     fi
 
@@ -819,8 +842,17 @@ uninstall_pack() {
             local theme_dir="$THEME_PACKS_DIR/kayozxo-tahoe/GNOME-macOS-Tahoe"
             local icon_dir="$THEME_PACKS_DIR/shared/MacTahoe-icon-theme"
             local cur_dir="$THEME_PACKS_DIR/shared/WhiteSur-cursors"
-            if [[ -f $theme_dir/install.sh || $DRY_RUN -eq 1 ]]; then
-                act_in "$theme_dir" bash ./install.sh -u
+            # kayozxo -u wipes ~/.config/gtk-4.0/gtk.css unconditionally; only run it
+            # when gtk.css is not a symlink owned by another theme (e.g. MacTahoe).
+            local _kz_gtk4_other=0 _kz_tgt=""
+            if [[ -L $CONFIG_HOME/gtk-4.0/gtk.css ]]; then
+                _kz_tgt="$(readlink -m "$CONFIG_HOME/gtk-4.0/gtk.css" 2>/dev/null || true)"
+                if [[ $_kz_tgt != */Tahoe-* ]]; then
+                    _kz_gtk4_other=1
+                fi
+            fi
+            if (( ! _kz_gtk4_other )) && [[ -f $theme_dir/install.sh || $DRY_RUN -eq 1 ]]; then
+                act_in "$theme_dir" bash -c 'printf "y\n" | bash ./install.sh -u'
             fi
             shopt -s nullglob
             local d
@@ -841,7 +873,7 @@ uninstall_pack() {
                 act rm -rf -- "$cur_dir"
             fi
             shopt -u nullglob
-            remove_gtk4_overrides "MacOS-Tahoe"
+            remove_gtk4_overrides "/Tahoe-"
             act rm -rf -- "$THEME_PACKS_DIR/kayozxo-tahoe"
             ;;
 
@@ -928,11 +960,10 @@ uninstall_pack() {
             local gtk_dir="$THEME_PACKS_DIR/fluent/Fluent-gtk-theme"
             if [[ -f $gtk_dir/install.sh || $DRY_RUN -eq 1 ]]; then
                 act_in "$gtk_dir" bash ./install.sh -u
-                if (( had_gdm )); then act_in "$gtk_dir" sudo bash ./install.sh -u -g; fi
             fi
             shopt -s nullglob
             local d
-            for d in "$THEMES_DIR"/Fluent* "$LEGACY_THEMES_DIR"/Fluent* "$ICONS_DIR"/Fluent* "$HOME/.icons"/Fluent*; do
+            for d in "$THEMES_DIR"/Fluent* "$LEGACY_THEMES_DIR"/Fluent* "$ICONS_DIR"/Fluent* "$ICONS_DIR"/.Fluent-* "$HOME/.icons"/Fluent* "$HOME/.icons"/.Fluent-*; do
                 act rm -rf -- "$d"
             done
             shopt -u nullglob
@@ -965,7 +996,7 @@ uninstall_pack() {
             local icon_dir="$THEME_PACKS_DIR/shared/MoreWaita"
             shopt -s nullglob
             local d
-            for d in "$THEMES_DIR"/Material-Gnome* "$LEGACY_THEMES_DIR"/Material-Gnome* "$ICONS_DIR"/*Material*Bibata* "$HOME/.icons"/*Material*Bibata*; do
+            for d in "$THEMES_DIR"/Material-Gnome* "$LEGACY_THEMES_DIR"/Material-Gnome* "$ICONS_DIR"/Bibata-Material-* "$HOME/.icons"/Bibata-Material-*; do
                 act rm -rf -- "$d"
             done
             shopt -u nullglob
@@ -1051,11 +1082,16 @@ uninstall_pack() {
             ;;
     esac
 
+    local had_color
+    had_color="$(state_val "$pack" color || echo dark)"
     act rm -f -- "$STATE_DIR/$pack"
 
     if [[ $pack != gse-gdm && $pack != gdm-settings ]] && ! any_desktop_pack_installed; then
         if have_session_bus && [[ -f $REPO_ROOT/desktop/scripts/theme-setup.sh ]]; then
             echo "→ No theme pack active; restoring stock Adwaita..."
+            if [[ $had_color == light ]] && command -v gsettings >/dev/null 2>&1; then
+                act gsettings set org.gnome.desktop.interface color-scheme prefer-dark
+            fi
             act bash "$REPO_ROOT/desktop/scripts/theme-setup.sh"
         fi
     fi

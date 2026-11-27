@@ -20,8 +20,8 @@ done
 
 # GNOME Console (kgx) — dark + monospace (no Stow path for dconf)
 if command -v gsettings >/dev/null 2>&1; then
-  gsettings set org.gnome.Console theme "'night'" 2>/dev/null || true
-  gsettings set org.gnome.Console custom-font "'JetBrainsMono Nerd Font 13'" 2>/dev/null || true
+  gsettings set org.gnome.Console theme night 2>/dev/null || true
+  gsettings set org.gnome.Console custom-font "JetBrainsMono Nerd Font 13" 2>/dev/null || true
   gsettings set org.gnome.Console use-system-font false 2>/dev/null || true
   # Never show notifications on lock screen
   gsettings set org.gnome.desktop.notifications show-in-lock-screen false 2>/dev/null || true

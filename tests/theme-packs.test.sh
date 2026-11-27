@@ -42,11 +42,29 @@ CACHE="$H/.local/share/dotfiles/theme-packs"
 mkdir -p "$H/.local/share/icons" "$H/.local/share/themes" "$H/.config/gtk-4.0" "$B"
 : >"$LOG"
 
-# Stub build-tool deps (sassc, glib-compile-resources, magick, zip, unzip, dconf, glib-compile-schemas)
-for _dep in sassc glib-compile-resources magick zip unzip dconf glib-compile-schemas; do
+# Stub build-tool deps (sassc, sass, glib-compile-resources, convert, dconf, gnome-shell)
+for _dep in sassc sass glib-compile-resources convert dconf gnome-shell; do
     printf '#!/bin/sh\nexit 0\n' >"$B/$_dep"
 done
 printf '#!/bin/sh\necho "make \$*" >>"%s"\nexit 0\n' "$LOG" >"$B/make"
+# Stub curl to build a real minimal Bibata-Material tar.gz when fetching release archives
+cat >"$B/curl" <<'CU'
+#!/usr/bin/env bash
+out=""
+while (($#)); do
+    case $1 in -o) out=$2; shift 2 ;; *) shift ;; esac
+done
+d="$(mktemp -d)"
+mkdir -p "$d/bibata-material-dark-v1.5.0/Bibata-Material-Grey/cursors" \
+         "$d/bibata-material-dark-v1.5.0/Bibata-Material-Grey-Light/cursors"
+tar -czf "$out" -C "$d" bibata-material-dark-v1.5.0
+rm -rf "$d"
+CU
+cat >"$B/sha256sum" <<'SH'
+#!/usr/bin/env bash
+[[ ${FAKE_BIBATA_BAD_SHA:-0} == 1 ]] && exit 1
+exit 0
+SH
 unset _dep
 
 # Stub git: handles pinned init/remote/fetch/checkout/rev-parse and creates fake upstream repos
@@ -126,11 +144,11 @@ KT
             mkdir -p "\$dest/Flat-Remix-Blue-Dark"
             ;;
         *Fluent-gtk-theme)
-            # Fluent uses -u (not -r) for uninstall
+            # Fluent uses -u (not -r) for uninstall and has NO -g/--gdm flag
             cat >"\$dest/install.sh" <<'FL'
 #!/usr/bin/env bash
 for a in "\$@"; do
-    [[ \$a == -r ]] && { echo "Fluent-gtk-theme does not accept -r" >&2; exit 2; }
+    [[ \$a == -r || \$a == -g || \$a == --gdm ]] && { echo "Fluent-gtk-theme does not accept \$a" >&2; exit 2; }
 done
 echo "gtk-install \$(basename "\$PWD") \$*" >>"$LOG"
 FL
@@ -141,7 +159,7 @@ FL
             chmod +x "\$dest/install.sh"
             ;;
         *Fluent-icon-theme)
-            # Fluent-icon-theme has no -r/-u flag
+            # Fluent-icon-theme has no -r/-u flag and creates hidden .Fluent-dark-base
             mkdir -p "\$dest/cursors"
             cat >"\$dest/install.sh" <<'FI'
 #!/usr/bin/env bash
@@ -149,16 +167,27 @@ for a in "\$@"; do
     [[ \$a == -r || \$a == -u ]] && { echo "Fluent-icon-theme does not accept \$a" >&2; exit 2; }
 done
 echo "icon-install \$(basename "\$PWD") \$*" >>"$LOG"
+mkdir -p "\$HOME/.local/share/icons/Fluent-dark" "\$HOME/.local/share/icons/.Fluent-dark-base"
 FI
             printf '#!/bin/sh\necho "cursor-install \$(basename "\$(dirname "\$PWD")") \$*" >>"%s"\n' "$LOG" >"\$dest/cursors/install.sh"
             chmod +x "\$dest/install.sh" "\$dest/cursors/install.sh"
             ;;
-        *MacTahoe-icon-theme|*Colloid-icon-theme)
+        *MacTahoe-icon-theme)
             mkdir -p "\$dest/cursors"
             cat >"\$dest/install.sh" <<'IC'
 #!/usr/bin/env bash
 echo "icon-install \$(basename "\$PWD") \$*" >>"$LOG"
-mkdir -p "\$HOME/.local/share/icons/\$(basename "\$PWD" -icon-theme)-dark"
+mkdir -p "\$HOME/.local/share/icons/MacTahoe-dark"
+IC
+            printf '#!/bin/sh\necho "cursor-install \$(basename "\$(dirname "\$PWD")") \$*" >>"%s"\n' "$LOG" >"\$dest/cursors/install.sh"
+            chmod +x "\$dest/install.sh" "\$dest/cursors/install.sh"
+            ;;
+        *Colloid-icon-theme)
+            mkdir -p "\$dest/cursors"
+            cat >"\$dest/install.sh" <<'IC'
+#!/usr/bin/env bash
+echo "icon-install \$(basename "\$PWD") \$*" >>"$LOG"
+mkdir -p "\$HOME/.local/share/icons/Colloid-Dark" "\$HOME/.local/share/icons/Colloid-Grey-Dark"
 IC
             printf '#!/bin/sh\necho "cursor-install \$(basename "\$(dirname "\$PWD")") \$*" >>"%s"\n' "$LOG" >"\$dest/cursors/install.sh"
             chmod +x "\$dest/install.sh" "\$dest/cursors/install.sh"
@@ -318,7 +347,7 @@ run_tp --install mactahoe --gdm --firefox --flatpak -y >/dev/null
 grep -q 'gtk-install MacTahoe-gtk-theme -c dark -l' "$LOG" || fail "mactahoe must install GTK/Libadwaita"
 grep -q 'gtk-tweaks MacTahoe-gtk-theme -F' "$LOG" || fail "mactahoe --flatpak must invoke tweaks.sh -F"
 grep -q 'gtk-tweaks MacTahoe-gtk-theme -f' "$LOG" || fail "mactahoe --firefox must invoke tweaks.sh -f"
-grep -q 'sudo bash ./tweaks.sh -g' "$LOG" || fail "mactahoe --gdm must invoke sudo tweaks.sh -g"
+grep -q 'sudo bash ./tweaks.sh -g -c dark' "$LOG" || fail "mactahoe --gdm must invoke sudo tweaks.sh -g -c dark"
 grep -q 'icon-install MacTahoe-icon-theme' "$LOG" || fail "mactahoe must install icons"
 grep -q 'cursor-install MacTahoe-icon-theme' "$LOG" || fail "mactahoe must install cursors"
 grep -q 'gsettings set org.gnome.desktop.interface gtk-theme MacTahoe-Dark' "$LOG" || fail "mactahoe must set gtk-theme"
@@ -346,24 +375,28 @@ grep -q 'theme-setup-adwaita' "$LOG" || fail "uninstalling last pack must restor
     || fail "uninstall must preserve other theme gtk-4.0 symlink"
 rm -f "$H/.config/gtk-4.0/gtk.css" "$H/.config/gtk-4.0/assets"
 
-# 3) Fluent GDM uninstall must use -u -g (stub rejects -r); Colloid ignores --gdm in state
+# 3) Fluent has no GDM (-g rejected by stub), cleans .Fluent-dark-base; Colloid sets capitalized Colloid-Dark icons
 : >"$LOG"
-run_tp --install fluent --gdm -y >/dev/null
-run_tp --uninstall fluent -y >/dev/null
+run_tp --install fluent --gdm >/dev/null
+grep -qx 'gdm=0' "$CACHE/.installed/fluent" || fail "fluent state must record gdm=0 (no native GDM)"
+[[ -d "$H/.local/share/icons/.Fluent-dark-base" ]] || fail "fluent stub must create .Fluent-dark-base"
+run_tp --uninstall fluent >/dev/null
 grep -q 'gtk-install Fluent-gtk-theme -u' "$LOG" || fail "fluent uninstall must use -u"
-grep -q 'sudo bash ./install.sh -u -g' "$LOG" || fail "fluent GDM uninstall must use -u -g"
+[[ ! -d "$H/.local/share/icons/.Fluent-dark-base" ]] || fail "fluent uninstall must clean hidden .Fluent-dark-base"
 
 : >"$LOG"
 run_tp --install colloid --gdm >/dev/null
 grep -qx 'gdm=0' "$CACHE/.installed/colloid" || fail "colloid state must record gdm=0 when GDM unsupported"
+grep -q 'gsettings set org.gnome.desktop.interface icon-theme Colloid-Dark' "$LOG" \
+    || fail "colloid must set capitalized Colloid-Dark icon theme"
 
 # 4) Shared-asset preservation: colloid + graphite share Colloid-icon-theme
 run_tp --install graphite >/dev/null
-[[ -d "$H/.local/share/icons/Colloid-dark" ]] || fail "Colloid icons must be installed"
+[[ -d "$H/.local/share/icons/Colloid-Dark" ]] || fail "Colloid icons must be installed"
 run_tp --uninstall colloid >/dev/null
-[[ -d "$H/.local/share/icons/Colloid-dark" ]] || fail "uninstalling colloid while graphite installed must keep Colloid icons"
+[[ -d "$H/.local/share/icons/Colloid-Dark" ]] || fail "uninstalling colloid while graphite installed must keep Colloid icons"
 run_tp --uninstall graphite >/dev/null
-[[ ! -d "$H/.local/share/icons/Colloid-dark" ]] || fail "uninstalling last Colloid-icon user must remove Colloid icons"
+[[ ! -d "$H/.local/share/icons/Colloid-Dark" ]] || fail "uninstalling last Colloid-icon user must remove Colloid icons"
 
 # 4b) Shared MacTahoe icons + theme-name collision guard (mactahoe + kayozxo-tahoe)
 mkdir -p "$H/.local/share/themes/MacTahoe-Dark/gtk-4.0"
@@ -383,20 +416,52 @@ run_tp --uninstall mactahoe >/dev/null
 [[ ! -d "$H/.local/share/icons/MacTahoe-dark" && ! -L "$H/.config/gtk-4.0/gtk.css" ]] \
     || fail "uninstalling last MacTahoe user must clean icons and gtk-4.0 symlink"
 
-# 4c) flat-remix without --gdm must NOT invoke sudo; with --gdm MUST run sudo make install/uninstall
+# 4c) flat-remix without --gdm must NOT invoke make/sudo; light variant uses Flat-Remix-GTK-Blue-Light + color-scheme default
 : >"$LOG"
-run_tp --install flat-remix >/dev/null
-! grep -q 'sudo make' "$LOG" || fail "flat-remix without --gdm must not invoke sudo make"
+run_tp --install flat-remix --color light >/dev/null
+! grep -q '^make\|sudo make' "$LOG" || fail "flat-remix without --gdm must not invoke make or sudo make"
+grep -q 'gsettings set org.gnome.desktop.interface gtk-theme Flat-Remix-GTK-Blue-Light' "$LOG" \
+    || fail "flat-remix --color light must set Flat-Remix-GTK-Blue-Light"
+grep -q 'gsettings set org.gnome.desktop.interface color-scheme default' "$LOG" \
+    || fail "--color light must set color-scheme default"
 [[ -d "$H/.local/share/themes/Flat-Remix-Dark" && -d "$H/.local/share/themes/Flat-Remix-GTK-Blue-Dark" ]] \
     || fail "flat-remix user install must copy shell and root-level GTK themes"
 run_tp --uninstall flat-remix >/dev/null
 ! grep -q 'sudo make uninstall' "$LOG" || fail "flat-remix uninstall without GDM must not invoke sudo make uninstall"
+grep -q 'gsettings set org.gnome.desktop.interface color-scheme prefer-dark' "$LOG" \
+    || fail "uninstalling last light pack must restore color-scheme prefer-dark"
+
+# 4d) material-gnome extracts Bibata-Material cursor, cleans colors.css symlink, and rejects bad SHA-256
+mkdir -p "$H/.themes/Material-Gnome/gtk-4.0"
+: >"$H/.themes/Material-Gnome/gtk-4.0/colors.css"
+ln -sfn "$H/.themes/Material-Gnome/gtk-4.0/colors.css" "$H/.config/gtk-4.0/colors.css"
+rc=0; FAKE_BIBATA_BAD_SHA=1 run_tp --install material-gnome >/dev/null 2>&1 || rc=$?
+[[ $rc -ne 0 ]] || fail "material-gnome must fail closed on Bibata SHA-256 mismatch"
+: >"$LOG"
+run_tp --install material-gnome >/dev/null
+[[ -d "$H/.local/share/icons/Bibata-Material-Grey" ]] || fail "material-gnome must extract Bibata-Material-Grey cursor"
+grep -q 'gsettings set org.gnome.desktop.interface cursor-theme Bibata-Material-Grey' "$LOG" \
+    || fail "material-gnome must set cursor-theme Bibata-Material-Grey"
+run_tp --uninstall material-gnome >/dev/null
+[[ ! -d "$H/.local/share/icons/Bibata-Material-Grey" && ! -L "$H/.config/gtk-4.0/colors.css" ]] \
+    || fail "material-gnome uninstall must remove Bibata-Material-* and gtk-4.0/colors.css symlink"
 
 : >"$LOG"
 run_tp --install flat-remix --gdm -y >/dev/null
 grep -q 'sudo make install' "$LOG" || fail "flat-remix --gdm must run sudo make install"
 run_tp --uninstall flat-remix -y >/dev/null
 grep -q 'sudo make uninstall' "$LOG" || fail "flat-remix --gdm uninstall must run sudo make uninstall"
+
+# 4e) Marble --gdm must pass accent color (--blue / --yellow) or Marble install.py raises an exception
+: >"$LOG"
+run_tp --install modular-adwaita --gdm -y >/dev/null
+grep -q 'sudo python3 install.py --blue --filled --mode dark --gdm' "$LOG" \
+    || fail "modular-adwaita --gdm must pass --blue --filled --mode dark --gdm"
+run_tp --install modular-gruvbox --gdm -y >/dev/null
+grep -q 'sudo python3 install.py --yellow --filled --mode dark --gdm' "$LOG" \
+    || fail "modular-gruvbox --gdm must pass --yellow --filled --mode dark --gdm"
+run_tp --uninstall modular-adwaita -y >/dev/null
+run_tp --uninstall modular-gruvbox -y >/dev/null
 
 # 5) Install + uninstall remaining packs (incl. kayozxo-tahoe + flat-remix)
 for _p in kayozxo-tahoe flat-remix whitesur material-gnome modular-adwaita modular-gruvbox gse-gdm gdm-settings; do
@@ -448,8 +513,8 @@ grep -q 'gse-install' "$LOG" && grep -q 'gse-uninstall' "$LOG" \
 grep -q 'theme-setup-adwaita' "$LOG" || fail "GUI adwaita action must run theme-setup.sh"
 
 # 10) Every upstream GitHub repo URL in theme-packs.sh must be 40-hex commit-pinned,
-# and commit pin mismatch must fail closed.
-python3 - "$SCRIPT" <<'PY' || fail "theme-packs.sh has unpinned GitHub repo URL"
+# release archives must be 64-hex SHA-256 pinned, and commit pin mismatch must fail closed.
+python3 - "$SCRIPT" <<'PY' || fail "theme-packs.sh has unpinned upstream repo or archive"
 import re, sys
 from pathlib import Path
 t = Path(sys.argv[1]).read_text()
@@ -459,6 +524,8 @@ var_urls = dict(re.findall(r'^(URL_[A-Z_]+)="([^"]+)"', t, re.M))
 resolved = {var_urls.get(k[1:], k) if k.startswith("$") else k: v for k, v in pins.items()}
 missing = [u for u in urls if u not in resolved]
 assert not missing, f"unpinned URLs: {missing}"
+for name in ("BIBATA_SHA256_DARK", "BIBATA_SHA256_LIGHT"):
+    assert re.search(rf'^{name}="[0-9a-f]{{64}}"$', t, re.M), f"missing/invalid 64-hex {name}"
 PY
 rc=0
 FAKE_GIT_BAD_HEAD=1 run_tp --install fluent -y >/dev/null 2>&1 || rc=$?
@@ -473,7 +540,7 @@ if command -v git >/dev/null 2>&1; then
     git -C "$_rsrc" config user.name "Test"
     printf 'ok\n' >"$_rsrc/marker"
     git -C "$_rsrc" add marker
-    git -C "$_rsrc" commit -q -m "init"
+    git -C "$_rsrc" -c core.hooksPath=/dev/null -c commit.gpgsign=false commit -q -m "init"
     _pin="$(git -C "$_rsrc" rev-parse HEAD)"
     _clone_fn="$(awk '/^clone_or_update\(\)/{f=1} f{print} f&&/^}$/{exit}' "$SCRIPT")"
     bash -euo pipefail -c "
