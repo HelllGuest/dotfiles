@@ -111,7 +111,8 @@ ${_rec_open}    ${RECOVERY_MOUNT}
   Charge thresholds (ThinkPad BAT* only; skip/absent on VM):
     cat /sys/class/power_supply/BAT0/charge_control_*_threshold
     (expect 70 / 80; oneshot thinkpad-charge-thresholds.service + tmpfiles)
-${EXTRA_HINTS}  Full install log: /var/log/t14s-install.log (root only)
+${EXTRA_HINTS}  Stage B dotfiles: git clone https://github.com/HelllGuest/dotfiles ~/dotfiles && cd ~/dotfiles && ./install.sh
+  Full install log: /var/log/t14s-install.log (root only)
   ${FLATPAK_HINT}"
 if [[ -n $INSTALL_WARNINGS ]]; then
   POST_TXT+="
