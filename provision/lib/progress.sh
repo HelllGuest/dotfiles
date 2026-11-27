@@ -19,24 +19,33 @@ ui_bar() {
   printf '[%s]' "$bar"
 }
 
-# progress_line CUR TOTAL LABEL — one TTY status line with bar.
+# progress_line CUR TOTAL LABEL — one TTY status line with bar (ANSI color on TTY unless NO_COLOR or TERM=dumb).
 progress_line() {
-  local cur=${1:-0} tot=${2:-1} label=${3:-} pct=0
+  local cur=${1:-0} tot=${2:-1} label=${3:-} pct=0 bar c_bar="" c_cnt="" c_lbl="" c0=""
   [[ $cur =~ ^[0-9]+$ ]] || cur=0
   [[ $tot =~ ^[1-9][0-9]*$ ]] || tot=1
   (( cur > tot )) && cur=$tot
   pct=$(( cur * 100 / tot ))
-  if [[ -t 2 || -w /dev/tty ]]; then
-    printf '%s %d/%d · %s\n' "$(ui_bar "$pct" 20)" "$cur" "$tot" "$label" >/dev/tty 2>/dev/null \
-      || printf '%s %d/%d · %s\n' "$(ui_bar "$pct" 20)" "$cur" "$tot" "$label" >&2
-  else
-    printf '%s %d/%d · %s\n' "$(ui_bar "$pct" 20)" "$cur" "$tot" "$label" >&2
+  bar="$(ui_bar "$pct" 20)"
+  if [[ -w /dev/tty ]] && {
+    if [[ -z ${NO_COLOR:-} && ${TERM:-} != dumb ]]; then
+      c_bar=$'\e[0m' c_cnt=$'\e[2m' c_lbl=$'\e[1m' c0=$'\e[0m'
+    fi
+    printf '%s%s%s %s%d/%d%s · %s%s%s\n' "$c_bar" "$bar" "$c0" "$c_cnt" "$cur" "$tot" "$c0" "$c_lbl" "$label" "$c0" >/dev/tty 2>/dev/null
+  }; then
+    return 0
   fi
+  if [[ -t 2 && -z ${NO_COLOR:-} && ${TERM:-} != dumb ]]; then
+    c_bar=$'\e[0m' c_cnt=$'\e[2m' c_lbl=$'\e[1m' c0=$'\e[0m'
+  else
+    c_bar="" c_cnt="" c_lbl="" c0=""
+  fi
+  printf '%s%s%s %s%d/%d%s · %s%s%s\n' "$c_bar" "$bar" "$c0" "$c_cnt" "$cur" "$tot" "$c0" "$c_lbl" "$label" "$c0" >&2
 }
 
-# progress_banner LABEL — box header for a long module (UTF-8 or ASCII).
+# progress_banner LABEL — box header for a long module (UTF-8 or ASCII; ANSI color on TTY unless NO_COLOR or TERM=dumb).
 progress_banner() {
-  local label=${1:-} top bot mid
+  local label=${1:-} top bot mid c_box="" c_ttl="" c0=""
   if [[ ${LC_ALL:-${LC_CTYPE:-${LANG:-}}} == *UTF-8* ]]; then
     top='────────────────────────────────────────────────────────'
     bot=$top
@@ -46,13 +55,24 @@ progress_banner() {
     bot=$top
     mid='|'
   fi
-  {
-    printf '\n%s\n' "$top"
-    printf '%s %s\n' "$mid" "$label"
-    printf '%s\n\n' "$bot"
-  } >/dev/tty 2>/dev/null || {
-    printf '\n%s\n' "$top" >&2
-    printf '%s %s\n' "$mid" "$label" >&2
-    printf '%s\n\n' "$bot" >&2
-  }
+  if [[ -w /dev/tty ]] && {
+    if [[ -z ${NO_COLOR:-} && ${TERM:-} != dumb ]]; then
+      c_box=$'\e[2m' c_ttl=$'\e[1m' c0=$'\e[0m'
+    fi
+    {
+      printf '\n%s%s%s\n' "$c_box" "$top" "$c0"
+      printf '%s%s%s %s%s%s\n' "$c_box" "$mid" "$c0" "$c_ttl" "$label" "$c0"
+      printf '%s%s%s\n\n' "$c_box" "$bot" "$c0"
+    } >/dev/tty 2>/dev/null
+  }; then
+    return 0
+  fi
+  if [[ -t 2 && -z ${NO_COLOR:-} && ${TERM:-} != dumb ]]; then
+    c_box=$'\e[2m' c_ttl=$'\e[1m' c0=$'\e[0m'
+  else
+    c_box="" c_ttl="" c0=""
+  fi
+  printf '\n%s%s%s\n' "$c_box" "$top" "$c0" >&2
+  printf '%s%s%s %s%s%s\n' "$c_box" "$mid" "$c0" "$c_ttl" "$label" "$c0" >&2
+  printf '%s%s%s\n\n' "$c_box" "$bot" "$c0" >&2
 }

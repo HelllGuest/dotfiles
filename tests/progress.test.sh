@@ -51,8 +51,71 @@ grep -q -- '--backtitle' "$ROOT/provision/lib/ui-menu.sh" \
   || fail "ui-menu.sh must set dialog/whiptail backtitle"
 grep -q 'NEWT_COLORS=' "$ROOT/provision/lib/ui-menu.sh" \
   || fail "ui-menu.sh must set NEWT_COLORS"
+for _nk in sellistbox actsellistbox textbox acttextbox compactbutton label helpline; do
+  grep -q "^${_nk}=" "$ROOT/provision/lib/ui-menu.sh" \
+    || fail "ui-menu.sh NEWT_COLORS missing ${_nk}= (prevents default red/gray whiptail boxes)"
+done
 grep -q 'dialogrc' "$ROOT/provision/lib/ui-menu.sh" \
   || fail "ui-menu.sh must write a dialogrc"
+for _dk in menubox_color menubox_border_color uarrow_color darrow_color position_indicator_color; do
+  grep -q "^${_dk} =" "$ROOT/provision/lib/ui-menu.sh" \
+    || fail "ui-menu.sh dialogrc missing ${_dk}"
+done
+# 8-color console-safe palette rules (matching stage-a/lib/11-ui-theme.sh):
+# no bold-black text in dialogrc; no bright/yellow/white backgrounds in NEWT_COLORS.
+awk '/dialogrc.*<<.*EOF/{f=1;next} f&&/^EOF$/{f=0} f' "$ROOT/provision/lib/ui-menu.sh" \
+  | grep -qE '\(BLACK,[^,]+,ON\)' && fail "ui-menu.sh dialogrc must not use bold BLACK foreground" || true
+awk "/export NEWT_COLORS='/{f=1;next} f&&/^'$/{f=0} f" "$ROOT/provision/lib/ui-menu.sh" \
+  | grep -qE ',(bright|yellow|white)($|[[:space:]])' && fail "ui-menu.sh NEWT_COLORS must not use bright/yellow/white backgrounds" || true
+# Behavioral color tests: progress_line emits ANSI on PTY, suppresses on NO_COLOR=1 / TERM=dumb / non-TTY.
+if command -v python3 >/dev/null 2>&1; then
+  python3 - "$ROOT/provision/lib/progress.sh" <<'PY' || fail "progress.sh behavioral color check failed"
+import os, pty, select, subprocess, sys
+
+prog = sys.argv[1]
+def run_in_pty(extra_env):
+    m, s = pty.openpty()
+    e = os.environ.copy()
+    e.pop("NO_COLOR", None)
+    e["TERM"] = "xterm-256color"
+    e.update(extra_env)
+    p = subprocess.Popen(
+        ["bash", "-c", f'source "{prog}"; progress_line 1 4 "Demo"; progress_banner "Title"'],
+        stdin=s, stdout=s, stderr=s, env=e, preexec_fn=os.setsid, close_fds=True
+    )
+    os.close(s)
+    out = bytearray()
+    while True:
+        r, _, _ = select.select([m], [], [], 2.0)
+        if not r:
+            break
+        try:
+            c = os.read(m, 4096)
+            if not c:
+                break
+            out.extend(c)
+        except OSError:
+            break
+    os.close(m)
+    p.wait(timeout=5)
+    return out.decode("utf-8", "replace")
+
+o_tty = run_in_pty({})
+assert "\x1b[" in o_tty, f"expected ANSI color on PTY: {o_tty!r}"
+o_nc = run_in_pty({"NO_COLOR": "1"})
+assert "\x1b[" not in o_nc, f"NO_COLOR=1 must suppress ANSI: {o_nc!r}"
+o_dumb = run_in_pty({"TERM": "dumb"})
+assert "\x1b[" not in o_dumb, f"TERM=dumb must suppress ANSI: {o_dumb!r}"
+# Non-TTY pipe (detached session -> no /dev/tty)
+e = os.environ.copy(); e.pop("NO_COLOR", None); e["TERM"] = "xterm-256color"
+r = subprocess.run(
+    ["bash", "-c", f'source "{prog}"; progress_line 1 4 "Demo"'],
+    stdin=subprocess.DEVNULL, capture_output=True, text=True, env=e, start_new_session=True, check=True
+)
+assert "\x1b[" not in r.stderr, f"non-TTY pipe must not emit ANSI: {r.stderr!r}"
+PY
+fi
+unset -v _nk _dk
 grep -q 'zenity --list --checklist' "$ROOT/provision/lib/ui-menu.sh" \
   || fail "ui-menu.sh must support zenity GUI checklist"
 grep -q 'progress_line' "$ROOT/provision/scripts/configure.sh" \
@@ -287,6 +350,23 @@ _got="$(LINES=20 COLUMNS=70 TERM=xterm bash -euo pipefail -c "$_dims"'
 _got="$(LINES=50 COLUMNS=200 TERM=xterm bash -euo pipefail -c "$_dims"'
   ui_dims 12 60; echo "$UI_H $UI_W"')" || fail "ui_dims (no list) must return 0"
 [[ $_got == '12 60' ]] || fail "ui_dims must keep the wanted size on a big terminal, got '$_got'"
+_got="$(LINES=11 COLUMNS=36 TERM=xterm bash -euo pipefail -c "$_dims"'
+  ui_dims 18 96 10; echo "$UI_H $UI_W $UI_LH"')" || fail "ui_dims tiny terminal must return 0"
+[[ $_got == '9 34 3' ]] || fail "ui_dims tiny 36x11 must clamp inside screen, got '$_got'"
+if command -v python3 >/dev/null 2>&1; then
+  python3 - "$ROOT/provision/lib/ui-menu.sh" <<'PY' || fail "ui_dims subshell PTY size check failed"
+import fcntl, os, pty, struct, subprocess, sys, termios
+m, s = pty.openpty()
+fcntl.ioctl(s, termios.TIOCSWINSZ, struct.pack("HHHH", 50, 160, 0, 0))
+e = os.environ.copy(); e["TERM"] = "xterm-256color"; e.pop("LINES", None); e.pop("COLUMNS", None)
+out = subprocess.check_output(
+    ["bash", "-euo", "pipefail", "-c", f'source "{sys.argv[1]}"; x=$(ui_dims 24 104 16; echo "$UI_H $UI_W $UI_LH"); echo "$x"'],
+    stdin=s, stderr=s, env=e, preexec_fn=os.setsid, text=True
+).strip()
+os.close(s); os.close(m)
+assert out == "24 104 16", f"expected 24 104 16 on 160x50 PTY subshell, got {out!r}"
+PY
+fi
 unset -v _dims _got
 
 # ── install.sh menu & selective section flags (stub repo in $CT/inst) ──

@@ -53,6 +53,11 @@ done
 # AUR after system-setup (makepkg x86-64-v3); skills before Headroom; no root; no --adopt
 grep -qE 'EUID.*-eq 0' "$I" || fail "install.sh must reject root (EUID == 0)"
 grep -qE 'EUID.*-eq 0' "$ROOT/stow-only.sh" || fail "stow-only.sh must reject root (EUID == 0)"
+grep -q 'cd "$(dirname "$0")"' "$ROOT/stow-only.sh" || fail "stow-only.sh must cd to repo root"
+(( $(line 'mkdir -p "$HOME/.config"') < $(line 'stow -R -t "$HOME"') )) \
+  || fail "install.sh must mkdir -p ~/.config before stow -R"
+grep -q 'INITRAMFS_CHANGED -eq 1' "$ROOT/profiles/thinkpad-p15.sh" \
+  || fail "thinkpad-p15.sh must gate mkinitcpio -P on INITRAMFS_CHANGED"
 (( $(line 'bash system/scripts/system-setup.sh') < $(line 'run_step "AUR install"') )) \
   || fail "AUR install must run after system-setup.sh (makepkg.conf.d v3)"
 (( $(line 'run_step "Agent skills pre-sync"') < $(line 'run_step "Headroom setup"') )) \

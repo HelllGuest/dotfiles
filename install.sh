@@ -149,6 +149,7 @@ if [[ -n $INSTALL_ONLY ]]; then
     INSTALL_SECTIONS="$(printf '%s\n' "${_chosen[@]}")"
     if printf '%s\n' "$INSTALL_SECTIONS" | grep -qx 'configure'; then
         CONFIGURE=1
+        SKIP_CONFIGURE=0
     fi
     unset _req _chosen _s
 elif [[ -n $INSTALL_SKIP ]]; then
@@ -188,7 +189,7 @@ elif [[ $INSTALL_MODE == menu || ( $INSTALL_MODE == auto && ( ( -t 0 && -t 1 ) |
     DEFAULT_MENU_ITEM="custom"
 
     while true; do
-        _pick="$(ui_menu "Choose what to install (Esc/Cancel quits)" \
+        _pick="$(ui_menu "Choose what to install" \
             custom    "Custom install — pick sections (checklist)" \
             full      "Full install — all standard sections" \
             core      "Core system (packages, profile, stow, shell, dev, check)" \
@@ -239,6 +240,7 @@ elif [[ $INSTALL_MODE == menu || ( $INSTALL_MODE == auto && ( ( -t 0 && -t 1 ) |
                     INSTALL_SECTIONS="$(printf '%s\n' "${_valid[@]}")"
                     if printf '%s\n' "$INSTALL_SECTIONS" | grep -qx 'configure'; then
                         CONFIGURE=1
+                        SKIP_CONFIGURE=0
                     fi
                     unset _sel _valid _bad _s
                     break
@@ -293,7 +295,11 @@ section_on() {
     printf '%s\n' "$INSTALL_SECTIONS" | grep -qx "$1"
 }
 fail_step() {
-    echo "$1"
+    if [[ -t 1 && -z ${NO_COLOR:-} && ${TERM:-} != dumb ]]; then
+        printf '\e[1;31m✗ %s\e[0m\n' "$1"
+    else
+        echo "$1"
+    fi
     INSTALL_FAILED=1
     INSTALL_FAIL_REASONS+=("$1")
 }
@@ -368,7 +374,14 @@ _install_needs_sudo() {
 # long enough for a later sudo prompt to time out unattended, which used to
 # drop every built AUR package without installing it.
 if _install_needs_sudo; then
-    sudo -v || { echo "sudo authentication failed — install.sh needs sudo." >&2; exit 1; }
+    if ! sudo -v; then
+        if [[ -t 2 && -z ${NO_COLOR:-} && ${TERM:-} != dumb ]]; then
+            printf '\e[1;31m✗ sudo authentication failed — install.sh needs sudo.\e[0m\n' >&2
+        else
+            echo "sudo authentication failed — install.sh needs sudo." >&2
+        fi
+        exit 1
+    fi
     ( while kill -0 "$$" 2>/dev/null; do sudo -n -v 2>/dev/null; sleep 50; done ) &
     SUDO_KEEPALIVE_PID=$!
 fi
@@ -461,6 +474,7 @@ fi
 
 advance_progress "stow dotfiles"
 echo "Applying dotfiles..."
+mkdir -p "$HOME/.config"
 # shellcheck source=provision/lib/skel.sh
 source provision/lib/skel.sh
 remove_unmodified_skel "$PWD/stow"
@@ -789,10 +803,15 @@ if [ -f "scripts/validate-configs.sh" ]; then
 fi
 fi
 
+if [[ -t 1 && -z ${NO_COLOR:-} && ${TERM:-} != dumb ]]; then
+    _IC_R=$'\e[1;31m' _IC_G=$'\e[1;32m' _IC_0=$'\e[0m'
+else
+    _IC_R='' _IC_G='' _IC_0=''
+fi
 if [ "$INSTALL_FAILED" -ne 0 ]; then
-    echo "Installation finished with failures:"
+    printf '%sInstallation finished with failures:%s\n' "$_IC_R" "$_IC_0"
     for _r in "${INSTALL_FAIL_REASONS[@]}"; do
-        echo "  - $_r"
+        printf '  %s-%s %s\n' "$_IC_R" "$_IC_0" "$_r"
     done
     unset _r
     if [[ ${INSTALL_PAUSE:-0} == 1 && -t 0 ]]; then
@@ -801,7 +820,7 @@ if [ "$INSTALL_FAILED" -ne 0 ]; then
     exit 1
 fi
 
-echo "Installation complete!"
+printf '%sInstallation complete!%s\n' "$_IC_G" "$_IC_0"
 if [[ ${INSTALL_PAUSE:-0} == 1 && -t 0 ]]; then
     read -r -p "Press Enter to close..." _
 fi

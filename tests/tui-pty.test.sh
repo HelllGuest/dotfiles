@@ -6,7 +6,7 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 command -v python3 >/dev/null 2>&1 || { echo "SKIP: python3 not installed"; echo "PASS: tui-pty.test.sh"; exit 0; }
 
 python3 - "$ROOT" <<'PY'
-import fcntl, os, pty, select, shutil, struct, subprocess, sys, termios, time
+import fcntl, os, pty, select, shutil, struct, subprocess, sys, tempfile, termios, time
 
 ROOT = sys.argv[1]
 
@@ -128,6 +128,55 @@ if ui_menu 'Cancel' a 'Alpha' b 'Beta'; then echo 'UNEXPECTED_OK'; else echo 'CA
         env={"INSTALL_UI": backend},
     )
     check(f"install.sh {backend} PTY quit", rc == 0 and "Installation cancelled." in out, f"rc={rc} tail={out[-250:]!r}")
+
+    # Exercise install.sh menu options in a temp stub repo (custom Cancel, check without sudo, configure handoff).
+    with tempfile.TemporaryDirectory(prefix="tui-menu-") as _tmp:
+        for _d in ("provision/lib", "provision/scripts", "scripts", "bin"):
+            os.makedirs(os.path.join(_tmp, _d), exist_ok=True)
+        for _f in ("install.sh", "provision/lib/ui-menu.sh", "provision/lib/progress.sh",
+                   "provision/lib/dmi.sh", "provision/scripts/configure.sh"):
+            shutil.copy(os.path.join(ROOT, _f), os.path.join(_tmp, _f))
+        _ran = os.path.join(_tmp, "ran")
+        for _s, _t in (("scripts/check.sh", "check"), ("scripts/validate-configs.sh", "validate")):
+            _p = os.path.join(_tmp, _s)
+            open(_p, "w").write(f"#!/usr/bin/env bash\necho '{_t}' >> '{_ran}'\n")
+            os.chmod(_p, 0o755)
+        _sp = os.path.join(_tmp, "bin/sudo")
+        open(_sp, "w").write(f"#!/usr/bin/env bash\necho SUDO >> '{_ran}'; exit 99\n")
+        os.chmod(_sp, 0o755)
+        _env = {"INSTALL_UI": backend, "PATH": f"{_tmp}/bin:{os.environ['PATH']}"}
+        # custom (Enter) -> Cancel -> returns to menu -> quit (7 downs + Enter)
+        rc, out = run_pty(["bash", os.path.join(_tmp, "install.sh")],
+                          [(0.4, b"\r"), (0.4, cancel_keys), (0.4, b"\x1b[B"*7 + b"\r")], env=_env)
+        check(f"install.sh {backend} PTY custom-cancel+quit",
+              rc == 0 and "Installation cancelled." in out and not os.path.exists(_ran), f"rc={rc}")
+        # custom -> uncheck all 13 default items -> "No sections selected." -> Enter -> quit
+        _uncheck_all = b"".join((b" " if i != 11 else b"") + (b"\x1b[B" if i < 13 else b"") for i in range(14)) + b"\r"
+        rc, out = run_pty(["bash", os.path.join(_tmp, "install.sh")],
+                          [(0.4, b"\r"), (0.4, _uncheck_all), (0.4, b"\r"), (0.4, b"\x1b[B"*7 + b"\r")],
+                          rows=28, cols=110, env=_env)
+        check(f"install.sh {backend} PTY custom-empty+quit",
+              rc == 0 and "No sections selected." in out and "Installation cancelled." in out and not os.path.exists(_ran),
+              f"rc={rc}")
+        # custom -> uncheck first 12 defaults, leave ONLY check (item 13) -> runs check+validate, no sudo
+        _only_check = b"".join((b" " if i != 11 else b"") + b"\x1b[B" for i in range(13)) + b"\r"
+        rc, out = run_pty(["bash", os.path.join(_tmp, "install.sh")],
+                          [(0.4, b"\r"), (0.4, _only_check)], rows=28, cols=110, env=_env)
+        _got = open(_ran).read().splitlines() if os.path.exists(_ran) else []
+        check(f"install.sh {backend} PTY custom-only-check (no sudo)",
+              rc == 0 and _got == ["check", "validate"], f"rc={rc} ran={_got}")
+        if os.path.exists(_ran): os.unlink(_ran)
+        # check (6 downs + Enter) -> runs check+validate, never calls sudo
+        rc, out = run_pty(["bash", os.path.join(_tmp, "install.sh")],
+                          [(0.4, b"\x1b[B"*6 + b"\r")], env=_env)
+        _got = open(_ran).read().splitlines() if os.path.exists(_ran) else []
+        check(f"install.sh {backend} PTY check (no sudo)",
+              rc == 0 and _got == ["check", "validate"], f"rc={rc} ran={_got}")
+        # configure (5 downs + Enter) -> opens configure.sh -> Cancel/Quit
+        rc, out = run_pty(["bash", os.path.join(_tmp, "install.sh")],
+                          [(0.4, b"\x1b[B"*5 + b"\r"), (0.5, cancel_keys)], env=_env)
+        check(f"install.sh {backend} PTY configure handoff",
+              rc == 0 and "configure.sh finished" in out, f"rc={rc} tail={out[-200:]!r}")
 
     rc, out = run_pty(
         ["bash", "provision/scripts/configure.sh"],

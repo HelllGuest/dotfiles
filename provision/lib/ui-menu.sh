@@ -65,73 +65,125 @@ ui_init() {
 }
 
 # Clamp dialog/whiptail dimensions to current terminal (defaults 24x80).
+# Reads /dev/tty via stty because callers capture $(ui_menu ...) on a pipe,
+# where tput falls back to 24x80 even on wide desktop terminals.
 ui_dims() {
-  local want_h=$1 want_w=$2 want_lh=${3:-0} rows cols
-  rows=$(tput lines 2>/dev/null || echo 24)
-  cols=$(tput cols 2>/dev/null || echo 80)
-  [[ $rows =~ ^[0-9]+$ ]] || rows=24
-  [[ $cols =~ ^[0-9]+$ ]] || cols=80
+  local want_h=$1 want_w=$2 want_lh=${3:-0} rows="" cols="" sz=""
+  if [[ ${LINES:-} =~ ^[1-9][0-9]*$ && ${COLUMNS:-} =~ ^[1-9][0-9]*$ ]]; then
+    rows=$LINES
+    cols=$COLUMNS
+  else
+    sz=$(stty size 2>/dev/null </dev/tty) || sz=""
+    if [[ $sz =~ ^([1-9][0-9]*)[[:space:]]+([1-9][0-9]*)$ ]]; then
+      rows=${BASH_REMATCH[1]}
+      cols=${BASH_REMATCH[2]}
+    else
+      rows=$(tput lines 2>/dev/null || echo 24)
+      cols=$(tput cols 2>/dev/null || echo 80)
+    fi
+  fi
+  [[ $rows =~ ^[1-9][0-9]*$ ]] || rows=24
+  [[ $cols =~ ^[1-9][0-9]*$ ]] || cols=80
   UI_H=$want_h; (( rows - 2 < UI_H )) && UI_H=$(( rows - 2 )); (( UI_H < 12 )) && UI_H=12
   UI_W=$want_w; (( cols - 4 < UI_W )) && UI_W=$(( cols - 4 )); (( UI_W < 40 )) && UI_W=40
+  # Never exceed the actual terminal on tiny consoles.
+  (( UI_H > rows - 2 )) && UI_H=$(( rows - 2 ))
+  (( UI_W > cols - 2 )) && UI_W=$(( cols - 2 ))
+  (( UI_H < 1 )) && UI_H=1
+  (( UI_W < 1 )) && UI_W=1
   if (( want_lh > 0 )); then
     UI_LH=$want_lh
     (( UI_H - 8 < UI_LH )) && UI_LH=$(( UI_H - 8 ))
     (( UI_LH < 4 )) && UI_LH=4
+    (( UI_LH > UI_H - 6 )) && UI_LH=$(( UI_H - 6 ))
+    (( UI_LH < 1 )) && UI_LH=1
   fi
   return 0
 }
 
-# Minimal Stage A–matching chrome (8-colour console safe). Call ui_theme_cleanup on EXIT.
+# Neutral monochrome TUI palette (8-colour console safe, matches stock Adwaita/terminal).
+# Call ui_theme_cleanup on EXIT. Every widget key is set so whiptail/dialog never fall
+# back to default blue/red/gray boxes.
 ui_theme_init() {
   if [[ $UI == dialog ]]; then
     UI_DIALOG_RC_DIR="$(mktemp -d /tmp/dotfiles-dialogrc.XXXXXX)"
     cat >"$UI_DIALOG_RC_DIR/dialogrc" <<'EOF'
-# Dotfiles TUI theme (Stage A palette)
+# Dotfiles TUI theme (neutral monochrome)
 use_shadow = ON
 use_colors = ON
-screen_color = (CYAN,BLUE,ON)
+screen_color = (WHITE,BLACK,OFF)
 shadow_color = (BLACK,BLACK,OFF)
 dialog_color = (WHITE,BLACK,OFF)
-title_color = (YELLOW,BLACK,ON)
-border_color = (CYAN,BLACK,ON)
-border2_color = (BLUE,BLACK,ON)
-button_active_color = (WHITE,BLUE,ON)
+title_color = (WHITE,BLACK,ON)
+border_color = (WHITE,BLACK,OFF)
+border2_color = (WHITE,BLACK,OFF)
+button_active_color = (BLACK,WHITE,OFF)
 button_inactive_color = (WHITE,BLACK,OFF)
-button_key_active_color = (YELLOW,BLUE,ON)
-button_key_inactive_color = (YELLOW,BLACK,ON)
-button_label_active_color = (WHITE,BLUE,ON)
+button_key_active_color = (BLACK,WHITE,OFF)
+button_key_inactive_color = (WHITE,BLACK,ON)
+button_label_active_color = (BLACK,WHITE,OFF)
 button_label_inactive_color = (WHITE,BLACK,OFF)
+inputbox_color = (WHITE,BLACK,OFF)
+inputbox_border_color = (WHITE,BLACK,OFF)
+inputbox_border2_color = (WHITE,BLACK,OFF)
+searchbox_color = (WHITE,BLACK,OFF)
+searchbox_title_color = (WHITE,BLACK,ON)
+searchbox_border_color = (WHITE,BLACK,OFF)
+searchbox_border2_color = (WHITE,BLACK,OFF)
+menubox_color = (WHITE,BLACK,OFF)
+menubox_border_color = (WHITE,BLACK,OFF)
+menubox_border2_color = (WHITE,BLACK,OFF)
 item_color = (WHITE,BLACK,OFF)
-item_selected_color = (WHITE,BLUE,ON)
-tag_color = (YELLOW,BLACK,ON)
-tag_selected_color = (WHITE,BLUE,ON)
+item_selected_color = (BLACK,WHITE,OFF)
+tag_color = (WHITE,BLACK,ON)
+tag_selected_color = (BLACK,WHITE,OFF)
+tag_key_color = (WHITE,BLACK,ON)
+tag_key_selected_color = (BLACK,WHITE,OFF)
 check_color = (WHITE,BLACK,OFF)
-check_selected_color = (WHITE,BLUE,ON)
-gauge_color = (CYAN,BLUE,ON)
+check_selected_color = (BLACK,WHITE,OFF)
+uarrow_color = (WHITE,BLACK,ON)
+darrow_color = (WHITE,BLACK,ON)
+itemhelp_color = (BLACK,WHITE,OFF)
+gauge_color = (BLACK,WHITE,OFF)
+position_indicator_color = (WHITE,BLACK,ON)
 EOF
     export DIALOGRC="$UI_DIALOG_RC_DIR/dialogrc"
   elif [[ $UI == whiptail ]]; then
     export NEWT_COLORS='
-root=white,blue
-roottext=brightcyan,blue
-border=brightcyan,black
+root=lightgray,black
+roottext=white,black
+border=gray,black
 window=lightgray,black
 shadow=black,black
-title=yellow,black
-button=black,lightgray
-actbutton=white,blue
+title=white,black
+button=lightgray,black
+actbutton=black,lightgray
+compactbutton=lightgray,black
 checkbox=lightgray,black
-actcheckbox=white,blue
+actcheckbox=black,lightgray
+entry=white,black
+label=lightgray,black
 listbox=lightgray,black
-actlistbox=white,blue
+actlistbox=black,lightgray
+sellistbox=white,black
+actsellistbox=black,lightgray
+textbox=lightgray,black
+acttextbox=black,lightgray
+helpline=lightgray,black
 emptyscale=,black
-fullscale=,cyan
+fullscale=,lightgray
+disentry=gray,black
 '
   fi
 }
 
 ui_theme_cleanup() {
-  [[ -n ${UI_DIALOG_RC_DIR:-} && -d $UI_DIALOG_RC_DIR ]] && rm -rf -- "$UI_DIALOG_RC_DIR"
+  if [[ -n ${UI_DIALOG_RC_DIR:-} && -d $UI_DIALOG_RC_DIR ]]; then
+    if [[ ${DIALOGRC:-} == "$UI_DIALOG_RC_DIR/"* ]]; then
+      unset DIALOGRC
+    fi
+    rm -rf -- "$UI_DIALOG_RC_DIR"
+  fi
   UI_DIALOG_RC_DIR=""
 }
 
@@ -147,20 +199,20 @@ ui_checklist() {
         zargs+=("$flag" "$tag" "$item")
       done
       zenity --list --checklist --title="$UI_APP_TITLE" --text="$title" \
-        --width=780 --height=560 \
+        --width=840 --height=620 \
         --column="Run" --column="Tag" --column="Description" \
         --hide-column=2 --print-column=2 --separator=$'\n' \
         "${zargs[@]}" || return 1
       ;;
     dialog)
-      ui_dims 22 76 14
+      ui_dims 24 104 16
       dialog --colors --backtitle "$UI_APP_TITLE" --stdout --separate-output \
         --checklist "$title" "$UI_H" "$UI_W" "$UI_LH" "$@" || return 1
       ;;
     whiptail)
       # whiptail draws on stdout and answers on stderr: swap them so $(…)
       # captures the tags, not the screen.
-      ui_dims 22 76 14
+      ui_dims 24 104 16
       whiptail --backtitle "$UI_APP_TITLE" --separate-output \
         --checklist "$title" "$UI_H" "$UI_W" "$UI_LH" "$@" 3>&1 1>&2 2>&3 || return 1
       ;;
@@ -212,20 +264,20 @@ ui_menu() {
         zargs+=("$flag" "$t" "$d")
       done
       zenity --list --radiolist --title="$UI_APP_TITLE" --text="$title" \
-        --width=680 --height=460 \
+        --width=760 --height=480 \
         --column="" --column="Action" --column="Description" \
         --hide-column=2 --print-column=2 \
         "${zargs[@]}" || return 1
       ;;
     dialog)
-      ui_dims 18 74 10
+      ui_dims 18 96 10
       dialog --colors --backtitle "$UI_APP_TITLE" --stdout \
         --default-item "${DEFAULT_MENU_ITEM:-}" \
         --cancel-label Quit --ok-label Select \
         --menu "$title" "$UI_H" "$UI_W" "$UI_LH" "$@" || return 1
       ;;
     whiptail)
-      ui_dims 18 74 10
+      ui_dims 18 96 10
       whiptail --backtitle "$UI_APP_TITLE" \
         --default-item "${DEFAULT_MENU_ITEM:-}" \
         --cancel-button Quit --ok-button Select \
@@ -258,9 +310,9 @@ ui_menu() {
 # ui_msg TEXT
 ui_msg() {
   case $UI in
-    zenity) zenity --info --title="$UI_APP_TITLE" --no-markup --text="$1" --width=460 || true ;;
-    dialog) ui_dims 12 60; dialog --colors --backtitle "$UI_APP_TITLE" --msgbox "$1" "$UI_H" "$UI_W" || true ;;
-    whiptail) ui_dims 12 60; whiptail --backtitle "$UI_APP_TITLE" --msgbox "$1" "$UI_H" "$UI_W" || true ;;
+    zenity) zenity --info --title="$UI_APP_TITLE" --no-markup --text="$1" --width=520 || true ;;
+    dialog) ui_dims 14 72; dialog --colors --backtitle "$UI_APP_TITLE" --msgbox "$1" "$UI_H" "$UI_W" || true ;;
+    whiptail) ui_dims 14 72; whiptail --backtitle "$UI_APP_TITLE" --msgbox "$1" "$UI_H" "$UI_W" || true ;;
     *) printf '%s\n' "$1" ;;
   esac
 }
