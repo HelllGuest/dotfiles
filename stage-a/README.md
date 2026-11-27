@@ -1,686 +1,175 @@
 # stage-a (formerly t14s-arch-install)
 
-Hardened **Arch Linux** Stage A installer for:
+Hardened **Arch Linux** Stage A installer for **ThinkPad T14s Gen 3 AMD** (`21CQ`/`21CR`), **ThinkPad P15 Gen 1** (`20SU`, Optimus NVIDIA), and **generic x86_64 UEFI** (`HW_PROFILE=generic`, auto-detects CPU/GPU/`x86-64-v3`).
 
-* **Lenovo ThinkPad T14s Gen 3 AMD** (type **21CQ / 21CR**; example MTM `21CRS1PU00`)
-* **Lenovo ThinkPad P15 Gen 1** (type **20SU**; Optimus NVIDIA Quadro)
-* **Generic x86_64 UEFI hardware** (`HW_PROFILE=generic`: auto-detects AMD/Intel CPU microcode + IOMMU/pstate, AMD/Intel/NVIDIA GPUs + Vulkan/VA-API, `x86-64-v3` support, and skips ThinkPad-only rules on non-ThinkPads)
-
-Curl-able orchestrator (`install.sh`) plus `lib/*.sh` helper modules and
-`lib/steps/*.sh` wizard/install stages. Interactive TUI
-by default; unattended with answers + a secrets file. `HW_PROFILE=t14s|p15|generic` is
-auto-detected from DMI (or set in answers; defaults to `generic` on unrecognized hardware). Firewall: **firewalld**
-(`nftables`, default zone `drop`; UFW masked if present). Optional ports:
-`FW_SYNCTHING` / `FW_KDECONNECT` (firewalld port allows).
-Optional **`ollama-cuda`** / **`ollama`** (P15 and generic profiles) binds `127.0.0.1:11434`.
-Stage B (labs / AI / rice / firewalld zones) lives in the parent
-`dotfiles` repository ([../README.md](../README.md): `provision/scripts/configure.sh` / `install.sh`).
-
-UX ideas adapted from [archfi](https://github.com/MatMoul/archfi) and
-[archdi-pkg](https://github.com/MatMoul/archdi-pkg). Not ported: i18n packs,
-DE zoo, AUR helpers, multi-bootloader, BIOS modes.
+* **Core stack:** UEFI + systemd-boot + UKIs (`linux-lts` default; optional `linux-hardened`/`linux`/`linux-zen`) + `sbctl` + LUKS2 (`argon2id`) + Btrfs subvolumes/Snapper (or ext4/XFS) + AppArmor + `firewalld` (`nftables`, default `drop`, UFW masked) + zram + `s2idle` + ThinkPad 70–80 charge window (skipped on VMs/non-ThinkPads).
+* **Interactive & unattended:** TUI by default (`dialog` → `whiptail` → `plain`), or `T14S_NONINTERACTIVE=1` with answers + mode-`0600` secrets file.
+* **UX inspiration:** [archfi](https://github.com/MatMoul/archfi) and [archdi-pkg](https://github.com/MatMoul/archdi-pkg) (not ported: i18n packs, DE zoo, multi-bootloader, BIOS modes).
+* **Stage B (dotfiles):** lives in the parent repo ([../README.md](../README.md): `./install.sh` and `provision/scripts/configure.sh`).
 
 ---
 
-## What and why (short)
+## Requirements & BIOS
 
-| Goal | Choice | Why |
-| ---- | ------ | --- |
-| Encrypt disk | LUKS2 + argon2id | Modern default; strong KDF |
-| Filesystem | Btrfs subvols + Snapper (default), ext4, or XFS | Snapshots/compression by default; opt-in ext4/XFS |
-| Kernels | `linux-lts` UKI (default); optional `linux-hardened` / `linux` / `linux-zen` | Stable daily driver; opt-in extras |
-| Boot | systemd-boot + `sbctl` | Simple EFI; Secure Boot ready |
-| Desktop | Optional minimal GNOME Wayland | Optional; Rembrandt GPU/audio/FP wired when on |
-| Laptop power | Charge window 70–80; PPD or TLP | Battery longevity; no TLP under GNOME |
-| Host hardening | AppArmor, firewalld, sysctl, zram | Useful defaults without DIY |
-
----
-
-## Always installed (base)
-
-Pacstrapped into the new root every run:
-
-| Package / piece | Role |
-| --------------- | ---- |
-| `base` `base-devel` | Minimal Arch userland + build tools |
-| `linux-lts` (+ headers) | Default kernel → UKI |
-| `linux-firmware` + CPU ucode | Firmware + `amd-ucode` or `intel-ucode` (profile/CPU-matched) |
-| `cryptsetup` + FS tools | LUKS2 + `btrfs-progs`/`snapper`/`snap-pac` (`btrfs`), `e2fsprogs` (`ext4`), or `xfsprogs` (`xfs`) |
-| `networkmanager` | Network (enabled) |
-| `sudo` `zsh` `git` `vim` `nano` | Admin shell defaults (user shell = zsh) |
-| `reflector` `pacman-contrib` | Mirror refresh (live + weekly timer) |
-| `mkinitcpio` | UKI / initramfs build |
-| `zram-generator` | Compressed RAM swap |
-| `apparmor` `firewalld` | MAC + firewall (enabled); **no UFW** (masked/removed) |
-| `sbctl` `efibootmgr` | Secure Boot keys / EFI boot entries |
-| `xdg-user-dirs` | `~/Downloads` etc. via `xdg-user-dirs-update` |
-| `wireless-regdb` | Wi-Fi regulatory database (`regulatory.db`) |
-
-**Always configured (not always “a package”):**
-
-* GPT layout (AUTO) or selected parts (MANUAL)
-* LUKS2 on root; `btrfs` (default) creates subvolumes
-  `@` `@home` `@snapshots` `@var_log` `@var_cache` `@tmp` (`@tmp` = nodatacow)
-  with `compress=` (`zstd3` default); `ext4` and `xfs` mount a single `noatime` root (no Snapper)
-* Kernel cmdline: `rd.luks.name=…`, `rd.luks.options=discard` (TRIM through
-  LUKS for `fstrim.timer`; free-block layout becomes visible, contents stay
-  encrypted), `amd_iommu=on`, `amd_pstate=active` (P15: `intel_iommu=on`,
-  `nvidia_drm.modeset=1`), `mem_sleep_default=s2idle`,
-  `lsm=landlock,lockdown,yama,integrity,apparmor,bpf` (AppArmor)
-* Sleep drop-in (`/etc/systemd/sleep.conf.d/s2idle.conf`): enforces `s2idle`
-* systemd-boot; UKIs under `/boot/EFI/Linux/`
-* Sysctl hardening (`99-security.conf` + Flatpak userns for hardened)
-* ThinkPad hardware rules unless `SKIP_THINKPAD_HW=Y` (VMs):
-  * Charge window 70–80 (tmpfiles + oneshot + `/etc/udev/rules.d/61-thinkpad-charge-limit.rules` `CHARGE_LIMIT="70,80"` so UPower / GNOME Preserve Battery Health never resets `charge_control_start_threshold` to `0`)
-  * I2C touchpad `s2idle` wakeup disable (`/etc/udev/rules.d/71-thinkpad-t14s-touchpad-wakeup.rules` for `i2c-ELAN0678:*` / `i2c-SYNA8018:*`)
-  * Lid-switch policy (`/etc/systemd/logind.conf.d/thinkpad-lid.conf`: suspend on battery, ignore on AC/docked)
-
----
-
-## Optional adds (wizard / answers)
-
-Defaults come from preset **`gnome`** / **`dev`** / **`minimal`** / **`vm`** (Quick VM), then checklists.
-
-* **Quick VM (`PRESET=vm`, auto-selected in interactive VMs):** fast 4-screen TUI path (Profile + Headless/GNOME -> Disk -> Hostname/User/Password/optional SSH key -> Review/Erase). Defaults to unencrypted `ext4` (`ENCRYPT_ROOT=N`, `ROOT_FS=ext4`, `1G` ESP), skips `linux-firmware` + CPU ucode (`VM_FAST_PKG=Y`), enables `sshd` + `console=ttyS0` + `serial-getty@ttyS0` (`VM_SERIAL_CONSOLE=Y`), and auto-installs the matching guest agent (`INSTALL_VM_GUEST=Y`: `qemu-guest-agent` + `spice-vdagent` on KVM/QEMU, `open-vm-tools` on VMware, `virtualbox-guest-utils[-nox]` on VirtualBox).
-
-### Core checklist
-
-| Toggle | Adds / does | Why |
-| ------ | ----------- | --- |
-| GNOME | Shell, GDM, portals, PipeWire + `rtkit`, `evolution-data-server` (top-bar calendar), `flatpak` + Flathub remote, GPU Vulkan/VA-API + Wayland env, hardened `/etc/gdm/custom.conf` (`DisallowTCP`, XDMCP off, no auto/timed login) and greeter dconf (`/etc/dconf/db/gdm.d/00-login-screen`: hidden user list, 60 s idle), sof audio; `bolt` only on Thunderbolt/ThinkPad hardware; `fprintd` unless VM skip | Usable minimal Wayland desktop |
-| Flatpak apps | First-boot `t14s-flatpak-apps` oneshot/timer (Brave, Zen, LibreWolf, ProtonVPN; retries every 5 min until online; off by default; desktop only) | Optional opinionated apps off the installer |
-| Bluetooth | `bluez` `bluez-utils` + `bluetooth.service` (default on for `gnome`/`dev` bare-metal; off on `minimal` and VMs) | Skip radio stack on servers/VMs |
-| Nerd Fonts | Lean UI/mono set (`ttf-jetbrains-mono-nerd`, `ttf-nerd-fonts-symbols-common`, `inter-font`, `noto-fonts`, `noto-fonts-emoji`); GNOME mono font | Fast Stage A; full font pack stays in Stage B |
-| Enroll sbctl now | `sbctl enroll-keys -m` if Setup Mode **and** `sbctl verify` OK | Optional first-boot SB |
-| sshd | `openssh` + firewalld 22/tcp | Remote rescue |
-| CUPS | `cups` `cups-pdf` `ghostscript` | Printing |
-| Skip reflector | Keep ISO mirrorlist | Flaky/offline networks |
-| tuned | `tuned` (+ `tuned-ppd` with GNOME, replaces `power-profiles-daemon`); `tuned-gui` ships in `tuned` | Profiles via GNOME power menu or `tuned-adm` / `tuned-gui` |
-| TLP | `tlp` (forced off if GNOME or tuned) | Console-only power mgmt |
-| thinkfan note | `/root/t14s-thinkfan.txt` (AUR; not pacstrapped) | Fan control hint |
-| Snapper `@home` | `snapper -c home` (Btrfs only) | Home snapshots |
-| btrfs-assistant | Snapper/Btrfs GUI (Btrfs + desktop only) | Browse/restore snapshots |
-| multilib | Enable `[multilib]` (not `-testing`) | 32-bit libs (Steam, Wine) |
-| yay | `yay-bin` (pinned `YAY_BIN_COMMIT` SHA) built as your user, installed with `pacman -U` (no sudoers change) | AUR helper |
-| `linux-hardened` UKI | `linux-hardened` + headers + UKI pair | Optional security-hardened kernel |
-| `linux` stable UKI | `linux` + headers + UKI pair | Optional bleeding kernel |
-| `linux-zen` UKI | `linux-zen` + headers + UKI pair | Optional low-latency desktop kernel |
-| Plymouth | `plymouth` + mkinitcpio hook (before `sd-encrypt`, so the LUKS prompt shows on the splash) + `splash` | Optional splash |
-| Self-test | `/usr/local/bin/t14s-selftest` | BT / audio / wifi / AppArmor / firewalld / `s2idle` / cpufreq driver (`amd-pstate` or `intel_pstate`) / `BAT0` 70–80 / touchpad wakeup / compiled GDM dconf check |
-| Clean ESP Arch | Remove old Arch UKIs, `arch*.conf` entries, `EFI/arch` | Reinstall hygiene (default on). Kernels/ucode always cleared. Skips other vendors’ `EFI/*` dirs; does not delete `linux-*.conf` (may be non-Arch) |
-| Chrome helper | `~/install-chrome-flatpak.sh` | Chrome needs post-boot Flatpak userns |
-
-### Dev / CLI checklist
-
-| Toggle | Adds |
-| ------ | ---- |
-| Dev tools | `git-lfs` `github-cli` `glab` `lazygit` `neovim`, `python`/`pip`/`pipx`, `nodejs`/`npm`, `go`, `rustup`, `cmake` `ninja` `meson` `clang` `lldb` `gdb` `valgrind` `perf` `strace` `ltrace`, `shellcheck` `shfmt` `httpie`, man pages, `tealdeer`; `code` (OSS) with GNOME |
-| CLI bundle | `ripgrep` `fd` `fzf` `bat` `eza` `jq` `git-delta` `btop` `fastfetch` |
-| starship | Prompt + wire into user `.zshrc` |
-| podman | `podman` `buildah` (rootless) |
-| docker | `docker` `docker-compose`; user in `docker` group |
-| virt | `libvirt` `qemu-desktop` `virt-manager` …; user in `libvirt` |
-| extras | Optional: `tmux`, `htop`, `rsync`, `bash-completion`, `wget`, `usbutils`, `lsof`, `dmidecode`, `powertop`, `mc`, `traceroute`, `bind`, `smartmontools` |
-
-### Network checklist
-
-| Toggle | Adds |
-| ------ | ---- |
-| avahi | `avahi` `nss-mdns` + `nsswitch` mdns + firewalld `mdns` service (drop zone otherwise discards replies) |
-| wireguard | `wireguard-tools` |
-| tailscale | `tailscale` (enabled) |
-| fail2ban | `fail2ban` + sshd jail |
-| firewalld Syncthing / KDE Connect | Port allows only |
-
-Free-form: `T14S_EXTRA_PKGS='pkg1 pkg2'` or the “more packages” prompt.
-
----
-
-## Modified (live ISO + new system)
-
-| Where | Change | Why |
-| ----- | ------ | --- |
-| Live ISO `pacman.conf` | Built-in downloader (any `XferCommand` removed), `ParallelDownloads`, `DisableDownloadTimeout`, Color/ILoveCandy/VerbosePkgLists | `XferCommand` serializes downloads (ParallelDownloads ignored); slow mirrors stall instead of aborting |
-| Live mirrors | Optional `reflector` (country optional) | Faster/fresher mirrors |
-| Target `/etc/mkinitcpio.conf` | systemd + `sd-encrypt` (+ plymouth if chosen) | LUKS unlock in UKI |
-| Target `/etc/kernel/cmdline` | Rembrandt + LUKS + s2idle + AppArmor | One cmdline for all UKIs |
-| Target `/etc/fstab` | UUID mounts; `/tmp` gets `nofail` | Boot even if `@tmp` fails |
-| Target pacman / reflector.conf | Same `pacman.conf` tuning (+ `[multilib]` if chosen); weekly reflector; `paccache.timer` | Same mirror story post-boot; bounded cache |
-| Target `/etc/makepkg.conf.d/t14s.conf` | `MAKEFLAGS=-j$(nproc)`, `!debug`, `lto`, Zen 3+ `x86-64-v3` (`CFLAGS`/`CXXFLAGS`/`RUSTFLAGS`/`GOAMD64=v3`) | Fast Rembrandt-tuned AUR/local builds, no `-debug` packages |
-| Target snapper configs | 5 hourly / 7 daily, `NUMBER_LIMIT=10`, `ALLOW_GROUPS=wheel` | Bounded snapshot space; GUI browse |
-| Target firewalld | deny in / allow out; enabled | Firewall on first boot |
-| Target sudoers | `%wheel` enabled | User admin |
-| ESP | Format or reuse; optional Arch cleanup (`CLEAN_ESP_ARCH`) | Multiboot-safe; frees UKI space |
-| Answers files | `/tmp/t14s-answers.env` + `/root/t14s-answers.env` mode `0600` | Replay flags + `EXTRA_PKGS_LIST` (interactive checklist preserves list extras) |
-
----
-
-## Removed / cleaned
-
-| Action | Why |
-| ------ | --- |
-| `wipefs` + LUKS format on ROOT (and ESP if format) | Clean install surface |
-| Optional LUKS mapper `dd` wipe | Paranoia before `mkfs` |
-| AUTO: entire disk GPT rewrite | Single-disk dedicated install |
-| Non-UKI `initramfs-*.img` after UKI build | Free ESP space |
-| Stale Arch UKIs / `arch*.conf` / `EFI/arch` (when `CLEAN_ESP_ARCH=Y`) | Avoid dual Arch boots; free ESP |
-| `/root/.install-secrets` + chroot script shredded | Passwords not left on disk |
-| Chrome Flatpak **not** installed in chroot | bwrap userns fails in chroot |
-| Flatpak apps **not** downloaded in chroot | Optional (`INSTALL_FLATPAK_APPS=Y`, off by default): first-boot `t14s-flatpak-apps.service` installs them off the installer |
-| snap-pac snapshots during install (`SNAP_PAC_SKIP=y`) | snapper can't run in the chroot (`fatal library error, lookup self`); snapshots start after first boot |
-
----
-
-## Requirements
-
-* Arch ISO, **UEFI**, root shell, working network
-* Hardware profile: `t14s` (21CQ/21CR), `p15` (20SU), or `generic` x86_64 UEFI (auto-detected from DMI; CPU/GPU auto-detected on `generic`)
-* Disk with ESP + ≥8 GB root (AUTO = whole disk; MANUAL = pick parts)
-* Shared ESP: existing FAT32, ideally ≥1 GB
-
-## BIOS (F1)
-
-* Secure Boot: **Disabled** for install (enroll later)
-* Sleep: **Windows and Linux** (s2idle)
-* AMD **SVM** + **IOMMU** on
-
----
+* Official Arch ISO, **UEFI**, root shell, working network, ESP + ≥8 GB root (shared ESP ideally ≥1 GB).
+* BIOS (`F1`): Secure Boot **Disabled** (enroll after first boot), Sleep **Windows and Linux** (`s2idle`), AMD **SVM** / Intel **VT-x** + **IOMMU** enabled.
 
 ## Run (from the Arch ISO)
 
 ```bash
 bash <(curl -fsSL https://raw.githubusercontent.com/HelllGuest/dotfiles/main/stage-a/install.sh)
 ```
+
 *(Legacy URL `.../t14s-arch-install/install.sh` remains as a compatibility shim.)*
 
-Prefer `bash <(curl …)` so menus keep a real TTY.
-UI order: **`dialog`** → `whiptail` → plain. Override: `T14S_UI=dialog|whiptail|plain` (any other value falls back to plain).
-Box size follows the console (read from `/dev/tty`): menus, logs and progress use about 2/3 of a large console (up to 120x44), prose boxes stay about 84 columns wide, and nothing is drawn larger than the screen. Long screens (Review, finish) get `--scrolltext` under whiptail, which otherwise cuts them off.
+Use `bash <(curl …)` so menus keep a TTY. Override UI with `T14S_UI=dialog|whiptail|plain`.
 
-### Reinstall next to Windows (shared ESP)
+### Reinstall Next to Windows (shared ESP)
 
-1. Back up `/home` (the Arch root partition is erased) and note the Windows
-   BitLocker recovery key: enrolling new Secure Boot keys usually makes Windows
-   ask for it once. In Windows, turn off Fast Startup.
-2. BIOS (F1): Secure Boot → Reset to Setup Mode, Secure Boot off (the Arch ISO
-   is not signed). Boot the ISO from F12.
-3. Run the installer, choose **MANUAL**: ROOT = the old Arch partition (LUKS),
-   EFI = the existing FAT32 ESP with **reuse** (the default whenever the disk
-   already has one; formatting it deletes Windows Boot Manager). The review
-   must show `EFI … (reuse)`.
-4. `EFI/Microsoft` and the Windows partitions are not touched; old Arch UKIs,
-   `arch*.conf` entries and bare kernels are removed (`CLEAN_ESP_ARCH=Y`);
-   `BOOTX64.EFI` and `loader.conf` are kept as `*.pre-arch.bak`. systemd-boot
-   lists Windows Boot Manager automatically (same ESP).
-5. After first boot: `sudo sbctl verify && sudo sbctl enroll-keys -m` (unless
-   the installer enrolled), Secure Boot on, then `bash tests/host-check.sh`
-   (it fails when no firmware entry loads systemd-boot from this ESP).
+1. Back up `/home` (Arch root is erased), save the Windows BitLocker recovery key, and disable Windows Fast Startup.
+2. BIOS: Secure Boot → Reset to Setup Mode, Secure Boot off; boot Arch ISO.
+3. Choose **MANUAL**: `ROOT` = existing Arch partition, `EFI` = existing FAT32 ESP with **reuse** (default whenever a FAT32 ESP exists; Review must show `EFI … (reuse)`).
+4. `EFI/Microsoft` and Windows partitions are untouched; old Arch files are cleaned (`CLEAN_ESP_ARCH=Y`), `BOOTX64.EFI`/`loader.conf` are backed up as `*.pre-arch.bak`, and `Linux Boot Manager` is placed first in `BootOrder`.
+5. After first boot: `sudo sbctl verify && sudo sbctl enroll-keys -m` (if not enrolled during install), enable Secure Boot, and run `bash tests/host-check.sh`.
 
-Rehearse it: `VM_BOOTSTRAP=tests/vm-dual-bootstrap.sh FRESH=1 bash tests/vm-run.sh`.
+Rehearse in a VM: `VM_BOOTSTRAP=tests/vm-dual-bootstrap.sh FRESH=1 bash tests/vm-run.sh`.
 
-### Screens
+---
 
-Backtitle: `T14s Arch Installer · [████░░░░░░] N/11 · Phase` (step bar + Heads-style progress).
-Bars use Unicode `█`/`░` when the locale is UTF-8 (any spelling), else ASCII `#`/`-`.
-One question per screen. Long prose folded to ~76 columns. The bar counts completed
-steps (the install itself, 11/11, shows 91%).
+## What Gets Installed
 
-1. Welcome
-2. Hardware warnings (DMI / AMD)
-3. Profile preset: `gnome` / `dev` / `minimal` / `vm` (Quick VM: jumps straight through Disk -> Hostname/User/Pass/SSH key -> Review)
-4. Disk + SMART hint
-5. AUTO / MANUAL partitioning
-6. LUKS passphrase + optional mapper wipe
-7. Identity (host / locale / keymap / user + passwords)
-8. ParallelDownloads, root filesystem (`btrfs`/`ext4`/`xfs`), Btrfs compress, zram size
-9. Core / Dev / Network checklists, hook, extras
-10. REVIEW → erase confirm (Erase/Abort) → answers saved
-11. Destructive phase (progress / log)
+### Always Installed (base)
 
-### Unattended
+* `base`, `base-devel`, `linux-lts` (+ headers), `linux-firmware` + matching CPU ucode (`amd-ucode`/`intel-ucode`), `cryptsetup`, FS tools (`btrfs-progs`/`snapper`/`snap-pac` for `btrfs`, `e2fsprogs`, or `xfsprogs`), `networkmanager`, `sudo`, `zsh`, `git`, `vim`, `nano`, `reflector`, `pacman-contrib`, `mkinitcpio`, `zram-generator`, `apparmor`, `firewalld`, `sbctl`, `efibootmgr`, `xdg-user-dirs`, `wireless-regdb`.
+* Configures GPT/LUKS2, Btrfs subvolumes (`@`, `@home`, `@snapshots`, `@var_log`, `@var_cache`, `@tmp` with `nodatacow`, `compress=zstd:3`), UKIs under `/boot/EFI/Linux/`, kernel cmdline (`rd.luks.name`, `rd.luks.options=discard`, IOMMU/pstate, `mem_sleep_default=s2idle`, AppArmor LSM), `/etc/systemd/sleep.conf.d/s2idle.conf`, `99-security.conf` sysctl, `pacman.conf` (`Color`, `ILoveCandy`, `VerbosePkgLists`, `ParallelDownloads`, `DisableDownloadTimeout`), `/etc/makepkg.conf.d/t14s.conf` (`x86-64-v3`, `!debug`, `lto`), Snapper limits, `%wheel` sudoers, and ThinkPad charge/touchpad/lid rules (unless `SKIP_THINKPAD_HW=Y`).
+* Saves mode-`0600` answers (never passwords) to `/tmp/t14s-answers.env` and `/root/t14s-answers.env`; shreds `/root/.install-secrets` and chroot scripts; sets `SNAP_PAC_SKIP=y` during chroot.
 
-**Destructive.** Missing or invalid answers never open a TUI — the script
-`die`s. Ambient `LUKS_PASS` / `USER_PASS` / `ROOT_PASS` env is ignored
-(prevents `/proc` leaks); secrets come only from `T14S_PASS_FILE`.
+### Optional Presets & Checklists
 
-```bash
-T14S_NONINTERACTIVE=1 \
-T14S_I_WILL_ERASE=1 \                   # required; also y/yes/on
-T14S_ANSWERS=/path/to/t14s-answers.env \
-T14S_PASS_FILE=/path/to/secrets.env \   # must be mode 0600
-T14S_POST_HOOK_I_UNDERSTAND=1 \         # only if POST_HOOK_URL set
-T14S_POST_HOOK_SHA256=<hex> \           # optional pin of the hook script
-bash install.sh
-```
+Presets **`gnome`**, **`dev`**, **`minimal`**, and **`vm`** (Quick VM) seed the checklists:
 
-`POST_HOOK_URL` must be `https://…` (no userinfo). Optional
-`T14S_POST_HOOK_SHA256` verifies the downloaded script before it runs as root
-in the new system.
+* **Quick VM (`PRESET=vm`, auto-selected in interactive VMs):** fast 4-screen path (Profile + Headless/GNOME → Disk → Identity/SSH key → Review). Defaults to unencrypted `ext4`, 1G ESP, skips `linux-firmware`/ucode (`VM_FAST_PKG=Y`), enables `sshd` + `ttyS0` serial console, and installs the matching VM guest agent (`qemu-guest-agent`/`spice-vdagent`, `open-vm-tools`, or `virtualbox-guest-utils`).
+* **Core:** minimal GNOME Wayland + hardened GDM + Flatpak/Flathub, opt-in first-boot Flatpak apps (`INSTALL_FLATPAK_APPS=Y`, off by default: Brave/Zen/LibreWolf/ProtonVPN via `t14s-flatpak-apps.timer`), Bluetooth, Nerd Fonts, `sbctl` enroll, `sshd`, CUPS, `skip_reflector`, `tuned` (+ `tuned-ppd`), TLP (console-only), thinkfan AUR note, Snapper `@home`, `btrfs-assistant`, `[multilib]`, `yay` (`yay-bin`, pinned `YAY_BIN_COMMIT`), extra UKI kernels (`linux-hardened`/`linux`/`linux-zen`), Plymouth, `/usr/local/bin/t14s-selftest`, `CLEAN_ESP_ARCH`, and Chrome Flatpak helper (`~/install-chrome-flatpak.sh`).
+* **Dev / CLI:** dev toolchains (`neovim`, `python`/`pipx`, `nodejs`, `go`, `rustup`, `clang`/`gdb`/`cmake`/`ninja`/`meson`, `gh`/`glab`/`lazygit`, `code` with GNOME), CLI bundle (`ripgrep`, `fd`, `fzf`, `bat`, `eza`, `jq`, `git-delta`, `btop`, `fastfetch`), Starship, rootless Podman, Docker, libvirt/QEMU, Ollama (P15/generic, `127.0.0.1:11434`), and common utilities (`tmux`, `htop`, `rsync`, `smartmontools`, …).
+* **Network:** Avahi/mDNS, WireGuard, Tailscale, fail2ban, `FW_SYNCTHING` / `FW_KDECONNECT` firewalld ports, plus free-form `T14S_EXTRA_PKGS`.
 
-Required in answers: `DISK`, `MODE`, identity (`HOSTNAME` `TIMEZONE` `LOCALE`
-`KEYMAP` `USERNAME`), and for AUTO also `ESP_MB` (`1024|2048|4096`). MANUAL
-also needs `EFI_PART` / `ROOT_PART` on that same `DISK` (ESP ≥512 MB,
-ROOT ≥8 GB). Identity is checked **before** wipe/LUKS: hostname DNS labels (single label
-or dotted FQDN), username POSIX ≤32 and not an existing user/group, timezone
-path + TZif (not Factory/leapseconds/…), locale in SUPPORTED/`locale.gen`,
-keymap via `localectl` or an exact on-disk map name. `/etc/hosts` uses
-`127.0.1.1 <fqdn> <short>` for a dotted hostname, or
-`<hostname>.localdomain <hostname>` for a single label.
-`FORMAT_EFI` optional (`0`/`N` reuse or `1`/`Y` format; default `1`; invalid values abort).
-`LUKS_WIPE` must be `none|fast|normal` (default `none`).
-`PACMAN_PARALLEL` / `ROOT_FS` / `BTRFS_COMPRESS` / `ZRAM_SIZE` optional but must be valid
-if set (defaults `10` / `btrfs` / `zstd3` / `half`).
-`HW_PROFILE` optional (`t14s`|`p15`|`generic`; auto-detected from DMI, defaults to `generic`).
-`YAY_BIN_COMMIT` env optional (40-char AUR `yay-bin` commit SHA override when `INSTALL_YAY=Y`).
+---
 
-Skips (after validation): DMI/AMD confirms, type-DISK / partition proceed
-confirms, REVIEW UI, final start confirm (plan still logged). Flags accept
-`y`/`yes`/`on`/`1` (not `yellow`); saved as `Y`/`N`. Extra pacstrap packages
-replay via `EXTRA_PKGS_LIST` (space-separated) and/or `T14S_EXTRA_PKGS`.
+## TUI, Controls & Safety
 
-Hook preset: none / `T14S_DEFAULT_HOOK_URL` / custom HTTPS URL (no private
-repo URL is hardcoded).
+### Screens (1–11)
 
-### Answers schema (known keys)
-
-`PRESET` `DESKTOP` `INSTALL_*` · `ENROLL_SB` `ENABLE_SSHD` `SKIP_REFLECTOR`
-`FW_SYNCTHING` `FW_KDECONNECT` `POST_HOOK_URL` · `PACMAN_PARALLEL` `LUKS_WIPE`
-`HOSTNAME` `TIMEZONE` `LOCALE` `KEYMAP` `USERNAME` · `MODE` `ESP_MB`
-`FORMAT_EFI` `DISK` `EFI_PART` `ROOT_PART` · `ENCRYPT_ROOT` (`Y` default; `N` for Quick VM) · `ROOT_FS` (`btrfs`/`ext4`/`xfs`) · `BTRFS_COMPRESS`
-(`zstd1`/`zstd3`/`zstd15`/`none`) · `ZRAM_SIZE` (`half`/`quarter`/`8192`) ·
-`INSTALL_VM_GUEST` `VM_FAST_PKG` `VM_SERIAL_CONSOLE` `SSH_PUBKEY` ·
-`REFLECTOR_COUNTRY` · `SKIP_THINKPAD_HW` (auto `Y` in VMs) ·
-`CLEAN_ESP_ARCH` (default `Y`: remove old Arch UKIs, `arch*.conf` entries,
-and `EFI/arch` dirs; kernels/ucode always cleared for pacstrap; ignored /
-forced `Y` when `FORMAT_EFI=1`; does not remove other vendors’ `EFI/*` dirs
-or `linux-*.conf`) · `INSTALL_BLUETOOTH` `INSTALL_FLATPAK_APPS`
-`INSTALL_MULTILIB` `INSTALL_YAY` `INSTALL_TUNED` `INSTALL_DEVTOOLS`
-`INSTALL_BTRFS_ASSISTANT` `INSTALL_LINUX_HARDENED` `INSTALL_LINUX_STABLE`
-`INSTALL_LINUX_ZEN` · `EXTRA_PKGS_LIST`. Prefer `Y`/`N`.
-Passwords are **never** stored in answers. `answers_save` hard-requires mode
-`0600`. `T14S_NONINTERACTIVE` / `T14S_I_WILL_ERASE` accept `1` / `y` / `yes` /
-`on`.
+1. Welcome · 2. Hardware (DMI / profile) · 3. Profile preset · 4. Disk (+ SMART hint) · 5. Partition (`AUTO` / `MANUAL`) · 6. LUKS passphrase & wipe · 7. Identity (hostname, timezone, locale, keymap, user, passwords) · 8. Storage (`ParallelDownloads`, FS, Btrfs compress, zram) · 9. Extras checklists, reflector country, hook · 10. Review & Erase confirm · 11. Install (progress gauge + log).
 
 ### Message severity
 
-Colored boxes. Theme base: dark blue screen, cyan chrome; focus is always
-bright white on blue. The blue backdrop never changes, so moving between
-screens does not flash; each severity recolours only the frame/title for both
-backends (**per-severity** `DIALOGRC` / `NEWT_COLORS`, layered on the base).
-Badge text always present (not color-only; Primer CLI a11y).
+Uses **per-severity** `DIALOGRC` / `NEWT_COLORS` layered on an 8-color console-safe dark blue/cyan base (white-on-blue focus; no bold black fg or bright bg; severity badge text always shown so status is **not color-only**):
 
-Palette is built for the ISO's 8-colour Linux console: no bold black text
-(renders dark grey), no bright backgrounds (yellow shows as brown, white as
-grey), newt colours use S-Lang names only. Smoke tests enforce these rules.
-
-**`ui_msg` / `ui_info`…`ui_ok` / `die`** (message boxes; OK/Continue only):
-
-| Severity   | When used                                       | Chrome     |
-| ---------- | ----------------------------------------------- | ---------- |
-| **info**   | help, review, reuse notes                       | cyan       |
-| **warn**   | banner, bad input, small ESP/root               | yellow     |
-| **error**  | invalid device/path                             | red        |
-| **critical** | danger banners; fatal `die` msgbox            | red+yellow |
-| **ok**     | install complete                                | green      |
-
-**`ui_yesno` only** (confirm boxes; not valid for `ui_msg`):
-
-| Severity   | When used                         | Buttons (default No on destructive) |
-| ---------- | --------------------------------- | ----------------------------------- |
-| **critical** | hard gates (DMI, remote hook)   | **Continue** / **Abort**            |
-| **erase**  | disk/partition wipe confirms only | **Erase** / **Abort**               |
-| **warn** / **error** / **info** | size/path confirms     | **Yes** / **No**                    |
-
-Plain fallback tags: `[CRITICAL]` vs `[ERASE]` (and `[WARN]` / `[ERROR]`).
+* **`ui_msg` / `die` (Continue only):** `info` (cyan), `warn` (yellow), `error` (red), `critical` (red+yellow), `ok` (green).
+* **`ui_yesno` only:** `critical` (**Continue** / **Abort**), `erase` (**Erase** / **Abort**, default No), `warn`/`error`/`info` (**Yes** / **No**).
 
 ### Controls
 
-* Buttons: **Next** / **Abort** on menus (**Next** / **Back** on text/password inputs once a prior step exists); **Continue** on messages;
-  wipe confirms use **Erase** / **Abort**; hard gates use **Continue** /
-  **Abort** (default No). `whiptail` uses `--fullbuttons` for high-contrast button focus
-* Arrows move; **Space** toggles; **Enter** = Next; **Tab** to buttons
-* **Back / Previous**: menus, radios, and checklists include a **back** entry once a prior step exists; inputs/passwords use the **Back** button (`<<` or `:back` in plain mode); declining the final Review Erase confirm offers **Back** to previous step or **Jump** to any active step
-* **Abort** quits that menu (and the install if required). **Esc** does the
-  same with `dialog`; whiptail (the ISO default) ignores it, so **Tab** to Abort
-* Menus offer **[log]** and **[help]**; log: `/tmp/t14s-install.*.log`
-* Long steps (downloads, pacstrap, chroot) run without stopping; the final screen
-  offers **[log]** (same textbox viewer) before exiting (plain UI: the summary
-  prints the log path instead)
-* Text taller than the screen scrolls with the arrows; then **Tab** to the
-  button and **Enter** (shorter messages take **Enter** directly)
-* On the console, kernel messages are kept off the screen while the installer
-  runs (they would draw over the boxes) and the log level is restored on exit;
-  follow them with `dmesg -w` on another TTY
-* MANUAL reuse: any partition listed; only FAT32 validates as ESP
-
-**AUTO mode erases the entire disk.** Interactive mode requires typing the
-disk path and a second wipe confirm.
+* Buttons: **Next** / **Abort** on menus (**Next** / **Back** on text/password inputs once a prior step exists); **Continue** on messages; **Erase** / **Abort** on wipe confirms. `whiptail` uses `--fullbuttons` for high-contrast button focus.
+* Arrows move; **Space** toggles; **Enter** = Next; **Tab** moves to buttons. (`Esc` aborts in `dialog`; in `whiptail`, Tab to Abort.)
+* **Back / Previous:** menus, radios, and checklists include a **back** row once a prior step exists; inputs use **Back** (`<<` or `:back` in plain mode); declining Review's Erase confirm offers **Back** or **Jump** to any active step.
+* Menus offer **[log]** and **[help]** (live log: `/tmp/t14s-install.*.log`; saved to `/var/log/t14s-install.log` mode `0600`). Scroll tall boxes with arrows, then **Tab** + **Enter**.
 
 ### Safety model
 
-Interactive: nothing destructive before the final confirm. Unattended: wipe
-starts after answers + `T14S_PASS_FILE` + `T14S_I_WILL_ERASE=1` validate (no
-confirm UI). Log: `/tmp/t14s-install.*.log`. pacstrap and the chroot step
-show a percentage gauge (dialog or whiptail `--gauge`): downloads, package
-installs `(k/N)`, hooks, then named chroot stages (UKIs, GNOME, Secure Boot…).
-Other long steps use `dialog --progressbox`; the plain UI streams raw output
-under a boxed banner (the step bar is in the backtitle only).
-All packages are downloaded first, into the target's pacman cache, before
-anything is installed: a mirror reset or stall is retried (`PREFETCH_TRIES`,
-default 4, backoff `PREFETCH_BACKOFF` × attempt seconds, default 10), and if
-every attempt fails the installer stops with nothing installed, so a re-run
-starts clean. pacstrap then installs from the cache. Optional package sets never abort the install: a failure records pacman's own
-`error:` line (key/signature errors refresh `archlinux-keyring` and retry once),
-and every warning is listed on the finish screen and in
-`/root/t14s-post-install.txt`. The full log is kept at
-`/var/log/t14s-install.log` (mode `0600`). Passwords enter chroot via a `0600`
-file (not env), then shred. UKI build fails if ESP free space is under 64 MB.
-`sbctl verify` must pass before enroll.
-
-Stuck on pacstrap? Other TTY (`Ctrl+Alt+F2`): `tail -f /tmp/t14s-install.*.log`
+* Nothing on disk changes before the final Erase confirm (interactive AUTO requires typing the disk path + second confirm). Unattended mode wipes only after answers, `T14S_PASS_FILE`, and `T14S_I_WILL_ERASE=1` all validate.
+* Packages prefetch into target cache first (`PREFETCH_TRIES=4`, `PREFETCH_BACKOFF=10`), so mirror failures abort cleanly before modifying the root. Optional package failures warn and continue (summary written to `/root/t14s-post-install.txt`).
+* UKI build requires ≥64 MB free on ESP; `sbctl verify` must pass before enroll. Stuck on pacstrap? Switch to `Ctrl+Alt+F2` and `tail -f /tmp/t14s-install.*.log`.
 
 ---
 
-## After first boot
+## Unattended Mode
+
+Destructive; invalid/missing answers `die` immediately. Ambient password env vars are ignored — pass secrets only via mode-`0600` `T14S_PASS_FILE`.
 
 ```bash
-reboot   # remove the ISO
-# T14s (21CQ/21CR):
-lscpu | grep -i ryzen
-cat /sys/power/mem_sleep          # expect [s2idle]
-grep -E 'amd_iommu|amd_pstate' /proc/cmdline
-lsblk -D /dev/mapper/cryptroot    # DISC-GRAN non-zero = TRIM reaches the SSD
-# P15 (20SU): confirm Optimus + optional ollama-cuda
-#   grep -E 'intel_iommu|nvidia_drm' /proc/cmdline
-#   lspci -nnk -d 10de: | grep -A2 'Kernel driver'
-#   systemctl status ollama   # if INSTALL_OLLAMA=Y → 127.0.0.1:11434
-# ThinkPad only — missing on a VM is normal
-cat /sys/class/power_supply/BAT0/charge_control_start_threshold  # 70
-cat /sys/class/power_supply/BAT0/charge_control_end_threshold    # 80
-systemctl status thinkpad-charge-thresholds.service --no-pager
-firewall-cmd --get-default-zone   # expect drop
-t14s-selftest   # if that option was enabled
-journalctl -u t14s-flatpak-apps -f   # if INSTALL_FLATPAK_APPS=Y: browsers/VPN install once online
-
-# Full read-only verification (~80 checks: cmdline, LUKS/Btrfs, AppArmor/firewalld,
-# sysctl, charge/touchpad/lid, VA-API, GDM, makepkg, services). Exit 1 on FAIL.
-curl -fsSLO https://raw.githubusercontent.com/HelllGuest/dotfiles/main/stage-a/tests/host-check.sh
-bash host-check.sh          # as your desktop user
-sudo bash host-check.sh     # adds /boot UKIs, LUKS PBKDF, sbctl, snapper
-# With the dotfiles checkout (Stage B): same host-check plus post-install checks
-#   sudo -v && bash ~/dotfiles/scripts/check.sh --all
-tuned-adm active                     # if tuned chosen (GNOME power menu → tuned-ppd)
-sudo less /var/log/t14s-install.log  # full installer log
+T14S_NONINTERACTIVE=1 T14S_I_WILL_ERASE=1 \
+T14S_ANSWERS=/path/to/t14s-answers.env \
+T14S_PASS_FILE=/path/to/secrets.env \
+bash install.sh
+# Optional remote hook: T14S_POST_HOOK_I_UNDERSTAND=1 T14S_POST_HOOK_SHA256=<64-hex> (T14S_DEFAULT_HOOK_URL sets preset default)
+# Dry-run answers output: T14S_ANSWERS_OUT=/tmp/t14s-answers.env (mode 0600, no passwords)
 ```
 
-### Stage B (dotfiles)
+Required in answers: `DISK`, `MODE`, `HOSTNAME`, `TIMEZONE`, `LOCALE`, `KEYMAP`, `USERNAME`, plus `ESP_MB` (`1024|2048|4096`) for AUTO or `EFI_PART` + `ROOT_PART` for MANUAL.
 
-After first boot, run Stage B from the parent `~/dotfiles` repository (`./install.sh` for interactive TUI/GUI/full bootstrap, or `bash provision/scripts/configure.sh` for modular labs/AI/rice/firewalld). Canonical howtos live in [../README.md](../README.md):
+### Answers schema
 
-* [Stage B bootstrap & `configure.sh`](../README.md#how-to-configuresh-stage-b-tui)
-* [firewalld lab zones (`lab-malware`)](../README.md#how-to-firewalld-lab-zones--lab-malware)
-* [Stage B on a Stage A qcow2 (`vm-stageb-run.sh`)](../README.md#how-to-stage-b-on-a-stage-a-qcow2)
-* [Live health checklist](../README.md#live-health-checklist-non-destructive)
-
-Same post-install notes (plus any install warnings) land in `/root/t14s-post-install.txt`.
-
-* **Flatpak apps (if `INSTALL_FLATPAK_APPS=Y`):** `t14s-flatpak-apps.timer` starts
-  `t14s-flatpak-apps.service` 1 min after boot (after `network-online.target`),
-  so boot finishes without waiting for downloads. First boot usually has no saved Wi-Fi (the ISO
-  connection is not copied) — connect, and it retries every 5 min until all
-  apps are installed, then stamps `/var/lib/t14s/flatpak-apps.done` and never
-  runs again. Re-run manually: `sudo rm /var/lib/t14s/flatpak-apps.done &&
-  sudo systemctl start t14s-flatpak-apps`.
-* **yay:** `yay -S <pkg>` (AUR); builds use all cores, no `-debug` packages.
-* **Dev tools:** `rustup default stable` once per user.
-
-* **GNOME:** GDM Wayland. Chrome helper (if enabled) uses
-  `flatpak install --user -y flathub com.google.Chrome`
-  (system-wide also fine: `flatpak install --system -y flathub com.google.Chrome`)
-* **No GNOME:** getty login; later
-  `pacman -S gnome-shell gdm flatpak && systemctl enable gdm`
+`PRESET` `HW_PROFILE` `DESKTOP` `ENROLL_SB` `ENABLE_SSHD` `SKIP_REFLECTOR` `REFLECTOR_COUNTRY` `SKIP_THINKPAD_HW` `FW_SYNCTHING` `FW_KDECONNECT` `POST_HOOK_URL` `PACMAN_PARALLEL` `LUKS_WIPE` `HOSTNAME` `TIMEZONE` `LOCALE` `KEYMAP` `USERNAME` `MODE` `ESP_MB` `FORMAT_EFI` `DISK` `EFI_PART` `ROOT_PART` `ENCRYPT_ROOT` `ROOT_FS` `BTRFS_COMPRESS` `ZRAM_SIZE` `CLEAN_ESP_ARCH` `INSTALL_BLUETOOTH` `INSTALL_FLATPAK_APPS` `INSTALL_NERD_FONTS` `INSTALL_MULTILIB` `INSTALL_YAY` `INSTALL_TUNED` `INSTALL_DEVTOOLS` `INSTALL_BTRFS_ASSISTANT` `INSTALL_SNAPPER_HOME` `INSTALL_LINUX_HARDENED` `INSTALL_LINUX_STABLE` `INSTALL_LINUX_ZEN` `INSTALL_OLLAMA` `INSTALL_VM_GUEST` `VM_FAST_PKG` `VM_SERIAL_CONSOLE` `SSH_PUBKEY` `EXTRA_PKGS_LIST`. (Prefer `Y`/`N`; flags accept `1/y/yes/on`.)
 
 ---
 
-## ESP / EFI layout (why files look “scattered”)
+## After First Boot & Stage B
 
-The ESP is **FAT**. UEFI, systemd-boot, and UKIs each use **fixed** paths.
-That is normal, not installer clutter.
+```bash
+# Quick checks after removing ISO and rebooting:
+cat /sys/power/mem_sleep                                    # expect [s2idle]
+lsblk -D /dev/mapper/cryptroot                              # non-zero DISC-GRAN = TRIM active
+firewall-cmd --get-default-zone                             # expect drop
+t14s-selftest                                               # if enabled
+# Full read-only verification (~80 checks) before cloning dotfiles:
+curl -fsSLO https://raw.githubusercontent.com/HelllGuest/dotfiles/main/stage-a/tests/host-check.sh
+sudo bash host-check.sh                                     # or after cloning ~/dotfiles: scripts/check.sh --all
+```
 
-| Path on ESP | Role | Who owns it |
-| ----------- | ---- | ----------- |
-| `EFI/Linux/arch-linux-*.efi` | Unified Kernel Images | mkinitcpio UKI presets |
-| `EFI/systemd/systemd-bootx64.efi` | systemd-boot binary | `bootctl install` |
-| `EFI/BOOT/BOOTX64.EFI` | Removable / fallback loader | Firmware default path |
-| NVRAM `Linux Boot Manager` | Firmware entry → `EFI/systemd/systemd-bootx64.efi`, first in `BootOrder` | installer (`efibootmgr` from the live ISO; `bootctl` in the chroot cannot write EFI variables) |
-| `loader/loader.conf` | Default entry, timeout | systemd-boot (ESP root) |
-| `loader/entries/*.conf` | Classic type-1 entries | Legacy / other tools |
+* **Stage B (dotfiles):** clone `~/dotfiles` and run `./install.sh` (see [../README.md](../README.md#how-to-configuresh-stage-b-tui), [firewalld zones](../README.md#how-to-firewalld-lab-zones--lab-malware), [Stage B VM](../README.md#how-to-stage-b-on-a-stage-a-qcow2), [health checklist](../README.md#live-health-checklist-non-destructive)).
+* **First-boot Flatpaks (`INSTALL_FLATPAK_APPS=Y`):** `t14s-flatpak-apps.timer` retries every 5 min once online until `/var/lib/t14s/flatpak-apps.done`. Chrome helper uses `flatpak install --user -y flathub com.google.Chrome`.
+* **Dev tools:** run `rustup default stable` once per user.
 
-**Leftovers from older installs:**
+---
 
-| Path | When removed | Typical source |
-| ---- | ------------ | -------------- |
-| ESP root `vmlinuz-linux*`, `initramfs-linux*`, `*-ucode.img` | **Always** (pacstrap safety) | Pre-UKI / bare kernel on ESP |
-| `EFI/Linux/arch*.efi` | `CLEAN_ESP_ARCH=Y` | Prior Arch UKIs |
-| `EFI/arch/` (also `Arch` / `ARCH`) | `CLEAN_ESP_ARCH=Y` | Old GRUB vendor dir |
-| `loader/entries/arch*.conf` | `CLEAN_ESP_ARCH=Y` | Pre-UKI Arch systemd-boot entries |
+## ESP / EFI layout
 
-`linux-*.conf` is **not** deleted (could belong to another distro on a shared
-ESP). Remove those by hand if they are yours and stale.
+The ESP is FAT with fixed standard paths: `EFI/Linux/arch-linux-*.efi` (UKIs), `EFI/systemd/systemd-bootx64.efi`, `EFI/BOOT/BOOTX64.EFI` (fallback), `loader/loader.conf`, and NVRAM entry `Linux Boot Manager` (written via `efibootmgr` from the live ISO).
 
 ### Can everything live under one directory?
 
-**No**, not with stock systemd-boot + UKIs:
+**No** — firmware requires `EFI/BOOT/BOOTX64.EFI`, systemd-boot requires `EFI/systemd/` and `loader/`, and UKI auto-discovery uses `EFI/Linux/*.efi`. Keeping the standard layout with `CLEAN_ESP_ARCH=Y` avoids clutter without touching `EFI/Microsoft` or other OS dirs:
 
-* Firmware expects `EFI/BOOT/BOOTX64.EFI`.
-* systemd-boot expects `EFI/systemd/` and `loader/` at the ESP root.
-* UKI convention is `EFI/Linux/*.efi` (other paths need hand-written entries).
+| Always cleared (pacstrap safety) | Also cleared when `CLEAN_ESP_ARCH=Y` |
+| -------------------------------- | ------------------------------------ |
+| `vmlinuz-linux*`, `initramfs-linux*`, `*-ucode.img` | `EFI/Linux/arch*.efi`, `loader/entries/arch*.conf`, `EFI/arch` |
 
-You can put UKIs under e.g. `EFI/arch/` only with custom `loader/entries`
-and more update fragility. This installer keeps the standard layout and uses
-`CLEAN_ESP_ARCH` so **old Arch junk** does not pile up across dirs.
-Windows / other OS vendor dirs are never touched.
-
-### `CLEAN_ESP_ARCH` (Core checklist, default `Y`)
-
-| Always removed (pacstrap safety) | Also removed when `CLEAN_ESP_ARCH=Y` |
-| -------------------------------- | ----------------------------------- |
-| `vmlinuz-linux*`, `initramfs-linux*` | `EFI/Linux/arch*.efi` UKIs |
-| `amd-ucode.img`, `intel-ucode.img` | `loader/entries/arch*.conf` |
-| | `EFI/arch`, `EFI/Arch`, `EFI/ARCH` |
-
-`FORMAT_EFI=1` (format ESP): cleanup is a no-op; answers still save
-`CLEAN_ESP_ARCH=Y` (flag ignored while formatting).  
-`CLEAN_ESP_ARCH=N` on reuse: keeps prior Arch UKIs/`arch*.conf`; kernels/ucode
-still cleared — boot menu may show dead entries until you delete them.  
-Does not remove `EFI/Microsoft`, `EFI/ubuntu`, or other non-Arch vendor dirs.
-
----
+`FORMAT_EFI=1` wipes the ESP (flag ignored while formatting, saved as `Y`). `linux-*.conf` is never deleted automatically.
 
 ## Securing the EFI (ESP)
 
-The ESP is readable FAT. You **cannot** LUKS-encrypt it the way root is
-encrypted. Security is a **signed boot chain** + locked firmware + LUKS for
-data.
+Security comes from a **signed boot chain** (`sbctl` signs UKIs + systemd-boot) + BIOS supervisor password + LUKS2 root (never store keyfiles/passphrases on the ESP):
 
-### What this installer already does
-
-* Builds UKIs and signs them with **`sbctl`** (plus systemd-boot / `BOOTX64.EFI`)
-* Writes the firmware entry `Linux Boot Manager` for the chosen ESP, first in
-  `BootOrder`, and removes stale `Linux Boot Manager` entries that point at
-  another partition (earlier installs). Other OS entries stay. If it cannot,
-  the finish screen lists the `efibootmgr` command to run after first boot;
-  until then Arch boots only through the `BOOTX64.EFI` fallback, which a
-  Windows Boot Manager entry or update can take over
-* Optional enroll when Setup Mode is on **and** `sbctl verify` passes
-* LUKS2 on root; no secrets written to the ESP
-* Optional Arch ESP cleanup (`CLEAN_ESP_ARCH`)
-
-### After first boot (recommended)
-
-1. BIOS: clear Secure Boot keys → **Setup Mode** (if not already)
-2. In the installed OS:
-
-```bash
-sbctl status
-sbctl verify
-# Only when Setup Mode is enabled and verify is clean:
-sudo sbctl enroll-keys -m
-```
-
-3. BIOS: Secure Boot → **Enabled**; set a **supervisor** password; prefer
-   internal NVMe first; disable unused USB/network boot if policy allows
-
-`-m` keeps Microsoft keys so Windows can still boot on a shared ESP. Other
-unsigned Linux loaders will not boot under SB until signed, e.g.
-`sudo sbctl sign -s /path/to/loader.efi` (installer uses `sbctl sign -s`).
-
-### After kernel / boot updates
-
-Pacman hooks from `sbctl` should resign UKIs. If something fails to boot or
-verify looks wrong:
-
-```bash
-sudo sbctl verify
-sudo sbctl sign-all          # resign everything sbctl tracks
-# or: sudo sbctl sign -s /boot/EFI/Linux/arch-linux-lts.efi
-```
-
-### Do / don’t
-
-| Do | Don’t |
-| -- | ----- |
-| Enable SB after enroll | Leave Setup Mode / SB off “for convenience” |
-| Keep BIOS supervisor password | Put LUKS passphrases or keyfiles on the ESP |
-| Run `sbctl verify` after big updates | Assume ESP paths are secret (they are not) |
-| Use `CLEAN_ESP_ARCH` on reinstall | Wipe `EFI/Microsoft` / other OS dirs by hand unless you mean it |
-
-### Stronger options (not in this script)
-
-* TPM2 PCR-bound LUKS (`systemd-cryptenroll` / Clevis) — less typing, harder recovery
-* Boot from a separate USB ESP — smaller local attack surface, worse UX
+1. BIOS: clear Secure Boot keys → **Setup Mode**.
+2. In the installed OS: `sbctl status && sbctl verify && sudo sbctl enroll-keys -m` (`-m` keeps Microsoft keys for dual-boot).
+3. BIOS: Secure Boot → **Enabled** + supervisor password. After kernel updates, `sbctl`'s pacman hook resigns UKIs (`sudo sbctl sign-all` if `sbctl verify` ever reports unsigned files).
 
 ---
 
-## Rehearse in a VM
-
-Headless NONINTERACTIVE install into a blank virtio disk (needs kvm + OVMF):
+## Rehearse in a VM & Develop
 
 ```bash
-FRESH=1 bash tests/vm-run.sh
-# serves this tree on :8765, boots Arch ISO, serial-drives tests/vm-bootstrap.sh
-# (minimal preset, ENABLE_SSHD=Y). Log: ~/arch-vmtest/qemu-serial.log
-# Auto-mounts readable host /var/cache/pacman/pkg over 9p ro (HOST_PKGCACHE=none to disable)
-T14S_VM_DESKTOP=Y FRESH=1 bash tests/vm-run.sh   # same, with the GNOME desktop
-# dual-boot reinstall: shared ESP with (synthetic) Windows files, old Arch LUKS and
-# a stale firmware entry; MANUAL reuse; checks Windows untouched + firmware entry
-VM_BOOTSTRAP=tests/vm-dual-bootstrap.sh FRESH=1 bash tests/vm-run.sh
-# two VMs at once: distinct WORK=… (disk, logs) and PORT=… (HTTP server)
+FRESH=1 bash tests/vm-run.sh                                          # headless minimal VM install (9p host pkgcache; HOST_PKGCACHE=none disables)
+T14S_VM_DESKTOP=Y FRESH=1 bash tests/vm-run.sh                        # GNOME desktop VM install
+VM_BOOTSTRAP=tests/vm-dual-bootstrap.sh FRESH=1 bash tests/vm-run.sh  # dual-boot ESP reuse rehearsal
+T14S_DRYRUN=1 bash install.sh                                         # wizard + review only (no disk writes; saves answers to T14S_ANSWERS_OUT)
 ```
 
-Or dry-run menus only (no disk writes) from a normal shell:
+Real installs refuse to run outside `/run/archiso` (`T14S_ALLOW_NON_ISO=1` overrides on disposable live media).
 
-```bash
-T14S_DRYRUN=1 bash install.sh
-```
-
-Real runs refuse to start outside the Arch ISO (`/run/archiso` missing).
-Override with `T14S_ALLOW_NON_ISO=1` only on a disposable live environment.
-Nothing on disk changes before the final confirmation. Leftovers from an
-interrupted run (`/mnt`, swap, the `cryptroot` mapper) are released only after
-it, and only when they belong to the confirmed target; anything else in the
-way aborts the install instead of being torn down.
-
-`T14S_DRYRUN=1` (accepts `1/0`, `yes/no`, `on/off`, `true/false`; any other
-value aborts) skips root/UEFI/network checks, runs the full wizard and review,
-then exits before partitioning. It never unmounts, partitions, or formats
-anything (the only mount is a brief read-only mount of a reused ESP to list
-its entries), but it **does** write the answers file
-(`T14S_ANSWERS_OUT`, default `/tmp/t14s-answers.env`, mode `0600`, no
-passwords). Interactive dry runs still need a TTY for menus;
-`T14S_NONINTERACTIVE=1` dry runs do not (CI uses that path).
-NONINTERACTIVE VM runs auto-set `SKIP_THINKPAD_HW=Y`.
-
----
-
-## Develop / CI
-
-Layout:
+### Code Layout & CI
 
 ```text
-install.sh                 # thin orchestrator (curl target): loader, globals, traps, stage list
-lib/00-common.sh           # colors, logging, die/say/ok/warn, yn helpers
-lib/10-ui.sh               # TUI core: geometry, dialog/whiptail wrapper, console log level, die/on_exit
-lib/11-ui-theme.sh         # TUI colours (NEWT_COLORS, dialogrc per severity)
-lib/12-ui-screens.sh       # TUI screens: messages, yes/no, input, menus, checklists
-lib/13-ui-progress.sh      # install log + live progress (progress box, gauge)
-lib/20-answers.sh          # answers + secrets
-lib/30-hardware.sh         # DMI / ThinkPad helpers
-lib/40-disk.sh             # LUKS / Btrfs helpers
-lib/50-packages.sh         # package lists, prefetch, pacman_tune (live ISO + target)
-lib/70-firewall.sh         # firewalld drop zone via firewall-offline-cmd; FW_* ports; mask ufw;
-                           #   live reload only outside arch-chroot when firewall-cmd --state answers
-lib/80-chroot-setup.sh     # chroot entry (deployed into the target): helpers, then lib/chroot/* in order
-lib/chroot/01-base-config.sh … 12-secureboot-ssh-firewall.sh  # chroot stages (@@STAGE 0→100)
-lib/steps/01-preflight.sh  # stages, sourced by install.sh in this order at top level:
-lib/steps/02-welcome.sh … 12-review.sh       #   wizard steps 1-10 (no disk touched; DRYRUN exits in 12)
-lib/steps/20-install-disk.sh … 30-finish.sh  #   install: partition, LUKS/Btrfs, pacstrap, chroot, finish
-tests/                     # smoke + host-check; vm-run.sh + vm-bootstrap.sh / vm-dual-bootstrap.sh headless VM rehearsals
+install.sh              # thin curl orchestrator (loads lib/ and sources steps in order)
+lib/00..80-*.sh         # common, UI/theme/screens/progress, answers, hardware, disk, packages, firewall, chroot entry
+lib/steps/01..30-*.sh   # top-level stages (01–12 wizard, DRYRUN exits at 12; 20–30 execute)
+lib/chroot/01..12-*.sh  # target chroot stages (deployed by 23-install-chroot.sh)
+tests/                  # smoke.test.sh, host-check.sh, host-check.test.sh, vm-run.sh, vm-*bootstrap.sh
 ```
 
-Local work (no GitHub fetch of `lib/`):
-
-```bash
-T14S_LIB_DIR=./lib bash install.sh
-# or: bash install.sh   # auto-detects sibling lib/ next to this script
-```
-
-Adding or reordering a stage: create `lib/steps/NN-name.sh` (same header as the
-others) and add it to the stage list at the end of `install.sh`. Chroot stages
-live in `lib/chroot/` and are listed in `lib/steps/23-install-chroot.sh` (the
-deploy list; the chroot sources them in name order). A new helper library goes
-in `lib/NN-name.sh` and the `for _lib in` list in `install.sh`. The smoke test
-fails if any of these lists and their directory differ or are out of order. Stage code runs at
-top level, so it shares globals with every other stage; helpers it defines for
-others belong in `lib/*.sh` instead.
-
-How `lib/` is loaded:
-
-| Case | Source of `lib/*.sh` | Network needed |
-|------|----------------------|----------------|
-| `lib/` next to `install.sh`, or `T14S_LIB_DIR` set | local files (chroot copies them too) | no |
-| curl one-liner (no local `lib/`) | `main` resolved **once** to a commit SHA via the GitHub API; every module comes from that SHA | yes |
-| `T14S_REF=<sha\|tag\|branch>` | that ref (manual override, e.g. pin a release) | yes |
-| `T14S_BASE_URL=<url>` | that base URL as-is: a local `http.server` for VM rehearsal, or the SHA-pinned raw URL the dotfiles wrappers pass after resolving `main` | to that host |
-
-Resolving one SHA keeps `install.sh` and all modules from the same commit even
-if `main` moves mid-install (the chroot module is fetched ~20 min later). If the
-SHA cannot be resolved, the installer stops instead of mixing versions.
-
-```bash
-bash -n install.sh
-bash -n lib/*.sh lib/steps/*.sh lib/chroot/*.sh
-bash tests/smoke.test.sh
-bash tests/host-check.test.sh   # host-check.sh parsers (stubs, no host state)
-
-T14S_DRYRUN=1 bash install.sh
-T14S_UI=whiptail|dialog|plain bash install.sh
-T14S_EXTRA_PKGS='htop tmux' bash install.sh
-T14S_ANSWERS=/tmp/t14s-answers.env bash install.sh
-T14S_ANSWERS_OUT=/tmp/t14s-answers.env   # where REVIEW saves answers (default /tmp/t14s-answers.env)
-T14S_PASS_FILE=/root/t14s-pass.env   # chmod 600
-T14S_DEFAULT_HOOK_URL=https://…      # optional hook preset
-T14S_IDENTITY_OVERRIDES=1            # tests only: honor LOCALE_FILES / KEYMAP_DIR
-T14S_NONINTERACTIVE=1 T14S_I_WILL_ERASE=1 \
-  T14S_ANSWERS=… T14S_PASS_FILE=… bash install.sh
-```
-
-GitHub Actions ([../.github/workflows/ci.yml](../.github/workflows/ci.yml)): smoke + host-check + shellcheck on push. Smoke includes a
-`T14S_DRYRUN=1` NONINTERACTIVE run against a whole-disk block device
-(no TTY; no writes past the DRYRUN exit; keymap via
-`T14S_IDENTITY_OVERRIDES` + `KEYMAP_DIR` fixture on Ubuntu runners).
-Curl one-liners still hit `install.sh`, which fetches `lib/*.sh`, `lib/steps/*.sh` and
-`lib/chroot/*.sh` from the same commit when no local `lib/` is present.
+* Local `lib/` next to `install.sh` (or `T14S_LIB_DIR=./lib`) runs offline. Remote curl resolves `main` **once** to a commit SHA (override with `T14S_REF` or `T14S_BASE_URL`) so all fetched modules match one commit.
+* Run checks locally: `bash tests/smoke.test.sh && bash tests/host-check.test.sh` (or `make test-stage-a` from repo root).
 
 ## License
 

@@ -1094,9 +1094,10 @@ flatpak remote-add --if-not-exists flathub \
 https://flathub.org/repo/flathub.flatpakrepo
 ```
 
-Apps: `packages/flatpak.txt` (browsers, Proton VPN, Android Studio, Sticky Notes). `arch-install.sh`
-installs the browsers + Proton VPN; `./install.sh` (`provision/scripts/install-flatpaks.sh`)
-installs the full list, including any that failed in the installer chroot.
+Apps: `packages/flatpak.txt` (browsers, Proton VPN, Android Studio, Sticky Notes). Stage A
+leaves first-boot Flatpaks opt-in (`INSTALL_FLATPAK_APPS=N` by default; browsers + Proton VPN
+via `t14s-flatpak-apps.timer` when enabled); `./install.sh` (`provision/scripts/install-flatpaks.sh`)
+installs the full list.
 
 ---
 
@@ -1171,10 +1172,8 @@ alongside `docker` (pacman conflict).
 Installed or wired by `./install.sh`; documented once in the README:
 
 * fnm Node pins: [README — Node.js (fnm)](../README.md#nodejs-fnm)
-* x86-64-v3 makepkg + `rebuild-v3.sh`: [README — x86-64-v3 local builds](../README.md#x86-64-v3-local-builds)
-* Headroom proxy (Claude / Cursor): [README — Headroom](../README.md#headroom-claude--cursor-token-compression)
-* PhotoGIMP: [README — PhotoGIMP](../README.md#photogimp-gimp-photoshop-layout)
-* Dash2Dock Animated: [README — Dash2Dock Animated](../README.md#dash2dock-animated)
+* x86-64-v3 makepkg + `rebuild-v3.sh`, PhotoGIMP, and Dash2Dock: [README — Desktop, GNOME Theme Packs & Optional Apps](../README.md#desktop-gnome-theme-packs--optional-apps) and [GNOME extensions](../README.md#how-to-gnome-extension-zips-fetch-gnome-extensionssh)
+* Headroom proxy (Claude / Cursor): [README — AI Tooling & Headroom](../README.md#ai-tooling--headroom)
 
 ---
 
@@ -1188,7 +1187,7 @@ bash ai/scripts/install-ghidra-cli.sh
 ```
 
 * Terminals: kitty (primary: Super+Return, `xdg-terminals.list`, `x-scheme-handler/terminal`) + ghostty + gnome-console + optional contour/alacritty; rice via `desktop/scripts/rice-setup.sh` (Gruvbox default; `rice-theme gruvbox|secops|--dry` covers Kitty/Neovim/Contour wrapper+desktop/htop/bat/fzf/GNOME accent+TextEditor + fastfetch PNG logos). Ptyxis/rio/wezterm/foot pruned.
-* ghidra-cli: cargo CLI + host skill under `skills/ghidra-cli-host/`; GUI via `ghidra-gui` (cargo `ghidra` shadows `/usr/bin/ghidra`). An install failure is recorded by `./install.sh`, which exits 1 at the end
+* ghidra-cli: cargo CLI + host skill under `ai/skills/ghidra-cli-host/`; GUI via `ghidra-gui` (cargo `ghidra` shadows `/usr/bin/ghidra`). An install failure is recorded by `./install.sh`, which exits 1 at the end
 * Host `install-rea.sh` is optional only (needs JDK≥21); Stage B AI stack skips it
 
 ---
@@ -1230,7 +1229,7 @@ Color
 ParallelDownloads = 10
 ```
 
-(`arch-install.sh` enables Color + ParallelDownloads = 10 only; VerbosePkgLists / ILoveCandy are optional extras, not set by the installer.)
+(Stage A enables `Color`, `ILoveCandy`, `VerbosePkgLists`, `CheckSpace`, and `ParallelDownloads` on both the live ISO and target.)
 
 ---
 
@@ -1251,7 +1250,7 @@ Contents:
 --save /etc/pacman.d/mirrorlist
 ```
 
-(`arch-install.sh` writes this file with no `--country` filter. Live ISO `reflector` uses `--latest 20`.)
+(Stage A writes this file with optional `--country` when `REFLECTOR_COUNTRY` is set, otherwise worldwide. Live ISO `reflector` uses `--latest 20`.)
 
 Enable timer:
 
@@ -1604,57 +1603,26 @@ systemctl is-enabled paccache.timer   # expect: enabled
 
 # PHASE 27 — DOTFILES SETUP
 
-Log into GNOME, open a terminal, then clone and install:
+Log into GNOME, open a terminal, and run as your desktop user (never `sudo ./install.sh`):
 
 ```bash
 git clone https://github.com/HelllGuest/dotfiles.git ~/dotfiles
 cd ~/dotfiles
-./install.sh   # desktop user only (never sudo); opens TUI menu on TTY (--gui for zenity, --all for full unattended, --only/--skip for selective runs)
+./install.sh   # opens TUI menu on TTY (--gui, --all, --minimal, --only/skip)
 ```
 
-`./install.sh` (rejects `EUID == 0`; run from a GNOME session; full step-by-step order and flags in [README — Script execution order](../README.md#script-execution-order-fresh-machine)) will:
+Full step order, flags, machine profiles, privacy hardening, and `configure.sh` modules live in [README — Installation & Setup](../README.md#script-execution-order-fresh-machine) (also see [configure.sh](../README.md#how-to-configuresh-stage-b-tui), [VM Stage B](../README.md#how-to-stage-b-on-a-stage-a-qcow2), [firewalld](../README.md#how-to-firewalld-lab-zones--lab-malware), and [ops / privacy kits](../README.md#how-to-ops--privacy-kits)).
 
-* Install packages from `packages/pacman.txt` (kernels, shells, terminals, CLI tools; skips Intel GPU packages on ThinkPad T14s Gen 3 AMD; installs the NVIDIA stack only when an NVIDIA display device is on PCI; skips `power-profiles-daemon` when `tuned-ppd` is present and `rust` when `rustup` is present; replaces an AUR `bootvine-git` left by older dotfiles with the official `bootvine`)
-* Enable the `bootvine` boot screen (`bootvine.service` + `bootvine-shutdown.service`; no `sd-bootvine` initrd hook, so the LUKS prompt is unchanged)
-* Apply stock Adwaita for the session (`desktop/scripts/theme-setup.sh`; Orchis greeter scrub only; extensions stay as configured in dconf)
-* Record every failed step and exit 1 at the end (no silent skips; only explicit `SKIP_*=1` opt-outs or menu/`--only`/`--skip` section selection skip); `check.sh` fails on missing packages, empty dock icons and dead shortcuts
-* Apply **after** `pacman.txt` exactly one machine profile via `provision/scripts/apply-profile.sh`: `profiles/$(hostname).sh` if present, otherwise `provision/scripts/detect-profile.sh` (`thinkpad-p15`, `thinkpad-t14s`, or `laptop`). Optimus/NVIDIA setup is inside `thinkpad-p15.sh` (no `nvidia.sh`).
-* Install Flatpaks from `packages/flatpak.txt`, then fonts, then stow `$HOME` and install `system/` via `system/scripts/system-setup.sh` (includes `/etc/makepkg.conf.d/zz-x86-64-v3.conf`), **then** AUR from `packages/aur.txt` (bootstraps `paru` after the v3 makepkg drop-in)
-* Materialize `zram-generator.conf` via `system/scripts/zram-setup.sh` (skips stowing `zram` / `gdm`)
-* Apply GNOME session dconf (`desktop/gnome/dconf/user.conf`), Console dconf + `kitty.desktop` for `x-scheme-handler/terminal`, EGO fetch + extensions, location spoofing, and stock input defaults (`desktop/scripts/reset-input-defaults.sh` + `desktop/scripts/cleanup-input-overrides.sh`)
-* Configure GDM, Git, Neovim; `sync-agent-skills.sh` **before** Headroom MCP (`ai/scripts/headroom-setup.sh`); then AI coding/RE agents + plugins + skills (`install-coding-agents.sh`, `install-caveman.sh`, `install-ponytail.sh`, `install-android-ui-skills.sh`, `install-ghidra-cli.sh`, `install-obscura.sh`, `install-re-skills.sh`, `install-ecosystem-skills.sh`; optional `install-rtk.sh`; REA via `lab-re`), PhotoGIMP, and foxcage (`install-foxcage.sh`, Firefox in rootless Podman when `podman` exists).
-* Stage B modular TUI/GUI: `bash provision/scripts/configure.sh` (`dialog`/`whiptail`/`zenity`/`plain`;
-  `--gui` or `CONFIGURE_UI=…`; shared with `./install.sh` via `provision/lib/ui-menu.sh`;
-  fail-fast; `SETUP_FIREWALLD` on by default; `SETUP_OLLAMA` on only for P15;
-  `SETUP_LABS` / `SETUP_DETONATE` / `SETUP_AI` / `SETUP_RICE` opt-in). Optional qcow2
-  harness: `bash provision/scripts/vm-stageb-run.sh`.
-  Howtos: [configure](../README.md#how-to-configuresh-stage-b-tui),
-  [VM Stage B](../README.md#how-to-stage-b-on-a-stage-a-qcow2),
-  [firewalld](../README.md#how-to-firewalld-lab-zones--lab-malware).
-* Run `security/scripts/privacy-hardener.sh` (browser-hardening failure is recorded but layers 3–7 still run), then
-  `security/scripts/ops-hygiene.sh` (paccache + flatpak unused + `paccache.timer`;
-  `SKIP_OPS_HYGIENE=1` skips), then `scripts/check.sh` and
-  `scripts/validate-configs.sh`. Opt-in USB/DNS:
-  `usbguard-setup.sh` / `dnscrypt-setup.sh` —
-  [howto](../README.md#how-to-ops--privacy-kits).
-
-Config-only (no package install; skips `zram`, `system`, and `gdm`; removes unmodified `/etc/skel` copies and the Stage A (`stage-a/`) `~/.zshrc` / `starship.toml` seeds that block stow, then enables `tmp-semgrep-cleanup.timer`):
+Useful standalone entrypoints:
 
 ```bash
-./stow-only.sh
-exec zsh
+./stow-only.sh && exec zsh                  # config-only ($HOME symlinks, no root)
+bash provision/scripts/install-flatpaks.sh  # refresh Flatpaks only
+bash provision/scripts/install-aur.sh       # refresh AUR packages only
+bash scripts/check.sh --all                 # verify Stage A + Stage B
 ```
 
-To install or refresh Flatpaks/AUR packages without a full reinstall:
-
-```bash
-bash provision/scripts/install-flatpaks.sh
-bash provision/scripts/install-aur.sh
-```
-
-See [README.md](../README.md) for shell setup and maintenance commands. For
-coding / reverse engineering / malware-lab stacks on this machine, see
-[fresh-install-coding-re.md](fresh-install-coding-re.md).
+For coding, reverse engineering, and malware-lab stacks, see [fresh-install-coding-re.md](fresh-install-coding-re.md).
 
 ---
 

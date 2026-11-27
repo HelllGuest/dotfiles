@@ -154,15 +154,15 @@ audit). On the T14s blackbox host (2026-11-22): stock Adwaita, Podman primary
 `dnscrypt-proxy` active, `hr-proxy.service` enabled, Claude CLI present; Secure
 Boot still needs BIOS Setup Mode before `sbctl enroll-keys -m`.
 
-1. **Urgent (if not yet):** `bash scripts/location-setup.sh`. Re-run after any
+1. **Urgent (if not yet):** `bash security/scripts/location-setup.sh`. Re-run after any
    edit to `geolocation.local`.
-2. `bash ai-rules/install.sh`: refresh global hooks in `~/dev/ai-rules` (V6),
+2. `bash ai/rules/install.sh`: refresh global hooks in `~/dev/ai-rules` (V6),
    then `git config --local hooks.trusted true` in projects that should keep
    pre-push checks.
 3. `./install.sh` as desktop user (rejects root): packages + stow; AUR after
    `system-setup.sh`; `sync-agent-skills` before `headroom-setup`.
-4. `bash scripts/dnscrypt-setup.sh` / `bash scripts/usbguard-setup.sh` (opt-in).
-5. `bash scripts/browser-hardening.sh`: WebRTC policies (C2); or via
+4. `bash security/scripts/dnscrypt-setup.sh` / `bash security/scripts/usbguard-setup.sh` (opt-in).
+5. `bash security/scripts/browser-hardening.sh`: WebRTC policies (C2); or via
    `privacy-hardener.sh` (continues layers 3–7 if browsers fail).
-6. `bash scripts/labs-setup.sh`: rebuild `lab-capture` / `lab-web` (V5, V8).
+6. `bash labs/scripts/labs-setup.sh`: rebuild `lab-capture` / `lab-web` (V5, V8).
 7. Decide on U1 (history rewrite) before making this repository public.
