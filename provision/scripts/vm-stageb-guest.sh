@@ -47,7 +47,7 @@ stageb_sudoers_rm() {
 # Drop leftovers from a prior killed run before installing a fresh one.
 printf '%s\n' "$PASS" | sudo -S -p '' rm -f "$SUDOERS_DROP" 2>/dev/null || true
 printf '%s\n' "$PASS" | sudo -S -p '' bash -c \
-  "printf '%s ALL=(ALL) NOPASSWD: ALL\n' '$GUEST_NAME' >'$SUDOERS_DROP' && chmod 440 '$SUDOERS_DROP'"
+  "printf '%s ALL=(ALL:ALL) NOPASSWD: ALL\nDefaults:%s verifypw = any\n' '$GUEST_NAME' '$GUEST_NAME' >'$SUDOERS_DROP' && chmod 440 '$SUDOERS_DROP'"
 trap 'stageb_sudoers_rm' EXIT
 sudo -n true || { echo "FAIL: sudo -n still blocked"; echo DOTFILES_STAGEB_RESULT=FAIL; exit 1; }
 

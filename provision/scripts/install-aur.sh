@@ -41,7 +41,13 @@ fi
 
 # --sudoloop: builds can outlast the sudo timestamp; without it the final
 # install prompt times out unattended and every built package is dropped.
-aur() { "$AUR_HELPER" -S --needed --noconfirm --sudoloop "$@"; }
+# Skip --sudoloop when NOPASSWD works for commands (`sudo -n true`) yet
+# `sudo -n -v` would still prompt under sudoers default verifypw=all.
+AUR_SUDOLOOP=(--sudoloop)
+if sudo -n true 2>/dev/null && ! sudo -n -v 2>/dev/null; then
+    AUR_SUDOLOOP=()
+fi
+aur() { "$AUR_HELPER" -S --needed --noconfirm "${AUR_SUDOLOOP[@]}" "$@"; }
 
 echo "Installing AUR packages via $AUR_HELPER: ${to_install[*]}"
 if ! aur "${to_install[@]}"; then
