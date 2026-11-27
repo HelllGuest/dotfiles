@@ -352,6 +352,7 @@ stops the script; no silent `|| true`).
 | `SETUP_DETONATE` | off | `lab-detonate.sh setup` (capture + VMs; PolarProxy only with `POLARPROXY_SHA256=<verified sha256>`) |
 | `SETUP_AI` | off | `ai-stack-setup.sh` (Headroom/`hr-*`, Ponytail, Continue FIM; **not** Caveman — full `./install.sh` already did cores + extras + P15 ollama) |
 | `SETUP_RICE` | off | Re-run `rice-setup.sh` (also runs on `install.sh` desktop; Gruvbox defaults + Contour/htop/fastfetch) |
+| `SETUP_THEMES` | off | `desktop/scripts/theme-packs.sh` (GNOME theme packs manager: install/uninstall, reverts to stock Adwaita) |
 
 ```bash
 bash provision/scripts/configure.sh                      # TUI menu loop (dialog/whiptail/plain)
@@ -513,7 +514,7 @@ reject EUID==0 (never sudo ./install.sh)
 → apply-profile.sh (hostname e.g. p15, or detect-profile.sh — after packages so NVIDIA DKMS exists)
 → install-flatpaks.sh → install-fonts.sh
 → stow ($HOME; system/ via system-setup.sh installs makepkg x86-64-v3; skips zram & gdm)
-→ install-aur.sh (after system-setup; bootstraps paru after `rustup default stable`; --sudoloop; per-package retry)
+→ install-aur.sh (after system-setup; bootstraps paru after `rustup default stable`; --sudoloop unless NOPASSWD without verifypw=any; per-package retry)
 → tmp-semgrep-cleanup.timer enable (user unit) → login shell → zsh (usermod, if not already)
 → fnm install/default/use 22 (default/use only if install succeeds) → atuin import → zram-setup.sh
 → gnome-session-setup.sh → location-setup.sh → gnome-console-setup.sh

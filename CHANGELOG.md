@@ -1,6 +1,9 @@
 # Changelog
 
 ## [Unreleased]
+- fix(aur,vm): skip `paru --sudoloop` in `provision/scripts/install-aur.sh` when `sudo -n true` works without `sudo -n -v` (`verifypw=all`), and set `(ALL:ALL)` + `Defaults:$GUEST_NAME verifypw = any` in `provision/scripts/vm-stageb-guest.sh`; verified full clean Stage A + Stage B VM rehearsal (`PASS_HEADLESS`, all 7 AUR + 27 Flatpak + pacman + config checks).
+- feat(install,ui): add Back/Previous navigation across Stage B menus (`install.sh`, `configure.sh`, `theme-packs.sh`) and Stage A wizard steps (including intra-step sub-prompt rewind, empty-history Back safety, `04-hardware.sh` re-entry, and dynamic Review Back/Jump filtering); enable `whiptail --fullbuttons` with adjusted list/message heights and fix 8-color-safe dark + cyan focus palette in `provision/lib/ui-menu.sh` and inactive button contrast in `stage-a/lib/11-ui-theme.sh`; expanded unit, wizard-loop, palette, and 80×24 PTY tests.
+- fix(theme): align all 12 GNOME theme packs in `desktop/scripts/theme-packs.sh` with upstream install/uninstall flags and dependencies (`rice-setup.sh` + isolated git hook config in `tests/theme-packs.test.sh`).
 - feat(install): desktop section runs `rice-setup.sh` (SKIP_RICE=1 opt-out); rice-setup applies `rice-theme gruvbox` after stow so Contour/htop/fastfetch/GNOME accent land on a normal `./install.sh`.
 - fix(rice): Contour `~/.local/bin/contour` wrapper passes help/version/`config` through; desktop Exec uses the wrapper; `rice-setup` pacman installs contour; htop Black Night/Nord via `HTOPRC`; uninstall clears theme state; `user.conf` TextEditor `gruvbox-dark`; Cursor JetBrainsMono 13.
 - feat(rice): Contour + fastfetch PNG logos (`type: auto`) + bat/fzf colors + GNOME accent/TextEditor schemes via `rice-theme`; stow Contour in `rice-setup.sh`; secops-dark gtksource style; tests/docs/inventory synced.
