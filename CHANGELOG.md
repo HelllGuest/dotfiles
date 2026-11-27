@@ -1,6 +1,7 @@
 # Changelog
 
 ## [Unreleased]
+- feat(install): desktop section runs `rice-setup.sh` (SKIP_RICE=1 opt-out); rice-setup applies `rice-theme gruvbox` after stow so Contour/htop/fastfetch/GNOME accent land on a normal `./install.sh`.
 - fix(rice): Contour `~/.local/bin/contour` wrapper passes help/version/`config` through; desktop Exec uses the wrapper; `rice-setup` pacman installs contour; htop Black Night/Nord via `HTOPRC`; uninstall clears theme state; `user.conf` TextEditor `gruvbox-dark`; Cursor JetBrainsMono 13.
 - feat(rice): Contour + fastfetch PNG logos (`type: auto`) + bat/fzf colors + GNOME accent/TextEditor schemes via `rice-theme`; stow Contour in `rice-setup.sh`; secops-dark gtksource style; tests/docs/inventory synced.
 - feat(rice): unify JetBrainsMono 13 across kgx (`gnome-console-setup.sh` + `dconf/user.conf`), GNOME monospace, and Text Editor; `rice-setup.sh` fails loud and stows nvim; `rice-theme` covers Kitty + Neovim (`rice_gruvbox`/`rice_secops`), richer status, `--dry` (requires a theme), kitty quiet `theme.local.conf` stub, and modular-gruvbox desktop hint; tests/docs synced.

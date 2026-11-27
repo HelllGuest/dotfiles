@@ -48,6 +48,15 @@ if ! grep -qs 'CMD_NOTIFY_THRESHOLD' "$HOME/.zshrc" "$HOME/.zshrc.local" 2>/dev/
     || fail_rice "could not append CMD_NOTIFY_THRESHOLD to ~/.zshrc.local"
 fi
 
+# Default Gruvbox local overrides (terminals, bat/fzf, GNOME accent + Text Editor).
+# Repo stays clean; 'rice-theme secops|reset' switches later.
+if [[ -f $HOME/.shell-functions ]]; then
+  echo "→ Applying rice-theme gruvbox..."
+  if ! bash -c 'source "$HOME/.shell-functions" && rice-theme gruvbox' >/dev/null; then
+    fail_rice "rice-theme gruvbox failed"
+  fi
+fi
+
 if (( RICE_FAILED )); then
   echo "✗ rice finished with failures (re-run after fixing the ✗ lines above)" >&2
   exit 1

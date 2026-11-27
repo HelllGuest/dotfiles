@@ -74,7 +74,7 @@ run_modules_batch() {
     SETUP_LABS "Labs lab-triage/re/android/web (+ capture)" off \
     SETUP_DETONATE "Detonation VMs + INetSim/PolarProxy" off \
     SETUP_AI "AI MCP / Headroom / Continue / Ponytail" off \
-    SETUP_RICE "Terminal/CLI rice (Gruvbox/SecOps) + notify" off \
+    SETUP_RICE "Re-run terminal/CLI rice (also runs on install desktop)" off \
     SETUP_THEMES "GNOME theme packs manager (install/uninstall)" off
   )" || return 1
 

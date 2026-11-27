@@ -176,6 +176,10 @@ grep -q 'SETUP_LABS' "$ROOT/provision/scripts/configure.sh" || fail "configure m
 grep -q 'labs-setup.sh' "$ROOT/provision/scripts/configure.sh" || fail "configure must call labs-setup"
 grep -q 'ai-stack-setup.sh' "$ROOT/provision/scripts/configure.sh" || fail "configure must call ai-stack"
 grep -q 'rice-setup.sh' "$ROOT/provision/scripts/configure.sh" || fail "configure must call rice-setup"
+grep -q 'desktop/scripts/rice-setup.sh' "$ROOT/install.sh" \
+  || fail "install.sh desktop must run rice-setup.sh (current Contour/htop/fastfetch rice)"
+grep -q 'SKIP_RICE' "$ROOT/install.sh" \
+  || fail "install.sh must document SKIP_RICE=1 opt-out"
 grep -q 'LABS_SLICE2' "$ROOT/provision/scripts/configure.sh" \
   && fail "Slice 2 placeholders must be gone" || true
 
@@ -545,6 +549,8 @@ grep -q "monospace-font-name='JetBrainsMono Nerd Font 13'" "$ROOT/desktop/gnome/
   || fail "rice-setup must not set kgx font (gnome-console-setup + user.conf)"
 grep -q 'fail_rice\|RICE_FAILED' "$ROOT/desktop/scripts/rice-setup.sh" \
   || fail "rice-setup must fail loud (no silent || true on stow/pacman)"
+grep -q 'rice-theme gruvbox' "$ROOT/desktop/scripts/rice-setup.sh" \
+  || fail "rice-setup must apply rice-theme gruvbox after stow"
 grep -qx 'save_config_on_exit = false' "$ROOT/stow/btop/.config/btop/btop.conf" \
   || fail "btop.conf must set save_config_on_exit = false (stowed file)"
 (

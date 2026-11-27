@@ -84,6 +84,8 @@ done
 
 # --- headless VM harness --------------------------------------------------------
 grep -q '"${SKIP_THEME:-0}" = 1' "$I" || fail "install.sh must offer SKIP_THEME=1"
+grep -q '"${SKIP_RICE:-0}" = 1' "$I" || fail "install.sh must offer SKIP_RICE=1"
+grep -q 'desktop/scripts/rice-setup.sh' "$I" || fail "install.sh must run rice-setup on desktop"
 G="$ROOT/provision/scripts/vm-stageb-guest.sh"
 grep -qx 'export SKIP_THEME=1' "$G" || fail "headless guest must skip the theme (no GNOME Shell)"
 grep -q 'dbus-run-session -- bash ./install.sh' "$G" || fail "headless guest must give install.sh a session bus"

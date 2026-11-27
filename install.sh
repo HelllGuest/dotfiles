@@ -52,7 +52,7 @@ Environment:
   INSTALL_ALL=1    Same as --all
   INSTALL_UI=...   plain|tui|dialog|whiptail|gui|zenity
   MINIMAL_PACKAGES=1 / SKIP_AI_IDES=1 / SKIP_MOBILE_DEV=1 / SKIP_RE_TOOLS=1
-  SKIP_THEME=1 / SKIP_OLLAMA=1 / SKIP_FOXCAGE=1 / SKIP_OPS_HYGIENE=1 / CONFIGURE=1
+  SKIP_THEME=1 / SKIP_RICE=1 / SKIP_OLLAMA=1 / SKIP_FOXCAGE=1 / SKIP_OPS_HYGIENE=1 / CONFIGURE=1
 EOF
 }
 
@@ -65,7 +65,7 @@ fonts      Fonts (provision/scripts/install-fonts.sh)
 stow       Dotfiles stow + /etc system configs + user timers
 aur        AUR packages (packages/aur.txt)
 shell      zsh login shell, Node 22 (fnm), atuin history, zram
-desktop    GNOME session, location, Console, GDM, theme, extensions
+desktop    GNOME session, location, Console, GDM, theme, terminal rice, extensions
 dev        Git global config + Neovim plugins/treesitter
 ai         AI & RE stack (skills, Headroom, agents, ghidra-cli, Obscura, Ollama)
 apps       Optional apps (PhotoGIMP, foxcage)
@@ -322,7 +322,7 @@ else
 fi
 # Ceiling = run_step sites + advance_progress sites (conditionals leave headroom).
 INSTALL_STEP=0
-INSTALL_STEPS=44
+INSTALL_STEPS=45
 
 # Tick the Stage B bar without wrapping a command (pacman/stow/profile/…).
 advance_progress() {
@@ -613,6 +613,15 @@ if [ "${SKIP_THEME:-0}" = 1 ]; then
     echo "Skipping theme setup (SKIP_THEME=1)."
 elif [ -f "desktop/scripts/theme-setup.sh" ]; then
     run_step "Theme setup" bash desktop/scripts/theme-setup.sh
+fi
+
+# 3.2b Terminal/CLI rice (Contour wrapper, fastfetch logos, htop, bat/fzf,
+# GNOME accent + Text Editor). Re-stows rice packages; applies gruvbox defaults.
+# Opt out: SKIP_RICE=1 (headless / no sudo pacman for rice deps).
+if [ "${SKIP_RICE:-0}" = 1 ]; then
+    echo "Skipping terminal rice (SKIP_RICE=1)."
+elif [ -f "desktop/scripts/rice-setup.sh" ]; then
+    run_step "Terminal rice" bash desktop/scripts/rice-setup.sh
 fi
 fi
 

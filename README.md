@@ -281,7 +281,7 @@ On an interactive TTY, `./install.sh` opens a **TUI menu** (`dialog` / `whiptail
 # Optional: run Stage B TUI modules during full install (fails hard if a module fails):
 # CONFIGURE=1 ./install.sh --all
 # Headless / serial: CONFIGURE=1 CONFIGURE_UI=plain ./install.sh --all
-# Skip foxcage / ollama / theme: SKIP_FOXCAGE=1 SKIP_OLLAMA=1 SKIP_THEME=1 ./install.sh --all
+# Skip foxcage / ollama / theme / rice: SKIP_FOXCAGE=1 SKIP_OLLAMA=1 SKIP_THEME=1 SKIP_RICE=1 ./install.sh --all
 ```
 
 Machine profiles run in `./install.sh` via `provision/scripts/apply-profile.sh` **after** `packages/pacman.txt` (exactly one profile): `profiles/$(hostname).sh` if it exists, otherwise `provision/scripts/detect-profile.sh` (ThinkPad P15 → `thinkpad-p15`, ThinkPad T14s Gen 3 AMD 21CQ/21CR → `thinkpad-t14s`, other ThinkPads/laptop chassis → `laptop`). Pacman first so Optimus/NVIDIA packages exist before `thinkpad-p15` enables services and rebuilds UKIs (GPU packages in `packages/pacman.txt`: the Intel packages are skipped on the AMD T14s, and the NVIDIA packages (`nvidia-open-dkms`, `nvidia-prime`, `nvidia-utils`, `egl-wayland`) are installed only when `has_nvidia_gpu` finds an NVIDIA display device on PCI, so the T14s, VMs and other laptops skip the NVIDIA stack and its DKMS builds). There is no `nvidia.sh`; Optimus setup is inside `profiles/thinkpad-p15.sh`.
@@ -351,7 +351,7 @@ stops the script; no silent `|| true`).
 | `SETUP_LABS` | off | `labs-setup.sh` (triage/re/android/web images) |
 | `SETUP_DETONATE` | off | `lab-detonate.sh setup` (capture + VMs; PolarProxy only with `POLARPROXY_SHA256=<verified sha256>`) |
 | `SETUP_AI` | off | `ai-stack-setup.sh` (Headroom/`hr-*`, Ponytail, Continue FIM; **not** Caveman — full `./install.sh` already did cores + extras + P15 ollama) |
-| `SETUP_RICE` | off | `rice-setup.sh` (Gruvbox / SecOps rice + lock-screen notifications off) |
+| `SETUP_RICE` | off | Re-run `rice-setup.sh` (also runs on `install.sh` desktop; Gruvbox defaults + Contour/htop/fastfetch) |
 
 ```bash
 bash provision/scripts/configure.sh                      # TUI menu loop (dialog/whiptail/plain)
@@ -455,7 +455,7 @@ to rehearse the GNOME Stage A path as well.
 
 Guest (`vm-stageb-guest.sh`): `CONFIGURE_UI=plain` + empty checklist line →
 defaults (`SETUP_FIREWALLD` on), then `./install.sh` with
-`SKIP_CONFIGURE=1`, `SKIP_FOXCAGE=1`, `SKIP_OLLAMA=1`, `SKIP_THEME=1`,
+`SKIP_CONFIGURE=1`, `SKIP_FOXCAGE=1`, `SKIP_OLLAMA=1`, `SKIP_THEME=1`, `SKIP_RICE=1`,
 `GIT_SETUP_NONINTERACTIVE=1`, under `dbus-run-session` (dconf writes need a
 session bus). `vm-stageb-run.sh` reuses Stage A's `OVMF_VARS.fd`. Temporary NOPASSWD is removed before RESULT.
 
@@ -517,7 +517,9 @@ reject EUID==0 (never sudo ./install.sh)
 → tmp-semgrep-cleanup.timer enable (user unit) → login shell → zsh (usermod, if not already)
 → fnm install/default/use 22 (default/use only if install succeeds) → atuin import → zram-setup.sh
 → gnome-session-setup.sh → location-setup.sh → gnome-console-setup.sh
-→ gdm-setup.sh → theme-setup.sh (stock Adwaita; SKIP_THEME=1 skips) → git-setup.sh → nvim-setup.sh
+→ gdm-setup.sh → theme-setup.sh (stock Adwaita; SKIP_THEME=1 skips)
+→ rice-setup.sh (Contour/htop/fastfetch/GNOME accent; applies `rice-theme gruvbox`; SKIP_RICE=1 skips)
+→ git-setup.sh → nvim-setup.sh
 → sync-agent-skills.sh (creates agent dirs) → headroom-setup.sh
 → install-coding-agents.sh (OpenCode + Kimi + MCP; if npm)
 → install-caveman.sh (if npm) → install-ponytail.sh (if node) → install-android-ui-skills.sh (if npx)
