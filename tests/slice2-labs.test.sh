@@ -225,9 +225,11 @@ grep -q 'maxPromptTokens: 2048' "$ROOT/stow/continue/.continue/config.yaml" \
 grep -q 'env_var.LAB_BADGE' "$ROOT/stow/starship/.config/starship.toml" \
   || fail "starship LAB_BADGE badge"
 
-# Kitty host must not ship a forced Gruvbox theme file (stock colors)
-[[ ! -f $ROOT/stow/kitty/.config/kitty/theme.conf ]] \
-  || fail "kitty must stay stock (no theme.conf)"
+# Kitty ships theme.conf (Gruvbox default) + themes/; rice-theme overrides via theme.local.conf
+[[ -f $ROOT/stow/kitty/.config/kitty/theme.conf ]] \
+  || fail "kitty must ship theme.conf (Gruvbox default)"
+grep -qx 'include theme.conf' "$ROOT/stow/kitty/.config/kitty/kitty.conf" \
+  || fail "kitty.conf must include theme.conf"
 
 # Desktop launchers: lab-* are .bashrc functions, so Exec must be an interactive
 # bash (bash -lc skips .bashrc); quotes must be spec-valid (double, not single).
@@ -447,8 +449,8 @@ for _ff in "$ROOT"/stow/fastfetch/.config/fastfetch/*.jsonc; do
 done
 unset -v _ff _ff_out
 
-# Behavioral: multi-theme configs (starship, btop, ghostty, alacritty) parse cleanly
-# and rice-theme switches all five tools in an isolated XDG_CONFIG_HOME.
+# Behavioral: multi-theme configs (starship, btop, ghostty, alacritty, kitty, nvim)
+# parse cleanly and rice-theme switches them in an isolated XDG_CONFIG_HOME.
 python3 - "$ROOT" <<'PY' || fail "TOML config parse failed"
 import pathlib, sys, tomllib
 root = pathlib.Path(sys.argv[1])
@@ -475,7 +477,11 @@ for _bt in gruvbox_dark secops; do
 done
 for _gt in gruvbox secops; do
   [[ -f "$ROOT/stow/ghostty/.config/ghostty/themes/${_gt}.conf" ]] || fail "missing ghostty theme $_gt"
+  [[ -f "$ROOT/stow/kitty/.config/kitty/themes/${_gt}.conf" ]] || fail "missing kitty theme $_gt"
 done
+[[ -f "$ROOT/stow/nvim/.config/nvim/colors/rice_gruvbox.lua" ]] \
+  && [[ -f "$ROOT/stow/nvim/.config/nvim/colors/rice_secops.lua" ]] \
+  || fail "missing nvim rice_* colorschemes"
 # Active defaults must match one of their shipped templates (no silent drift).
 _match_any() {
   local def=$1 f; shift
@@ -491,22 +497,74 @@ _match_any "$ROOT/stow/ghostty/.config/ghostty/theme.conf" \
 _match_any "$ROOT/stow/alacritty/.config/alacritty/theme.toml" \
   "$ROOT"/stow/alacritty/.config/alacritty/themes/*.toml \
   || fail "alacritty/theme.toml drifted from shipped themes"
+_match_any "$ROOT/stow/kitty/.config/kitty/theme.conf" \
+  "$ROOT"/stow/kitty/.config/kitty/themes/*.conf \
+  || fail "kitty/theme.conf drifted from shipped themes"
 unset -f _match_any
 grep -qx 'import = \["theme.toml", "theme.local.toml"\]' "$ROOT/stow/alacritty/.config/alacritty/alacritty.toml" \
   || fail "alacritty.toml must import theme.toml and optional theme.local.toml"
 grep -qx 'config-file = ?theme.local.conf' "$ROOT/stow/ghostty/.config/ghostty/config" \
   || fail "ghostty config must load optional theme.local.conf"
+grep -qx 'include theme.local.conf' "$ROOT/stow/kitty/.config/kitty/kitty.conf" \
+  || fail "kitty.conf must include theme.local.conf"
+grep -q '"type": "auto"' "$ROOT/stow/fastfetch/.config/fastfetch/gruvbox.jsonc" \
+  || fail "fastfetch gruvbox must use logo type auto (PNG + fallback)"
+grep -q 'logos/gruvbox.png' "$ROOT/stow/fastfetch/.config/fastfetch/gruvbox.jsonc" \
+  || fail "fastfetch gruvbox must point at logos/gruvbox.png"
+grep -q 'logos/secops.png' "$ROOT/stow/fastfetch/.config/fastfetch/secops.jsonc" \
+  || fail "fastfetch secops must point at logos/secops.png"
+[[ -f $ROOT/stow/fastfetch/.config/fastfetch/logos/gruvbox.png \
+  && -f $ROOT/stow/fastfetch/.config/fastfetch/logos/secops.png ]] \
+  || fail "missing fastfetch logo PNGs"
+grep -qE '^[[:space:]]*colors: gruvbox-dark$' "$ROOT/stow/contour/.config/contour/contour.yml" \
+  || fail "contour.yml default colors must be gruvbox-dark"
+grep -qE '^[[:space:]]*secops:$' "$ROOT/stow/contour/.config/contour/contour.yml" \
+  || fail "contour.yml must define secops color scheme"
+[[ -f $ROOT/stow/gnome-text-editor/.local/share/gtksourceview-5/styles/secops-dark.xml ]] \
+  || fail "missing Text Editor secops-dark style scheme"
+grep -q '_rice_apply_cli\|_rice_gnome\|_rice_contour' "$ROOT/stow/zsh/.shell-functions" \
+  || fail "shell-functions must define rice cli/gnome/contour helpers"
+[[ -x $ROOT/stow/contour/.local/bin/contour ]] \
+  || fail "missing executable contour rice wrapper"
+grep -q '\$HOME/\.local/bin/contour' "$ROOT/stow/contour/.local/share/applications/org.contourterminal.Contour.desktop" \
+  || fail "Contour desktop must Exec the rice wrapper via \$HOME/.local/bin/contour"
+grep -qE 'alacritty contour$' "$ROOT/desktop/scripts/rice-setup.sh" \
+  || grep -q 'alacritty contour' "$ROOT/desktop/scripts/rice-setup.sh" \
+  || fail "rice-setup pacman must install contour"
+grep -qx 'color_scheme=5' "$ROOT/stow/htop/.config/htop/htoprc" \
+  || fail "htoprc default must be Black Night (5) for gruvbox"
+grep -q "style-scheme='gruvbox-dark'" "$ROOT/desktop/gnome/dconf/user.conf" \
+  || fail "user.conf TextEditor scheme must be gruvbox-dark (rice default)"
+grep -q 'JetBrainsMono Nerd Font 13' "$ROOT/desktop/scripts/gnome-console-setup.sh" \
+  || fail "gnome-console-setup must set kgx font 13"
+grep -q "custom-font='JetBrainsMono Nerd Font 13'" "$ROOT/desktop/gnome/dconf/user.conf" \
+  || fail "dconf user.conf Console font must be 13 (session load must not undo console-setup)"
+grep -q "monospace-font-name='JetBrainsMono Nerd Font 13'" "$ROOT/desktop/gnome/dconf/user.conf" \
+  || fail "dconf user.conf monospace font must be 13"
+! grep -q 'custom-font' "$ROOT/desktop/scripts/rice-setup.sh" \
+  || fail "rice-setup must not set kgx font (gnome-console-setup + user.conf)"
+grep -q 'fail_rice\|RICE_FAILED' "$ROOT/desktop/scripts/rice-setup.sh" \
+  || fail "rice-setup must fail loud (no silent || true on stow/pacman)"
 grep -qx 'save_config_on_exit = false' "$ROOT/stow/btop/.config/btop/btop.conf" \
   || fail "btop.conf must set save_config_on_exit = false (stowed file)"
 (
   _rt="$(mktemp -d)"
   trap 'rm -rf "$_rt"' EXIT
-  mkdir -p "$_rt/cfg/fastfetch" "$_rt/cfg/btop/themes" "$_rt/cfg/ghostty/themes" "$_rt/cfg/alacritty/themes" "$_rt/state" "$_rt/empty" "$_rt/bin"
+  mkdir -p "$_rt/cfg/fastfetch/logos" "$_rt/cfg/btop/themes" "$_rt/cfg/ghostty/themes" \
+    "$_rt/cfg/alacritty/themes" "$_rt/cfg/kitty/themes" "$_rt/cfg/nvim/colors" \
+    "$_rt/cfg/contour" "$_rt/cfg/htop" "$_rt/state" "$_rt/empty" "$_rt/bin"
   # Stubs log their arguments: the wrappers must pick the override config.
   for _c in fastfetch btop; do
     printf '#!/bin/sh\necho "%s $*" >>"$RICE_LOG"\n' "$_c" >"$_rt/bin/$_c"; chmod +x "$_rt/bin/$_c"
   done
+  printf '#!/bin/sh\necho "htop HTOPRC=${HTOPRC:-} $*" >>"$RICE_LOG"\n' >"$_rt/bin/htop"; chmod +x "$_rt/bin/htop"
+  # Contour: real binary stub + stowed rice wrapper (CONTOUR_BIN).
+  printf '#!/bin/sh\necho "contour $*" >>"$RICE_LOG"\n' >"$_rt/bin/contour-real"; chmod +x "$_rt/bin/contour-real"
+  cp "$ROOT/stow/contour/.local/bin/contour" "$_rt/bin/contour"; chmod +x "$_rt/bin/contour"
+  # Never touch the real session bus from rice-theme GNOME hooks.
+  printf '#!/bin/sh\necho "gsettings $*" >>"$RICE_LOG"\n' >"$_rt/bin/gsettings"; chmod +x "$_rt/bin/gsettings"
   cp "$ROOT"/stow/fastfetch/.config/fastfetch/*.jsonc "$_rt/cfg/fastfetch/"
+  cp "$ROOT"/stow/fastfetch/.config/fastfetch/logos/*.png "$_rt/cfg/fastfetch/logos/" 2>/dev/null || true
   cp "$ROOT/stow/btop/.config/btop/btop.conf" "$_rt/cfg/btop/"
   cp "$ROOT"/stow/btop/.config/btop/themes/*.theme "$_rt/cfg/btop/themes/"
   cp "$ROOT/stow/starship/.config/starship.toml" "$_rt/cfg/"
@@ -514,23 +572,32 @@ grep -qx 'save_config_on_exit = false' "$ROOT/stow/btop/.config/btop/btop.conf" 
   cp "$ROOT"/stow/ghostty/.config/ghostty/themes/*.conf "$_rt/cfg/ghostty/themes/"
   cp "$ROOT/stow/alacritty/.config/alacritty/theme.toml" "$_rt/cfg/alacritty/"
   cp "$ROOT"/stow/alacritty/.config/alacritty/themes/*.toml "$_rt/cfg/alacritty/themes/"
+  cp "$ROOT/stow/kitty/.config/kitty/theme.conf" "$_rt/cfg/kitty/"
+  cp "$ROOT"/stow/kitty/.config/kitty/themes/*.conf "$_rt/cfg/kitty/themes/"
+  cp "$ROOT"/stow/nvim/.config/nvim/colors/rice_*.lua "$_rt/cfg/nvim/colors/"
+  cp "$ROOT/stow/contour/.config/contour/contour.yml" "$_rt/cfg/contour/"
+  cp "$ROOT/stow/htop/.config/htop/htoprc" "$_rt/cfg/htop/"
   export RICE_LOG="$_rt/log"
   _st="$_rt/state/dotfiles/theme"
   # _rs <commands>: run in a fresh shell that sourced .shell-functions (like a new terminal).
   _rs() {
-    env -u STARSHIP_CONFIG XDG_CONFIG_HOME="$_rt/cfg" XDG_STATE_HOME="$_rt/state" PATH="$_rt/bin:$PATH" \
+    env -u STARSHIP_CONFIG XDG_CONFIG_HOME="$_rt/cfg" XDG_STATE_HOME="$_rt/state" \
+      CONTOUR_BIN="$_rt/bin/contour-real" PATH="$_rt/bin:$PATH" \
       "$_sh" -c 'source "$1"; '"$1" _ "$ROOT/stow/zsh/.shell-functions"
   }
   _tracked_unchanged() {
     cmp -s "$ROOT/stow/fastfetch/.config/fastfetch/config.jsonc" "$_rt/cfg/fastfetch/config.jsonc" \
       && cmp -s "$ROOT/stow/ghostty/.config/ghostty/theme.conf" "$_rt/cfg/ghostty/theme.conf" \
       && cmp -s "$ROOT/stow/alacritty/.config/alacritty/theme.toml" "$_rt/cfg/alacritty/theme.toml" \
+      && cmp -s "$ROOT/stow/kitty/.config/kitty/theme.conf" "$_rt/cfg/kitty/theme.conf" \
       && cmp -s "$ROOT/stow/btop/.config/btop/btop.conf" "$_rt/cfg/btop/btop.conf" \
       && cmp -s "$ROOT/stow/starship/.config/starship.toml" "$_rt/cfg/starship.toml"
   }
   for _sh in bash zsh; do
     command -v "$_sh" >/dev/null || continue
-    rm -rf "$_rt/state"; rm -f "$_rt/cfg/ghostty/theme.local.conf" "$_rt/cfg/alacritty/theme.local.toml"
+    rm -rf "$_rt/state"
+    rm -f "$_rt/cfg/ghostty/theme.local.conf" "$_rt/cfg/alacritty/theme.local.toml" \
+      "$_rt/cfg/kitty/theme.local.conf"
     cp "$ROOT/stow/starship/.config/starship.toml" "$_rt/cfg/"
     cp "$ROOT/stow/btop/.config/btop/btop.conf" "$_rt/cfg/btop/"
     # ff-preset: list, use (saves a name, never touches config.jsonc), ff honours it, reset, traversal
@@ -549,14 +616,33 @@ grep -qx 'save_config_on_exit = false' "$ROOT/stow/btop/.config/btop/btop.conf" 
     : >"$RICE_LOG"; _rs 'ff'
     grep -qx 'fastfetch ' "$RICE_LOG" || fail "$_sh: ff after reset must run the repo config.jsonc"
     ! _rs 'ff-preset ../bad >/dev/null 2>&1' || fail "$_sh: ff-preset must reject traversal"
-    # rice-theme: names in state, links for ghostty/alacritty, starship active in this shell
+    # rice-theme --dry alone must error; --dry gruvbox must not write
+    ! _rs 'rice-theme --dry >/dev/null 2>&1' || fail "$_sh: rice-theme --dry without a theme must fail"
+    _rs 'rice-theme --dry gruvbox >/dev/null'
+    [[ ! -e $_st/fastfetch && ! -L $_rt/cfg/ghostty/theme.local.conf && ! -L $_rt/cfg/kitty/theme.local.conf ]] \
+      || fail "$_sh: rice-theme --dry must not write state or theme.local links"
+    # rice-theme: names in state, links for ghostty/alacritty/kitty, starship + nvim
     _sc="$(_rs 'rice-theme gruvbox >/dev/null; printf %s "${STARSHIP_CONFIG:-}"')"
     [[ $_sc == "$_st/starship.toml" ]] || fail "$_sh: rice-theme must point STARSHIP_CONFIG at the override (got $_sc)"
     grep -qx "palette = 'gruvbox_dark'" "$_st/starship.toml" || fail "$_sh: rice-theme gruvbox missed starship"
     [[ "$(cat "$_st/fastfetch")" == gruvbox && "$(cat "$_st/btop")" == gruvbox_dark ]] \
       || fail "$_sh: rice-theme gruvbox must save fastfetch/btop names"
+    [[ "$(cat "$_st/nvim")" == rice_gruvbox ]] || fail "$_sh: rice-theme gruvbox must save nvim colorscheme"
     [[ "$(readlink "$_rt/cfg/ghostty/theme.local.conf")" == themes/gruvbox.conf ]] || fail "$_sh: ghostty theme.local.conf must link to themes/gruvbox.conf"
     [[ "$(readlink "$_rt/cfg/alacritty/theme.local.toml")" == themes/gruvbox.toml ]] || fail "$_sh: alacritty theme.local.toml must link to themes/gruvbox.toml"
+    [[ "$(readlink "$_rt/cfg/kitty/theme.local.conf")" == themes/gruvbox.conf ]] || fail "$_sh: kitty theme.local.conf must link to themes/gruvbox.conf"
+    [[ ! -e $_st/contour && ! -e $_st/contour.yml ]] \
+      || fail "$_sh: rice-theme gruvbox must leave contour on stowed gruvbox-dark (no state copy)"
+    _bat="$(_rs 'printf %s "${BAT_THEME:-}"')"
+    [[ $_bat == gruvbox-dark ]] || fail "$_sh: rice-theme gruvbox must set BAT_THEME=gruvbox-dark (got $_bat)"
+    grep -q 'gsettings set org.gnome.desktop.interface accent-color yellow' "$RICE_LOG" \
+      || fail "$_sh: rice-theme gruvbox must set GNOME accent yellow: $(cat "$RICE_LOG")"
+    grep -q 'gsettings set org.gnome.TextEditor style-scheme gruvbox-dark' "$RICE_LOG" \
+      || fail "$_sh: rice-theme gruvbox must set TextEditor gruvbox-dark"
+    : >"$RICE_LOG"; _rs 'htop'
+    grep -q "htop HTOPRC=$_st/htoprc" "$RICE_LOG" \
+      || fail "$_sh: htop must use state HTOPRC under gruvbox: $(cat "$RICE_LOG")"
+    grep -qx 'color_scheme=5' "$_st/htoprc" || fail "$_sh: htop gruvbox must use Black Night (5)"
     : >"$RICE_LOG"; _rs 'btop'
     grep -qx "btop -c $_st/btop.conf --themes-dir $_rt/cfg/btop/themes" "$RICE_LOG" || fail "$_sh: btop must use the override: $(cat "$RICE_LOG")"
     : >"$RICE_LOG"; _rs 'btop -p 1'
@@ -593,19 +679,54 @@ grep -qx 'save_config_on_exit = false' "$ROOT/stow/btop/.config/btop/btop.conf" 
     # Broken theme.local.* links to missing themes must be removed at shell start.
     ln -sfn themes/nonexistent.conf "$_rt/cfg/ghostty/theme.local.conf"
     ln -sfn themes/nonexistent.toml "$_rt/cfg/alacritty/theme.local.toml"
+    ln -sfn themes/nonexistent.conf "$_rt/cfg/kitty/theme.local.conf"
     _rs ':'
     [[ ! -e $_rt/cfg/ghostty/theme.local.conf && ! -L $_rt/cfg/ghostty/theme.local.conf ]] \
       || fail "$_sh: dangling ghostty theme.local.conf must be removed"
     [[ ! -e $_rt/cfg/alacritty/theme.local.toml && ! -L $_rt/cfg/alacritty/theme.local.toml ]] \
       || fail "$_sh: dangling alacritty theme.local.toml must be removed"
+    [[ ! -L $_rt/cfg/kitty/theme.local.conf && -f $_rt/cfg/kitty/theme.local.conf ]] \
+      || fail "$_sh: dangling kitty theme.local.conf must become a stub file"
+    : >"$RICE_LOG"
     _rs 'rice-theme secops >/dev/null'
     grep -qx "palette = 'secops'" "$_st/starship.toml" || fail "$_sh: rice-theme secops missed starship"
-    # reset: every override gone, repo defaults back, STARSHIP_CONFIG cleared
+    [[ "$(cat "$_st/nvim")" == rice_secops ]] || fail "$_sh: rice-theme secops must save nvim colorscheme"
+    [[ "$(readlink "$_rt/cfg/kitty/theme.local.conf")" == themes/secops.conf ]] \
+      || fail "$_sh: kitty theme.local.conf must link to themes/secops.conf"
+    [[ "$(cat "$_st/contour")" == secops ]] || fail "$_sh: rice-theme secops must save contour scheme"
+    grep -qE '^[[:space:]]*colors: secops$' "$_st/contour.yml" \
+      || fail "$_sh: contour.yml override must set colors: secops"
+    grep -q 'accent-color teal' "$RICE_LOG" \
+      || fail "$_sh: rice-theme secops must set GNOME accent teal: $(cat "$RICE_LOG")"
+    grep -q 'style-scheme secops-dark' "$RICE_LOG" \
+      || fail "$_sh: rice-theme secops must set TextEditor secops-dark"
+    _bat="$(_rs 'printf %s "${BAT_THEME:-}"')"
+    [[ $_bat == Nord ]] || fail "$_sh: rice-theme secops must set BAT_THEME=Nord (got $_bat)"
+    : >"$RICE_LOG"; _rs 'htop'
+    grep -qx 'color_scheme=7' "$_st/htoprc" || fail "$_sh: htop secops must use Nord (7)"
+    : >"$RICE_LOG"; _rs 'contour'
+    grep -qx "contour config $_st/contour.yml" "$RICE_LOG" \
+      || fail "$_sh: contour wrapper must pass state config: $(cat "$RICE_LOG")"
+    : >"$RICE_LOG"; _rs 'contour version'
+    grep -qx 'contour version' "$RICE_LOG" \
+      || fail "$_sh: contour version must pass through without config inject: $(cat "$RICE_LOG")"
+    : >"$RICE_LOG"; _rs 'contour config /tmp/x.yml'
+    grep -qx 'contour config /tmp/x.yml' "$RICE_LOG" \
+      || fail "$_sh: explicit contour config must pass through: $(cat "$RICE_LOG")"
+    # reset: every override gone, repo defaults back, STARSHIP_CONFIG cleared; kitty stub restored
+    : >"$RICE_LOG"
     _sc="$(_rs 'rice-theme reset >/dev/null; printf %s "${STARSHIP_CONFIG:-}"')"
     [[ -z $_sc ]] || fail "$_sh: rice-theme reset must clear STARSHIP_CONFIG"
     [[ -z "$(ls -A "$_st")" ]] || fail "$_sh: rice-theme reset left state: $(ls -A "$_st")"
-    [[ ! -e $_rt/cfg/ghostty/theme.local.conf && ! -L $_rt/cfg/ghostty/theme.local.conf && ! -L $_rt/cfg/alacritty/theme.local.toml ]] \
-      || fail "$_sh: rice-theme reset must remove the theme.local links"
+    [[ ! -e $_rt/cfg/ghostty/theme.local.conf && ! -L $_rt/cfg/ghostty/theme.local.conf \
+      && ! -L $_rt/cfg/alacritty/theme.local.toml ]] \
+      || fail "$_sh: rice-theme reset must remove ghostty/alacritty theme.local links"
+    [[ ! -L $_rt/cfg/kitty/theme.local.conf && -f $_rt/cfg/kitty/theme.local.conf ]] \
+      || fail "$_sh: rice-theme reset must restore kitty theme.local.conf stub"
+    grep -q 'accent-color blue' "$RICE_LOG" \
+      || fail "$_sh: rice-theme reset must restore GNOME accent blue"
+    grep -q 'style-scheme gruvbox-dark' "$RICE_LOG" \
+      || fail "$_sh: rice-theme reset must restore TextEditor gruvbox-dark"
     _tracked_unchanged || fail "$_sh: rice-theme reset modified a tracked config"
     ! _rs 'rice-theme ../bad >/dev/null 2>&1' || fail "$_sh: rice-theme must reject invalid theme names"
     ! XDG_CONFIG_HOME="$_rt/empty" XDG_STATE_HOME="$_rt/state" "$_sh" -c 'source "$1"; rice-theme gruvbox >/dev/null 2>&1' _ "$ROOT/stow/zsh/.shell-functions" \

@@ -5,9 +5,13 @@ set -euo pipefail
 
 echo "→ Configuring GNOME Console (kgx)..."
 
-dconf write /org/gnome/Console/font-scale 1.2
+# Single font size for kgx (matches kitty font_size 13). Do not also set this in rice-setup.sh.
+KGX_FONT='JetBrainsMono Nerd Font 13'
+dconf write /org/gnome/Console/font-scale 1.0
 dconf write /org/gnome/Console/scrollback-lines 100000
 dconf write /org/gnome/Console/theme "'night'"
+dconf write /org/gnome/Console/use-system-font false
+dconf write /org/gnome/Console/custom-font "'${KGX_FONT}'"
 dconf write /org/gnome/Console/audible-bell false
 dconf write /org/gnome/Console/visual-bell false
 dconf write /org/gnome/Console/transparency true
@@ -18,7 +22,7 @@ DEFAULT_PROFILE=$(dconf read /org/gnome/terminal/legacy/profiles:/default 2>/dev
 if [[ -n "$DEFAULT_PROFILE" ]]; then
     P="${PROFILE_PATH}:${DEFAULT_PROFILE}"
     dconf write "${P}/use-system-font" false
-    dconf write "${P}/font" "'JetBrainsMono Nerd Font 11'"
+    dconf write "${P}/font" "'${KGX_FONT}'"
     dconf write "${P}/use-transparent-background" true
     dconf write "${P}/background-transparency-percent" 5
     dconf write "${P}/scrollback-unlimited" true

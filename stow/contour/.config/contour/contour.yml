@@ -695,7 +695,8 @@ profiles:
         #
         # The dark color scheme is used when the system is configured to prefer dark mode and light theme otherwise.
 
-        colors: default
+        # Default matches rice-theme gruvbox; rice-theme secops rebuilds a state copy with colors: secops.
+        colors: gruvbox-dark
 
         # color to pick for hyperlinks decoration, when hovering
         hyperlink_decoration:
@@ -892,6 +893,37 @@ color_schemes:
         #     magenta: '#800080'
         #     cyan:    '#008080'
         #     white:   '#808080'
+
+    # SecOps Frost — used by rice-theme (inherits remaining keys from default).
+    secops:
+        default:
+            background: '#090d16'
+            foreground: '#ecfeff'
+            bright_foreground: '#f8fafc'
+            dimmed_foreground: '#64748b'
+        selection:
+            foreground: CellForeground
+            foreground_alpha: 1
+            background: '#1e293b'
+            background_alpha: 0.7
+        normal:
+            black:   '#090d16'
+            red:     '#fb7185'
+            green:   '#34d399'
+            yellow:  '#fbbf24'
+            blue:    '#38bdf8'
+            magenta: '#818cf8'
+            cyan:    '#5eead4'
+            white:   '#cbd5e1'
+        bright:
+            black:   '#475569'
+            red:     '#fda4af'
+            green:   '#6ee7b7'
+            yellow:  '#fde68a'
+            blue:    '#7dd3fc'
+            magenta: '#a5b4fc'
+            cyan:    '#99f6e4'
+            white:   '#f8fafc'
 # Key Bindings
 # ------------
 #

@@ -794,6 +794,9 @@ install_pack() {
 
     record_state "$pack" "$eff_gdm" "$eff_ff" "$eff_fp"
     echo "✓ Installed theme pack: $pack"
+    if [[ $pack == modular-gruvbox ]]; then
+        echo "  hint: match CLI rice with: rice-theme gruvbox"
+    fi
 }
 
 uninstall_pack() {

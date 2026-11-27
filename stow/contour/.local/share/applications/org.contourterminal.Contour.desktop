@@ -1,0 +1,18 @@
+[Desktop Entry]
+Type=Application
+Name=Contour
+GenericName=Terminal
+Comment=Contour Terminal Emulator (rice-theme aware)
+TryExec=contour
+# GUI PATH often lacks ~/.local/bin; call the stowed wrapper explicitly.
+Exec=sh -c 'exec "$HOME/.local/bin/contour"'
+Icon=org.contourterminal.Contour
+Terminal=false
+Categories=Qt;System;TerminalEmulator;
+StartupWMClass=contour
+Actions=NewWindow;
+MimeType=application/x-executable;
+
+[Desktop Action NewWindow]
+Name=Open a New Window
+Exec=sh -c 'exec "$HOME/.local/bin/contour"'

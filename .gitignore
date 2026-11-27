@@ -123,6 +123,7 @@ system/etc/geolocation.local
 # Local runtime theme overrides written by rice-theme (never dirty repo)
 stow/ghostty/.config/ghostty/theme.local.conf
 stow/alacritty/.config/alacritty/theme.local.toml
+stow/kitty/.config/kitty/theme.local.conf
 
 # Local VM rehearsal artifacts (stage-a/tests/vm-run.sh, provision/scripts/vm-stageb-run.sh)
 *.iso

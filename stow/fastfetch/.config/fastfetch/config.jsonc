@@ -1,16 +1,14 @@
 {
     "$schema": "https://github.com/fastfetch-cli/fastfetch/raw/dev/doc/json_schema.json",
     "logo": {
-        "type": "small",
-        "source": "arch_small",
+        "type": "auto",
+        "source": "~/.config/fastfetch/logos/gruvbox.png",
+        "width": 28,
+        "height": 14,
         "padding": {
-            "top": 2,
+            "top": 1,
             "left": 1,
             "right": 3
-        },
-        "color": {
-            "1": "38;2;250;189;47",
-            "2": "38;2;254;128;25"
         }
     },
     "display": {

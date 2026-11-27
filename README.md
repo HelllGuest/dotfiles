@@ -8,7 +8,7 @@ A clean, modular, and programmable dotfiles ecosystem optimized for **Arch Linux
 
 - **Privacy Hardened:** Telemetry, usage reporting, and "phoning home" are disabled system-wide (GNOME, VS Code, .NET, etc.).
 - **ThinkPad Optimized:** Hostname or hardware-detected profiles (`thinkpad-p15.sh`, `thinkpad-t14s.sh`, or `laptop.sh`) with power-profiles-daemon (or tuned + `tuned-ppd` on hosts from `stage-a/`), UKIs signed for Secure Boot (sbctl), and a tracked **s2idle** sleep pin (`mem_sleep_default=s2idle`; pair BIOS Sleep State with **Windows and Linux**, not **Linux**/S3 — see `docs/hardened-arch-gnome.md`). Firewall: **firewalld** (`nftables`, default `drop`). Stage B modules: `bash provision/scripts/configure.sh` (firewalld, labs, AI stack, terminal/CLI rice). Lab wrappers: `lab-triage` / `lab-re` / `lab-android` / `lab-web` / `lab-detonate` / `lab-mcp` (see `labs/scripts/labs-setup.sh`, `lab-detonate.sh`, `lab-mcp.sh`). Thermal is firmware-managed. Charge window **70–80** via `system/scripts/thinkpad-charge-thresholds.sh`.
-- **Elite-Tier Terminal:** Kitty (stock host colors; Gruvbox accents for `lab-*`) & Ghostty with shared Zsh/Bash configs, real-time autocomplete, and switchable Gruvbox / SecOps themes (`rice-theme`, `ff-preset`; stored as untracked local overrides) across Starship, Fastfetch, btop, Ghostty, and Alacritty.
+- **Elite-Tier Terminal:** Kitty & Ghostty with shared Zsh/Bash configs, real-time autocomplete, and switchable Gruvbox / SecOps themes (`rice-theme`, `ff-preset`; untracked local overrides) across Starship, Fastfetch (custom PNG logos), btop, htop, Ghostty, Alacritty, Kitty, Contour (PATH + desktop wrapper), Neovim, bat/fzf, and GNOME accent + Text Editor. `lab-*` still force Kitty accent colors.
 - **Neovim (Lazy.nvim):** A modular Lua configuration.
 
 ---
@@ -183,7 +183,7 @@ Disposable Kali lab (libvirt overlay): `kali-up` (isolated) / `kali-up-nat` / `k
 
 ### Starship
 
-Based on the [Gruvbox Rainbow](https://starship.rs/presets/gruvbox-rainbow) layout with Nerd Font symbols and two built-in palettes: `gruvbox_dark` (default) and `secops`. Config: `stow/starship/.config/starship.toml`. Switch across Starship, Fastfetch, btop, Ghostty, and Alacritty with `rice-theme <gruvbox|secops>` (or Fastfetch-only presets via `ff-preset`).
+Based on the [Gruvbox Rainbow](https://starship.rs/presets/gruvbox-rainbow) layout with Nerd Font symbols and two built-in palettes: `gruvbox_dark` (default) and `secops`. Config: `stow/starship/.config/starship.toml`. Switch across Starship, Fastfetch, btop, htop, Ghostty, Alacritty, Kitty, Contour, Neovim, bat/fzf, and GNOME accent/Text Editor with `rice-theme <gruvbox|secops>` (preview: `rice-theme --dry …`; Fastfetch-only: `ff-preset`).
 
 Optional older **Crampack** presets (not in this repo):  
 `bash <(curl -fsSL "https://git.new/crampack-sh")`
@@ -635,7 +635,7 @@ Key runtime dependencies (`scripts/check.sh` asserts binaries, shell tools, syml
 
 **Flatpaks** (via `install-flatpaks.sh`): Brave, Zen, Google Chrome, LibreWolf, Proton VPN, Android Studio, Sticky Notes. Chrome may be `--system` or `--user`; both satisfy `check.sh` / hardening presence checks. Browser telemetry debloat: `security/scripts/browser-hardening.sh` (Chrome = `chromium-base` + `chrome-extra`, which turns off Google AI features (AI Mode, Help Me Write, Gemini on pages, on-device model download); Brave = base + `brave-extra`; `check.sh` fails if the deployed Chrome/Brave policy differs from the repo; verify in `chrome://policy` / `brave://policy`; Zen `user.js` per real profile + Flatpak `systemconfig` + `/etc/firefox/policies` for native; LibreWolf upstream + `librewolf.overrides.cfg`). Launch Zen once before re-running hardening if profiles are new. `/etc` policy paths need sudo.
 
-**Terminals:** `kitty` (primary: Super+Return, `xdg-terminals.list`, and `x-scheme-handler/terminal`), `ghostty`, optional `alacritty` / `contour`, plus `gnome-console` (kgx). Rice: `bash desktop/scripts/rice-setup.sh` (Gruvbox default; switch with `rice-theme gruvbox|secops`; privacy: `show-in-lock-screen false`). Optional suckless `st`: `bash builds/scripts/build-st.sh` (`builds/st/`).
+**Terminals:** `kitty` (primary: Super+Return, `xdg-terminals.list`, and `x-scheme-handler/terminal`), `ghostty`, optional `alacritty` / `contour`, plus `gnome-console` (kgx; JetBrainsMono 13 via `gnome-console-setup.sh`). Rice: `bash desktop/scripts/rice-setup.sh` (Gruvbox default; `rice-theme` also drives Contour, bat/fzf, GNOME accent + Text Editor, fastfetch PNG logos; privacy: `show-in-lock-screen false`). Optional suckless `st`: `bash builds/scripts/build-st.sh` (`builds/st/`).
 
 `desktop/scripts/gnome-console-setup.sh` sets Console dconf and registers `kitty.desktop` for `x-scheme-handler/terminal`. **Super+Return → kitty** is in `desktop/gnome/dconf/user.conf`.
 

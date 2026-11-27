@@ -67,6 +67,10 @@ printf 'keep-me\n' >"$FAKE_HOME/.bashrc"
 printf 'foreign\n' >"$T/foreign-file"
 ln -s "$T/foreign-file" "$FAKE_HOME/.inputrc"
 ln -s "$ROOT/stow/ghostty/.config/ghostty/themes/deleted-dangling.conf" "$FAKE_HOME/.config/ghostty/theme.local.conf"
+ln -s "$ROOT/stow/kitty/.config/kitty/themes/deleted-dangling.conf" "$FAKE_HOME/.config/kitty/theme.local.conf"
+mkdir -p "$FAKE_HOME/.local/state/dotfiles/theme"
+printf 'secops\n' >"$FAKE_HOME/.local/state/dotfiles/theme/starship"
+printf 'colors: secops\n' >"$FAKE_HOME/.local/state/dotfiles/theme/contour.yml"
 
 # AI symlinks + unmodified/modified rule copies + real vendor dir + global git config
 mkdir -p "$FAKE_HOME/.kimi-code" "$FAKE_HOME/.kiro/steering" \
@@ -130,12 +134,16 @@ HOME="$FAKE_HOME" SYSTEM_ROOT="$FAKE_ROOT" AI_RULES_TARGET="$FAKE_KIT" UNINSTALL
     || fail "--dry-run must not invoke systemctl disable"
 
 # 2) Default --yes removes user-level (units -> stow -> ai) ONLY; leaves system/browsers/location alone
-HOME="$FAKE_HOME" SYSTEM_ROOT="$FAKE_ROOT" AI_RULES_TARGET="$FAKE_KIT" UNINSTALL_NO_STOW=1 \
+HOME="$FAKE_HOME" XDG_STATE_HOME="$FAKE_HOME/.local/state" \
+    SYSTEM_ROOT="$FAKE_ROOT" AI_RULES_TARGET="$FAKE_KIT" UNINSTALL_NO_STOW=1 \
     "$UNINSTALL" --yes </dev/null >/dev/null
 [[ ! -L "$FAKE_HOME/.zshrc" && ! -L "$FAKE_HOME/.config/kitty/kitty.conf" \
    && ! -L "$FAKE_HOME/.config/nvim" && ! -L "$FAKE_HOME/.config/ghostty/theme.local.conf" \
+   && ! -L "$FAKE_HOME/.config/kitty/theme.local.conf" \
    && ! -L "$FAKE_HOME/.config/systemd/user/tmp-semgrep-cleanup.timer" ]] \
     || fail "default uninstall must remove stowed, folded, and dangling theme symlinks"
+[[ ! -e "$FAKE_HOME/.local/state/dotfiles/theme" ]] \
+    || fail "default uninstall must remove rice theme state dir"
 [[ -f "$FAKE_HOME/.bashrc" && -L "$FAKE_HOME/.inputrc" ]] \
     || fail "default uninstall must never remove non-symlink files or foreign symlinks"
 [[ ! -L "$FAKE_HOME/.local/bin/agentsync" && ! -L "$FAKE_HOME/.gemini/AGENTS.md" && ! -L "$FAKE_HOME/.claude/skills/verify" ]] \

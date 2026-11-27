@@ -1,0 +1,40 @@
+#!/usr/bin/env bash
+# rice-aware Contour launcher: inject state config for terminal starts only.
+# Subcommands (help/version/…) and explicit `config FILE` pass through untouched.
+set -euo pipefail
+
+_real=""
+for _c in "${CONTOUR_BIN:-}" /usr/bin/contour /bin/contour; do
+    [[ -n $_c && -x $_c ]] || continue
+    # Never re-enter this wrapper if CONTOUR_BIN points at us.
+    [[ $_c -ef ${BASH_SOURCE[0]} ]] && continue
+    _real=$_c
+    break
+done
+unset _c
+if [[ -z $_real ]]; then
+    echo "contour: binary not found (install contour or set CONTOUR_BIN)" >&2
+    exit 127
+fi
+
+_passthrough=0
+case "${1:-}" in
+    help|version|license|list-debug-tags|info|documentation|generate|font-locator|client|cat|daemon-service)
+        _passthrough=1
+        ;;
+esac
+if (( ! _passthrough )); then
+    for _a in "$@"; do
+        if [[ $_a == config ]]; then
+            _passthrough=1
+            break
+        fi
+    done
+    unset _a
+fi
+
+_cfg="${XDG_STATE_HOME:-$HOME/.local/state}/dotfiles/theme/contour.yml"
+if (( ! _passthrough )) && [[ -f $_cfg ]]; then
+    exec "$_real" config "$_cfg" "$@"
+fi
+exec "$_real" "$@"

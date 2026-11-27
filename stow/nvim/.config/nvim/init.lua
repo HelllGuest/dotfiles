@@ -18,7 +18,7 @@ require("config.autocmds")
 
 require("lazy").setup("plugins", {
   defaults = { lazy = true },
-  install = { colorscheme = { "habamax" } },
+  install = { colorscheme = { "rice_gruvbox", "habamax" } },
   checker = { enabled = true, notify = false },
   change_detection = { notify = false },
   performance = {
@@ -33,3 +33,23 @@ require("lazy").setup("plugins", {
     border = "rounded",
   },
 })
+
+-- rice-theme writes XDG_STATE_HOME/dotfiles/theme/nvim (rice_gruvbox|rice_secops).
+-- Missing/invalid → habamax. No plugin theme deps.
+do
+  local state_home = os.getenv("XDG_STATE_HOME")
+  if not state_home or state_home == "" then
+    state_home = vim.fn.expand("~/.local/state")
+  end
+  local path = state_home .. "/dotfiles/theme/nvim"
+  local name = "habamax"
+  local f = io.open(path, "r")
+  if f then
+    local line = f:read("*l")
+    f:close()
+    if line and line:match("^[%w_]+$") then
+      name = line
+    end
+  end
+  pcall(vim.cmd.colorscheme, name)
+end

@@ -362,9 +362,17 @@ lab-mcp() {
 
 # Theme overrides (rice-theme / ff-preset) stay out of ~/dotfiles: only the
 # chosen names are saved under XDG_STATE_HOME, and the configs used are rebuilt
-# from the stowed files each time, so repo updates still apply. Ghostty and
-# Alacritty load a gitignored theme.local.* link to one of their themes/.
+# from the stowed files each time, so repo updates still apply. Ghostty,
+# Alacritty, and Kitty load a gitignored theme.local.* link to their themes/
+# (Kitty also keeps a comment stub when unset so include is quiet).
 _rice_state() { printf '%s' "${XDG_STATE_HOME:-$HOME/.local/state}/dotfiles/theme"; }
+# Kitty has no optional include; a tiny stub avoids "missing include" on every start.
+_rice_kitty_local_stub() {
+    local f="${XDG_CONFIG_HOME:-$HOME/.config}/kitty/theme.local.conf"
+    mkdir -p "${f%/*}" 2>/dev/null || return 0
+    [[ -d ${f%/*} ]] || return 0
+    printf '# rice-theme: default (no override). Do not edit; switched via rice-theme.\n' >"$f"
+}
 # _rice_get <key>: saved name only if plain and still present in the stowed configs
 # (drops deleted presets so sed never points at missing files).
 _rice_get() {
@@ -387,14 +395,26 @@ _rice_get() {
         fastfetch)
             [[ $v != config && -f $cfg/fastfetch/${v}.jsonc ]] || { rm -f -- "$st/$key"; return 1; }
             ;;
+        nvim)
+            [[ -f ${XDG_CONFIG_HOME:-$HOME/.config}/nvim/colors/${v}.lua \
+                || -f ${XDG_CONFIG_HOME:-$HOME/.config}/nvim/colors/${v}.vim ]] \
+                || { rm -f -- "$st/$key"; return 1; }
+            ;;
+        contour)
+            [[ $v == gruvbox-dark || $v == secops ]] || { rm -f -- "$st/$key"; return 1; }
+            ;;
     esac
     printf '%s' "$v"
 }
 # Drop broken theme.local.* links (target file removed after a preset rename).
 _rice_drop_stale_theme_locals() {
     local cfg="${XDG_CONFIG_HOME:-$HOME/.config}" link
-    for link in "$cfg/ghostty/theme.local.conf" "$cfg/alacritty/theme.local.toml"; do
-        [[ -L $link && ! -e $link ]] && rm -f -- "$link"
+    for link in "$cfg/ghostty/theme.local.conf" "$cfg/alacritty/theme.local.toml" \
+        "$cfg/kitty/theme.local.conf"; do
+        if [[ -L $link && ! -e $link ]]; then
+            rm -f -- "$link"
+            [[ $link == */kitty/theme.local.conf ]] && _rice_kitty_local_stub
+        fi
     done
 }
 # Starship reads STARSHIP_CONFIG at every prompt; rebuilt at shell start.
@@ -410,7 +430,66 @@ _rice_starship() {
     return 0
 }
 _rice_drop_stale_theme_locals
+# Seed quiet kitty stub when the dir is stowed but no local override exists yet.
+if [[ -d ${XDG_CONFIG_HOME:-$HOME/.config}/kitty \
+    && ! -e ${XDG_CONFIG_HOME:-$HOME/.config}/kitty/theme.local.conf ]]; then
+    _rice_kitty_local_stub
+fi
 _rice_starship
+
+# Layout-only fzf flags (colors come from _rice_apply_cli).
+: "${_RICE_FZF_LAYOUT:=--height=40% --layout=reverse --border=rounded --preview-window=right:55%:wrap --bind=ctrl-f:preview-page-down --bind=ctrl-b:preview-page-up}"
+
+# bat + fzf colors from the active rice (starship state), or gruvbox defaults.
+_rice_apply_cli() {
+    local pal
+    pal=$(_rice_get starship) || pal=gruvbox_dark
+    case $pal in
+        secops)
+            export BAT_THEME=Nord
+            export FZF_DEFAULT_OPTS="$_RICE_FZF_LAYOUT --color=fg:#ecfeff,bg:#090d16,hl:#38bdf8,fg+:#f8fafc,bg+:#1e293b,hl+:#7dd3fc,info:#34d399,prompt:#5eead4,pointer:#38bdf8,marker:#34d399,spinner:#fb7185,header:#64748b"
+            ;;
+        *)
+            export BAT_THEME=gruvbox-dark
+            export FZF_DEFAULT_OPTS="$_RICE_FZF_LAYOUT --color=fg:#ebdbb2,bg:#282828,hl:#83a598,fg+:#ebdbb2,bg+:#3c3836,hl+:#8ec07c,info:#fabd2f,prompt:#fe8019,pointer:#fb4934,marker:#b8bb26,spinner:#fb4934,header:#928374"
+            ;;
+    esac
+}
+_rice_apply_cli
+
+# Contour: state copy when secops (builtin gruvbox-dark is the stowed default).
+_rice_contour() {
+    local st src dst scheme
+    st=$(_rice_state)
+    src="${XDG_CONFIG_HOME:-$HOME/.config}/contour/contour.yml"
+    dst="$st/contour.yml"
+    scheme=$(_rice_get contour) || { rm -f -- "$dst"; return 0; }
+    [[ -f $src ]] || return 0
+    mkdir -p "$st" || return 1
+    sed -E "s/^([[:space:]]*)colors:[[:space:]].*/\\1colors: ${scheme}/" "$src" >"$dst"
+}
+_rice_contour
+# Contour CLI: stowed ~/.local/bin/contour (passthrough for help/version; desktop uses it).
+
+# GNOME accent + Text Editor style-scheme (Adwaita gtk-theme stays stock).
+# Reset matches desktop/gnome/dconf/user.conf (blue + gruvbox-dark).
+_rice_gnome() {
+    command -v gsettings >/dev/null 2>&1 || return 0
+    case ${1:-} in
+        gruvbox)
+            gsettings set org.gnome.desktop.interface accent-color yellow 2>/dev/null || true
+            gsettings set org.gnome.TextEditor style-scheme gruvbox-dark 2>/dev/null || true
+            ;;
+        secops)
+            gsettings set org.gnome.desktop.interface accent-color teal 2>/dev/null || true
+            gsettings set org.gnome.TextEditor style-scheme secops-dark 2>/dev/null || true
+            ;;
+        reset)
+            gsettings set org.gnome.desktop.interface accent-color blue 2>/dev/null || true
+            gsettings set org.gnome.TextEditor style-scheme gruvbox-dark 2>/dev/null || true
+            ;;
+    esac
+}
 
 _rice_has_config_flag() {
     local a
@@ -422,7 +501,7 @@ _rice_has_config_flag() {
     return 1
 }
 
-unalias ff btop 2>/dev/null || true
+unalias ff btop htop 2>/dev/null || true
 ff() {
     local p dir="${XDG_CONFIG_HOME:-$HOME/.config}/fastfetch"
     if ! _rice_has_config_flag "$@" && p=$(_rice_get fastfetch) && [[ -f $dir/$p.jsonc ]]; then
@@ -440,6 +519,23 @@ btop() {
         command btop -c "$st/btop.conf" --themes-dir "$src/themes" "$@"
     else
         command btop "$@"
+    fi
+}
+
+# htop: Black Night (5) for gruvbox, Nord (7) for secops — follows starship state.
+htop() {
+    local st src="${XDG_CONFIG_HOME:-$HOME/.config}/htop/htoprc" pal scheme=5
+    st=$(_rice_state)
+    if _rice_has_config_flag "$@" || [[ ! -f $src ]]; then
+        command htop "$@"
+        return
+    fi
+    pal=$(_rice_get starship) || pal=gruvbox_dark
+    [[ $pal == secops ]] && scheme=7
+    if mkdir -p "$st" && sed "s/^color_scheme=.*/color_scheme=${scheme}/" "$src" >"$st/htoprc"; then
+        HTOPRC="$st/htoprc" command htop "$@"
+    else
+        command htop "$@"
     fi
 }
 
@@ -476,52 +572,131 @@ ff-preset() {
     fastfetch --config "$dir/$name.jsonc"
 }
 
-# Unified theme switcher across fastfetch, btop, starship, ghostty, and alacritty.
-# Usage: rice-theme [gruvbox|secops|reset]
+# Unified theme switcher: terminals + CLI (bat/fzf) + Contour + GNOME accent/TextEditor.
+# Usage: rice-theme [--dry|-n] [gruvbox|secops|reset]
 rice-theme() {
-    local cfg="${XDG_CONFIG_HOME:-$HOME/.config}" st
+    local cfg="${XDG_CONFIG_HOME:-$HOME/.config}" st dry=0 name="" a
     st=$(_rice_state)
-    if [[ $# -eq 0 ]]; then
-        echo "themes: gruvbox | secops | reset (back to the repo defaults)"
-        echo "active: starship=$(_rice_get starship || echo default) · btop=$(_rice_get btop || echo default) · fastfetch=$(_rice_get fastfetch || echo default)"
+    for a in "$@"; do
+        case "$a" in
+            --dry|-n) dry=1 ;;
+            gruvbox|secops|reset) name=$a ;;
+            -h|--help)
+                echo "usage: rice-theme [--dry|-n] [gruvbox|secops|reset]"
+                return 0
+                ;;
+            *) echo "rice-theme: unknown arg '$a' (use: gruvbox | secops | reset | --dry)" >&2; return 1 ;;
+        esac
+    done
+    if (( dry )) && [[ -z $name ]]; then
+        echo "rice-theme: --dry needs a theme (gruvbox|secops|reset)" >&2
+        return 1
+    fi
+    _rice_local_target() {
+        local link=$1
+        if [[ -L $link ]]; then
+            readlink -- "$link" 2>/dev/null || echo broken
+        elif [[ -e $link ]]; then
+            echo "(file)"
+        else
+            echo default
+        fi
+    }
+    if [[ -z $name ]]; then
+        local kgx="n/a"
+        if command -v gsettings >/dev/null 2>&1; then
+            kgx=$(gsettings get org.gnome.Console theme 2>/dev/null | tr -d "'" || echo "?")
+        fi
+        echo "themes: gruvbox | secops | reset · preview: rice-theme --dry <name>"
+        echo "active: starship=$(_rice_get starship || echo default) · btop=$(_rice_get btop || echo default) · fastfetch=$(_rice_get fastfetch || echo default) · nvim=$(_rice_get nvim || echo habamax) · contour=$(_rice_get contour || echo gruvbox-dark)"
+        echo "locals: ghostty=$(_rice_local_target "$cfg/ghostty/theme.local.conf") · alacritty=$(_rice_local_target "$cfg/alacritty/theme.local.toml") · kitty=$(_rice_local_target "$cfg/kitty/theme.local.conf")"
+        echo "cli: BAT_THEME=${BAT_THEME:-unset} · kgx=$kgx"
         return 0
     fi
-    local name=$1 sp bt
+    local sp bt nv cs
     case "$name" in
         reset)
-            rm -f -- "$st/fastfetch" "$st/starship" "$st/btop" "$st/starship.toml" "$st/btop.conf" \
+            if (( dry )); then
+                echo "[dry-run] would remove: state under $st + theme.local.* + kitty stub + contour override + GNOME accent/editor reset"
+                return 0
+            fi
+            rm -f -- "$st/fastfetch" "$st/starship" "$st/btop" "$st/nvim" "$st/contour" \
+                "$st/starship.toml" "$st/btop.conf" "$st/contour.yml" "$st/htoprc" \
                 "$cfg/ghostty/theme.local.conf" "$cfg/alacritty/theme.local.toml" || return 1
+            rm -f -- "$cfg/kitty/theme.local.conf"
+            _rice_kitty_local_stub
             _rice_starship
-            echo "✓ theme overrides removed: repo defaults apply"
+            _rice_apply_cli
+            _rice_gnome reset
+            echo "✓ theme overrides removed: repo defaults (nvim habamax · contour gruvbox-dark · accent blue · editor gruvbox-dark)"
             return 0
             ;;
-        gruvbox) sp=gruvbox_dark; bt=gruvbox_dark ;;
-        secops)  sp=secops;       bt=secops ;;
-        *) echo "rice-theme: unknown theme '$name' (use: gruvbox | secops | reset)" >&2; return 1 ;;
+        gruvbox) sp=gruvbox_dark; bt=gruvbox_dark; nv=rice_gruvbox; cs=gruvbox-dark ;;
+        secops)  sp=secops;       bt=secops;       nv=rice_secops;  cs=secops ;;
     esac
-    mkdir -p "$st" || return 1
-    local updated=() rc=0
-    if [[ -f "$cfg/fastfetch/$name.jsonc" ]]; then
-        printf '%s\n' "$name" >"$st/fastfetch" && updated+=(fastfetch) || rc=1
-    fi
-    if [[ -f "$cfg/btop/btop.conf" && -f "$cfg/btop/themes/$bt.theme" ]]; then
-        printf '%s\n' "$bt" >"$st/btop" && updated+=(btop) || rc=1
-    fi
-    if [[ -f "$cfg/starship.toml" ]]; then
-        printf '%s\n' "$sp" >"$st/starship" && _rice_starship && updated+=(starship) || rc=1
-    fi
-    if [[ -f "$cfg/ghostty/themes/$name.conf" ]]; then
-        ln -sfn "themes/$name.conf" "$cfg/ghostty/theme.local.conf" && updated+=(ghostty) || rc=1
-    fi
-    if [[ -f "$cfg/alacritty/themes/$name.toml" ]]; then
-        ln -sfn "themes/$name.toml" "$cfg/alacritty/theme.local.toml" && updated+=(alacritty) || rc=1
-    fi
-    if (( ${#updated[@]} == 0 )); then
+    local planned=()
+    [[ -f $cfg/fastfetch/$name.jsonc ]] && planned+=(fastfetch)
+    [[ -f $cfg/btop/btop.conf && -f $cfg/btop/themes/$bt.theme ]] && planned+=(btop)
+    [[ -f $cfg/starship.toml ]] && planned+=(starship)
+    [[ -f $cfg/ghostty/themes/$name.conf ]] && planned+=(ghostty)
+    [[ -f $cfg/alacritty/themes/$name.toml ]] && planned+=(alacritty)
+    [[ -f $cfg/kitty/themes/$name.conf ]] && planned+=(kitty)
+    [[ -f $cfg/nvim/colors/${nv}.lua || -f $cfg/nvim/colors/${nv}.vim ]] && planned+=(nvim)
+    [[ -f $cfg/contour/contour.yml ]] && planned+=(contour)
+    [[ -f $cfg/htop/htoprc ]] && planned+=(htop)
+    if (( ${#planned[@]} == 0 )); then
         echo "rice-theme: no stowed configs found under $cfg" >&2
         return 1
     fi
+    planned+=(cli gnome)
+    if (( dry )); then
+        echo "[dry-run] would set theme → $name (${planned[*]})"
+        echo "[dry-run] starship=$sp btop=$bt nvim=$nv contour=$cs · accent/gedit · bat/fzf"
+        return 0
+    fi
+    mkdir -p "$st" || return 1
+    local updated=() rc=0
+    if [[ -f $cfg/fastfetch/$name.jsonc ]]; then
+        printf '%s\n' "$name" >"$st/fastfetch" && updated+=(fastfetch) || rc=1
+    fi
+    if [[ -f $cfg/btop/btop.conf && -f $cfg/btop/themes/$bt.theme ]]; then
+        printf '%s\n' "$bt" >"$st/btop" && updated+=(btop) || rc=1
+    fi
+    if [[ -f $cfg/starship.toml ]]; then
+        if printf '%s\n' "$sp" >"$st/starship" && _rice_starship; then
+            updated+=(starship)
+        else
+            rc=1
+        fi
+    fi
+    _rice_apply_cli
+    updated+=(cli)
+    if [[ -f $cfg/ghostty/themes/$name.conf ]]; then
+        ln -sfn "themes/$name.conf" "$cfg/ghostty/theme.local.conf" && updated+=(ghostty) || rc=1
+    fi
+    if [[ -f $cfg/alacritty/themes/$name.toml ]]; then
+        ln -sfn "themes/$name.toml" "$cfg/alacritty/theme.local.toml" && updated+=(alacritty) || rc=1
+    fi
+    if [[ -f $cfg/kitty/themes/$name.conf ]]; then
+        ln -sfn "themes/$name.conf" "$cfg/kitty/theme.local.conf" && updated+=(kitty) || rc=1
+    fi
+    if [[ -f $cfg/nvim/colors/${nv}.lua || -f $cfg/nvim/colors/${nv}.vim ]]; then
+        printf '%s\n' "$nv" >"$st/nvim" && updated+=(nvim) || rc=1
+    fi
+    if [[ -f $cfg/contour/contour.yml ]]; then
+        if [[ $cs == gruvbox-dark ]]; then
+            rm -f -- "$st/contour" "$st/contour.yml"
+            updated+=(contour)
+        else
+            printf '%s\n' "$cs" >"$st/contour" && _rice_contour && updated+=(contour) || rc=1
+        fi
+    fi
+    _rice_gnome "$name" && updated+=(gnome)
     echo "✓ theme → $name (${updated[*]}) [local override; repo clean; 'rice-theme reset' undoes]"
-    echo "  hint: Ghostty reload Ctrl+Shift+, · Alacritty/Starship reload automatically"
+    echo "  hint: Ghostty Ctrl+Shift+, · Kitty Ctrl+Shift+F5 · Contour reopen · nvim restart"
+    if [[ $name == gruvbox ]]; then
+        echo "  desktop: optional GNOME pack → bash desktop/scripts/theme-packs.sh --install modular-gruvbox -y"
+    fi
     return "$rc"
 }
 

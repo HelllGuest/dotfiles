@@ -457,9 +457,12 @@ grep -q 'sudo make uninstall' "$LOG" || fail "flat-remix --gdm uninstall must ru
 run_tp --install modular-adwaita --gdm -y >/dev/null
 grep -q 'sudo python3 install.py --blue --filled --mode dark --gdm' "$LOG" \
     || fail "modular-adwaita --gdm must pass --blue --filled --mode dark --gdm"
-run_tp --install modular-gruvbox --gdm -y >/dev/null
+_mg_out="$(run_tp --install modular-gruvbox --gdm -y 2>&1)" || fail "modular-gruvbox --gdm install failed"
 grep -q 'sudo python3 install.py --yellow --filled --mode dark --gdm' "$LOG" \
     || fail "modular-gruvbox --gdm must pass --yellow --filled --mode dark --gdm"
+grep -q 'hint: match CLI rice with: rice-theme gruvbox' <<<"$_mg_out" \
+    || fail "modular-gruvbox install must hint rice-theme gruvbox"
+unset -v _mg_out
 run_tp --uninstall modular-adwaita -y >/dev/null
 run_tp --uninstall modular-gruvbox -y >/dev/null
 

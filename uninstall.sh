@@ -311,7 +311,9 @@ if section_on stow; then
         fi
     done
     # Local theme override links created by rice-theme (only when symlinks into stow/).
-    for _tl in "$HOME/.config/ghostty/theme.local.conf" "$HOME/.config/alacritty/theme.local.toml"; do
+    for _tl in "$HOME/.config/ghostty/theme.local.conf" \
+        "$HOME/.config/alacritty/theme.local.toml" \
+        "$HOME/.config/kitty/theme.local.conf"; do
         if [[ -L "$_tl" ]]; then
             _tgt="$(readlink -m "$_tl" 2>/dev/null || true)"
             if [[ "$_tgt" == "$STOW_REAL/"* ]]; then
@@ -320,6 +322,16 @@ if section_on stow; then
         fi
     done
     unset _tl _tgt
+    # Runtime rice state (starship/btop/contour/htop overrides); never in the repo.
+    _theme_st="${XDG_STATE_HOME:-$HOME/.local/state}/dotfiles/theme"
+    if [[ -d $_theme_st ]]; then
+        if (( DRY_RUN )); then
+            printf '[dry-run] rm -rf %s\n' "$_theme_st"
+        else
+            rm -rf -- "$_theme_st"
+        fi
+    fi
+    unset _theme_st
     if section_on units && command -v systemctl >/dev/null 2>&1; then
         act systemctl --user daemon-reload 2>/dev/null || true
     fi

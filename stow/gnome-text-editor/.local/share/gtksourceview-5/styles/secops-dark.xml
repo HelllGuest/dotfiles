@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<style-scheme id="secops-dark" name="SecOps Dark" version="1.0">
+  <author>dotfiles</author>
+  <description>SecOps Frost for GNOME Text Editor</description>
+  <color name="bg" value="#090d16"/>
+  <color name="fg" value="#ecfeff"/>
+  <color name="red" value="#fb7185"/>
+  <color name="green" value="#34d399"/>
+  <color name="yellow" value="#fbbf24"/>
+  <color name="blue" value="#38bdf8"/>
+  <color name="purple" value="#a5b4fc"/>
+  <color name="aqua" value="#5eead4"/>
+  <color name="gray" value="#64748b"/>
+  <color name="bg1" value="#111827"/>
+  <style name="text" foreground="fg" background="bg"/>
+  <style name="selection" background="bg1"/>
+  <style name="cursor" foreground="fg"/>
+  <style name="current-line" background="bg1"/>
+  <style name="line-numbers" foreground="gray" background="bg"/>
+  <style name="def:comment" foreground="gray" italic="true"/>
+  <style name="def:keyword" foreground="red" bold="true"/>
+  <style name="def:string" foreground="green"/>
+  <style name="def:number" foreground="purple"/>
+  <style name="def:function" foreground="aqua"/>
+  <style name="def:type" foreground="yellow"/>
+  <style name="def:preprocessor" foreground="aqua"/>
+  <style name="def:constant" foreground="purple"/>
+  <style name="def:statement" foreground="red"/>
+</style-scheme>

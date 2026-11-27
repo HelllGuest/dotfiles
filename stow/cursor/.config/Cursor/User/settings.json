@@ -10,5 +10,8 @@
   "cursor.general.allowAnonymousUsage": false,
   "cursor.general.privacyMode": "enabled",
   "update.mode": "manual",
-  "window.autoDetectColorScheme": true
+  "window.autoDetectColorScheme": true,
+  "editor.fontFamily": "'JetBrainsMono Nerd Font', 'Droid Sans Mono', monospace",
+  "editor.fontLigatures": true,
+  "editor.fontSize": 13
 }
