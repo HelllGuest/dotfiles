@@ -186,7 +186,7 @@ OSC 7 CWD reporting is enabled in Zsh and Bash so new tabs open in the same dire
 
 ## Proton VPN panel (`proton-vpn@helllguest`)
 
-Status-area menu for connect/disconnect and **Spoofed location** (reads `/etc/geolocation`).
+Status-area menu for NetworkManager Proton profiles and **Spoofed location** (reads `/etc/geolocation`). Connect / Reconnect / Disconnect / pinned entries only activate profiles the official app already created; they do not call Proton's API. Protocol and Copy Server IP need the app's `connection_persistence.json`. **Open app for Fastest…** only launches the app.
 
 | Action | Notes |
 |--------|--------|

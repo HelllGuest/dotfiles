@@ -306,8 +306,9 @@ const ProtonVPNButton = GObject.registerClass(
             this.menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
 
             this._connectItem = this.menu.addAction('Connect', () => this._connectLast());
+            // Opens the app only; this extension cannot pick "fastest" itself.
             this._connectFastestItem = this.menu.addAction(
-                'Connect to Fastest…',
+                'Open app for Fastest…',
                 () => this._openApp(),
             );
             this._reconnectItem = this.menu.addAction('Reconnect', () => this._reconnect());

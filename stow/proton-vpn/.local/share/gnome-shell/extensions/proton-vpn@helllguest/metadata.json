@@ -1,5 +1,5 @@
 {
-  "description": "Proton VPN indicator for the top panel.\n\nShows the connected server name and protocol. The menu offers connect, reconnect, disconnect, copy server IP, pinned servers (from the Proton VPN app config), spoofed GeoClue location status, manual location sync, and opening the official app.\n\nThis extension is not affiliated, funded or in any way associated with Proton VPN.",
+  "description": "Proton VPN indicator for the top panel.\n\nShows the active NetworkManager Proton profile name in the panel. When the official app has written connection_persistence.json for that connection, the menu also shows protocol and offers Copy Server IP.\n\nMenu actions activate or deactivate existing NetworkManager Proton profiles (Connect / Reconnect / Disconnect / pinned servers from tray_pinned_servers). They do not call Proton's connect API. Open app for Fastest opens the official app so you can pick a server there.\n\nAlso shows spoofed GeoClue coords from /etc/geolocation and can run pkexec vpn-location-sync sync.\n\nThis extension is not affiliated, funded or in any way associated with Proton VPN.",
   "name": "Proton VPN Indicator",
   "shell-version": [
     "46",
@@ -11,7 +11,7 @@
   ],
   "url": "https://github.com/helllguest/proton-vpn-indicator",
   "uuid": "proton-vpn@helllguest",
-  "version": 6,
+  "version": 7,
   "session-modes": [
     "user"
   ]

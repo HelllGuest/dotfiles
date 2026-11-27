@@ -9,9 +9,18 @@ SCRIPT="$ROOT/security/scripts/vpn-location-sync.sh"
 bash -n "$SCRIPT" || fail "bash -n vpn-location-sync.sh"
 
 EXT_JS="$ROOT/stow/proton-vpn/.local/share/gnome-shell/extensions/proton-vpn@helllguest/extension.js"
+EXT_META="$ROOT/stow/proton-vpn/.local/share/gnome-shell/extensions/proton-vpn@helllguest/metadata.json"
 grep -q 'dotfiles/security/scripts/vpn-location-sync.sh' "$EXT_JS" \
   && ! grep -q 'dotfiles/scripts/vpn-location-sync.sh' "$EXT_JS" \
   || fail "Proton VPN extension fallback must point to dotfiles/security/scripts/vpn-location-sync.sh"
+# Claims must match behavior: Fastest only opens the app; connect path is NM profiles.
+grep -q "Open app for Fastest…" "$EXT_JS" \
+  || fail "Fastest menu label must say it opens the app"
+! grep -q "Connect to Fastest" "$EXT_JS" \
+  || fail "must not claim Connect to Fastest (extension cannot pick fastest)"
+grep -q "do not call Proton's connect API" "$EXT_META" \
+  && grep -q "Open app for Fastest opens the official app" "$EXT_META" \
+  || fail "metadata.json must state NM-profile connect + Fastest opens app"
 
 # Static checks (always run, also where user namespaces are unavailable, e.g. CI):
 # the root branch may only use the root-owned installed copy.
