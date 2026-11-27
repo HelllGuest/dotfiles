@@ -129,8 +129,7 @@ dispatcher, `50-vpn-location-sync.rules`) are installed by
 
 Enable:
 
-* Intel Virtualization Technology
-* Intel VT-d
+* Intel Virtualization Technology + Intel VT-d (P15), or AMD SVM + IOMMU (T14s)
 
 ---
 
@@ -399,7 +398,7 @@ it instead of the default tmpfs `tmp.mount` — no masking required.
 ```bash
 mkdir /mnt/boot
 
-mount /dev/nvme0n1p1 /mnt/boot
+mount -o fmask=0077,dmask=0077 /dev/nvme0n1p1 /mnt/boot
 ```
 
 ---
@@ -455,8 +454,12 @@ zram-generator \
 apparmor \
 firewalld \
 sbctl \
-efibootmgr
+efibootmgr \
+wireless-regdb \
+xdg-user-dirs
 ```
+
+*(On T14s Gen 3 AMD, replace `intel-ucode` with `amd-ucode`.)*
 
 
 Generate fstab:
@@ -566,7 +569,6 @@ passwd
 ```bash
 useradd -m -G wheel -s /bin/zsh yourusername
 passwd yourusername
-chsh -s /bin/zsh yourusername
 ```
 
 Enable sudo:
@@ -644,6 +646,8 @@ Copy UUID.
 
 # Create Hardened Boot Entry (fallback)
 
+*(The Phase 8 `microcode` hook embeds CPU microcode into the initramfs automatically, so a separate `initrd /*-ucode.img` line is not needed. On P15 add `nvidia_drm.modeset=1 rd.driver.blacklist=nouveau`; on T14s AMD replace `intel_iommu=on` with `amd_iommu=on amd_pstate=active`.)*
+
 ```bash
 nano /boot/loader/entries/arch-hardened.conf
 ```
@@ -653,7 +657,6 @@ Contents:
 ```text
 title   Arch Linux (Hardened)
 linux   /vmlinuz-linux-hardened
-initrd  /intel-ucode.img
 initrd  /initramfs-linux-hardened.img
 options rd.luks.name=YOUR_UUID=cryptroot rd.luks.options=discard root=/dev/mapper/cryptroot rootflags=subvol=@ rw quiet loglevel=3 mem_sleep_default=s2idle lsm=landlock,lockdown,yama,integrity,apparmor,bpf intel_iommu=on
 ```
@@ -671,7 +674,6 @@ Contents:
 ```text
 title   Arch Linux (LTS)
 linux   /vmlinuz-linux-lts
-initrd  /intel-ucode.img
 initrd  /initramfs-linux-lts.img
 options rd.luks.name=YOUR_UUID=cryptroot rd.luks.options=discard root=/dev/mapper/cryptroot rootflags=subvol=@ rw quiet loglevel=3 mem_sleep_default=s2idle lsm=landlock,lockdown,yama,integrity,apparmor,bpf intel_iommu=on
 ```
@@ -709,13 +711,19 @@ bolt \
 pipewire \
 pipewire-pulse \
 wireplumber \
+rtkit \
+evolution-data-server \
 earlyoom \
 power-profiles-daemon \
 sof-firmware \
 alsa-ucm-conf \
 fprintd \
-gnome-software
+gnome-software \
+mesa \
+libva-utils
 ```
+
+*(Also install GPU drivers: `vulkan-radeon` on T14s AMD, or `vulkan-intel intel-media-driver nvidia-open-dkms nvidia-utils nvidia-prime egl-wayland` on P15 Optimus.)*
 
 Enable services:
 
@@ -734,13 +742,13 @@ systemctl enable power-profiles-daemon
 
 # Verify GDM Wayland Session
 
-GDM may default to X11. Force Wayland:
+GNOME 51 uses Wayland by default (`desktop/scripts/gdm-setup.sh` hardens `/etc/gdm/custom.conf` with `WaylandEnable=true`, `DisallowTCP=true`, and XDMCP/autologin disabled). If editing manually:
 
 ```bash
 nano /etc/gdm/custom.conf
 ```
 
-Ensure uncommented:
+Ensure:
 
 ```text
 WaylandEnable=true
@@ -809,7 +817,7 @@ net.ipv6.conf.default.accept_redirects = 0
 vm.swappiness = 100
 ```
 
-Apply:
+Apply (takes effect on the target kernel after reboot; inside `arch-chroot`, `sysctl --system` touches the live ISO kernel):
 
 ```bash
 sysctl --system
@@ -848,14 +856,17 @@ nano /etc/sysctl.d/99-userns.conf
 
 # PHASE 13 — FIREWALL
 
-Configure firewalld (nftables backend, deny inbound):
+Configure firewalld (nftables backend, deny inbound). Inside `arch-chroot`, use `firewall-offline-cmd` and `systemctl enable` without `--now` (systemd is not running in chroot):
 
 ```bash
 pacman -S firewalld
-# or: bash security/scripts/firewalld-lab-zones.sh   # drop + lab zones; removes ufw if present
-firewall-cmd --set-default-zone=drop
-systemctl enable --now firewalld
+firewall-offline-cmd --set-default-zone=drop
+systemctl enable firewalld
+# Post-boot (after reboot + cloning dotfiles):
+#   bash security/scripts/firewalld-lab-zones.sh   # drop + lab zones; masks ufw
 ```
+
+*(The Waydroid, Tailscale, Encrypted DNS, and Libvirt sub-sections below use live `firewall-cmd` / `systemctl --now` — run those after rebooting into the installed system.)*
 
 Libvirt: bind `virbr0` to zone `libvirt`. Air-gapped malware net: host-only
 `virbr-malware` with bridge `zone="lab-malware"` (iface **and** source
@@ -868,7 +879,7 @@ Default behavior:
 * **deny incoming** — All inbound connections rejected unless explicitly allowed
 * **allow outgoing** — All outbound connections permitted
 
-Add SSH rule (if needed). Prefer an explicit port over app profiles:
+Add SSH rule (post-boot, if needed). Prefer an explicit port over app profiles (inside `arch-chroot`, use `firewall-offline-cmd` and `systemctl enable sshd` without `--now`):
 
 ```bash
 sudo firewall-cmd --permanent --add-service=ssh
@@ -878,10 +889,10 @@ sudo systemctl enable --now sshd
 ```
 
 Confirm with `firewall-cmd --list-all` and `ss -tlnp | grep ':22'`. Prefer key
-auth over passwords. Mask leftover UFW so it never fights firewalld on nftables:
+auth over passwords. Mask leftover UFW so it never fights firewalld on nftables (omit `--now` in chroot):
 
 ```bash
-systemctl disable --now ufw 2>/dev/null || true
+systemctl disable ufw 2>/dev/null || true
 systemctl mask ufw 2>/dev/null || true
 ```
 
@@ -1014,6 +1025,8 @@ so UPower 1.90+ / GNOME Preserve Battery Health does not reset
 
 # Configure Battery Thresholds
 
+*(Post-boot — run from `~/dotfiles` after Phase 27.)*
+
 Without TLP, set ThinkPad charge thresholds via the `thinkpad_acpi` sysfs
 interface. Prefer the shared helper (writes live sysfs +
 `/etc/tmpfiles.d/thinkpad-charge-thresholds.conf` + late-boot
@@ -1058,6 +1071,8 @@ thresholds exist but tmpfiles and/or the unit are missing, re-run the helper
 
 # Fingerprint Enrollment
 
+*(Post-boot — requires D-Bus `fprintd` on the booted system.)*
+
 ```bash
 bash system/scripts/fingerprint-setup.sh
 # or: fprintd-enroll
@@ -1070,22 +1085,21 @@ P15 uses Synaptics `06cb:00bd` (palm rest). T14s Gen 3 AMD uses Goodix
 
 # PHASE 15 — SNAPSHOTS
 
-`snapper` and `snap-pac` are installed in Phase 6. Initialize Snapper:
+`snapper` and `snap-pac` are installed in Phase 6. Because Phase 5 already mounted `@snapshots` at `/.snapshots`, unmount and remove the mount point before `create-config` (use `--no-dbus` and plain `systemctl enable` inside `arch-chroot`):
 
 ```bash
-snapper -c root create-config /
-```
-
-Enable timers:
-
-```bash
-systemctl enable --now snapper-timeline.timer
-systemctl enable --now snapper-cleanup.timer
+umount /.snapshots && rmdir /.snapshots
+snapper --no-dbus -c root create-config /
+btrfs subvolume delete /.snapshots
+mkdir -p /.snapshots && mount -a && chmod 750 /.snapshots
+systemctl enable snapper-timeline.timer snapper-cleanup.timer
 ```
 
 ---
 
 # PHASE 16 — FLATPAK SANDBOXING
+
+*(Post-boot — run after Phase 24 reboot.)*
 
 Enable Flathub:
 
@@ -1102,6 +1116,8 @@ installs the full list.
 ---
 
 # PHASE 17 — ROOTLESS PODMAN
+
+*(Post-boot — run as your desktop user after Phase 24 reboot.)*
 
 Primary container runtime for **AI agent sandboxes** on this workstation.
 Packages are in `packages/pacman.txt` (`podman`, `podman-compose`, `buildah`,
@@ -1179,6 +1195,8 @@ Installed or wired by `./install.sh`; documented once in the README:
 
 # PHASE 17f — GHIDRA-CLI / LAB-RE (OPTIONAL)
 
+*(Post-boot — run from `~/dotfiles` after Phase 27.)*
+
 ```bash
 # preferred RE stack (JDK21 + Ghidra + jadx + rizin + rea-agents@6.10.1):
 lab-re --check && lab-re
@@ -1193,6 +1211,8 @@ bash ai/scripts/install-ghidra-cli.sh
 ---
 
 # PHASE 18 — FIRMWARE UPDATES
+
+*(Post-boot — `fwupdmgr` requires a booted system with D-Bus.)*
 
 Refresh metadata:
 
@@ -1252,15 +1272,17 @@ Contents:
 
 (Stage A writes this file with optional `--country` when `REFLECTOR_COUNTRY` is set, otherwise worldwide. Live ISO `reflector` uses `--latest 20`.)
 
-Enable timer:
+Enable timer (omit `--now` while inside `arch-chroot`):
 
 ```bash
-systemctl enable --now reflector.timer
+systemctl enable reflector.timer
 ```
 
 ---
 
 # PHASE 20 — GNOME PRIVACY
+
+*(Post-boot — requires a GNOME user session.)*
 
 Prefer the unified hardener (GNOME + browsers + IDE/telemetry env):
 
@@ -1298,7 +1320,7 @@ mkdir -p /etc/kernel
 nano /etc/kernel/cmdline
 ```
 
-Contents (single line):
+Contents (single line; on P15 add `nvidia_drm.modeset=1 rd.driver.blacklist=nouveau`, on T14s AMD replace `intel_iommu=on` with `amd_iommu=on amd_pstate=active`):
 
 ```text
 rd.luks.name=YOUR_UUID=cryptroot rd.luks.options=discard root=/dev/mapper/cryptroot rootflags=subvol=@ rw quiet loglevel=3 mem_sleep_default=s2idle lsm=landlock,lockdown,yama,integrity,apparmor,bpf intel_iommu=on
@@ -1386,13 +1408,15 @@ When using [`scripts/arch-install.sh`](../scripts/arch-install.sh) in **MANUAL**
 
 * `/EFI/Linux/arch-linux*.efi`
 * legacy `vmlinuz-linux*` / `initramfs-linux*` on the ESP root
-* stale systemd-boot entries (`arch*.conf`, `linux-*.conf`)
+* stale Arch systemd-boot entries (`arch*.conf`; `linux-*.conf` is kept in case another distro owns it)
 
 `bootctl install` replaces the systemd-boot binary; existing `/EFI/Microsoft/` entries remain for dual-boot.
 
 ---
 
 # PHASE 22 — APPARMOR VERIFICATION & ENFORCEMENT
+
+*(Post-boot — run after Phase 24 reboot; the live Arch ISO kernel does not enable the AppArmor LSM.)*
 
 Verify AppArmor profiles are loaded:
 
@@ -1483,7 +1507,7 @@ sbctl verify
 
 # Enroll keys and enable Secure Boot
 
-Boot successfully with Secure Boot **disabled** in BIOS first. Then:
+*(Post-boot — complete Phase 24 and boot successfully with Secure Boot **disabled** in BIOS first.)*
 
 ```bash
 sbctl enroll-keys -m
@@ -1502,7 +1526,7 @@ Confirm:
 ```bash
 sbctl status    # Secure Boot: enabled
 sbctl verify
-bootctl status  # Measured UKI: yes (when SB active)
+bootctl status  # Measured UKI: yes (when SB + TPM2 active)
 ```
 
 ---
@@ -1584,14 +1608,14 @@ Check updates:
 checkupdates
 ```
 
-Remove orphan packages:
+Remove orphan packages (only if `pacman -Qtdq` prints packages):
 
 ```bash
 pacman -Qtdq
-sudo pacman -Rns $(pacman -Qtdq)
+pacman -Qtdq | sudo pacman -Rns -
 ```
 
-Ops hygiene (cache + unused Flatpak runtimes; also runs from `./install.sh` and
+Ops hygiene (after Phase 27 clones `~/dotfiles`; also runs from `./install.sh` and
 `provision/scripts/post-update.sh`):
 
 ```bash
@@ -1689,7 +1713,7 @@ Ensure profiles are in **enforce** mode.
 sudo dmesg | grep -i iommu   # kernel.dmesg_restrict = 1 (Phase 12)
 ```
 
-Expected output shows IOMMU entries confirming Intel VT-d is active.
+Expected output shows IOMMU entries confirming Intel VT-d or AMD-Vi is active.
 
 ---
 
@@ -1762,7 +1786,7 @@ Expected:
 Secure Boot: enabled
 ```
 
-All signed binaries should pass `sbctl verify`. With SB enabled, `bootctl status` should show `Measured UKI: yes`.
+All signed binaries should pass `sbctl verify`. With SB + TPM2 enabled, `bootctl status` should show `Measured UKI: yes`.
 
 UKIs rebuilt with `mkinitcpio -P` are re-signed by sbctl's mkinitcpio hook (see [Phase 23](#phase-23--secure-boot-with-sbctl)).
 
